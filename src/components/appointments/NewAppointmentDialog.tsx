@@ -353,12 +353,54 @@ export function NewAppointmentDialog({
   // usando aritmética de minutos no relógio de parede (HH:mm) para evitar
   // qualquer deslocamento por fuso horário (bug reportado: início 08:00 mostrava
   // término 20:40 quando o fuso do navegador divergia do fuso da conta).
+  // Etapas do pacote sequencial (declaradas antes de appointmentTimes para
+  // que a duração use a etapa correta, não o total do pacote).
+  const packageSequenceSteps = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
+      return packageData.appointments
+        .map(session => ({
+          service_id: session.service_id,
+          sequence_order: session.sequence_order || session.session_number,
+          interval_after_days: session.interval_after_days || 0,
+        }))
+        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+    }
+    return packageData?.package_type === 'sequential' && packageData.steps?.length
+      ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+      : [];
+  }, [existingClientPackage, selectedPackageData]);
+
+  const nextPackageStepService = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (!packageData) return null;
+    if (packageData.package_type === 'sequential') {
+      const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+      if (sessions?.length) {
+        const pending = [...sessions]
+          .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
+          .find((s) => !s.appointment_id && s.status === 'pending');
+        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+        return svcId ? services.find((s) => s.id === svcId) || null : null;
+      }
+      const svcId = packageSequenceSteps[0]?.service_id;
+      return svcId ? services.find((s) => s.id === svcId) || null : null;
+    }
+    const svcId = (packageData as any)?.service_id;
+    return svcId ? services.find((s) => s.id === svcId) || null : null;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
+
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
 
+    // Para pacote sequencial, a duração de cada agendamento é a duração do
+    // serviço da ETAPA atual (Avaliação, Axila+Virilha, etc.) — não a soma
+    // do pacote inteiro. Caso contrário, término = 08:00 + 12h40 = 20:40.
+    const isSequential = selectedPackageData?.package_type === 'sequential';
+    const stepDuration = (nextPackageStepService as any)?.duration;
     const duration = serviceType === 'service'
       ? (selectedServiceData?.duration || 60)
-      : (selectedPackageData?.duration || 60);
+      : (isSequential ? (stepDuration || 60) : (selectedPackageData?.duration || 60));
 
     const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
@@ -391,44 +433,6 @@ export function NewAppointmentDialog({
   }, [time, selectedService, selectedPackageData?.id, serviceType]);
 
   // Calculate preview dates for auto-scheduling
-  const packageSequenceSteps = useMemo(() => {
-    const packageData = existingClientPackage || selectedPackageData;
-    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
-      return packageData.appointments
-        .map(session => ({
-          service_id: session.service_id,
-          sequence_order: session.sequence_order || session.session_number,
-          interval_after_days: session.interval_after_days || 0,
-        }))
-        .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
-    }
-
-    return packageData?.package_type === 'sequential' && packageData.steps?.length
-      ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
-      : [];
-  }, [existingClientPackage, selectedPackageData]);
-
-  // Serviço da próxima aplicação a ser agendada (pacote sequencial / kit)
-  const nextPackageStepService = useMemo(() => {
-    const packageData = existingClientPackage || selectedPackageData;
-    if (!packageData) return null;
-    // Pacote sequencial: pega a próxima sessão pendente (sem appointment) ou a 1ª etapa
-    if (packageData.package_type === 'sequential') {
-      const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
-      if (sessions?.length) {
-        const pending = [...sessions]
-          .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
-          .find((s) => !s.appointment_id && s.status === 'pending');
-        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
-        return svcId ? services.find((s) => s.id === svcId) || null : null;
-      }
-      const svcId = packageSequenceSteps[0]?.service_id;
-      return svcId ? services.find((s) => s.id === svcId) || null : null;
-    }
-    // Pacote padrão: usa o service_id direto do pacote
-    const svcId = (packageData as any)?.service_id;
-    return svcId ? services.find((s) => s.id === svcId) || null : null;
-  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
 
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
@@ -2502,7 +2506,7 @@ Até breve! ✨`;
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <p className="text-sm font-medium mb-1">Resumo do Agendamento</p>
                 <p className="text-xs text-muted-foreground">
-                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} • Início {time} • Término {appointmentTimes.endLabel || addMinutesToClock(time, (serviceType === 'service' ? (selectedServiceData?.duration || 60) : (selectedPackageData?.duration || 60)))}
+                  {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })} • Início {time} • Término {appointmentTimes.endLabel || addMinutesToClock(time, (serviceType === 'service' ? (selectedServiceData?.duration || 60) : (selectedPackageData?.package_type === 'sequential' ? ((nextPackageStepService as any)?.duration || 60) : (selectedPackageData?.duration || 60))))}
                 </p>
               </div>
             )}

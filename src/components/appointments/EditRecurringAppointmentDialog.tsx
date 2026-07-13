@@ -109,15 +109,13 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
   const handleStartTimeChange = (newStartTime: string) => {
     setStartTime(newStartTime);
-    // Auto-atualiza horário de término preservando a duração original
-    if (originalDuration > 0 && date && newStartTime) {
-      try {
-        const newStart = new Date(`${date}T${newStartTime}`);
-        if (!isNaN(newStart.getTime())) {
-          const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
-          setEndTime(format(newEnd, 'HH:mm'));
-        }
-      } catch { /* ignore */ }
+    // Recalcula o término em relógio de parede (HH:mm), preservando a duração original.
+    // Evita usar `new Date(...)` para não sofrer com deslocamento de fuso.
+    if (originalDuration > 0 && /^\d{2}:\d{2}$/.test(newStartTime)) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { addMinutesToClock } = require('@/lib/duration') as typeof import('@/lib/duration');
+      const nextEnd = addMinutesToClock(newStartTime, originalDuration);
+      if (nextEnd) setEndTime(nextEnd);
     }
   };
 

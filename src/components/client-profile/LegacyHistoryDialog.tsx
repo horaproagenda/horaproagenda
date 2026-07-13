@@ -103,6 +103,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const [pkgSessions, setPkgSessions] = useState<SessionRow[]>([newSessionRow(), newSessionRow()]);
   const [linkExistingPackage, setLinkExistingPackage] = useState(false);
   const [existingPackageId, setExistingPackageId] = useState<string>('');
+  const [confirmLinkKind, setConfirmLinkKind] = useState<'common' | 'sequential' | null>(null);
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
 
   // CSV
   const [csvText, setCsvText] = useState('');

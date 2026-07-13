@@ -1252,7 +1252,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 </p>
                 {(() => {
                   const filled = pkgSessions.filter((r) => r.date && r.time).length;
-                  const available = existingPackagePendingSessions.length;
+                  const available = existingPackageAvailableCount;
                   const remaining = Math.max(0, available - filled);
                   return (
                     <>

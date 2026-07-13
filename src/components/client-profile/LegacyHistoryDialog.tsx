@@ -312,6 +312,22 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     const dur = parseInt(singleDuration) || (selectedService?.duration ?? 60);
     const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
 
+    // Validate payment fields cohesively — avoids silent losses where the user
+    // fills only part of the payment info and the appointment ends up as
+    // "pending / R$ 0" (invisible in Histórico de Pagamentos).
+    const amount = parseBrazilianCurrency(singleAmount);
+    const hasAnyPaymentInfo = !!singleAmount.trim() || !!paymentMethodId || !!singlePaymentDate;
+    if (hasAnyPaymentInfo) {
+      if (amount <= 0) {
+        toast.error('Informe o valor pago (maior que zero) para registrar o pagamento.');
+        return;
+      }
+      if (!paymentMethodId) {
+        toast.error('Selecione a forma de pagamento para registrar o pagamento.');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const apt = await createLegacyAppointment({
@@ -321,7 +337,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         professional_id: professionalId || null,
         notes: singleNotes,
       });
-      const amount = parseBrazilianCurrency(singleAmount);
       if (amount > 0) {
         await createFinancialEntry({
           amount,
@@ -331,7 +346,11 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         });
       }
       invalidateAll();
-      toast.success('Agendamento histórico cadastrado!');
+      toast.success(
+        amount > 0
+          ? 'Agendamento histórico e pagamento cadastrados!'
+          : 'Agendamento histórico cadastrado (sem pagamento).'
+      );
       resetSingle();
       onOpenChange(false);
     } catch (e: any) {

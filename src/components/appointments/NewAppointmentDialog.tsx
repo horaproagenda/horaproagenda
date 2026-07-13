@@ -1546,7 +1546,9 @@ Até breve! ✨`;
                           <div
                             key={`client-svc-${paidService.id}`}
                             className="px-2 py-1.5 hover:bg-green-500/10 cursor-pointer border-b border-border/50 bg-green-500/5"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               const actualServiceId = paidService.service?.id || paidService.service_id;
                               setSelectedService(actualServiceId);
                               setServiceSearch(paidService.service?.name || '');

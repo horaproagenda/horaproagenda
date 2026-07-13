@@ -92,7 +92,12 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
-  const { activeServices } = useServices();
+  const { services, activeServices } = useServices();
+  // Use full list for step options so previously-selected inactive services still match.
+  const stepServiceOptions = React.useMemo(
+    () => (services || []).map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
+    [services]
+  );
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),

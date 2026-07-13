@@ -438,12 +438,19 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
     setSubmitting(true);
     try {
+      const methodName = selectedPaymentMethodName || null;
       const apt = await createLegacyAppointment({
         start_time: start,
         end_time: end,
         service_id: serviceId || null,
         professional_id: professionalId || null,
         notes: singleNotes,
+        // Stamp payment atomically at creation — avoids relying solely on a
+        // client-side UPDATE that could be blocked/reverted by RLS or races.
+        amount_paid: amount > 0 ? amount : undefined,
+        payment_status: amount > 0 ? 'paid' : undefined,
+        payment_date: amount > 0 ? (singlePaymentDate || singleDate) : undefined,
+        payment_methods: amount > 0 && methodName ? [methodName] : undefined,
       });
       if (amount > 0) {
         await createFinancialEntry({

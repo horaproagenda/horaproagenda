@@ -92,14 +92,19 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
-  const { activeServices } = useServices();
+  const { services, activeServices } = useServices();
+  // Use full list for step options so previously-selected inactive services still match.
+  const stepServiceOptions = React.useMemo(
+    () => (services || []).map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
+    [services]
+  );
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
       name: pkg.name,
       description: pkg.description || '',
-      category: pkg.category || '',
+      category: pkg.category || 'Outros',
       total_sessions: pkg.total_sessions,
       price: pkg.price,
       duration: pkg.duration || 60,
@@ -117,7 +122,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       form.reset({
         name: pkg.name,
         description: pkg.description || '',
-        category: pkg.category || '',
+        category: pkg.category || 'Outros',
         total_sessions: pkg.total_sessions,
         price: pkg.price,
         duration: pkg.duration || 60,
@@ -215,7 +220,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         totalSessions = expandedSteps.length;
         intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
         duration = expandedSteps.reduce((sum, s) => {
-          const svc = activeServices.find(a => a.id === s.service_id);
+          const svc = services.find(a => a.id === s.service_id);
           return sum + (svc?.duration || 0);
         }, 0) || duration;
       }
@@ -452,7 +457,11 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
             </>
           ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.warn('[PackageTemplateDetailDialog] validation errors', errors);
+                const first = Object.values(errors)[0] as any;
+                toast.error(first?.message || 'Verifique os campos do formulário.');
+              })} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -522,7 +531,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                                 className="h-8 text-xs"
                                 value={step.service_id}
                                 onChange={(value) => updateSeqStep(index, { service_id: value })}
-                                options={activeServices.map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined }))}
+                                options={stepServiceOptions}
                                 placeholder="Selecione o serviço"
                                 searchPlaceholder="Buscar serviço..."
                                 emptyMessage="Nenhum serviço encontrado."
@@ -553,7 +562,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                             <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
                             <div className="flex flex-wrap gap-1.5">
                               {entries.map(([sid, qty]) => {
-                                const svc = activeServices.find((s: any) => s.id === sid) as any;
+                                const svc = services.find((s: any) => s.id === sid) as any;
                                 const c = getSequentialServiceColor(sid, seqColorMap);
                                 return (
                                   <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>

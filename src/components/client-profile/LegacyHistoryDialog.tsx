@@ -413,7 +413,84 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: String(selectedService?.duration ?? 60) })]);
   const removeSession = (id: string) => setPkgSessions((rows) => rows.filter((r) => r.id !== id));
 
+  // ============ VINCULAR SESSÕES REALIZADAS A PACOTE EXISTENTE ============
+  const handleSubmitLinkedPackage = async (kind: 'common' | 'sequential') => {
+    if (!existingPackageId || !selectedExistingPackage) {
+      toast.error('Selecione o pacote existente do cliente');
+      return;
+    }
+    const filledSessions = pkgSessions.filter((r) => r.date && r.time);
+    if (filledSessions.length === 0) {
+      toast.error('Preencha ao menos uma sessão realizada com data e horário');
+      return;
+    }
+    const available = existingPackagePendingSessions.length;
+    if (filledSessions.length > available) {
+      toast.error(`O pacote tem apenas ${available} sessão(ões) disponível(is). Reduza as sessões preenchidas.`);
+      return;
+    }
+
+    const pkgAny: any = selectedExistingPackage;
+    const pkgServiceId = pkgAny.service_id || serviceId || null;
+    const pkgDuration = pkgAny.duration || selectedService?.duration || 60;
+    const pkgName = pkgAny.name || 'Pacote';
+
+    setSubmitting(true);
+    try {
+      for (let i = 0; i < filledSessions.length; i++) {
+        const row = filledSessions[i];
+        const pending = existingPackagePendingSessions[i];
+        const start = buildLocalISO(row.date, row.time);
+        if (!start) continue;
+        const dur = parseInt(row.duration) || pkgDuration;
+        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+        const stepServiceId = pending.service_id || pkgServiceId;
+
+        // Marca a sessão pendente como realizada com data
+        const { error: updErr } = await supabase
+          .from('package_appointments')
+          .update({ status: 'completed', scheduled_date: start })
+          .eq('id', pending.id);
+        if (updErr) throw updErr;
+
+        // Cria appointment vinculado
+        const apt = await createLegacyAppointment({
+          start_time: start,
+          end_time: end,
+          service_id: stepServiceId,
+          professional_id: professionalId || pkgAny.professional_id || null,
+          package_appointment_id: pending.id,
+          notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
+        });
+
+        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
+
+        const amt = parseBrazilianCurrency(row.amount_paid);
+        if (amt > 0) {
+          await createFinancialEntry({
+            amount: amt,
+            payment_date: row.payment_date || row.date,
+            description: `Sessão ${pending.session_number} — ${pkgName} (Histórico)`,
+            appointment_id: apt.id,
+          });
+        }
+      }
+
+      invalidateAll();
+      toast.success(
+        `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
+      );
+      resetPackage();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Falha ao vincular sessões ao pacote');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmitPackage = async (kind: 'common' | 'sequential') => {
+    if (linkExistingPackage) return handleSubmitLinkedPackage(kind);
     if (!serviceId) { toast.error('Selecione o serviço base do pacote'); return; }
     const total = parseInt(pkgTotalSessions) || pkgSessions.length;
     if (total < 1) { toast.error('Total de sessões inválido'); return; }

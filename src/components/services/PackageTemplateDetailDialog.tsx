@@ -122,7 +122,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       form.reset({
         name: pkg.name,
         description: pkg.description || '',
-        category: pkg.category || '',
+        category: pkg.category || 'Outros',
         total_sessions: pkg.total_sessions,
         price: pkg.price,
         duration: pkg.duration || 60,

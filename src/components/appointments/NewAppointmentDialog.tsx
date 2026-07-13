@@ -2364,24 +2364,15 @@ Até breve! ✨`;
                                           >
                                             <span className="truncate" data-testid={`preview-session-label-${index}`}>
                                               {(() => {
-                                                // Fallback em cascata:
-                                                // 1) service_id da etapa (packageSequenceSteps[index])
-                                                // 2) service_id direto do pacote (pacote comum)
-                                                // 3) nextPackageStepService (próxima etapa pendente)
-                                                // 4) selectedServiceData (agendamento avulso)
-                                                // 5) "Sessão N · <nome do pacote>" — só o nome do pacote nunca aparece isolado
-                                                const stepServiceId = packageSequenceSteps[index]?.service_id;
-                                                const stepService = stepServiceId ? services.find(s => s.id === stepServiceId) : null;
-                                                const pkgServiceId = (selectedPackageData as any)?.service_id;
-                                                const pkgService = pkgServiceId ? services.find(s => s.id === pkgServiceId) : null;
-                                                const resolved = stepService || pkgService || (nextPackageStepService as any) || selectedServiceData;
-                                                if (resolved?.name) {
-                                                  return <span className="font-medium">{resolved.name} · </span>;
-                                                }
-                                                if (selectedPackageData?.name) {
-                                                  return <span className="font-medium">Sessão {index + 1} · {selectedPackageData.name} · </span>;
-                                                }
-                                                return null;
+                                                const name = resolveSessionServiceLabel({
+                                                  index,
+                                                  steps: packageSequenceSteps as any,
+                                                  services: services as any,
+                                                  pkg: selectedPackageData as any,
+                                                  nextStepService: nextPackageStepService as any,
+                                                  fallbackService: selectedServiceData as any,
+                                                });
+                                                return name ? <span className="font-medium">{name} · </span> : null;
                                               })()}
                                               {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                             </span>

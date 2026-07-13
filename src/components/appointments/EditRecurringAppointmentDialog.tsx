@@ -19,6 +19,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { format, parseISO } from 'date-fns';
+import { addMinutesToClock } from '@/lib/duration';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';

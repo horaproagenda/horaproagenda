@@ -1025,46 +1025,73 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsTrigger value="csv" className="text-xs gap-1"><Upload className="h-3.5 w-3.5" />CSV em lote</TabsTrigger>
           </TabsList>
 
-          {/* Shared selectors — em "Pacote comum" vinculado, o serviço vem do próprio pacote */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-            {!(tab === 'common' && linkExistingPackage) && (
-              <div>
-                <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? (tab === 'sequential' && linkExistingPackage ? '(opcional)' : '(obrigatório)') : '(opcional)'}</Label>
-                <SearchableSelect
-                  options={serviceOptions}
-                  value={serviceId}
-                  onChange={setServiceId}
-                  placeholder="Selecione o serviço"
-                  className="h-8 text-xs"
-                />
-              </div>
-            )}
-            <div>
-              <Label className="text-[10px]">Profissional</Label>
-              <SearchableSelect
-                options={profOptions}
-                value={professionalId}
-                onChange={setProfessionalId}
-                placeholder="Selecione o profissional"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div>
-              <Label className="text-[10px]">Forma de pagamento</Label>
-              <SearchableSelect
-                options={paymentOptions}
-                value={paymentMethodId}
-                onChange={setPaymentMethodId}
-                placeholder="Forma de pagamento"
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
+          {/* Shared selectors — ao vincular a um pacote já cadastrado (venda já feita),
+              serviço/forma de pagamento/lançamento no financeiro são omitidos para não
+              duplicar registros. Profissional só aparece se o pacote não tiver um. */}
+          {(() => {
+            const isLinkingExisting = (tab === 'common' || tab === 'sequential') && linkExistingPackage;
+            const pkgHasProfessional = !!(selectedExistingPackage as any)?.professional_id;
+            const showService = !isLinkingExisting;
+            const showPaymentMethod = !isLinkingExisting;
+            const showFinancialToggle = !isLinkingExisting;
+            const showProfessional = !isLinkingExisting || !pkgHasProfessional;
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+                  {showService && (
+                    <div>
+                      <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
+                      <SearchableSelect
+                        options={serviceOptions}
+                        value={serviceId}
+                        onChange={setServiceId}
+                        placeholder="Selecione o serviço"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                  {showProfessional && (
+                    <div>
+                      <Label className="text-[10px]">Profissional{isLinkingExisting ? ' (pacote sem profissional definido)' : ''}</Label>
+                      <SearchableSelect
+                        options={profOptions}
+                        value={professionalId}
+                        onChange={setProfessionalId}
+                        placeholder="Selecione o profissional"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                  {showPaymentMethod && (
+                    <div>
+                      <Label className="text-[10px]">Forma de pagamento</Label>
+                      <SearchableSelect
+                        options={paymentOptions}
+                        value={paymentMethodId}
+                        onChange={setPaymentMethodId}
+                        placeholder="Forma de pagamento"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
 
-          <div className="flex items-center gap-2 mt-2 text-xs">
-            <Switch id="legacy-fin" checked={createFinancial} onCheckedChange={setCreateFinancial} />
-            <Label htmlFor="legacy-fin" className="cursor-pointer">Lançar pagamentos no financeiro com data retroativa</Label>
-          </div>
+                {showFinancialToggle && (
+                  <div className="flex items-center gap-2 mt-2 text-xs">
+                    <Switch id="legacy-fin" checked={createFinancial} onCheckedChange={setCreateFinancial} />
+                    <Label htmlFor="legacy-fin" className="cursor-pointer">Lançar pagamentos no financeiro com data retroativa</Label>
+                  </div>
+                )}
+
+                {isLinkingExisting && (
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Esse pacote já tem venda registrada. Informamos apenas as datas das aplicações realizadas — nenhum lançamento financeiro adicional é criado.
+                  </p>
+                )}
+              </>
+            );
+          })()}
+
 
           <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-2">
             <TabsContent value="single" className="space-y-3 mt-0">

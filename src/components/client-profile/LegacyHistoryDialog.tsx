@@ -4,6 +4,10 @@ import { addMinutes, parse as parseDate, isValid as isValidDate } from 'date-fns
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,6 +103,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const [pkgSessions, setPkgSessions] = useState<SessionRow[]>([newSessionRow(), newSessionRow()]);
   const [linkExistingPackage, setLinkExistingPackage] = useState(false);
   const [existingPackageId, setExistingPackageId] = useState<string>('');
+  const [confirmLinkKind, setConfirmLinkKind] = useState<'common' | 'sequential' | null>(null);
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
 
   // CSV
   const [csvText, setCsvText] = useState('');
@@ -200,6 +206,14 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     if (!selectedExistingPackage) return [] as any[];
     return ((selectedExistingPackage as any).appointments || [])
       .filter((s: any) => s.status !== 'completed' && s.status !== 'missed' && !s.appointment_id)
+      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+  }, [selectedExistingPackage]);
+
+  // Sessões já vinculadas (completed com appointment) do pacote — permite desfazer o vínculo
+  const existingPackageLinkedSessions = useMemo(() => {
+    if (!selectedExistingPackage) return [] as any[];
+    return ((selectedExistingPackage as any).appointments || [])
+      .filter((s: any) => s.status === 'completed' && s.appointment_id)
       .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
   }, [selectedExistingPackage]);
 
@@ -642,6 +656,47 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     setExistingPackageId('');
   };
 
+  // ============ DESFAZER VÍNCULO ============
+  // Restaura a sessão para pending, remove agendamento retroativo e lançamentos financeiros gerados.
+  const handleUndoLink = async (packageAppointmentId: string) => {
+    const linked = existingPackageLinkedSessions.find((s: any) => s.id === packageAppointmentId);
+    if (!linked) { toast.error('Sessão não encontrada'); return; }
+    const appointmentId = linked.appointment_id;
+    setSubmitting(true);
+    try {
+      if (appointmentId) {
+        // 1) Remove lançamentos financeiros gerados a partir desse agendamento
+        const { error: feErr } = await supabase
+          .from('financial_entries')
+          .delete()
+          .eq('appointment_id', appointmentId);
+        if (feErr) throw feErr;
+
+        // 2) Remove o agendamento retroativo
+        const { error: apErr } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('id', appointmentId);
+        if (apErr) throw apErr;
+      }
+
+      // 3) Restaura a sessão do pacote para o estado disponível
+      const { error: paErr } = await supabase
+        .from('package_appointments')
+        .update({ status: 'pending', scheduled_date: null, appointment_id: null })
+        .eq('id', packageAppointmentId);
+      if (paErr) throw paErr;
+
+      invalidateAll();
+      toast.success('Vínculo desfeito. A sessão voltou a ficar disponível para agendamento.');
+    } catch (e: any) {
+      toast.error(e.message || 'Falha ao desfazer o vínculo');
+    } finally {
+      setSubmitting(false);
+      setConfirmUnlinkId(null);
+    }
+  };
+
   // ============ CSV ============
   const downloadCsvTemplate = () => {
     const tpl = `data;hora;duracao_min;servico;profissional;valor_pago;data_pagamento;observacoes
@@ -1003,6 +1058,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
                 existingPackageOptions={existingPackageOptions}
                 existingPackageAvailable={existingPackagePendingSessions.length}
+                linkedSessions={existingPackageLinkedSessions}
+                onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
             </TabsContent>
 
@@ -1019,6 +1076,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
                 existingPackageOptions={existingPackageOptions}
                 existingPackageAvailable={existingPackagePendingSessions.length}
+                linkedSessions={existingPackageLinkedSessions}
+                onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
             </TabsContent>
 
@@ -1078,15 +1137,21 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             </Button>
           )}
           {tab === 'common' && (
-            <Button onClick={() => handleSubmitPackage('common')} disabled={submitting}>
+            <Button
+              onClick={() => linkExistingPackage ? setConfirmLinkKind('common') : handleSubmitPackage('common')}
+              disabled={submitting}
+            >
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Cadastrar pacote comum
+              {linkExistingPackage ? 'Vincular sessões realizadas' : 'Cadastrar pacote comum'}
             </Button>
           )}
           {tab === 'sequential' && (
-            <Button onClick={() => handleSubmitPackage('sequential')} disabled={submitting}>
+            <Button
+              onClick={() => linkExistingPackage ? setConfirmLinkKind('sequential') : handleSubmitPackage('sequential')}
+              disabled={submitting}
+            >
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Cadastrar pacote sequencial
+              {linkExistingPackage ? 'Vincular sessões realizadas' : 'Cadastrar pacote sequencial'}
             </Button>
           )}
           {tab === 'csv' && (
@@ -1097,6 +1162,84 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmação antes de vincular sessões realizadas ao pacote existente */}
+      <AlertDialog open={!!confirmLinkKind} onOpenChange={(o) => !o && setConfirmLinkKind(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vincular sessões realizadas?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Pacote: <strong>{selectedExistingPackage?.name}</strong>
+                </p>
+                {(() => {
+                  const filled = pkgSessions.filter((r) => r.date && r.time).length;
+                  const available = existingPackagePendingSessions.length;
+                  const remaining = Math.max(0, available - filled);
+                  return (
+                    <>
+                      <p>
+                        <strong>{filled}</strong> sessão(ões) serão marcadas como <strong>realizadas</strong> (completed) com data retroativa.
+                      </p>
+                      <p>
+                        <strong>{remaining}</strong> sessão(ões) continuarão <strong>disponíveis</strong> para agendamento futuro.
+                      </p>
+                      {filled > available && (
+                        <p className="text-destructive">
+                          Atenção: você preencheu mais sessões do que o pacote tem disponível ({available}). Reduza antes de confirmar.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+                <p className="text-xs text-muted-foreground">
+                  Você poderá desfazer esse vínculo depois, restaurando as sessões para o estado disponível.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              onClick={async (e) => {
+                e.preventDefault();
+                const kind = confirmLinkKind;
+                if (!kind) return;
+                await handleSubmitPackage(kind);
+                setConfirmLinkKind(null);
+              }}
+            >
+              Confirmar vínculo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação antes de desfazer vínculo */}
+      <AlertDialog open={!!confirmUnlinkId} onOpenChange={(o) => !o && setConfirmUnlinkId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer vínculo desta sessão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A sessão voltará ao estado <strong>disponível para agendamento</strong>. O agendamento retroativo e o lançamento financeiro vinculado serão removidos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (confirmUnlinkId) await handleUndoLink(confirmUnlinkId);
+              }}
+            >
+              Desfazer vínculo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
@@ -1118,6 +1261,8 @@ interface PackageFormProps {
   setExistingPackageId: (v: string) => void;
   existingPackageOptions: Array<{ value: string; label: string; sublabel?: string }>;
   existingPackageAvailable: number;
+  linkedSessions: any[];
+  onRequestUndoLink: (packageAppointmentId: string) => void;
 }
 
 function PackageForm(props: PackageFormProps) {
@@ -1129,6 +1274,7 @@ function PackageForm(props: PackageFormProps) {
     linkExistingPackage, setLinkExistingPackage,
     existingPackageId, setExistingPackageId,
     existingPackageOptions, existingPackageAvailable,
+    linkedSessions, onRequestUndoLink,
   } = props;
 
   const filled = pkgSessions.filter((r) => r.date && r.time).length;
@@ -1160,9 +1306,37 @@ function PackageForm(props: PackageFormProps) {
                 {existingPackageAvailable} sessão(ões) disponível(is). As demais permanecerão liberadas para agendamento futuro.
               </p>
             )}
+            {existingPackageId && linkedSessions.length > 0 && (
+              <div className="mt-2 space-y-1 rounded border bg-background p-2">
+                <div className="text-[11px] font-medium">
+                  Sessões já vinculadas ({linkedSessions.length})
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Selecionou o pacote errado? Desfaça o vínculo para restaurar as sessões ao estado disponível.
+                </p>
+                {linkedSessions.map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between gap-2 text-[11px] py-1 border-t first:border-t-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">#{s.session_number}</Badge>
+                      <span className="text-muted-foreground">
+                        {s.scheduled_date ? new Date(s.scheduled_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sem data'}
+                      </span>
+                    </div>
+                    <Button
+                      type="button" variant="ghost" size="sm"
+                      className="h-6 text-[10px] text-destructive hover:text-destructive"
+                      onClick={() => onRequestUndoLink(s.id)}
+                    >
+                      Desfazer vínculo
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
 
       {!linkExistingPackage && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

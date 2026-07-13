@@ -638,6 +638,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     setPkgName(''); setPkgTotalSessions('4'); setPkgTotalPrice(''); setPkgPaymentDate('');
     setPkgIntervalDays('30');
     setPkgSessions([newSessionRow(), newSessionRow()]);
+    setLinkExistingPackage(false);
+    setExistingPackageId('');
   };
 
   // ============ CSV ============

@@ -449,17 +449,20 @@ export function NewAppointmentDialog({
     let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
-      const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
-      // Para pacotes sequenciais, sempre respeitar o intervalo cadastrado em cada etapa.
-      // Só permitir override manual para pacotes padrão (sem sequência cadastrada).
+      // Para pacotes sequenciais, o intervalo ENTRE a etapa i-1 e a etapa i é
+      // sempre `previousStep.interval_after_days` (semântica "dias APÓS esta
+      // etapa"). Bug anterior usava o intervalo da própria etapa i, o que
+      // ignorava o gap real cadastrado (ex.: 3 dias entre avaliação e axila
+      // virava 21 dias porque pegava o intervalo da axila para a próxima).
       const manualOverride = parseInt(customIntervalDays, 10);
       const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-      const intervalDays = packageSequenceSteps.length > 0
-        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+      const rawInterval = packageSequenceSteps.length > 0
+        ? Number(previousStep?.interval_after_days ?? packageData?.interval_days ?? 7)
         : hasManualOverride
           ? manualOverride
           : Number(packageData?.interval_days || 7);
+      const intervalDays = Number.isFinite(rawInterval) ? rawInterval : 7;
       // Ensure minimum 1 day interval to prevent overlapping sessions
       const safeInterval = Math.max(intervalDays, 1);
       const futureDate = addDays(currentDate, safeInterval);

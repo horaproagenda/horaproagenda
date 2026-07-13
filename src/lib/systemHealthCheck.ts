@@ -159,13 +159,26 @@ function checkOfflineQueue(): HealthCheckItem {
 
 async function checkServiceWorker(): Promise<HealthCheckItem> {
   if (!('serviceWorker' in navigator)) return { id: 'sw', label: 'Service Worker', status: 'skipped', durationMs: 0, detail: 'Indisponível' };
+  // Em preview do Lovable / dev, o SW é intencionalmente desregistrado
+  // (ver main.tsx e index.html). Não faz sentido flaggar como warn e
+  // disparar auto-heal em loop infinito. Trata como 'skipped'.
+  const host = typeof location !== 'undefined' ? location.hostname : '';
+  const isPreviewOrDev =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.includes('lovable.app') ||
+    host.endsWith('.lovableproject.com') ||
+    host.endsWith('.lovableproject-dev.com') ||
+    host.endsWith('.beta.lovable.dev');
   const t0 = performance.now();
   const reg = await navigator.serviceWorker.getRegistration();
   const ms = Math.round(performance.now() - t0);
+  if (isPreviewOrDev) return { id: 'sw', label: 'Service Worker', status: 'skipped', durationMs: ms, detail: 'Desativado em preview/dev' };
   if (!reg) return { id: 'sw', label: 'Service Worker', status: 'warn', durationMs: ms, detail: 'Não registrado', fixable: true };
   if (reg.waiting) return { id: 'sw', label: 'Service Worker', status: 'warn', durationMs: ms, detail: 'Nova versão aguardando ativação', fixable: true };
   return { id: 'sw', label: 'Service Worker', status: 'ok', durationMs: ms };
 }
+
 
 function checkCacheFreshness(queryClient?: QueryClient): HealthCheckItem {
   if (!queryClient) return { id: 'cache', label: 'Cache React Query', status: 'skipped', durationMs: 0 };

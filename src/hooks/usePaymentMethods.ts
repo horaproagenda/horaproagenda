@@ -52,7 +52,10 @@ export function usePaymentMethods() {
     },
     onError: (error: any) => {
       // 23505 = unique_violation — forma de pagamento já existe (seed idempotente). Silencia o toast.
-      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) return;
+      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) {
+        console.info('[seed-telemetry] payment_methods unique_violation ignorado (idempotente):', error?.message);
+        return;
+      }
       toast.error('Erro ao criar forma de pagamento: ' + error.message);
     },
   });

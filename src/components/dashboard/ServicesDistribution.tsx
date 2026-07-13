@@ -94,8 +94,8 @@ export function ServicesDistribution({ data }: ServicesDistributionProps) {
             </div>
 
             <div className="space-y-1">
-              {chartData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-[11px]">
+              {chartData.map((item, index) => (
+                <div key={`${item.name}-${index}`} className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <div
                       className="h-2.5 w-2.5 rounded-full shrink-0"

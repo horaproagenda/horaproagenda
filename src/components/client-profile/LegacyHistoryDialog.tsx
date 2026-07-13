@@ -23,7 +23,9 @@ import { parseBrazilianCurrency } from '@/lib/utils';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useClientPackages } from '@/hooks/useClientPackages';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
+import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
 interface LegacyHistoryDialogProps {
   open: boolean;

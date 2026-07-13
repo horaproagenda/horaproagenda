@@ -1584,24 +1584,50 @@ Até breve! ✨`;
                         <Package className="h-3 w-3" />
                         Pacotes do Cliente
                       </div>
-                      {visibleClientPackages
-                        .map((pkg) => {
+                      {(() => {
+                        // Agrupa pacotes idênticos (mesmo nome + tipo) para não duplicar
+                        // linhas quando o mesmo pacote foi vendido em várias parcelas de
+                        // boleto. Mostra apenas UMA linha por pacote com o total de
+                        // aplicações disponíveis para agendar.
+                        const groups = new Map<string, { pkgs: typeof visibleClientPackages; totalRemaining: number; totalSessions: number; totalExisting: number; isPaid: boolean; hasInconsistent: boolean }>();
+                        visibleClientPackages.forEach((pkg) => {
                           const summary = getPackageAvailabilitySummary(pkg);
-                          const remaining = summary.schedulableSessions;
-                          const sameNameCount = visibleClientPackages.filter(p => p.name === pkg.name).length;
-                          const packageDate = pkg.created_at ? format(new Date(pkg.created_at), 'dd/MM/yy', { locale: ptBR }) : '';
-                          const isPaid = pkg.payment_methods && pkg.payment_methods.length > 0;
-                          
+                          const key = `${pkg.name}|${pkg.package_type || 'common'}`;
+                          const isPaid = !!(pkg.payment_methods && pkg.payment_methods.length > 0);
+                          const g = groups.get(key);
+                          if (g) {
+                            g.pkgs.push(pkg);
+                            g.totalRemaining += summary.schedulableSessions;
+                            g.totalSessions += summary.totalSessions;
+                            g.totalExisting += summary.existingSessionRecords;
+                            g.isPaid = g.isPaid || isPaid;
+                            g.hasInconsistent = g.hasInconsistent || summary.hasInconsistentCounter;
+                          } else {
+                            groups.set(key, {
+                              pkgs: [pkg],
+                              totalRemaining: summary.schedulableSessions,
+                              totalSessions: summary.totalSessions,
+                              totalExisting: summary.existingSessionRecords,
+                              isPaid,
+                              hasInconsistent: summary.hasInconsistentCounter,
+                            });
+                          }
+                        });
+                        return Array.from(groups.values()).map(({ pkgs, totalRemaining, totalSessions, totalExisting, isPaid, hasInconsistent }) => {
+                          // Seleciona a instância com sessões disponíveis (ou a mais antiga).
+                          const selectable = pkgs.find(p => getPackageAvailabilitySummary(p).schedulableSessions > 0) || pkgs[0];
+                          const pkg = selectable;
+                          const groupedCount = pkgs.length;
                           return (
                             <div
-                              key={`client-pkg-${pkg.id}`}
+                              key={`client-pkg-group-${pkg.id}`}
                               className={cn(
                                 "px-2 py-1.5 cursor-pointer border-b border-border/50",
                                 isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
                               onClick={() => {
                                 setSelectedService(pkg.id);
-                                setServiceSearch(`${pkg.name}${sameNameCount > 1 ? ` (${packageDate})` : ''}`);
+                                setServiceSearch(pkg.name);
                                 setServiceType('package');
                                 setUsingPaidServiceId(null);
                                 setShowServiceSuggestions(false);
@@ -1610,9 +1636,6 @@ Até breve! ✨`;
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <span className={cn("text-xs font-medium truncate", isPaid ? "text-green-700" : "text-primary")}>{pkg.name}</span>
-                                  {sameNameCount > 1 && (
-                                    <span className="text-[11px] text-muted-foreground flex-shrink-0">({packageDate})</span>
-                                  )}
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-semibold gap-0.5 border border-border">
@@ -1623,6 +1646,11 @@ Até breve! ✨`;
                                     <Badge className="h-5 px-1.5 text-[10px] font-bold gap-0.5 bg-primary text-primary-foreground border border-primary">
                                       <Repeat className="h-2.5 w-2.5" />
                                       Seq
+                                    </Badge>
+                                  )}
+                                  {totalRemaining > 0 && (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700">
+                                      {totalRemaining}x disponíveis
                                     </Badge>
                                   )}
                                   {isPaid ? (
@@ -1638,12 +1666,14 @@ Até breve! ✨`;
                                 </div>
                               </div>
                               <div className="text-[11px] text-muted-foreground">
-                                Agendar: {remaining} • Sessões: {summary.existingSessionRecords}/{summary.totalSessions}
-                                {summary.hasInconsistentCounter ? ' • contador antigo' : ''}
+                                Aplicações disponíveis: {totalRemaining} • Sessões: {totalExisting}/{totalSessions}
+                                {groupedCount > 1 ? ` • ${groupedCount} parcelas` : ''}
+                                {hasInconsistent ? ' • contador antigo' : ''}
                               </div>
                             </div>
                           );
-                        })}
+                        });
+                      })()}
                     </div>
                   )}
                   

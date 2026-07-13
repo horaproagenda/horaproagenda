@@ -1306,9 +1306,37 @@ function PackageForm(props: PackageFormProps) {
                 {existingPackageAvailable} sessão(ões) disponível(is). As demais permanecerão liberadas para agendamento futuro.
               </p>
             )}
+            {existingPackageId && linkedSessions.length > 0 && (
+              <div className="mt-2 space-y-1 rounded border bg-background p-2">
+                <div className="text-[11px] font-medium">
+                  Sessões já vinculadas ({linkedSessions.length})
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Selecionou o pacote errado? Desfaça o vínculo para restaurar as sessões ao estado disponível.
+                </p>
+                {linkedSessions.map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between gap-2 text-[11px] py-1 border-t first:border-t-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">#{s.session_number}</Badge>
+                      <span className="text-muted-foreground">
+                        {s.scheduled_date ? new Date(s.scheduled_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sem data'}
+                      </span>
+                    </div>
+                    <Button
+                      type="button" variant="ghost" size="sm"
+                      className="h-6 text-[10px] text-destructive hover:text-destructive"
+                      onClick={() => onRequestUndoLink(s.id)}
+                    >
+                      Desfazer vínculo
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+
 
       {!linkExistingPackage && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

@@ -19,6 +19,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
 import { format, parseISO } from 'date-fns';
+import { addMinutesToClock } from '@/lib/duration';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
@@ -109,15 +110,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
   const handleStartTimeChange = (newStartTime: string) => {
     setStartTime(newStartTime);
-    // Auto-atualiza horário de término preservando a duração original
-    if (originalDuration > 0 && date && newStartTime) {
-      try {
-        const newStart = new Date(`${date}T${newStartTime}`);
-        if (!isNaN(newStart.getTime())) {
-          const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
-          setEndTime(format(newEnd, 'HH:mm'));
-        }
-      } catch { /* ignore */ }
+    if (originalDuration > 0 && /^\d{2}:\d{2}$/.test(newStartTime)) {
+      const nextEnd = addMinutesToClock(newStartTime, originalDuration);
+      if (nextEnd) setEndTime(nextEnd);
     }
   };
 

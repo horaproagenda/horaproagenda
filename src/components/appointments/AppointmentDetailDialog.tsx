@@ -74,7 +74,7 @@ import {
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDurationClock } from '@/lib/duration';
+import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -866,10 +866,9 @@ export function AppointmentDetailDialog({
 
   const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
     if (!editDate || !startValue || serviceDuration <= 0) return;
-
-    const newStartTime = createDateTimeInTimeZone(new Date(`${editDate}T12:00:00`), startValue, settings?.timezone);
-    const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
-    setEditEndTime(formatTimeInTimeZone(newEndTime, settings?.timezone));
+    // Usa aritmética de relógio de parede (HH:mm) para evitar deslocamento por fuso horário.
+    const nextEnd = addMinutesToClock(startValue, serviceDuration);
+    if (nextEnd) setEditEndTime(nextEnd);
   };
 
   const handleEditStartTimeChange = (value: string) => {

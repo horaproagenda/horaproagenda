@@ -207,16 +207,23 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     [existingPackagesForTab, existingPackageId]
   );
 
+  const selectedExistingPackageSummary = useMemo(
+    () => selectedExistingPackage ? getPackageAvailabilitySummary(selectedExistingPackage as any) : null,
+    [selectedExistingPackage]
+  );
+
   const existingPackagePendingSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
-    // Considera disponível para vincular qualquer sessão ainda não concluída/perdida,
-    // mesmo que tenha um appointment_id órfão de um agendamento já excluído.
     return ((selectedExistingPackage as any).appointments || [])
       .filter((s: any) => s.status !== 'completed' && s.status !== 'missed')
       .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
   }, [selectedExistingPackage]);
 
-  // Sessões já vinculadas (completed com appointment) do pacote — permite desfazer o vínculo
+  // Total realmente disponível para vincular (inclui sessões virtuais quando o
+  // pacote foi criado sem gerar package_appointments — comum em boleto parcelado).
+  const existingPackageAvailableCount =
+    selectedExistingPackageSummary?.remainingSessions ?? existingPackagePendingSessions.length;
+
   const existingPackageLinkedSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
     return ((selectedExistingPackage as any).appointments || [])
@@ -453,57 +460,83 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       toast.error('Preencha ao menos uma sessão realizada com data e horário');
       return;
     }
-    const available = existingPackagePendingSessions.length;
+    const available = existingPackageAvailableCount;
     if (filledSessions.length > available) {
       toast.error(`O pacote tem apenas ${available} sessão(ões) disponível(is). Reduza as sessões preenchidas.`);
       return;
     }
 
     const pkgAny: any = selectedExistingPackage;
-    const pkgServiceId = pkgAny.service_id || serviceId || null;
-    const pkgDuration = pkgAny.duration || selectedService?.duration || 60;
+    const pkgServiceId = pkgAny.service_id || null;
+    const pkgDuration = pkgAny.duration || 60;
     const pkgName = pkgAny.name || 'Pacote';
+    const pkgProfessionalId = pkgAny.professional_id || null;
+    // Só aceita profissional escolhido no formulário se o pacote ainda não tem um.
+    const effectiveProfessionalId = pkgProfessionalId || professionalId || null;
 
     setSubmitting(true);
     try {
+      // 1) Garante que existem package_appointments suficientes para vincular.
+      //    Pacotes vindos de boleto parcelado ou históricos antigos podem não ter
+      //    gerado registros — nesse caso criamos os pendentes que faltam.
+      let pendingList: any[] = [...existingPackagePendingSessions];
+      const missing = filledSessions.length - pendingList.length;
+      if (missing > 0) {
+        const allSessions = (pkgAny.appointments || []);
+        const maxNum = allSessions.reduce((m: number, s: any) => Math.max(m, s.session_number || 0, s.sequence_order || 0), 0);
+        const toInsert = Array.from({ length: missing }).map((_, k) => {
+          const n = maxNum + k + 1;
+          const row: any = {
+            package_id: pkgAny.id,
+            session_number: n,
+            original_session_number: n,
+            status: 'pending',
+            service_id: pkgServiceId,
+          };
+          if (kind === 'sequential') {
+            row.sequence_order = n;
+            row.interval_after_days = pkgAny.interval_days || 0;
+          }
+          return row;
+        });
+        const { data: inserted, error: insErr } = await supabase
+          .from('package_appointments')
+          .insert(toInsert)
+          .select();
+        if (insErr) throw insErr;
+        pendingList = [...pendingList, ...(inserted || [])];
+      }
+
       for (let i = 0; i < filledSessions.length; i++) {
         const row = filledSessions[i];
-        const pending = existingPackagePendingSessions[i];
+        const pending = pendingList[i];
         const start = buildLocalISO(row.date, row.time);
         if (!start) continue;
         const dur = parseInt(row.duration) || pkgDuration;
         const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
         const stepServiceId = pending.service_id || pkgServiceId;
 
-        // Marca a sessão pendente como realizada com data
         const { error: updErr } = await supabase
           .from('package_appointments')
           .update({ status: 'completed', scheduled_date: start })
           .eq('id', pending.id);
         if (updErr) throw updErr;
 
-        // Cria appointment vinculado
         const apt = await createLegacyAppointment({
           start_time: start,
           end_time: end,
           service_id: stepServiceId,
-          professional_id: professionalId || pkgAny.professional_id || null,
+          professional_id: effectiveProfessionalId,
           package_appointment_id: pending.id,
           notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
         });
 
         await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
 
-        const amt = parseBrazilianCurrency(row.amount_paid);
-        if (amt > 0) {
-          await createFinancialEntry({
-            amount: amt,
-            payment_date: row.payment_date || row.date,
-            description: `Sessão ${pending.session_number} — ${pkgName} (Histórico)`,
-            appointment_id: apt.id,
-          });
-        }
+        // Vínculo a pacote com venda já feita: NÃO cria lançamento financeiro
+        // nem preenche amount_paid — a venda do pacote já foi registrada.
       }
+
 
       invalidateAll();
       toast.success(
@@ -992,46 +1025,73 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsTrigger value="csv" className="text-xs gap-1"><Upload className="h-3.5 w-3.5" />CSV em lote</TabsTrigger>
           </TabsList>
 
-          {/* Shared selectors — em "Pacote comum" vinculado, o serviço vem do próprio pacote */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-            {!(tab === 'common' && linkExistingPackage) && (
-              <div>
-                <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? (tab === 'sequential' && linkExistingPackage ? '(opcional)' : '(obrigatório)') : '(opcional)'}</Label>
-                <SearchableSelect
-                  options={serviceOptions}
-                  value={serviceId}
-                  onChange={setServiceId}
-                  placeholder="Selecione o serviço"
-                  className="h-8 text-xs"
-                />
-              </div>
-            )}
-            <div>
-              <Label className="text-[10px]">Profissional</Label>
-              <SearchableSelect
-                options={profOptions}
-                value={professionalId}
-                onChange={setProfessionalId}
-                placeholder="Selecione o profissional"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div>
-              <Label className="text-[10px]">Forma de pagamento</Label>
-              <SearchableSelect
-                options={paymentOptions}
-                value={paymentMethodId}
-                onChange={setPaymentMethodId}
-                placeholder="Forma de pagamento"
-                className="h-8 text-xs"
-              />
-            </div>
-          </div>
+          {/* Shared selectors — ao vincular a um pacote já cadastrado (venda já feita),
+              serviço/forma de pagamento/lançamento no financeiro são omitidos para não
+              duplicar registros. Profissional só aparece se o pacote não tiver um. */}
+          {(() => {
+            const isLinkingExisting = (tab === 'common' || tab === 'sequential') && linkExistingPackage;
+            const pkgHasProfessional = !!(selectedExistingPackage as any)?.professional_id;
+            const showService = !isLinkingExisting;
+            const showPaymentMethod = !isLinkingExisting;
+            const showFinancialToggle = !isLinkingExisting;
+            const showProfessional = !isLinkingExisting || !pkgHasProfessional;
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+                  {showService && (
+                    <div>
+                      <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
+                      <SearchableSelect
+                        options={serviceOptions}
+                        value={serviceId}
+                        onChange={setServiceId}
+                        placeholder="Selecione o serviço"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                  {showProfessional && (
+                    <div>
+                      <Label className="text-[10px]">Profissional{isLinkingExisting ? ' (pacote sem profissional definido)' : ''}</Label>
+                      <SearchableSelect
+                        options={profOptions}
+                        value={professionalId}
+                        onChange={setProfessionalId}
+                        placeholder="Selecione o profissional"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                  {showPaymentMethod && (
+                    <div>
+                      <Label className="text-[10px]">Forma de pagamento</Label>
+                      <SearchableSelect
+                        options={paymentOptions}
+                        value={paymentMethodId}
+                        onChange={setPaymentMethodId}
+                        placeholder="Forma de pagamento"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
 
-          <div className="flex items-center gap-2 mt-2 text-xs">
-            <Switch id="legacy-fin" checked={createFinancial} onCheckedChange={setCreateFinancial} />
-            <Label htmlFor="legacy-fin" className="cursor-pointer">Lançar pagamentos no financeiro com data retroativa</Label>
-          </div>
+                {showFinancialToggle && (
+                  <div className="flex items-center gap-2 mt-2 text-xs">
+                    <Switch id="legacy-fin" checked={createFinancial} onCheckedChange={setCreateFinancial} />
+                    <Label htmlFor="legacy-fin" className="cursor-pointer">Lançar pagamentos no financeiro com data retroativa</Label>
+                  </div>
+                )}
+
+                {isLinkingExisting && (
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Esse pacote já tem venda registrada. Informamos apenas as datas das aplicações realizadas — nenhum lançamento financeiro adicional é criado.
+                  </p>
+                )}
+              </>
+            );
+          })()}
+
 
           <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-2">
             <TabsContent value="single" className="space-y-3 mt-0">
@@ -1074,7 +1134,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
                 existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
                 existingPackageOptions={existingPackageOptions}
-                existingPackageAvailable={existingPackagePendingSessions.length}
+                existingPackageAvailable={existingPackageAvailableCount}
                 linkedSessions={existingPackageLinkedSessions}
                 onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
@@ -1092,7 +1152,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 linkExistingPackage={linkExistingPackage} setLinkExistingPackage={setLinkExistingPackage}
                 existingPackageId={existingPackageId} setExistingPackageId={setExistingPackageId}
                 existingPackageOptions={existingPackageOptions}
-                existingPackageAvailable={existingPackagePendingSessions.length}
+                existingPackageAvailable={existingPackageAvailableCount}
                 linkedSessions={existingPackageLinkedSessions}
                 onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
@@ -1192,7 +1252,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 </p>
                 {(() => {
                   const filled = pkgSessions.filter((r) => r.date && r.time).length;
-                  const available = existingPackagePendingSessions.length;
+                  const available = existingPackageAvailableCount;
                   const remaining = Math.max(0, available - filled);
                   return (
                     <>
@@ -1398,22 +1458,26 @@ function PackageForm(props: PackageFormProps) {
             <div className="col-span-1 flex items-center justify-center">
               <Badge variant="outline" className="text-[10px]">#{i + 1}</Badge>
             </div>
-            <div className="col-span-3">
+            <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>
               <Label className="text-[10px]">Data</Label>
               <Input type="date" value={row.date} onChange={(e) => updateSession(row.id, { date: e.target.value })} className="h-8 text-xs" />
             </div>
-            <div className="col-span-2">
+            <div className={linkExistingPackage ? 'col-span-4' : 'col-span-2'}>
               <Label className="text-[10px]">Hora</Label>
               <Input type="time" value={row.time} onChange={(e) => updateSession(row.id, { time: e.target.value })} className="h-8 text-xs" />
             </div>
-            <div className="col-span-2">
-              <Label className="text-[10px]">Valor (R$)</Label>
-              <Input type="text" value={row.amount_paid} onChange={(e) => updateSession(row.id, { amount_paid: e.target.value })} placeholder="opcional" className="h-8 text-xs" />
-            </div>
-            <div className="col-span-3">
-              <Label className="text-[10px]">Pagamento em</Label>
-              <Input type="date" value={row.payment_date} onChange={(e) => updateSession(row.id, { payment_date: e.target.value })} className="h-8 text-xs" />
-            </div>
+            {!linkExistingPackage && (
+              <>
+                <div className="col-span-2">
+                  <Label className="text-[10px]">Valor (R$)</Label>
+                  <Input type="text" value={row.amount_paid} onChange={(e) => updateSession(row.id, { amount_paid: e.target.value })} placeholder="opcional" className="h-8 text-xs" />
+                </div>
+                <div className="col-span-3">
+                  <Label className="text-[10px]">Pagamento em</Label>
+                  <Input type="date" value={row.payment_date} onChange={(e) => updateSession(row.id, { payment_date: e.target.value })} className="h-8 text-xs" />
+                </div>
+              </>
+            )}
             <div className="col-span-1 flex items-end justify-center">
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSession(row.id)} disabled={pkgSessions.length <= 1}>
                 <Trash2 className="h-3 w-3" />
@@ -1422,9 +1486,12 @@ function PackageForm(props: PackageFormProps) {
           </div>
         ))}
 
-        <p className="text-[10px] text-muted-foreground">
-          Dica: deixe "Valor (R$)" em branco nas sessões se você pagou o pacote inteiro de uma vez (use o "Valor total pago" acima).
-        </p>
+        {!linkExistingPackage && (
+          <p className="text-[10px] text-muted-foreground">
+            Dica: deixe "Valor (R$)" em branco nas sessões se você pagou o pacote inteiro de uma vez (use o "Valor total pago" acima).
+          </p>
+        )}
+
       </div>
     </div>
   );

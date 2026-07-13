@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDurationClock, parseDurationClock } from './duration';
+import { formatDurationClock, parseDurationClock, addMinutesToClock } from './duration';
 
 describe('manual HH:mm duration input', () => {
   it('formata minutos como HH:mm para serviços, pacotes, edição e relatórios', () => {

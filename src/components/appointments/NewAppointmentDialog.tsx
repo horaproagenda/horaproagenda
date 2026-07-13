@@ -40,6 +40,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
+import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -2362,12 +2363,17 @@ Até breve! ✨`;
                                             )}
                                             onClick={() => setEditingDateIndex(index)}
                                           >
-                                            <span className="truncate">
+                                            <span className="truncate" data-testid={`preview-session-label-${index}`}>
                                               {(() => {
-                                                const stepServiceId = packageSequenceSteps[index]?.service_id;
-                                                const stepService = stepServiceId ? services.find(s => s.id === stepServiceId) : null;
-                                                const serviceName = stepService?.name || selectedPackageData?.name;
-                                                return serviceName ? <span className="font-medium">{serviceName} · </span> : null;
+                                                const name = resolveSessionServiceLabel({
+                                                  index,
+                                                  steps: packageSequenceSteps as any,
+                                                  services: services as any,
+                                                  pkg: selectedPackageData as any,
+                                                  nextStepService: nextPackageStepService as any,
+                                                  fallbackService: selectedServiceData as any,
+                                                });
+                                                return name ? <span className="font-medium">{name} · </span> : null;
                                               })()}
                                               {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                             </span>

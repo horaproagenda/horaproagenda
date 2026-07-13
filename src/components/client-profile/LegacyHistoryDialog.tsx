@@ -1158,6 +1158,84 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmação antes de vincular sessões realizadas ao pacote existente */}
+      <AlertDialog open={!!confirmLinkKind} onOpenChange={(o) => !o && setConfirmLinkKind(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vincular sessões realizadas?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  Pacote: <strong>{selectedExistingPackage?.name}</strong>
+                </p>
+                {(() => {
+                  const filled = pkgSessions.filter((r) => r.date && r.time).length;
+                  const available = existingPackagePendingSessions.length;
+                  const remaining = Math.max(0, available - filled);
+                  return (
+                    <>
+                      <p>
+                        <strong>{filled}</strong> sessão(ões) serão marcadas como <strong>realizadas</strong> (completed) com data retroativa.
+                      </p>
+                      <p>
+                        <strong>{remaining}</strong> sessão(ões) continuarão <strong>disponíveis</strong> para agendamento futuro.
+                      </p>
+                      {filled > available && (
+                        <p className="text-destructive">
+                          Atenção: você preencheu mais sessões do que o pacote tem disponível ({available}). Reduza antes de confirmar.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+                <p className="text-xs text-muted-foreground">
+                  Você poderá desfazer esse vínculo depois, restaurando as sessões para o estado disponível.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              onClick={async (e) => {
+                e.preventDefault();
+                const kind = confirmLinkKind;
+                if (!kind) return;
+                await handleSubmitPackage(kind);
+                setConfirmLinkKind(null);
+              }}
+            >
+              Confirmar vínculo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação antes de desfazer vínculo */}
+      <AlertDialog open={!!confirmUnlinkId} onOpenChange={(o) => !o && setConfirmUnlinkId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desfazer vínculo desta sessão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A sessão voltará ao estado <strong>disponível para agendamento</strong>. O agendamento retroativo e o lançamento financeiro vinculado serão removidos. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (confirmUnlinkId) await handleUndoLink(confirmUnlinkId);
+              }}
+            >
+              Desfazer vínculo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

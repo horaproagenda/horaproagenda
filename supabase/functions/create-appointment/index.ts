@@ -22,6 +22,14 @@ interface AppointmentRequest {
    * that happened BEFORE the user adopted this system.
    */
   legacy?: boolean;
+  // Optional payment fields — when provided, are persisted atomically with
+  // the appointment so retroactive/legacy payments never fall through the
+  // client-side update path (which can be silently blocked by RLS or a race
+  // with auto-heal cycles).
+  amount_paid?: number;
+  payment_status?: 'pending' | 'partial' | 'paid';
+  payment_date?: string | null;
+  payment_methods?: string[];
 }
 
 interface ValidationError {
@@ -545,22 +553,41 @@ serve(async (req) => {
     }
 
     // 11. All validations passed - create the appointment
+    const hasPaymentFields =
+      typeof body.amount_paid === 'number' ||
+      !!body.payment_status ||
+      !!body.payment_date ||
+      (Array.isArray(body.payment_methods) && body.payment_methods.length > 0);
+
+    const insertPayload: Record<string, unknown> = {
+      client_id: body.client_id,
+      service_id: body.service_id || null,
+      professional_id: body.professional_id || null,
+      room_id: body.room_id || null,
+      start_time: body.start_time,
+      end_time: body.end_time,
+      notes: body.notes || null,
+      package_appointment_id: body.package_appointment_id || null,
+      status: body.status || 'scheduled',
+      created_by: userId,
+      updated_by: userId,
+      account_owner_id: callerOwner,
+    };
+
+    if (hasPaymentFields) {
+      const amount = Number(body.amount_paid || 0);
+      insertPayload.amount_paid = amount;
+      insertPayload.payment_status =
+        body.payment_status || (amount > 0 ? 'paid' : 'pending');
+      if (body.payment_date) insertPayload.payment_date = body.payment_date;
+      insertPayload.payment_methods = Array.isArray(body.payment_methods)
+        ? body.payment_methods
+        : [];
+    }
+
     const { data: appointment, error: insertError } = await supabase
       .from('appointments')
-      .insert({
-        client_id: body.client_id,
-        service_id: body.service_id || null,
-        professional_id: body.professional_id || null,
-        room_id: body.room_id || null,
-        start_time: body.start_time,
-        end_time: body.end_time,
-        notes: body.notes || null,
-        package_appointment_id: body.package_appointment_id || null,
-        status: body.status || 'scheduled',
-        created_by: userId,
-        updated_by: userId,
-        account_owner_id: callerOwner,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 

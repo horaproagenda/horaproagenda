@@ -246,6 +246,13 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     package_appointment_id?: string | null;
     notes?: string;
     status?: string;
+    // Optional payment fields — passed to the edge function so the payment is
+    // stamped atomically with the appointment (avoids RLS/race issues on a
+    // separate client-side update path).
+    amount_paid?: number;
+    payment_status?: 'pending' | 'partial' | 'paid';
+    payment_date?: string | null;
+    payment_methods?: string[];
   }) => {
     const token = await ensureAuth();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
@@ -262,6 +269,10 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         status: params.status || 'completed',
         package_appointment_id: params.package_appointment_id || null,
         legacy: true,
+        amount_paid: params.amount_paid,
+        payment_status: params.payment_status,
+        payment_date: params.payment_date,
+        payment_methods: params.payment_methods,
       }),
     });
     const json = await res.json();
@@ -289,6 +300,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
     // 0) Sync payment fields onto the appointment itself so it shows up in
     //    "Histórico de Pagamentos" (which is built from appointments.amount_paid).
+    //    We READ BACK the row and, if the update didn't stick (RLS silent
+    //    filter, auto-heal race, etc.), we abort loudly instead of leaving the
+    //    appointment as pending/R$ 0.
     if (params.appointment_id) {
       const methodName = selectedPaymentMethodName || null;
       const { error: aptErr } = await supabase
@@ -301,6 +315,23 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         })
         .eq('id', params.appointment_id);
       if (aptErr) throw aptErr;
+
+      const { data: verify, error: verifyErr } = await supabase
+        .from('appointments')
+        .select('amount_paid, payment_status')
+        .eq('id', params.appointment_id)
+        .maybeSingle();
+      if (verifyErr) throw verifyErr;
+      if (!verify || Number(verify.amount_paid || 0) <= 0) {
+        console.error('[LegacyHistory] appointment payment did not persist', {
+          appointment_id: params.appointment_id,
+          expected: params.amount,
+          got: verify,
+        });
+        throw new Error(
+          'Não foi possível registrar o pagamento no agendamento. Tente novamente ou verifique suas permissões.'
+        );
+      }
     }
 
     // 1) Financial entry — always created when payment method is client credit
@@ -407,12 +438,19 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
     setSubmitting(true);
     try {
+      const methodName = selectedPaymentMethodName || null;
       const apt = await createLegacyAppointment({
         start_time: start,
         end_time: end,
         service_id: serviceId || null,
         professional_id: professionalId || null,
         notes: singleNotes,
+        // Stamp payment atomically at creation — avoids relying solely on a
+        // client-side UPDATE that could be blocked/reverted by RLS or races.
+        amount_paid: amount > 0 ? amount : undefined,
+        payment_status: amount > 0 ? 'paid' : undefined,
+        payment_date: amount > 0 ? (singlePaymentDate || singleDate) : undefined,
+        payment_methods: amount > 0 && methodName ? [methodName] : undefined,
       });
       if (amount > 0) {
         await createFinancialEntry({

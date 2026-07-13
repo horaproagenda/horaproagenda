@@ -40,6 +40,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
+import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';

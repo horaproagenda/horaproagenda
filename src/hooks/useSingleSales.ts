@@ -115,14 +115,29 @@ export function useSingleSales() {
             .single();
 
           if (!pkgError && clientPackage) {
-            // Create pending sessions for the package - all marked as PAID since package was paid in full
-            const packageSteps = packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
-              ? packageTemplate.appointments.sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
-              : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
-                  service_id: packageTemplate.service_id || null,
-                  interval_after_days: packageTemplate.interval_days || 7,
-                  sequence_order: i + 1,
-                }));
+            // Fonte da verdade das etapas: package_template_steps do template
+            // original (se houver). Só cai no fallback quando o pacote não é
+            // sequencial ou o template não tem steps cadastrados.
+            let templateSteps: any[] = [];
+            const sourceTemplateId = packageTemplate.template_id || packageTemplate.id;
+            if (packageTemplate.package_type === 'sequential' && sourceTemplateId) {
+              const { data: tplSteps } = await (supabase as any)
+                .from('package_template_steps')
+                .select('service_id, sequence_order, interval_after_days')
+                .eq('template_id', sourceTemplateId)
+                .order('sequence_order', { ascending: true });
+              templateSteps = tplSteps || [];
+            }
+
+            const packageSteps = templateSteps.length
+              ? templateSteps
+              : (packageTemplate.package_type === 'sequential' && packageTemplate.appointments?.length
+                ? packageTemplate.appointments.sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number))
+                : Array.from({ length: packageTemplate.total_sessions }, (_, i) => ({
+                    service_id: packageTemplate.service_id || null,
+                    interval_after_days: packageTemplate.interval_days || 7,
+                    sequence_order: i + 1,
+                  })));
 
             const sessions = packageSteps.map((step: any, i: number) => ({
               package_id: clientPackage.id,
@@ -136,6 +151,7 @@ export function useSingleSales() {
             }));
 
             await supabase.from('package_appointments').insert(sessions);
+
 
             // Update the single_sale to reference the new client package (not the template)
             await supabase

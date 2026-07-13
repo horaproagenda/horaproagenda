@@ -358,7 +358,23 @@ export function NewAppointmentDialog({
   // que a duração use a etapa correta, não o total do pacote).
   const packageSequenceSteps = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;
-    if (packageData?.package_type === 'sequential' && packageData.appointments?.length) {
+    if (packageData?.package_type !== 'sequential') return [];
+
+    // Fonte da verdade dos intervalos: `package_template_steps` do template
+    // original. Alguns pacotes de clientes foram semeados com iad divergente
+    // do template (bug histórico em vendas via caixa), então priorizamos os
+    // steps do template quando disponíveis.
+    const templateId = (packageData as any)?.template_id;
+    if (templateId) {
+      const template = packageTemplates.find((t: any) => t.id === templateId);
+      if (template && (template as any).steps?.length) {
+        return [...(template as any).steps].sort(
+          (a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0),
+        );
+      }
+    }
+
+    if (packageData.appointments?.length) {
       return packageData.appointments
         .map(session => ({
           service_id: session.service_id,
@@ -367,10 +383,11 @@ export function NewAppointmentDialog({
         }))
         .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
     }
-    return packageData?.package_type === 'sequential' && packageData.steps?.length
+    return packageData.steps?.length
       ? [...packageData.steps].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
       : [];
-  }, [existingClientPackage, selectedPackageData]);
+  }, [existingClientPackage, selectedPackageData, packageTemplates]);
+
 
   const nextPackageStepService = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;

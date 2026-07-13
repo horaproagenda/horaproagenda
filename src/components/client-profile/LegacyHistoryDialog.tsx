@@ -207,16 +207,23 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     [existingPackagesForTab, existingPackageId]
   );
 
+  const selectedExistingPackageSummary = useMemo(
+    () => selectedExistingPackage ? getPackageAvailabilitySummary(selectedExistingPackage as any) : null,
+    [selectedExistingPackage]
+  );
+
   const existingPackagePendingSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
-    // Considera disponível para vincular qualquer sessão ainda não concluída/perdida,
-    // mesmo que tenha um appointment_id órfão de um agendamento já excluído.
     return ((selectedExistingPackage as any).appointments || [])
       .filter((s: any) => s.status !== 'completed' && s.status !== 'missed')
       .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
   }, [selectedExistingPackage]);
 
-  // Sessões já vinculadas (completed com appointment) do pacote — permite desfazer o vínculo
+  // Total realmente disponível para vincular (inclui sessões virtuais quando o
+  // pacote foi criado sem gerar package_appointments — comum em boleto parcelado).
+  const existingPackageAvailableCount =
+    selectedExistingPackageSummary?.remainingSessions ?? existingPackagePendingSessions.length;
+
   const existingPackageLinkedSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
     return ((selectedExistingPackage as any).appointments || [])

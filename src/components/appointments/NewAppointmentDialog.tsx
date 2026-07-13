@@ -449,17 +449,20 @@ export function NewAppointmentDialog({
     let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
-      const step = packageSequenceSteps[i];
       const previousStep = packageSequenceSteps[i - 1];
-      // Para pacotes sequenciais, sempre respeitar o intervalo cadastrado em cada etapa.
-      // Só permitir override manual para pacotes padrão (sem sequência cadastrada).
+      // Para pacotes sequenciais, o intervalo ENTRE a etapa i-1 e a etapa i é
+      // sempre `previousStep.interval_after_days` (semântica "dias APÓS esta
+      // etapa"). Bug anterior usava o intervalo da própria etapa i, o que
+      // ignorava o gap real cadastrado (ex.: 3 dias entre avaliação e axila
+      // virava 21 dias porque pegava o intervalo da axila para a próxima).
       const manualOverride = parseInt(customIntervalDays, 10);
       const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-      const intervalDays = packageSequenceSteps.length > 0
-        ? Number(step?.interval_after_days || previousStep?.interval_after_days || packageData?.interval_days || 7)
+      const rawInterval = packageSequenceSteps.length > 0
+        ? Number(previousStep?.interval_after_days ?? packageData?.interval_days ?? 7)
         : hasManualOverride
           ? manualOverride
           : Number(packageData?.interval_days || 7);
+      const intervalDays = Number.isFinite(rawInterval) ? rawInterval : 7;
       // Ensure minimum 1 day interval to prevent overlapping sessions
       const safeInterval = Math.max(intervalDays, 1);
       const futureDate = addDays(currentDate, safeInterval);
@@ -614,11 +617,17 @@ export function NewAppointmentDialog({
     // Check for professional absence
     if (selectedProfessional) {
       absences.forEach(absence => {
+        // Guarda: só considerar ausências válidas do profissional selecionado.
+        // Bug anterior mostrava "profissional ausente" quando havia ausência
+        // com datas inválidas/invertidas ou de outro profissional cacheada.
+        if (!absence?.professional_id || absence.professional_id !== selectedProfessional) return;
         const absenceStart = new Date(absence.start_time);
         const absenceEnd = new Date(absence.end_time);
-        
+        if (isNaN(absenceStart.getTime()) || isNaN(absenceEnd.getTime())) return;
+        if (absenceEnd <= absenceStart) return;
+
         const overlaps = checkStart < absenceEnd && checkEnd > absenceStart;
-        if (overlaps && absence.professional_id === selectedProfessional) {
+        if (overlaps) {
           const prof = professionals.find(p => p.id === selectedProfessional);
           foundConflicts.push({
             type: 'absence',
@@ -941,9 +950,10 @@ export function NewAppointmentDialog({
           return false;
         });
         const absenceCollision = selectedProfessional && absences.some((abs) => {
-          if (abs.professional_id !== selectedProfessional) return false;
+          if (!abs?.professional_id || abs.professional_id !== selectedProfessional) return false;
           const aStart = new Date(abs.start_time);
           const aEnd = new Date(abs.end_time);
+          if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
           return start < aEnd && end > aStart;
         });
         if (siblingCollision || externalCollision || absenceCollision) {

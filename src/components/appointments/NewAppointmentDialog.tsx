@@ -1501,7 +1501,9 @@ Até breve! ✨`;
                         <div
                           key={`freq-${service.id}`}
                           className="px-2 py-1.5 hover:bg-amber-500/10 cursor-pointer border-b border-border/50 bg-amber-500/5"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setSelectedService(service.id);
                             setServiceSearch(service.name);
                             setServiceType('service');

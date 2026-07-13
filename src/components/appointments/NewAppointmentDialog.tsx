@@ -349,28 +349,40 @@ export function NewAppointmentDialog({
   }, [selectedServiceData, selectedPackageData, serviceType]);
 
   // Calculate appointment start and end times
+  // IMPORTANTE: o horário de término é derivado do horário de início + duração
+  // usando aritmética de minutos no relógio de parede (HH:mm) para evitar
+  // qualquer deslocamento por fuso horário (bug reportado: início 08:00 mostrava
+  // término 20:40 quando o fuso do navegador divergia do fuso da conta).
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
-    
-    const duration = serviceType === 'service' 
-      ? (selectedServiceData?.duration || 60) 
-      : (selectedPackageData?.duration || 60);
-    
-    const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, time, duration, settings?.timezone);
 
-    // Apply user override for end time, if valid and after start time
-    if (endTimeOverride && /^\d{2}:\d{2}$/.test(endTimeOverride)) {
-      try {
-        const overrideEnd = createDateTimeInTimeZone(date, endTimeOverride, settings?.timezone);
-        if (overrideEnd > startTime) {
-          return { startTime, endTime: overrideEnd };
-        }
-      } catch {
-        // ignore
+    const duration = serviceType === 'service'
+      ? (selectedServiceData?.duration || 60)
+      : (selectedPackageData?.duration || 60);
+
+    const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
+
+    // Deriva o rótulo do término em relógio de parede (24h) e depois
+    // reconstroi o Date no mesmo fuso — assim UI e persistência batem.
+    const autoEndLabel = addMinutesToClock(time, duration);
+
+    // Se o usuário sobrescreveu manualmente o término, respeita.
+    const effectiveEndLabel = (endTimeOverride && /^\d{2}:\d{2}$/.test(endTimeOverride))
+      ? endTimeOverride
+      : autoEndLabel;
+
+    let endTime: Date;
+    if (effectiveEndLabel && /^\d{2}:\d{2}$/.test(effectiveEndLabel)) {
+      endTime = createDateTimeInTimeZone(date, effectiveEndLabel, settings?.timezone);
+      // Se o término cair antes do início (virou o dia por sobra > 24h), fallback para start+duração em ms.
+      if (endTime <= startTime) {
+        endTime = new Date(startTime.getTime() + duration * 60_000);
       }
+    } else {
+      endTime = new Date(startTime.getTime() + duration * 60_000);
     }
 
-    return { startTime, endTime };
+    return { startTime, endTime, endLabel: effectiveEndLabel };
   }, [date, time, endTimeOverride, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
 
   // Reset end-time override when start time or service/package changes

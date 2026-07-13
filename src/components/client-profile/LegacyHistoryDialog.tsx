@@ -984,18 +984,20 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             <TabsTrigger value="csv" className="text-xs gap-1"><Upload className="h-3.5 w-3.5" />CSV em lote</TabsTrigger>
           </TabsList>
 
-          {/* Shared selectors */}
+          {/* Shared selectors — em "Pacote comum" vinculado, o serviço vem do próprio pacote */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-            <div>
-              <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
-              <SearchableSelect
-                options={serviceOptions}
-                value={serviceId}
-                onChange={setServiceId}
-                placeholder="Selecione o serviço"
-                className="h-8 text-xs"
-              />
-            </div>
+            {!(tab === 'common' && linkExistingPackage) && (
+              <div>
+                <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? (tab === 'sequential' && linkExistingPackage ? '(opcional)' : '(obrigatório)') : '(opcional)'}</Label>
+                <SearchableSelect
+                  options={serviceOptions}
+                  value={serviceId}
+                  onChange={setServiceId}
+                  placeholder="Selecione o serviço"
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
             <div>
               <Label className="text-[10px]">Profissional</Label>
               <SearchableSelect

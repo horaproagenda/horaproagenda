@@ -950,9 +950,10 @@ export function NewAppointmentDialog({
           return false;
         });
         const absenceCollision = selectedProfessional && absences.some((abs) => {
-          if (abs.professional_id !== selectedProfessional) return false;
+          if (!abs?.professional_id || abs.professional_id !== selectedProfessional) return false;
           const aStart = new Date(abs.start_time);
           const aEnd = new Date(abs.end_time);
+          if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
           return start < aEnd && end > aStart;
         });
         if (siblingCollision || externalCollision || absenceCollision) {

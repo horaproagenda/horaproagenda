@@ -66,7 +66,10 @@ export function useFinancialCategories() {
     },
     onError: (error: any) => {
       // 23505 = unique_violation — categoria já existe (seed idempotente). Silencia o toast.
-      if (error?.code === '23505' || String(error?.message || '').includes('uq_financial_categories')) return;
+      if (error?.code === '23505' || String(error?.message || '').includes('uq_financial_categories')) {
+        console.info('[seed-telemetry] financial_categories unique_violation ignorado (idempotente):', error?.message);
+        return;
+      }
       toast.error('Erro ao criar categoria: ' + error.message);
     },
   });

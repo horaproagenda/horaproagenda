@@ -207,6 +207,14 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
   }, [selectedExistingPackage]);
 
+  // Sessões já vinculadas (completed com appointment) do pacote — permite desfazer o vínculo
+  const existingPackageLinkedSessions = useMemo(() => {
+    if (!selectedExistingPackage) return [] as any[];
+    return ((selectedExistingPackage as any).appointments || [])
+      .filter((s: any) => s.status === 'completed' && s.appointment_id)
+      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
+  }, [selectedExistingPackage]);
+
 
   const ensureAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();

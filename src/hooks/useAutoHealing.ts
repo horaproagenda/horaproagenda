@@ -159,8 +159,14 @@ export function useAutoHealing() {
     };
     const onSyncError = (ev: Event) => {
       const detail = (ev as CustomEvent).detail;
-      if (detail?.result === 'error') void runCycle('sync-error');
+      if (detail?.result !== 'error') return;
+      // Evita loop infinito: eventos disparados pelo próprio auto-heal /
+      // health-check não devem re-disparar outro ciclo.
+      const evName: string = String(detail?.event || '');
+      if (evName.startsWith('health-check:') || evName.startsWith('auto-heal:')) return;
+      void runCycle('sync-error');
     };
+
 
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);

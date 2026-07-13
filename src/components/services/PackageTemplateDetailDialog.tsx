@@ -457,7 +457,11 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
             </>
           ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.warn('[PackageTemplateDetailDialog] validation errors', errors);
+                const first = Object.values(errors)[0] as any;
+                toast.error(first?.message || 'Verifique os campos do formulário.');
+              })} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"

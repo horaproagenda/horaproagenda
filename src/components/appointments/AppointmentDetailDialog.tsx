@@ -866,10 +866,9 @@ export function AppointmentDetailDialog({
 
   const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
     if (!editDate || !startValue || serviceDuration <= 0) return;
-
-    const newStartTime = createDateTimeInTimeZone(new Date(`${editDate}T12:00:00`), startValue, settings?.timezone);
-    const newEndTime = new Date(newStartTime.getTime() + serviceDuration * 60000);
-    setEditEndTime(formatTimeInTimeZone(newEndTime, settings?.timezone));
+    // Usa aritmética de relógio de parede (HH:mm) para evitar deslocamento por fuso horário.
+    const nextEnd = addMinutesToClock(startValue, serviceDuration);
+    if (nextEnd) setEditEndTime(nextEnd);
   };
 
   const handleEditStartTimeChange = (value: string) => {

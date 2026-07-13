@@ -110,11 +110,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
   const handleStartTimeChange = (newStartTime: string) => {
     setStartTime(newStartTime);
-    // Recalcula o término em relógio de parede (HH:mm), preservando a duração original.
-    // Evita usar `new Date(...)` para não sofrer com deslocamento de fuso.
     if (originalDuration > 0 && /^\d{2}:\d{2}$/.test(newStartTime)) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { addMinutesToClock } = require('@/lib/duration') as typeof import('@/lib/duration');
       const nextEnd = addMinutesToClock(newStartTime, originalDuration);
       if (nextEnd) setEndTime(nextEnd);
     }

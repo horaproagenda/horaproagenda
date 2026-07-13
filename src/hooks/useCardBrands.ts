@@ -59,7 +59,10 @@ export function useCardBrands() {
       toast.success('Bandeira criada com sucesso!');
     },
     onError: (error: any) => {
-      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) return;
+      if (error?.code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate')) {
+        console.info('[seed-telemetry] card_brands unique_violation ignorado (idempotente):', error?.message);
+        return;
+      }
       toast.error('Erro ao criar bandeira: ' + error.message);
     },
   });

@@ -1625,7 +1625,9 @@ Até breve! ✨`;
                                 "px-2 py-1.5 cursor-pointer border-b border-border/50",
                                 isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
-                              onClick={() => {
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 setSelectedService(pkg.id);
                                 setServiceSearch(pkg.name);
                                 setServiceType('package');

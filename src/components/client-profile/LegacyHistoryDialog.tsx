@@ -1133,15 +1133,21 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             </Button>
           )}
           {tab === 'common' && (
-            <Button onClick={() => handleSubmitPackage('common')} disabled={submitting}>
+            <Button
+              onClick={() => linkExistingPackage ? setConfirmLinkKind('common') : handleSubmitPackage('common')}
+              disabled={submitting}
+            >
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Cadastrar pacote comum
+              {linkExistingPackage ? 'Vincular sessões realizadas' : 'Cadastrar pacote comum'}
             </Button>
           )}
           {tab === 'sequential' && (
-            <Button onClick={() => handleSubmitPackage('sequential')} disabled={submitting}>
+            <Button
+              onClick={() => linkExistingPackage ? setConfirmLinkKind('sequential') : handleSubmitPackage('sequential')}
+              disabled={submitting}
+            >
               {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Cadastrar pacote sequencial
+              {linkExistingPackage ? 'Vincular sessões realizadas' : 'Cadastrar pacote sequencial'}
             </Button>
           )}
           {tab === 'csv' && (

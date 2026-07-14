@@ -1645,6 +1645,10 @@ Até breve! ✨`;
                           const selectable = pkgs.find(p => getPackageAvailabilitySummary(p).schedulableSessions > 0) || pkgs[0];
                           const pkg = selectable;
                           const groupedCount = pkgs.length;
+                          const selectableSummary = getPackageAvailabilitySummary(selectable);
+                          const selectableRemaining = selectableSummary.schedulableSessions;
+                          const selectableTotal = selectableSummary.totalSessions;
+                          const hasMultipleInstallments = groupedCount > 1;
                           return (
                             <div
                               key={`client-pkg-group-${pkg.id}`}
@@ -1677,9 +1681,11 @@ Até breve! ✨`;
                                       Seq
                                     </Badge>
                                   )}
-                                  {totalRemaining > 0 && (
+                                  {selectableRemaining > 0 && (
                                     <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700">
-                                      {totalRemaining}x disponíveis
+                                      {hasMultipleInstallments
+                                        ? `${selectableRemaining}x nesta parcela`
+                                        : `${selectableRemaining}x disponíveis`}
                                     </Badge>
                                   )}
                                   {isPaid ? (
@@ -1695,10 +1701,16 @@ Até breve! ✨`;
                                 </div>
                               </div>
                               <div className="text-[11px] text-muted-foreground">
-                                Aplicações disponíveis: {totalRemaining} • Sessões: {totalExisting}/{totalSessions}
-                                {groupedCount > 1 ? ` • ${groupedCount} parcelas` : ''}
+                                {hasMultipleInstallments
+                                  ? `Nesta parcela: ${selectableRemaining}/${selectableTotal} • Total nas ${groupedCount} parcelas: ${totalRemaining}/${totalSessions}`
+                                  : `Aplicações disponíveis: ${totalRemaining} • Sessões: ${totalExisting}/${totalSessions}`}
                                 {hasInconsistent ? ' • contador antigo' : ''}
                               </div>
+                              {hasMultipleInstallments && (
+                                <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 mt-1">
+                                  Este pacote foi vendido em {groupedCount} parcelas. O agendamento automático cobre apenas as {selectableRemaining} aplicações desta parcela — repita o processo para agendar as demais.
+                                </div>
+                              )}
                             </div>
                           );
                         });

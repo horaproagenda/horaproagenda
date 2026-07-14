@@ -541,6 +541,10 @@ const Relatorios = () => {
                 <TabsContent value="atendimentos" className="space-y-4 page-enter">
                   <AtendimentosPorProfissional />
                 </TabsContent>
+
+                <TabsContent value="conciliacao" className="space-y-4 page-enter">
+                  <ConciliacaoPagamentos />
+                </TabsContent>
               </>
             )}
           </Tabs>

@@ -393,23 +393,47 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   };
 
 
-  const invalidateAll = () => {
+  const invalidateAll = async () => {
+    // Base — agendamentos e pacotes
     qc.invalidateQueries({ queryKey: ['appointments'] });
     qc.invalidateQueries({ queryKey: ['client-appointments'] });
+    qc.invalidateQueries({ queryKey: ['client-appointments', clientId] });
     qc.invalidateQueries({ queryKey: ['client_profile', clientId] });
     qc.invalidateQueries({ queryKey: ['service_packages'] });
-    // Contador "N de M disponíveis" lê de useClientPackages (queryKey
-    // ['client_packages', clientId]) e das sessões — invalidar ambos garante
-    // atualização imediata ao vincular/desfazer sem depender de recarregar.
     qc.invalidateQueries({ queryKey: ['client_packages'] });
     qc.invalidateQueries({ queryKey: ['client_packages', clientId] });
+    qc.invalidateQueries({ queryKey: ['client_packages_with_counts', clientId] });
     qc.invalidateQueries({ queryKey: ['package_appointments'] });
     qc.invalidateQueries({ queryKey: ['package_details'] });
-    qc.refetchQueries({ queryKey: ['client_packages', clientId], type: 'active' });
+    qc.invalidateQueries({ queryKey: ['client-pending-package-sessions', clientId] });
+
+    // Financeiro / caixa / vendas — garante que "Histórico de Pagamentos",
+    // "Financeiro" e "Caixa" reflitam a baixa retroativa imediatamente.
     qc.invalidateQueries({ queryKey: ['financial_entries'] });
+    qc.invalidateQueries({ queryKey: ['cash_transactions'] });
+    qc.invalidateQueries({ queryKey: ['cash_registers'] });
+    qc.invalidateQueries({ queryKey: ['single_sales'] });
+    qc.invalidateQueries({ queryKey: ['client-sales', clientId] });
+    qc.invalidateQueries({ queryKey: ['boleto_installments'] });
+    qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    qc.invalidateQueries({ queryKey: ['financial-dashboard'] });
+
+    // Crédito e cliente
     qc.invalidateQueries({ queryKey: ['client_credit_transactions', clientId] });
+    qc.invalidateQueries({ queryKey: ['client_credits', clientId] });
     qc.invalidateQueries({ queryKey: ['clients'] });
     qc.invalidateQueries({ queryKey: ['client', clientId] });
+
+    // Força refetch imediato das views que o usuário verá logo após o registro
+    // (perfil do cliente, financeiro e caixa) — não apenas marca como stale.
+    await Promise.allSettled([
+      qc.refetchQueries({ queryKey: ['client-appointments', clientId], type: 'active' }),
+      qc.refetchQueries({ queryKey: ['client-sales', clientId], type: 'active' }),
+      qc.refetchQueries({ queryKey: ['client_packages', clientId], type: 'active' }),
+      qc.refetchQueries({ queryKey: ['financial_entries'], type: 'active' }),
+      qc.refetchQueries({ queryKey: ['cash_transactions'], type: 'active' }),
+      qc.refetchQueries({ queryKey: ['cash_registers'], type: 'active' }),
+    ]);
   };
 
   // ============ SINGLE ============
@@ -460,7 +484,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           appointment_id: apt?.id || null,
         });
       }
-      invalidateAll();
+      await invalidateAll();
       toast.success(
         amount > 0
           ? 'Agendamento histórico e pagamento cadastrados!'
@@ -576,7 +600,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
 
-      invalidateAll();
+      await invalidateAll();
       toast.success(
         `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
       );
@@ -723,7 +747,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
 
-      invalidateAll();
+      await invalidateAll();
       toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);
       resetPackage();
       onOpenChange(false);
@@ -773,7 +797,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .eq('id', packageAppointmentId);
       if (paErr) throw paErr;
 
-      invalidateAll();
+      await invalidateAll();
       toast.success('Vínculo desfeito. A sessão voltou a ficar disponível para agendamento.');
     } catch (e: any) {
       toast.error(e.message || 'Falha ao desfazer o vínculo');
@@ -1032,7 +1056,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
       setCsvResult({ success, failed, errors: errors.slice(0, 10) });
-      invalidateAll();
+      await invalidateAll();
       if (success > 0) toast.success(`${success} registros importados`);
       if (failed > 0) toast.error(`${failed} linhas com erro`);
     } catch (e: any) {

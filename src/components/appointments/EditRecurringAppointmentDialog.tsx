@@ -598,13 +598,16 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               Excluir Agendamento
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isRecurringSeries 
-                ? 'Este agendamento faz parte de uma série recorrente. Como deseja excluir?'
+              {isSeriesLike
+                ? (isPackageAppointment
+                    ? 'Este agendamento faz parte de um pacote. Como deseja excluir?'
+                    : 'Este agendamento faz parte de uma série recorrente. Como deseja excluir?')
                 : 'Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
-          {isRecurringSeries && (
+          {isSeriesLike && (
+
             <div className="space-y-4 py-4">
               <RadioGroup 
                 value={deleteType} 

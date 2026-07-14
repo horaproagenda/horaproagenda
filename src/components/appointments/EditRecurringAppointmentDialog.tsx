@@ -76,8 +76,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   useEffect(() => {
     if (open && appointment?.recurring_group_id) {
       loadSeriesInfo();
+    } else if (open && isPackageAppointment && packageId) {
+      loadPackageSeriesInfo();
     }
-  }, [open, appointment?.recurring_group_id]);
+  }, [open, appointment?.recurring_group_id, isPackageAppointment, packageId]);
 
   const loadSeriesInfo = async () => {
     if (!appointment?.recurring_group_id) return;
@@ -91,6 +93,26 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       console.error('Error loading series info:', error);
     }
   };
+
+  const loadPackageSeriesInfo = async () => {
+    if (!packageId || !appointment) return;
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('package_appointments')
+        .select('id, appointment_id, session_number, sequence_order')
+        .eq('package_id', packageId)
+        .order('sequence_order', { ascending: true, nullsFirst: false })
+        .order('session_number', { ascending: true });
+      const list = data || [];
+      setSeriesCount(list.length);
+      const idx = list.findIndex((pa: any) => pa.appointment_id === appointment.id);
+      setSeriesIndex(idx + 1);
+    } catch (e) {
+      console.error('Error loading package series info:', e);
+    }
+  };
+
 
   useEffect(() => {
     if (appointment) {

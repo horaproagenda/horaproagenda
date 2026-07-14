@@ -20,6 +20,7 @@ import {
   getAppointmentRecurringSessionLabel,
   getPackageApplicationLabel,
   getPackageApplicationStatusLabel,
+  extractApplicationLabelFromNotes,
 } from '@/lib/packageSequence';
 
 interface ClientAppointmentsTabProps {

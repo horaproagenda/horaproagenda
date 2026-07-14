@@ -456,10 +456,14 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                       </div>
 
                       <div className="flex items-center gap-1 flex-wrap justify-start md:justify-end">
-                        {isPackage && (
+                        {showAsPackageBadge && (
                           <>
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
-                              {applicationLabel}
+                              {applicationLabel && applicationLabel !== '-'
+                                ? applicationLabel
+                                : notesApplicationHint
+                                  ? `Aplicação ${notesApplicationHint.current}/${notesApplicationHint.total}`
+                                  : applicationLabel}
                             </Badge>
                             {(() => {
                               const s = getPackageApplicationStatusLabel(appointment.status);
@@ -480,7 +484,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                             })()}
                           </>
                         )}
-                        {!isPackage && recurringLabel && (
+                        {!showAsPackageBadge && recurringLabel && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/5 shrink-0">
                             {recurringLabel}
                           </Badge>

@@ -662,10 +662,21 @@ export function useClientProfile(clientId: string) {
 
   // Build payment history only from payments that were effectively registered.
   // Pending purchases/parcelas are intentionally excluded from this customer-facing history.
+  //
+  // IMPORTANT: only sales that actually produced a payment (paid_at set, or any
+  // paid boleto installment) should shadow retroactive appointments with the
+  // same service_id. Otherwise a *pending* sale silently hides a legitimate
+  // retroactive payment (e.g. Pix registered via "Histórico antigo").
   const saleLinkedServiceIds = new Set<string>();
   clientSales.forEach(sale => {
-    if (sale.service_id) saleLinkedServiceIds.add(sale.service_id);
+    if (!sale.service_id) return;
+    const hasPaidInstallment = ((sale as any).boleto_installments || [])
+      .some((i: any) => i.status === 'paid' && i.paid_date);
+    if (sale.paid_at || hasPaidInstallment) {
+      saleLinkedServiceIds.add(sale.service_id);
+    }
   });
+
 
   const paymentHistory: PaymentHistoryItem[] = [
     ...clientSales.flatMap(sale => {

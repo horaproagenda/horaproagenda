@@ -562,7 +562,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                     Este e todos os seguintes
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O intervalo entre os agendamentos será mantido.{isRecurringSeries ? ` ${seriesCount - seriesIndex + 1} agendamento(s) serão alterados.` : ''}
+                    O intervalo entre os agendamentos será mantido.{isSeriesLike && seriesCount > 0 ? ` ${Math.max(seriesCount - seriesIndex + 1, 0)} agendamento(s) serão alterados.` : ''}
                   </p>
                 </div>
               </div>

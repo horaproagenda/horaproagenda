@@ -1041,9 +1041,12 @@ export function AppointmentDetailDialog({
     ((packageData as any)?.payment_methods && (packageData as any).payment_methods.length > 0)
   );
   
-  // Desconto pré-configurado no agendamento: SEMPRE reduz o valor a pagar/total
+  // Valor total exibido = valor bruto original do serviço/pacote.
+  // Descontos NÃO reduzem o "valor total"; apenas reduzem o valor a receber
+  // (remaining). Isso evita a dupla subtração que fazia o total virar já
+  // descontado e ainda ser abatido novamente no restante.
   const grossServicePrice = isPackageAppointment ? packagePrice : servicePrice;
-  const totalPrice = Math.max(0, grossServicePrice - (preconfiguredDiscount || 0));
+  const totalPrice = grossServicePrice;
   const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
   const paymentAdditionalItems = additionalItems
     .map((item) => {
@@ -1175,10 +1178,13 @@ export function AppointmentDetailDialog({
     doc.setFont('helvetica', 'normal');
     doc.text(normalizePdfText(`Valor original: ${formatCurrency(totalPrice)}`), 14, finalY + 12);
     doc.text(normalizePdfText(`Serviços/produtos adicionados: ${formatCurrency(persistedAdditionalItemsTotal)}`), 14, finalY + 20);
-    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, finalY + 28);
+    if (persistedDiscount > 0) {
+      doc.text(normalizePdfText(`Desconto aplicado: -${formatCurrency(persistedDiscount)}`), 14, finalY + 28);
+    }
+    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, finalY + (persistedDiscount > 0 ? 36 : 28));
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(normalizePdfText(`Total final: ${formatCurrency(totalPrice + persistedAdditionalItemsTotal)}`), 14, finalY + 40);
+    doc.text(normalizePdfText(`Total final: ${formatCurrency(Math.max(0, totalPrice + persistedAdditionalItemsTotal - persistedDiscount))}`), 14, finalY + (persistedDiscount > 0 ? 48 : 40));
     doc.setFontSize(11);
     doc.text(normalizePdfText(`Valor pago: ${formatCurrency(amountPaid)}`), 14, finalY + 49);
     return doc;
@@ -1349,8 +1355,9 @@ export function AppointmentDetailDialog({
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
   
-  // Remaining amount after discount
-  const remainingAfterDiscount = Math.max(0, (finalAppointmentTotal - amountPaid) - discount);
+  // Remaining amount after discount (subtrai o desconto já persistido no
+  // agendamento + o desconto novo aplicado agora na baixa)
+  const remainingAfterDiscount = Math.max(0, finalAppointmentTotal - persistedDiscount - amountPaid - discount);
   const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
   const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;
@@ -1835,6 +1842,14 @@ export function AppointmentDetailDialog({
                   </p>
               </div>
 
+              {persistedDiscount > 0 && (
+                <div className="col-span-3 -mt-1">
+                  <p className="text-[11px] text-muted-foreground">
+                    Observação: desconto de <strong>R$ {persistedDiscount.toFixed(2)}</strong> aplicado neste agendamento (não gera saída no caixa/financeiro).
+                  </p>
+                </div>
+              )}
+
               {/* Desfazer baixa — zera amount_paid, remove cash/financial entries e devolve crédito do cliente */}
               {amountPaid > 0 && (
                 <div className="col-span-3 flex justify-center">
@@ -1970,8 +1985,9 @@ export function AppointmentDetailDialog({
                       <div className="flex justify-between"><span>Valor original</span><span className="font-medium">{formatCurrency(totalPrice)}</span></div>
                       {persistedAdditionalItemsTotal > 0 && <div className="flex justify-between"><span>Adicionais já lançados</span><span className="font-medium">{formatCurrency(persistedAdditionalItemsTotal)}</span></div>}
                       <div className="flex justify-between"><span>Itens adicionados nesta baixa</span><span className="font-medium">{formatCurrency(additionalItemsTotal)}</span></div>
+                      {persistedDiscount > 0 && <div className="flex justify-between text-warning"><span>Desconto do agendamento</span><span className="font-medium">-{formatCurrency(persistedDiscount)}</span></div>}
                       <Separator className="my-1" />
-                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(finalAppointmentTotal)}</span></div>
+                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(Math.max(0, finalAppointmentTotal - persistedDiscount))}</span></div>
                       <div className="flex justify-between text-muted-foreground"><span>Já pago</span><span>{formatCurrency(amountPaid)}</span></div>
                     </div>
                     <p className="mt-2 text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>

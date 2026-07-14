@@ -1069,6 +1069,13 @@ export function AppointmentDetailDialog({
   const amountPaid = isPackageAppointment
     ? (isPackagePaid ? Math.max(packagePrice, Number(appointment.amount_paid || 0)) : Number(appointment.amount_paid || 0))
     : Number(appointment.amount_paid || 0);
+
+  // Boleto parcelado: valores só entram/saem do caixa e financeiro via baixa/estorno
+  // das parcelas na página de Boletos. Excluir o agendamento NÃO altera o financeiro.
+  const isBoletoPayment = (appointment.payment_methods || []).some((id) => {
+    const name = activePaymentMethods.find((m) => m.id === id)?.name?.toLowerCase() || '';
+    return name.includes('boleto');
+  }) || !!packageBoletoInfo?.hasBoleto;
   
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
   const persistedDiscount = Number((appointment as any)?.discount_amount || 0);

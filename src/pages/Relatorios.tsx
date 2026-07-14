@@ -19,6 +19,7 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useServicePackages } from '@/hooks/useServicePackages';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { AtendimentosPorProfissional } from '@/components/relatorios/AtendimentosPorProfissional';
+import { ConciliacaoPagamentos } from '@/components/relatorios/ConciliacaoPagamentos';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { exportToCSV } from '@/lib/exportUtils';

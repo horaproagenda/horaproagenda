@@ -361,7 +361,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
             <DialogTitle className="flex flex-col items-center justify-center gap-1 px-6 pt-6 text-center">
               <div className="flex items-center justify-center gap-2">
                 <span>Editar Agendamento</span>
-                {isRecurringSeries && (
+                {isSeriesLike && seriesCount > 0 && (
                   <Badge variant="secondary" className="text-xs flex items-center gap-1">
                     <Repeat className="h-3 w-3" />
                     {seriesIndex} de {seriesCount}
@@ -375,11 +375,14 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                 </div>
               )}
             </DialogTitle>
-            {isRecurringSeries && (
+            {isSeriesLike && (
               <DialogDescription className="px-6 text-center text-xs">
-                Este agendamento faz parte de uma série recorrente
+                {isPackageAppointment
+                  ? 'Este agendamento faz parte de um pacote'
+                  : 'Este agendamento faz parte de uma série recorrente'}
               </DialogDescription>
             )}
+
           </DialogHeader>
           
           <ScrollArea className="max-h-[72vh] px-6 pb-6">

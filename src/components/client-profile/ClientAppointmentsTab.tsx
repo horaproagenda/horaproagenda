@@ -405,7 +405,13 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const borderColor = colorMap.get(colorKey) || 'hsl(var(--border))';
                 const isSelected = selectedAppointments.has(appointment.id);
                 const totalSessions = packageData?.total_sessions;
-                const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id));
+                const applicationLabel = getPackageApplicationLabel(appointment.package_appointment, totalSessions, packageSequenceMap.get(appointment.id), appointment.notes);
+                // Fallback: orphaned appointments whose package link was lost
+                // still carry "Aplicação N/M" inside notes. Treat them as
+                // package sessions for badge/label purposes so the number
+                // shows up in the client profile.
+                const notesApplicationHint = extractApplicationLabelFromNotes(appointment.notes);
+                const showAsPackageBadge = isPackage || !!notesApplicationHint;
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
                 // Sempre que houver pacote vinculado, o nome do pacote é a fonte da verdade
                 // (mesmo em itens cancelados/reagendados — evita "Serviço" genérico).
@@ -416,6 +422,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                   ? appointment.service.name
                   : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
+
 
                 return (
                   <div

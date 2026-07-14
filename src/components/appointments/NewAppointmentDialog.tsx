@@ -1916,14 +1916,22 @@ Até breve! ✨`;
                         </p>
                       )}
                       {discountValue > 0 && repeatServiceEnabled && editableServiceDates.length > 1 && (
-                        <div className="flex items-center justify-between pt-1 border-t">
-                          <Label className="text-[11px] text-muted-foreground">
-                            Aplicar desconto em todos os {editableServiceDates.length} agendamentos
-                          </Label>
-                          <Switch
-                            checked={discountApplyToAll}
-                            onCheckedChange={setDiscountApplyToAll}
-                          />
+                        <div className="pt-2 border-t space-y-1.5">
+                          <p className="text-[11px] font-medium text-foreground">
+                            Aplicar o desconto de R$ {discountValue.toFixed(2)} em quais agendamentos?
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="discount-apply-toggle" className="text-[11px] text-muted-foreground cursor-pointer">
+                              {discountApplyToAll
+                                ? `Aplicar em todos os ${editableServiceDates.length} agendamentos`
+                                : 'Aplicar somente neste agendamento'}
+                            </Label>
+                            <Switch
+                              id="discount-apply-toggle"
+                              checked={discountApplyToAll}
+                              onCheckedChange={setDiscountApplyToAll}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

@@ -76,8 +76,10 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   useEffect(() => {
     if (open && appointment?.recurring_group_id) {
       loadSeriesInfo();
+    } else if (open && isPackageAppointment && packageId) {
+      loadPackageSeriesInfo();
     }
-  }, [open, appointment?.recurring_group_id]);
+  }, [open, appointment?.recurring_group_id, isPackageAppointment, packageId]);
 
   const loadSeriesInfo = async () => {
     if (!appointment?.recurring_group_id) return;
@@ -91,6 +93,26 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       console.error('Error loading series info:', error);
     }
   };
+
+  const loadPackageSeriesInfo = async () => {
+    if (!packageId || !appointment) return;
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('package_appointments')
+        .select('id, appointment_id, session_number, sequence_order')
+        .eq('package_id', packageId)
+        .order('sequence_order', { ascending: true, nullsFirst: false })
+        .order('session_number', { ascending: true });
+      const list = data || [];
+      setSeriesCount(list.length);
+      const idx = list.findIndex((pa: any) => pa.appointment_id === appointment.id);
+      setSeriesIndex(idx + 1);
+    } catch (e) {
+      console.error('Error loading package series info:', e);
+    }
+  };
+
 
   useEffect(() => {
     if (appointment) {
@@ -265,14 +287,34 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           recurring_group_id: appointment.recurring_group_id!,
           appointment_id: appointment.id,
           delete_type: deleteType,
-          // Sempre falso: a mensagem passa pelo diálogo de prévia do WhatsApp
           send_whatsapp: false,
           client_phone: appointment.client?.phone,
           client_name: appointment.client?.name,
         });
+      } else if (isPackageAppointment && packageId && deleteType !== 'single') {
+        // Delete this + following package sessions (or all)
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: sessions } = await supabase
+          .from('package_appointments')
+          .select('id, appointment_id, sequence_order, session_number')
+          .eq('package_id', packageId)
+          .order('sequence_order', { ascending: true, nullsFirst: false })
+          .order('session_number', { ascending: true });
+        const list = sessions || [];
+        let toDelete = list;
+        if (deleteType === 'following') {
+          const idx = list.findIndex((pa: any) => pa.appointment_id === appointment.id);
+          toDelete = idx >= 0 ? list.slice(idx) : [];
+        }
+        for (const pa of toDelete) {
+          if ((pa as any).appointment_id) {
+            await deleteAppointment.mutateAsync((pa as any).appointment_id);
+          }
+        }
       } else {
         await deleteAppointment.mutateAsync(appointment.id);
       }
+
 
       setShowDeleteDialog(false);
 
@@ -319,7 +361,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
             <DialogTitle className="flex flex-col items-center justify-center gap-1 px-6 pt-6 text-center">
               <div className="flex items-center justify-center gap-2">
                 <span>Editar Agendamento</span>
-                {isRecurringSeries && (
+                {isSeriesLike && seriesCount > 0 && (
                   <Badge variant="secondary" className="text-xs flex items-center gap-1">
                     <Repeat className="h-3 w-3" />
                     {seriesIndex} de {seriesCount}
@@ -333,11 +375,14 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                 </div>
               )}
             </DialogTitle>
-            {isRecurringSeries && (
+            {isSeriesLike && (
               <DialogDescription className="px-6 text-center text-xs">
-                Este agendamento faz parte de uma série recorrente
+                {isPackageAppointment
+                  ? 'Este agendamento faz parte de um pacote'
+                  : 'Este agendamento faz parte de uma série recorrente'}
               </DialogDescription>
             )}
+
           </DialogHeader>
           
           <ScrollArea className="max-h-[72vh] px-6 pb-6">
@@ -517,7 +562,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                     Este e todos os seguintes
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    O intervalo entre os agendamentos será mantido.{isRecurringSeries ? ` ${seriesCount - seriesIndex + 1} agendamento(s) serão alterados.` : ''}
+                    O intervalo entre os agendamentos será mantido.{isSeriesLike && seriesCount > 0 ? ` ${Math.max(seriesCount - seriesIndex + 1, 0)} agendamento(s) serão alterados.` : ''}
                   </p>
                 </div>
               </div>
@@ -553,13 +598,16 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               Excluir Agendamento
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isRecurringSeries 
-                ? 'Este agendamento faz parte de uma série recorrente. Como deseja excluir?'
+              {isSeriesLike
+                ? (isPackageAppointment
+                    ? 'Este agendamento faz parte de um pacote. Como deseja excluir?'
+                    : 'Este agendamento faz parte de uma série recorrente. Como deseja excluir?')
                 : 'Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
-          {isRecurringSeries && (
+          {isSeriesLike && (
+
             <div className="space-y-4 py-4">
               <RadioGroup 
                 value={deleteType} 

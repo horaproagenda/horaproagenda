@@ -183,18 +183,19 @@ export function ConciliacaoPagamentos() {
 
   const handleExport = () => {
     if (!filtered.length) return;
-    exportToCSV(
-      filtered.map((r) => ({
-        Data: r.date,
-        Cliente: r.clientName,
-        Descrição: r.description,
-        Valor_Agendamento: r.appointmentAmount,
-        Valor_Financeiro: r.financialAmount,
-        Valor_Caixa: r.cashAmount,
-        Status: KIND_LABEL[r.divergence],
-      })),
-      `conciliacao-pagamentos-${format(new Date(), 'yyyy-MM-dd')}.csv`,
-    );
+    exportToCSV({
+      filename: 'conciliacao-pagamentos',
+      headers: ['Data', 'Cliente', 'Descrição', 'Valor Agendamento', 'Valor Financeiro', 'Valor Caixa', 'Status'],
+      rows: filtered.map((r) => [
+        r.date,
+        r.clientName,
+        r.description,
+        r.appointmentAmount,
+        r.financialAmount,
+        r.cashAmount,
+        KIND_LABEL[r.divergence],
+      ]),
+    });
   };
 
   return (

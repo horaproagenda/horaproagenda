@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Users, TrendingUp, DollarSign, Check, Clock, AlertTriangle, Download, Filter, X } from 'lucide-react';
+import { Cake, RotateCcw, UserX, Phone, Mail, Calendar, Sparkles, Users, TrendingUp, DollarSign, Check, Clock, AlertTriangle, Download, Filter, X, Scale } from 'lucide-react';
 import { format, differenceInDays, parseISO, isSameMonth, isSameDay, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';

@@ -1985,8 +1985,9 @@ export function AppointmentDetailDialog({
                       <div className="flex justify-between"><span>Valor original</span><span className="font-medium">{formatCurrency(totalPrice)}</span></div>
                       {persistedAdditionalItemsTotal > 0 && <div className="flex justify-between"><span>Adicionais já lançados</span><span className="font-medium">{formatCurrency(persistedAdditionalItemsTotal)}</span></div>}
                       <div className="flex justify-between"><span>Itens adicionados nesta baixa</span><span className="font-medium">{formatCurrency(additionalItemsTotal)}</span></div>
+                      {persistedDiscount > 0 && <div className="flex justify-between text-warning"><span>Desconto do agendamento</span><span className="font-medium">-{formatCurrency(persistedDiscount)}</span></div>}
                       <Separator className="my-1" />
-                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(finalAppointmentTotal)}</span></div>
+                      <div className="flex justify-between text-base"><span className="font-semibold">Total final</span><span className="font-bold text-primary">{formatCurrency(Math.max(0, finalAppointmentTotal - persistedDiscount))}</span></div>
                       <div className="flex justify-between text-muted-foreground"><span>Já pago</span><span>{formatCurrency(amountPaid)}</span></div>
                     </div>
                     <p className="mt-2 text-xl font-bold text-primary">{formatCurrency(remainingAfterDiscount)}</p>

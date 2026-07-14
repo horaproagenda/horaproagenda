@@ -2698,7 +2698,7 @@ export function AppointmentDetailDialog({
                         For packages, the payment is at the package level and remains
                         valid for the remaining sessions; deleting one session does
                         NOT remove any payment from caixa or financeiro. */}
-                    {amountPaid > 0 && !isPackageAppointment && (
+                    {amountPaid > 0 && !isPackageAppointment && !isBoletoPayment && (
                       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <div className="flex items-center gap-2 text-destructive font-medium mb-2">
                           <AlertTriangle className="h-4 w-4" />
@@ -2710,16 +2710,40 @@ export function AppointmentDetailDialog({
                       </div>
                     )}
 
+                    {amountPaid > 0 && !isPackageAppointment && isBoletoPayment && (
+                      <div className="p-3 rounded-lg bg-info/10 border border-info/20">
+                        <div className="flex items-center gap-2 text-info font-medium mb-2">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Pagamento via boleto parcelado</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Excluir este agendamento <strong>não remove</strong> valores do caixa nem do financeiro.
+                          Boletos parcelados só entram no caixa/financeiro quando a parcela recebe baixa e só saem
+                          quando a parcela é estornada ou excluída na página de <strong>Boletos</strong>.
+                        </p>
+                      </div>
+                    )}
+
                     {amountPaid > 0 && isPackageAppointment && (
                       <div className="p-3 rounded-lg bg-info/10 border border-info/20">
                         <div className="flex items-center gap-2 text-info font-medium mb-2">
                           <DollarSign className="h-4 w-4" />
-                          <span>Pagamento do pacote será preservado</span>
+                          <span>{isBoletoPayment ? 'Pagamento do pacote via boleto parcelado' : 'Pagamento do pacote será preservado'}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          O valor pago de <strong>R$ {amountPaid.toFixed(2)}</strong> permanece registrado no caixa e no financeiro,
-                          vinculado ao pacote, e continua valendo para as demais aplicações.
-                          Para devolver o dinheiro ao cliente, exclua o pacote inteiro.
+                          {isBoletoPayment ? (
+                            <>
+                              Excluir esta aplicação <strong>não altera</strong> o caixa nem o financeiro.
+                              As parcelas do boleto continuam registradas e só podem ser ajustadas na página de <strong>Boletos</strong>
+                              (baixa, estorno ou exclusão da parcela). A aplicação permanece disponível para reagendamento.
+                            </>
+                          ) : (
+                            <>
+                              O valor pago de <strong>R$ {amountPaid.toFixed(2)}</strong> permanece registrado no caixa e no financeiro,
+                              vinculado ao pacote, e continua valendo para as demais aplicações.
+                              Para devolver o dinheiro ao cliente, exclua o pacote inteiro.
+                            </>
+                          )}
                         </p>
                       </div>
                     )}

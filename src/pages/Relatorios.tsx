@@ -410,7 +410,7 @@ const Relatorios = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid h-9 bg-muted/50 p-1 gap-1">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid h-9 bg-muted/50 p-1 gap-1">
               <TabsTrigger value="aniversariantes" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
                 <Cake className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Aniversários</span>
@@ -429,6 +429,10 @@ const Relatorios = () => {
               <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
                 <Users className="h-3.5 w-3.5 text-sky-600" />
                 <span className="hidden sm:inline">Atendimentos</span>
+              </TabsTrigger>
+              <TabsTrigger value="conciliacao" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+                <Scale className="h-3.5 w-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Conciliação</span>
               </TabsTrigger>
             </TabsList>
 

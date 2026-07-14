@@ -2477,18 +2477,46 @@ Até breve! ✨`;
                                         >
                                           {hasConflict ? <AlertTriangle className="h-3 w-3" /> : index + 1}
                                         </Badge>
-                                        {editingDateIndex === index ? (
-                                          <div className="flex items-center gap-1 flex-1">
-                                            <Popover open onOpenChange={(o) => { if (!o) setEditingDateIndex(null); }}>
+                                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                          {selectedPackageData?.package_type === 'sequential' && (() => {
+                                            const name = resolveSessionServiceLabel({
+                                              index,
+                                              steps: packageSequenceSteps as any,
+                                              services: services as any,
+                                              pkg: selectedPackageData as any,
+                                              nextStepService: nextPackageStepService as any,
+                                              fallbackService: selectedServiceData as any,
+                                            });
+                                            return name ? (
+                                              <span
+                                                data-testid={`preview-session-label-${index}`}
+                                                className={cn(
+                                                  "text-[11px] font-medium truncate",
+                                                  hasConflict && "text-destructive"
+                                                )}
+                                              >
+                                                {name}
+                                              </span>
+                                            ) : null;
+                                          })()}
+                                          <div className="flex items-center gap-1">
+                                            <Popover>
                                               <PopoverTrigger asChild>
                                                 <Button
                                                   type="button"
                                                   variant="outline"
                                                   size="sm"
-                                                  className="h-7 flex-1 justify-start text-xs font-normal"
+                                                  className={cn(
+                                                    "h-7 flex-1 justify-start text-xs font-normal",
+                                                    index === 0 && "font-medium",
+                                                    hasConflict && "text-destructive border-destructive/50"
+                                                  )}
                                                 >
-                                                  <CalendarIcon className="h-3 w-3 mr-1" />
-                                                  {format(previewDate, "EEE, dd/MM/yyyy", { locale: ptBR })}
+                                                  <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
+                                                  <span className="truncate">
+                                                    {format(previewDate, "EEE, dd/MM/yyyy", { locale: ptBR })}
+                                                  </span>
+                                                  <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-auto" />
                                                 </Button>
                                               </PopoverTrigger>
                                               <PopoverContent className="w-auto p-0" align="start">
@@ -2510,7 +2538,7 @@ Até breve! ✨`;
                                             </Popover>
                                             <Input
                                               type="time"
-                                              className="h-7 text-xs w-24"
+                                              className="h-7 text-xs w-24 shrink-0"
                                               value={format(previewDate, 'HH:mm')}
                                               onChange={(e) => {
                                                 const [hh, mm] = e.target.value.split(':').map(Number);
@@ -2520,50 +2548,11 @@ Até breve! ✨`;
                                                 updateEditableDate(index, merged);
                                               }}
                                             />
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-7 px-2 text-xs"
-                                              onClick={() => setEditingDateIndex(null)}
-                                            >
-                                              OK
-                                            </Button>
                                           </div>
-                                        ) : (
-                                        <button
-                                            type="button"
-                                            className={cn(
-                                              "flex-1 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors flex items-center justify-between",
-                                              index === 0 ? "font-medium" : "text-muted-foreground",
-                                              hasConflict && "text-destructive"
-                                            )}
-                                            onClick={() => setEditingDateIndex(index)}
-                                          >
-                                            <span className="truncate" data-testid={`preview-session-label-${index}`}>
-                                              {(() => {
-                                                // Pacote comum: todos os serviços têm o mesmo nome,
-                                                // então não exibimos o nome do serviço na visualização.
-                                                if (selectedPackageData?.package_type !== 'sequential') {
-                                                  return null;
-                                                }
-                                                const name = resolveSessionServiceLabel({
-                                                  index,
-                                                  steps: packageSequenceSteps as any,
-                                                  services: services as any,
-                                                  pkg: selectedPackageData as any,
-                                                  nextStepService: nextPackageStepService as any,
-                                                  fallbackService: selectedServiceData as any,
-                                                });
-                                                return name ? <span className="font-medium">{name} · </span> : null;
-                                              })()}
-                                              {format(previewDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
-                                            </span>
-                                            <Pencil className="h-3 w-3 opacity-50 shrink-0 ml-1" />
-                                          </button>
-                                        )}
+                                        </div>
                                         {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}
                                       </div>
+
                                       
                                       {/* Show conflict details and suggestion */}
                                       {hasConflict && conflictInfo && (

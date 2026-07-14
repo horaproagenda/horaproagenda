@@ -616,6 +616,16 @@ export function NewAppointmentDialog({
       updated[index] = newDate;
       return updated;
     });
+    // Ao editar a primeira etapa, sincroniza com os campos principais
+    // (data/horário) para evitar confusão de informações.
+    if (index === 0) {
+      const synced = new Date(newDate);
+      synced.setHours(0, 0, 0, 0);
+      setDate(synced);
+      const hh = String(newDate.getHours()).padStart(2, '0');
+      const mm = String(newDate.getMinutes()).padStart(2, '0');
+      setTime(`${hh}:${mm}`);
+    }
   };
 
   // Update a specific date in the editable service dates

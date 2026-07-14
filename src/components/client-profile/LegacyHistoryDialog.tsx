@@ -484,7 +484,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           appointment_id: apt?.id || null,
         });
       }
-      invalidateAll();
+      await invalidateAll();
       toast.success(
         amount > 0
           ? 'Agendamento histórico e pagamento cadastrados!'
@@ -600,7 +600,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
 
-      invalidateAll();
+      await invalidateAll();
       toast.success(
         `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
       );
@@ -747,7 +747,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
 
-      invalidateAll();
+      await invalidateAll();
       toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);
       resetPackage();
       onOpenChange(false);
@@ -797,7 +797,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .eq('id', packageAppointmentId);
       if (paErr) throw paErr;
 
-      invalidateAll();
+      await invalidateAll();
       toast.success('Vínculo desfeito. A sessão voltou a ficar disponível para agendamento.');
     } catch (e: any) {
       toast.error(e.message || 'Falha ao desfazer o vínculo');
@@ -1056,7 +1056,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       }
 
       setCsvResult({ success, failed, errors: errors.slice(0, 10) });
-      invalidateAll();
+      await invalidateAll();
       if (success > 0) toast.success(`${success} registros importados`);
       if (failed > 0) toast.error(`${failed} linhas com erro`);
     } catch (e: any) {

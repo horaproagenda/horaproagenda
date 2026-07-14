@@ -1839,6 +1839,14 @@ export function AppointmentDetailDialog({
                   </p>
               </div>
 
+              {persistedDiscount > 0 && (
+                <div className="col-span-3 -mt-1">
+                  <p className="text-[11px] text-muted-foreground">
+                    Observação: desconto de <strong>R$ {persistedDiscount.toFixed(2)}</strong> aplicado neste agendamento (não gera saída no caixa/financeiro).
+                  </p>
+                </div>
+              )}
+
               {/* Desfazer baixa — zera amount_paid, remove cash/financial entries e devolve crédito do cliente */}
               {amountPaid > 0 && (
                 <div className="col-span-3 flex justify-center">

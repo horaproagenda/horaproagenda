@@ -143,8 +143,10 @@ export const getAppointmentPackageApplicationLabel = (appointment: Appointment, 
     appointment.package_appointment,
     appointment.package_appointment?.package?.total_sessions,
     sequenceNumber,
+    appointment.notes,
   );
 };
+
 
 type RecurringAppointment = Pick<Appointment, 'id' | 'start_time' | 'created_at' | 'recurring_group_id' | 'status' | 'notes'>;
 

@@ -1041,9 +1041,12 @@ export function AppointmentDetailDialog({
     ((packageData as any)?.payment_methods && (packageData as any).payment_methods.length > 0)
   );
   
-  // Desconto pré-configurado no agendamento: SEMPRE reduz o valor a pagar/total
+  // Valor total exibido = valor bruto original do serviço/pacote.
+  // Descontos NÃO reduzem o "valor total"; apenas reduzem o valor a receber
+  // (remaining). Isso evita a dupla subtração que fazia o total virar já
+  // descontado e ainda ser abatido novamente no restante.
   const grossServicePrice = isPackageAppointment ? packagePrice : servicePrice;
-  const totalPrice = Math.max(0, grossServicePrice - (preconfiguredDiscount || 0));
+  const totalPrice = grossServicePrice;
   const persistedAdditionalItemsTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
   const paymentAdditionalItems = additionalItems
     .map((item) => {

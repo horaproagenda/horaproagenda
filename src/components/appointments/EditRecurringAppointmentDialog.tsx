@@ -287,14 +287,34 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           recurring_group_id: appointment.recurring_group_id!,
           appointment_id: appointment.id,
           delete_type: deleteType,
-          // Sempre falso: a mensagem passa pelo diálogo de prévia do WhatsApp
           send_whatsapp: false,
           client_phone: appointment.client?.phone,
           client_name: appointment.client?.name,
         });
+      } else if (isPackageAppointment && packageId && deleteType !== 'single') {
+        // Delete this + following package sessions (or all)
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: sessions } = await supabase
+          .from('package_appointments')
+          .select('id, appointment_id, sequence_order, session_number')
+          .eq('package_id', packageId)
+          .order('sequence_order', { ascending: true, nullsFirst: false })
+          .order('session_number', { ascending: true });
+        const list = sessions || [];
+        let toDelete = list;
+        if (deleteType === 'following') {
+          const idx = list.findIndex((pa: any) => pa.appointment_id === appointment.id);
+          toDelete = idx >= 0 ? list.slice(idx) : [];
+        }
+        for (const pa of toDelete) {
+          if ((pa as any).appointment_id) {
+            await deleteAppointment.mutateAsync((pa as any).appointment_id);
+          }
+        }
       } else {
         await deleteAppointment.mutateAsync(appointment.id);
       }
+
 
       setShowDeleteDialog(false);
 

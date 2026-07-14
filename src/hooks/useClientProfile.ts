@@ -745,7 +745,15 @@ export function useClientProfile(clientId: string) {
       const items: PaymentHistoryItem[] = [];
 
       for (const a of appointments) {
-        if (a.service_id && saleLinkedServiceIds.has(a.service_id)) continue;
+        // Legacy retroactive payments carry an explicit `payment_date` set by
+        // "Histórico antigo". These are standalone transactions (Pix on a past
+        // appointment) that must always show up in the client's payment
+        // history — even when the client later bought a related sale for the
+        // same service/package. Previously they were shadowed by sales,
+        // making retroactive Pix payments invisible.
+        const isRetroactiveLegacy = !!((a as any).payment_date);
+
+        if (!isRetroactiveLegacy && a.service_id && saleLinkedServiceIds.has(a.service_id)) continue;
         if ((a.amount_paid || 0) <= 0) continue;
 
         const pkg = a.package_appointment?.package;
@@ -761,15 +769,14 @@ export function useClientProfile(clientId: string) {
         const isLikelyPackageSession = !!packageId || !!packageNameSnapshot || !!notesPackageMatch;
 
         if (isLikelyPackageSession) {
-          // If we already registered a sale for any package of this client,
-          // the payment is represented there and we must not duplicate it.
-          if (salePackageIds.size > 0) continue;
-          // Fallback de-dupe key when there is no link nor a sale: prefer the
-          // snapshot/notes-derived name so multiple orphan sessions collapse.
+          // Only shadow with the sale-side row when we can positively link
+          // the appointment to a specific paid package (matching packageId).
+          // The old blanket "if any package sale exists, skip" hid retroactive
+          // legacy payments for unrelated packages of the same client.
           const fallbackKey = packageNameSnapshot || notesPackageMatch?.[1]?.trim();
           if (packageId) {
             if (seenPackageIds.has(packageId)) continue;
-            if (appointmentSaleIds.has(packageId)) continue;
+            if (!isRetroactiveLegacy && appointmentSaleIds.has(packageId)) continue;
             seenPackageIds.add(packageId);
           } else if (fallbackKey) {
             const key = `name:${fallbackKey.toLowerCase()}`;
@@ -777,6 +784,7 @@ export function useClientProfile(clientId: string) {
             seenPackageIds.add(key);
           }
         }
+
 
 
         const servicePrice = Number(a.service?.price || 0);

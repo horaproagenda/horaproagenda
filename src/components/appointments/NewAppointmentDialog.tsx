@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePickerWithInput } from '@/components/ui/date-picker-with-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1969,34 +1970,15 @@ Até breve! ✨`;
             <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
               <div className="space-y-2">
                 <Label className="text-sky-700 dark:text-sky-300 font-medium">Data *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !date && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-50" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                      disabled={(date) => {
-                        // Permite selecionar datas retroativas — apenas restringe dias em que a clínica não atende
-                        if (!isWorkDay(date)) return true;
-                        return false;
-                      }}
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePickerWithInput
+                  value={date}
+                  onChange={setDate}
+                  disabled={(d) => !isWorkDay(d)}
+                  placeholder="dd/mm/aaaa"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Digite manualmente ou selecione no calendário
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

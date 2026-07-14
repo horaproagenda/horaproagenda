@@ -354,6 +354,30 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         notes: 'Lançamento retroativo (histórico antigo)',
       });
       if (error) throw error;
+
+      // 1b) Also register a cash_transactions row when there is an open cash
+      //     register and the method is not client credit — otherwise the
+      //     payment shows in "Financeiro" but is missing in "Caixa".
+      if (!isCreditPayment) {
+        const { data: openCash } = await supabase
+          .from('cash_registers')
+          .select('id')
+          .eq('status', 'open')
+          .maybeSingle();
+        if (openCash?.id) {
+          await supabase.from('cash_transactions').insert({
+            cash_register_id: openCash.id,
+            type: 'income',
+            category: 'Baixa retroativa (histórico)',
+            description: params.description,
+            amount: params.amount,
+            payment_method: selectedPaymentMethodName || paymentMethodId,
+            reference_id: params.appointment_id || null,
+            reference_type: params.appointment_id ? 'appointment' : null,
+            created_by: user?.id,
+          });
+        }
+      }
     }
 
     // 2) When paying with "Crédito ao Cliente", debit the client's credit

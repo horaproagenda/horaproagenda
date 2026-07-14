@@ -513,30 +513,73 @@ Até breve! ✨`;
         // Get following appointments (excluding the current one which will be updated separately)
         appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
       } else if (params.propagate_type === 'package' && params.package_id) {
-        // NOTA: Para pacotes, a cascata é feita automaticamente pelo trigger
-        // `cascade_package_interval_from_appointment` no banco, que respeita o
-        // intervalo mínimo (21 dias) e mantém o MESMO horário escolhido para
-        // todas as sessões seguintes. NÃO fazemos cascata no frontend para
-        // evitar o bug em que `adjustToBusinessHours` jogava horários para 14h/16h
-        // (abertura do expediente) quando o horário escolhido coincidia com o
-        // fim do expediente.
-        const { data: refreshed } = await supabase
+        // Fetch all package sessions with their per-step interval_after_days
+        const { data: pkgSessions, error: pkgErr } = await supabase
           .from('package_appointments')
-          .select('id, appointment_id, scheduled_date, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
+          .select('id, appointment_id, sequence_order, session_number, interval_after_days, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
           .eq('package_id', params.package_id)
-          .order('sequence_order', { ascending: true })
+          .order('sequence_order', { ascending: true, nullsFirst: false })
           .order('session_number', { ascending: true });
+        if (pkgErr) throw pkgErr;
 
-        const sourceIdx = (refreshed || []).findIndex(
+        const sourceIdx = (pkgSessions || []).findIndex(
           (pa: any) => pa.appointment_id === params.appointment_id
         );
-        const updatedAppointments = (refreshed || [])
-          .slice(sourceIdx >= 0 ? sourceIdx + 1 : 0)
-          .map((pa: any) => pa.appointment)
-          .filter((a: any) => a && !['completed', 'missed', 'cancelled'].includes(a.status));
+        if (sourceIdx === -1) {
+          return { updated: 0, appointments: [] };
+        }
+
+        const following = (pkgSessions || []).slice(sourceIdx + 1);
+        const updatedAppointments: any[] = [];
+        // Cursor starts at the moved appointment; each next session date
+        // = previous session date + previous session's interval_after_days.
+        let cursor = new Date(params.new_start_time);
+        // interval used to advance from source to first-following:
+        let prevInterval = Number((pkgSessions![sourceIdx] as any)?.interval_after_days) || params.interval_days || 7;
+
+        for (const pa of following) {
+          const apt = (pa as any).appointment;
+          if (!apt) { prevInterval = Number(pa.interval_after_days) || prevInterval; continue; }
+          if (['completed', 'missed', 'cancelled'].includes(apt.status)) {
+            prevInterval = Number(pa.interval_after_days) || prevInterval;
+            continue;
+          }
+
+          const nextStart = addDays(cursor, prevInterval);
+          // Preserve original wall-clock time from the moved appointment
+          nextStart.setHours(
+            params.new_start_time.getHours(),
+            params.new_start_time.getMinutes(),
+            0, 0
+          );
+          const origStart = new Date(apt.start_time);
+          const origEnd = new Date(apt.end_time);
+          const duration = origEnd.getTime() - origStart.getTime();
+          const nextEnd = new Date(nextStart.getTime() + duration);
+
+          const { data: updated, error: updErr } = await supabase
+            .from('appointments')
+            .update({
+              start_time: nextStart.toISOString(),
+              end_time: nextEnd.toISOString(),
+              updated_by: user.id,
+            })
+            .eq('id', apt.id)
+            .select()
+            .single();
+
+          if (!updErr && updated) {
+            updatedAppointments.push(updated);
+            cursor = nextStart;
+            prevInterval = Number(pa.interval_after_days) || prevInterval;
+          } else {
+            prevInterval = Number(pa.interval_after_days) || prevInterval;
+          }
+        }
 
         return { updated: updatedAppointments.length, appointments: updatedAppointments };
       }
+
 
       if (appointmentsToUpdate.length === 0) {
         return { updated: 0, appointments: [] };

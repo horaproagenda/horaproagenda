@@ -28,6 +28,7 @@ import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useClientPackages } from '@/hooks/useClientPackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 
@@ -76,6 +77,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const { professionals } = useProfessionals();
   const { paymentMethods } = usePaymentMethods();
   const { clientPackages } = useClientPackages(clientId);
+  const { templates: packageTemplates } = usePackageTemplates();
+
 
   const [tab, setTab] = useState<'single' | 'common' | 'sequential' | 'csv'>('single');
   const [submitting, setSubmitting] = useState(false);
@@ -212,12 +215,42 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     [selectedExistingPackage]
   );
 
+  // Template do pacote selecionado — fonte da verdade para a ordem dos serviços
+  // (nome, duração) em pacote sequencial. Package_appointments podem ter service_id
+  // faltando/errado (sobretudo em pacotes criados por boleto parcelado antigo);
+  // por isso reconciliamos com os steps do template ordenados por sequence_order.
+  const selectedExistingTemplate = useMemo(() => {
+    const tplId = (selectedExistingPackage as any)?.template_id;
+    if (!tplId) return null;
+    return (packageTemplates || []).find((t: any) => t.id === tplId) || null;
+  }, [packageTemplates, selectedExistingPackage]);
+
+  const selectedExistingTemplateSteps = useMemo(() => {
+    const steps = (selectedExistingTemplate as any)?.steps || [];
+    return [...steps].sort((a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0));
+  }, [selectedExistingTemplate]);
+
   const existingPackagePendingSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
+    const sortedTplSteps = selectedExistingTemplateSteps;
     return ((selectedExistingPackage as any).appointments || [])
       .filter((s: any) => s.status !== 'completed' && s.status !== 'missed')
-      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
-  }, [selectedExistingPackage]);
+      .sort((a: any, b: any) => {
+        const ao = Number(a.sequence_order ?? a.session_number ?? 0);
+        const bo = Number(b.sequence_order ?? b.session_number ?? 0);
+        if (ao !== bo) return ao - bo;
+        return Number(a.session_number ?? 0) - Number(b.session_number ?? 0);
+      })
+      .map((pa: any) => {
+        // Reconcile service_id/duration usando o template step correspondente,
+        // caso a PA esteja sem service_id ou tenha sido criada fora de ordem.
+        const pos = Number(pa.sequence_order ?? pa.session_number ?? 0);
+        const tplStep = pos > 0 ? sortedTplSteps[pos - 1] : null;
+        const resolvedServiceId = pa.service_id || tplStep?.service_id || null;
+        return { ...pa, resolvedServiceId, templateStep: tplStep || null };
+      });
+  }, [selectedExistingPackage, selectedExistingTemplateSteps]);
+
 
   // Total realmente disponível para vincular (inclui sessões virtuais quando o
   // pacote foi criado sem gerar package_appointments — comum em boleto parcelado).
@@ -605,9 +638,16 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           const pending = pendingList[i];
           const start = buildLocalISO(row.date, row.time);
           if (!start) return null;
-          const dur = parseInt(row.duration) || pkgDuration;
+          // Duração: prioriza a linha, senão o serviço do template step, senão pkgDuration
+          const tplStep: any = (pending as any).templateStep || null;
+          const tplStepService = tplStep?.service_id
+            ? services.find((s: any) => s.id === tplStep.service_id)
+            : null;
+          const stepDefaultDur = tplStepService?.duration ?? pkgDuration;
+          const dur = parseInt(row.duration) || stepDefaultDur;
           const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-          const stepServiceId = pending.service_id || pkgServiceId;
+          // service_id: PA existente > template step > serviço base do pacote
+          const stepServiceId = (pending as any).resolvedServiceId || pending.service_id || tplStep?.service_id || pkgServiceId;
 
           const apt = await createLegacyAppointment({
             start_time: start,
@@ -1609,15 +1649,20 @@ function PackageForm(props: PackageFormProps) {
         </div>
 
         {pkgSessions.map((row, i) => {
-          // Rótulo do serviço da etapa (para sequencial vinculado, usa a PA pendente na posição i)
+          // Rótulo do serviço da etapa (nome + duração), sempre exibido em sequencial
           let stepLabel: string | null = null;
+          let stepDurationMin: number | null = null;
           if (kind === 'sequential') {
             if (linkExistingPackage) {
-              const pa = pendingSessions[i];
-              const svcId = pa?.service_id;
-              const svc = svcId ? services.find((s) => s.id === svcId) : null;
+              const pa: any = pendingSessions[i];
+              // Prioridade: PA.service_id > template step service > serviço base
+              const svcId = pa?.resolvedServiceId || pa?.service_id || pa?.templateStep?.service_id;
+              const svc = svcId ? services.find((s: any) => s.id === svcId) : null;
               stepLabel = svc?.name || selectedServiceName || null;
+              stepDurationMin = (svc as any)?.duration ?? null;
             } else {
+              // Novo pacote sequencial cadastrado via histórico — todas as etapas
+              // usam o serviço base selecionado (não há template).
               stepLabel = selectedServiceName || null;
             }
           }
@@ -1627,8 +1672,11 @@ function PackageForm(props: PackageFormProps) {
               <Badge variant="outline" className="text-[10px]">#{i + 1}</Badge>
             </div>
             {stepLabel && (
-              <div className="col-span-12 -mt-1 -mb-1">
+              <div className="col-span-12 -mt-1 -mb-1 flex items-center gap-2">
                 <span className="text-[10px] font-medium text-primary">{stepLabel}</span>
+                {stepDurationMin != null && (
+                  <span className="text-[10px] text-muted-foreground">· {stepDurationMin}min</span>
+                )}
               </div>
             )}
             <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>

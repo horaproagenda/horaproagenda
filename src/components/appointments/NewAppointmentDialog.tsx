@@ -391,7 +391,10 @@ export function NewAppointmentDialog({
         const pending = [...sessions]
           .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
           .find((s) => !s.appointment_id && !['completed', 'missed'].includes(s.status));
-        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+        const nextIndex = pending
+          ? Math.max(0, Number(pending.sequence_order || pending.session_number || 1) - 1)
+          : Math.min(sessions.length, Math.max(0, packageSequenceSteps.length - 1));
+        const svcId = pending?.service_id || packageSequenceSteps[nextIndex]?.service_id || packageSequenceSteps[0]?.service_id;
         return svcId ? services.find((s) => s.id === svcId) || null : null;
       }
       const svcId = packageSequenceSteps[0]?.service_id;
@@ -412,9 +415,13 @@ export function NewAppointmentDialog({
       .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
       .find((session) => !session.appointment_id && !['completed', 'missed'].includes(session.status));
 
+    if (!pending) {
+      return Math.min(sessions.length, Math.max(0, packageSequenceSteps.length - 1));
+    }
+
     const order = Number(pending?.sequence_order || pending?.session_number || 1);
     return Math.max(0, order - 1);
-  }, [existingClientPackage, selectedPackageData]);
+  }, [existingClientPackage, packageSequenceSteps.length, selectedPackageData]);
 
   const autoScheduleSessionCount = useMemo(() => {
     if (!selectedPackageData) return 0;

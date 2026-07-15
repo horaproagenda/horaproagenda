@@ -49,4 +49,18 @@ describe('getSchedulingDurationMinutes', () => {
     expect(getSchedulingDurationMinutes(services[1], services, 60)).toBe(40);
     expect(addMinutesToClock('10:30', getSchedulingDurationMinutes(services[1], services, 60))).toBe('11:10');
   });
+
+  it('usa a etapa correspondente do serviço agregado quando o pacote sequencial avança', () => {
+    const services = [
+      { id: 'avaliacao', duration: 40 },
+      { id: 'procedimento', duration: 60 },
+      {
+        id: 'pacote-agregado',
+        duration: 760,
+        service_components: [{ service_id: 'avaliacao' }, { service_id: 'procedimento' }],
+      },
+    ];
+
+    expect(getSchedulingDurationMinutes(services[2], services, 60, 1)).toBe(60);
+  });
 });

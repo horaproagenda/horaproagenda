@@ -439,7 +439,7 @@ export function NewAppointmentDialog({
         || (relativeIndex === 0 ? (nextPackageStepService as any)?.id : null)
         || (packageData as any)?.service_id;
       const stepService = stepServiceId ? services.find((service) => service.id === stepServiceId) : null;
-      return getSchedulingDurationMinutes(stepService as any, services as any, manualDuration || 60);
+      return getSchedulingDurationMinutes(stepService as any, services as any, manualDuration || 60, absoluteIndex);
     }
 
     return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);

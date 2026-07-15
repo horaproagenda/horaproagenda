@@ -1114,11 +1114,24 @@ export function NewAppointmentDialog({
         const isPackagePaid = isClientPackageSelected && existingClientPackage && 
           existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0;
         
+        // When auto-schedule is enabled, use the FIRST previewed date so the
+        // user's edits in the preview list drive the first appointment as well.
+        // Falls back to the top-level date/time when auto-schedule is disabled
+        // or the preview is empty.
+        let firstStart = startTime;
+        let firstEnd = endTime;
+        if (autoScheduleEnabled && editablePreviewDates.length > 0) {
+          const previewFirst = editablePreviewDates[0];
+          const firstDuration = getPackageStepDuration(0) || nextPackageStepService?.duration || duration;
+          firstStart = previewFirst;
+          firstEnd = new Date(previewFirst.getTime() + firstDuration * 60000);
+        }
+
         const appointmentResult = await createAppointment.mutateAsync({
           client_id: selectedClient,
           service_id: packageServiceId,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
+          start_time: firstStart.toISOString(),
+          end_time: firstEnd.toISOString(),
           notes: `${nextPackageStepService?.name ? nextPackageStepService.name + ' — ' : ''}${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
           professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
           room_id: selectedRoom || selectedPackageData.room_id || undefined,

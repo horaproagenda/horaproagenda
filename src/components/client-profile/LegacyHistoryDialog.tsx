@@ -711,20 +711,18 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .single();
       if (pkgErr) throw pkgErr;
 
-      // 2. For each filled session: create package_appointment + appointment, link them
-      for (let i = 0; i < filledSessions.length; i++) {
-        const row = filledSessions[i];
+      // 2. Cria as PAs como 'pending' e depois cria os appointments em paralelo.
+      //    Só marcamos como 'completed' após o agendamento existir — evita PA
+      //    fantasma "1/N realizada" quando a edge function falha.
+      const paRows = filledSessions.map((row, i) => {
         const start = buildLocalISO(row.date, row.time);
-        if (!start) continue;
         const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
-        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-
-        // Create package_appointment first
+        const end = start ? new Date(new Date(start).getTime() + dur * 60_000).toISOString() : null;
         const paInsert: any = {
           package_id: pkg.id,
           session_number: i + 1,
           original_session_number: i + 1,
-          status: 'completed',
+          status: 'pending',
           scheduled_date: start,
           service_id: serviceId,
         };
@@ -732,33 +730,48 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           paInsert.sequence_order = i + 1;
           paInsert.interval_after_days = i < filledSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
         }
-        const { data: pa, error: paErr } = await supabase
-          .from('package_appointments')
-          .insert(paInsert)
-          .select()
-          .single();
-        if (paErr) throw paErr;
+        return { row, start, end, paInsert, index: i };
+      }).filter((r) => r.start && r.end);
 
-        // Create appointment linked
-        const apt = await createLegacyAppointment({
-          start_time: start,
-          end_time: end,
-          service_id: serviceId,
-          professional_id: professionalId || null,
-          package_appointment_id: pa.id,
-          notes: row.notes || `Sessão ${i + 1}/${total} — ${derivedPkgName}`,
-        });
+      const { data: insertedPas, error: paBulkErr } = await supabase
+        .from('package_appointments')
+        .insert(paRows.map((r) => r.paInsert))
+        .select();
+      if (paBulkErr) throw paBulkErr;
 
-        // Link back
-        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pa.id);
+      const results = await Promise.all(
+        paRows.map(async (r, idx) => {
+          const pa = insertedPas![idx];
+          const apt = await createLegacyAppointment({
+            start_time: r.start!,
+            end_time: r.end!,
+            service_id: serviceId,
+            professional_id: professionalId || null,
+            package_appointment_id: pa.id,
+            notes: r.row.notes || `Sessão ${r.index + 1}/${total} — ${derivedPkgName}`,
+          });
+          return { pa, apt, row: r.row, index: r.index };
+        })
+      );
 
-        // Per-session financial (optional)
+      // Marca todas como completed + linka appointment_id
+      await Promise.all(
+        results.map(({ pa, apt }) =>
+          supabase
+            .from('package_appointments')
+            .update({ status: 'completed', appointment_id: apt.id })
+            .eq('id', pa.id)
+        )
+      );
+
+      // Lançamentos financeiros por sessão (opcional)
+      for (const { row, apt, index } of results) {
         const amt = parseBrazilianCurrency(row.amount_paid);
         if (amt > 0) {
           await createFinancialEntry({
             amount: amt,
             payment_date: row.payment_date || row.date,
-            description: `Sessão ${i + 1}/${total} — ${derivedPkgName} (Histórico)`,
+            description: `Sessão ${index + 1}/${total} — ${derivedPkgName} (Histórico)`,
             appointment_id: apt.id,
           });
         }

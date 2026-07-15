@@ -557,14 +557,17 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     const pkgDuration = pkgAny.duration || 60;
     const pkgName = pkgAny.name || 'Pacote';
     const pkgProfessionalId = pkgAny.professional_id || null;
-    // Só aceita profissional escolhido no formulário se o pacote ainda não tem um.
     const effectiveProfessionalId = pkgProfessionalId || professionalId || null;
 
     setSubmitting(true);
+    const toastId = toast.loading(`Vinculando ${filledSessions.length} sessão(ões)…`);
+    // Rastreia PAs criadas/tocadas para permitir rollback se algo falhar.
+    const createdPaIds: string[] = [];
+    const touchedPaIds: string[] = [];
+    const createdAptIds: string[] = [];
     try {
-      // 1) Garante que existem package_appointments suficientes para vincular.
-      //    Pacotes vindos de boleto parcelado ou históricos antigos podem não ter
-      //    gerado registros — nesse caso criamos os pendentes que faltam.
+      // 1) Garante package_appointments suficientes (pacotes de boleto parcelado
+      //    podem não ter gerado registros).
       let pendingList: any[] = [...existingPackagePendingSessions];
       const missing = filledSessions.length - pendingList.length;
       if (missing > 0) {
@@ -590,48 +593,73 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           .insert(toInsert)
           .select();
         if (insErr) throw insErr;
+        (inserted || []).forEach((r: any) => createdPaIds.push(r.id));
         pendingList = [...pendingList, ...(inserted || [])];
       }
 
-      for (let i = 0; i < filledSessions.length; i++) {
-        const row = filledSessions[i];
-        const pending = pendingList[i];
-        const start = buildLocalISO(row.date, row.time);
-        if (!start) continue;
-        const dur = parseInt(row.duration) || pkgDuration;
-        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-        const stepServiceId = pending.service_id || pkgServiceId;
+      // 2) Cria os agendamentos PRIMEIRO (paralelizado). Só depois marcamos as
+      //    package_appointments como completed. Isso evita o bug de "1/14
+      //    realizada" fantasma quando o edge function falha no meio.
+      const results = await Promise.all(
+        filledSessions.map(async (row, i) => {
+          const pending = pendingList[i];
+          const start = buildLocalISO(row.date, row.time);
+          if (!start) return null;
+          const dur = parseInt(row.duration) || pkgDuration;
+          const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+          const stepServiceId = pending.service_id || pkgServiceId;
 
-        const { error: updErr } = await supabase
-          .from('package_appointments')
-          .update({ status: 'completed', scheduled_date: start })
-          .eq('id', pending.id);
-        if (updErr) throw updErr;
+          const apt = await createLegacyAppointment({
+            start_time: start,
+            end_time: end,
+            service_id: stepServiceId,
+            professional_id: effectiveProfessionalId,
+            package_appointment_id: pending.id,
+            notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
+          });
+          createdAptIds.push(apt.id);
+          return { pending, apt, start };
+        })
+      );
 
-        const apt = await createLegacyAppointment({
-          start_time: start,
-          end_time: end,
-          service_id: stepServiceId,
-          professional_id: effectiveProfessionalId,
-          package_appointment_id: pending.id,
-          notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
-        });
-
-        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
-
-        // Vínculo a pacote com venda já feita: NÃO cria lançamento financeiro
-        // nem preenche amount_paid — a venda do pacote já foi registrada.
-      }
-
+      // 3) Marca as PAs como completed apontando para o apt criado — em lote.
+      await Promise.all(
+        results.filter(Boolean).map(async (r: any) => {
+          const { error: updErr } = await supabase
+            .from('package_appointments')
+            .update({ status: 'completed', scheduled_date: r.start, appointment_id: r.apt.id })
+            .eq('id', r.pending.id);
+          if (updErr) throw updErr;
+          touchedPaIds.push(r.pending.id);
+        })
+      );
 
       await invalidateAll();
       toast.success(
-        `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
+        `${filledSessions.length} sessão(ões) vinculada(s). ${available - filledSessions.length} continuam disponíveis.`,
+        { id: toastId }
       );
       resetPackage();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || 'Falha ao vincular sessões ao pacote');
+      // Rollback best-effort: apaga agendamentos criados e reverte PAs.
+      try {
+        if (createdAptIds.length > 0) {
+          await supabase.from('appointments').delete().in('id', createdAptIds);
+        }
+        if (touchedPaIds.length > 0) {
+          await supabase
+            .from('package_appointments')
+            .update({ status: 'pending', scheduled_date: null, appointment_id: null })
+            .in('id', touchedPaIds);
+        }
+        if (createdPaIds.length > 0) {
+          await supabase.from('package_appointments').delete().in('id', createdPaIds);
+        }
+      } catch (rollbackErr) {
+        console.error('[LegacyHistory] rollback error', rollbackErr);
+      }
+      toast.error(e.message || 'Falha ao vincular sessões ao pacote', { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -658,6 +686,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
 
     setSubmitting(true);
+    const toastId = toast.loading(`Cadastrando pacote com ${filledSessions.length} sessão(ões)…`);
+    let createdPkgId: string | null = null;
     try {
       // 1. Create service_package
       const { data: { user } } = await supabase.auth.getUser();
@@ -682,21 +712,20 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .select()
         .single();
       if (pkgErr) throw pkgErr;
+      createdPkgId = pkg.id;
 
-      // 2. For each filled session: create package_appointment + appointment, link them
-      for (let i = 0; i < filledSessions.length; i++) {
-        const row = filledSessions[i];
+      // 2. Cria as PAs como 'pending' e depois cria os appointments em paralelo.
+      //    Só marcamos como 'completed' após o agendamento existir — evita PA
+      //    fantasma "1/N realizada" quando a edge function falha.
+      const paRows = filledSessions.map((row, i) => {
         const start = buildLocalISO(row.date, row.time);
-        if (!start) continue;
         const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
-        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-
-        // Create package_appointment first
+        const end = start ? new Date(new Date(start).getTime() + dur * 60_000).toISOString() : null;
         const paInsert: any = {
           package_id: pkg.id,
           session_number: i + 1,
           original_session_number: i + 1,
-          status: 'completed',
+          status: 'pending',
           scheduled_date: start,
           service_id: serviceId,
         };
@@ -704,33 +733,48 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           paInsert.sequence_order = i + 1;
           paInsert.interval_after_days = i < filledSessions.length - 1 ? (parseInt(pkgIntervalDays) || 30) : 0;
         }
-        const { data: pa, error: paErr } = await supabase
-          .from('package_appointments')
-          .insert(paInsert)
-          .select()
-          .single();
-        if (paErr) throw paErr;
+        return { row, start, end, paInsert, index: i };
+      }).filter((r) => r.start && r.end);
 
-        // Create appointment linked
-        const apt = await createLegacyAppointment({
-          start_time: start,
-          end_time: end,
-          service_id: serviceId,
-          professional_id: professionalId || null,
-          package_appointment_id: pa.id,
-          notes: row.notes || `Sessão ${i + 1}/${total} — ${derivedPkgName}`,
-        });
+      const { data: insertedPas, error: paBulkErr } = await supabase
+        .from('package_appointments')
+        .insert(paRows.map((r) => r.paInsert))
+        .select();
+      if (paBulkErr) throw paBulkErr;
 
-        // Link back
-        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pa.id);
+      const results = await Promise.all(
+        paRows.map(async (r, idx) => {
+          const pa = insertedPas![idx];
+          const apt = await createLegacyAppointment({
+            start_time: r.start!,
+            end_time: r.end!,
+            service_id: serviceId,
+            professional_id: professionalId || null,
+            package_appointment_id: pa.id,
+            notes: r.row.notes || `Sessão ${r.index + 1}/${total} — ${derivedPkgName}`,
+          });
+          return { pa, apt, row: r.row, index: r.index };
+        })
+      );
 
-        // Per-session financial (optional)
+      // Marca todas como completed + linka appointment_id
+      await Promise.all(
+        results.map(({ pa, apt }) =>
+          supabase
+            .from('package_appointments')
+            .update({ status: 'completed', appointment_id: apt.id })
+            .eq('id', pa.id)
+        )
+      );
+
+      // Lançamentos financeiros por sessão (opcional)
+      for (const { row, apt, index } of results) {
         const amt = parseBrazilianCurrency(row.amount_paid);
         if (amt > 0) {
           await createFinancialEntry({
             amount: amt,
             payment_date: row.payment_date || row.date,
-            description: `Sessão ${i + 1}/${total} — ${derivedPkgName} (Histórico)`,
+            description: `Sessão ${index + 1}/${total} — ${derivedPkgName} (Histórico)`,
             appointment_id: apt.id,
           });
         }
@@ -772,11 +816,29 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
 
       await invalidateAll();
-      toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);
+      toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`, { id: toastId });
       resetPackage();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || 'Falha ao cadastrar pacote histórico');
+      // Rollback: apaga pacote inteiro (cascata cuida das PAs e appointments
+      // vinculados) para não deixar "1/N realizada" fantasma.
+      if (createdPkgId) {
+        try {
+          const { data: pas } = await supabase
+            .from('package_appointments')
+            .select('appointment_id')
+            .eq('package_id', createdPkgId);
+          const aptIds = (pas || []).map((p: any) => p.appointment_id).filter(Boolean);
+          if (aptIds.length > 0) {
+            await supabase.from('appointments').delete().in('id', aptIds);
+          }
+          await supabase.from('package_appointments').delete().eq('package_id', createdPkgId);
+          await supabase.from('service_packages').delete().eq('id', createdPkgId);
+        } catch (rbErr) {
+          console.error('[LegacyHistory] rollback pkg error', rbErr);
+        }
+      }
+      toast.error(e.message || 'Falha ao cadastrar pacote histórico', { id: toastId });
     } finally {
       setSubmitting(false);
     }
@@ -1240,6 +1302,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 existingPackageOptions={existingPackageOptions}
                 existingPackageAvailable={existingPackageAvailableCount}
                 linkedSessions={existingPackageLinkedSessions}
+                pendingSessions={existingPackagePendingSessions}
+                services={services}
+                selectedServiceName={selectedService?.name}
                 onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
             </TabsContent>
@@ -1425,6 +1490,9 @@ interface PackageFormProps {
   existingPackageOptions: Array<{ value: string; label: string; sublabel?: string }>;
   existingPackageAvailable: number;
   linkedSessions: any[];
+  pendingSessions?: any[];
+  services?: Array<{ id: string; name: string }>;
+  selectedServiceName?: string;
   onRequestUndoLink: (packageAppointmentId: string) => void;
 }
 
@@ -1437,7 +1505,8 @@ function PackageForm(props: PackageFormProps) {
     linkExistingPackage, setLinkExistingPackage,
     existingPackageId, setExistingPackageId,
     existingPackageOptions, existingPackageAvailable,
-    linkedSessions, onRequestUndoLink,
+    linkedSessions, pendingSessions = [], services = [], selectedServiceName,
+    onRequestUndoLink,
   } = props;
 
   const filled = pkgSessions.filter((r) => r.date && r.time).length;
@@ -1539,11 +1608,29 @@ function PackageForm(props: PackageFormProps) {
           </Button>
         </div>
 
-        {pkgSessions.map((row, i) => (
+        {pkgSessions.map((row, i) => {
+          // Rótulo do serviço da etapa (para sequencial vinculado, usa a PA pendente na posição i)
+          let stepLabel: string | null = null;
+          if (kind === 'sequential') {
+            if (linkExistingPackage) {
+              const pa = pendingSessions[i];
+              const svcId = pa?.service_id;
+              const svc = svcId ? services.find((s) => s.id === svcId) : null;
+              stepLabel = svc?.name || selectedServiceName || null;
+            } else {
+              stepLabel = selectedServiceName || null;
+            }
+          }
+          return (
           <div key={row.id} className="grid grid-cols-12 gap-2 p-2 rounded border bg-muted/20">
             <div className="col-span-1 flex items-center justify-center">
               <Badge variant="outline" className="text-[10px]">#{i + 1}</Badge>
             </div>
+            {stepLabel && (
+              <div className="col-span-12 -mt-1 -mb-1">
+                <span className="text-[10px] font-medium text-primary">{stepLabel}</span>
+              </div>
+            )}
             <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>
               <Label className="text-[10px]">Data</Label>
               <Input type="date" value={row.date} onChange={(e) => updateSession(row.id, { date: e.target.value })} className="h-8 text-xs" />
@@ -1570,7 +1657,8 @@ function PackageForm(props: PackageFormProps) {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {!linkExistingPackage && (
           <p className="text-[10px] text-muted-foreground">

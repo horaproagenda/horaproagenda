@@ -1490,6 +1490,9 @@ interface PackageFormProps {
   existingPackageOptions: Array<{ value: string; label: string; sublabel?: string }>;
   existingPackageAvailable: number;
   linkedSessions: any[];
+  pendingSessions?: any[];
+  services?: Array<{ id: string; name: string }>;
+  selectedServiceName?: string;
   onRequestUndoLink: (packageAppointmentId: string) => void;
 }
 
@@ -1502,7 +1505,8 @@ function PackageForm(props: PackageFormProps) {
     linkExistingPackage, setLinkExistingPackage,
     existingPackageId, setExistingPackageId,
     existingPackageOptions, existingPackageAvailable,
-    linkedSessions, onRequestUndoLink,
+    linkedSessions, pendingSessions = [], services = [], selectedServiceName,
+    onRequestUndoLink,
   } = props;
 
   const filled = pkgSessions.filter((r) => r.date && r.time).length;

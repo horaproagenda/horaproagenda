@@ -184,8 +184,14 @@ function checkCacheFreshness(queryClient?: QueryClient): HealthCheckItem {
   if (!queryClient) return { id: 'cache', label: 'Cache React Query', status: 'skipped', durationMs: 0 };
   const queries = queryClient.getQueryCache().getAll();
   const stale = queries.filter((q) => q.isStale()).length;
-  const errored = queries.filter((q) => q.state.status === 'error').length;
-  if (errored > 0) return { id: 'cache', label: 'Cache React Query', status: 'fail', durationMs: 0, detail: `${errored} query(ies) em erro`, fixable: true };
+  // Só considera queries em erro que ainda estão ATIVAS (montadas na tela).
+  // Queries antigas em erro (rotas desmontadas) não devem disparar auto-heal em loop.
+  const activeErrored = queries.filter(
+    (q) => q.state.status === 'error' && q.getObserversCount() > 0,
+  ).length;
+  if (activeErrored >= 3) {
+    return { id: 'cache', label: 'Cache React Query', status: 'fail', durationMs: 0, detail: `${activeErrored} query(ies) ativas em erro`, fixable: true };
+  }
   if (stale > queries.length * 0.7 && queries.length > 5) {
     return { id: 'cache', label: 'Cache React Query', status: 'warn', durationMs: 0, detail: `${stale}/${queries.length} stale`, fixable: true };
   }

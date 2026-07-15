@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDurationClock, parseDurationClock, addMinutesToClock } from './duration';
+import { formatDurationClock, parseDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from './duration';
 
 describe('manual HH:mm duration input', () => {
   it('formata minutos como HH:mm para serviços, pacotes, edição e relatórios', () => {
@@ -32,5 +32,21 @@ describe('addMinutesToClock — término calculado no relógio de parede', () =>
   it('retorna vazio para horários inválidos', () => {
     expect(addMinutesToClock('', 30)).toBe('');
     expect(addMinutesToClock('ab:cd', 30)).toBe('');
+  });
+});
+
+describe('getSchedulingDurationMinutes', () => {
+  it('usa a duração da etapa real quando o serviço selecionado guarda a duração total do pacote', () => {
+    const services = [
+      { id: 'avaliacao', duration: 40 },
+      {
+        id: 'pacote-agregado',
+        duration: 760,
+        service_components: [{ service_id: 'avaliacao' }, { service_id: 'procedimento' }],
+      },
+    ];
+
+    expect(getSchedulingDurationMinutes(services[1], services, 60)).toBe(40);
+    expect(addMinutesToClock('10:30', getSchedulingDurationMinutes(services[1], services, 60))).toBe('11:10');
   });
 });

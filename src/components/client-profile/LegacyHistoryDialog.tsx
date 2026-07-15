@@ -1657,7 +1657,8 @@ function PackageForm(props: PackageFormProps) {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {!linkExistingPackage && (
           <p className="text-[10px] text-muted-foreground">

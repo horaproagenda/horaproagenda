@@ -18,7 +18,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditTransactionTypeLabel } from '@/lib/clientCreditPayment';
-import { buildActivePackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
+import { buildActivePackageSessionSequenceMap, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
   clientId: string;

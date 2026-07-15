@@ -572,12 +572,18 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                       (appointment as any)?.service_name_snapshot ||
                       null;
                     const packageName = packageData?.name || (appointment as any)?.package_name_snapshot || null;
-                    // Primary label shown big: package name (if package), else service name, else fallback
+                    // Nome da etapa dentro do pacote (ex.: "Avaliação", "Aplicação Axila+Virilha").
+                    // Em pacote sequencial cada etapa tem um serviço próprio; mostramos esse serviço
+                    // como rótulo principal para o profissional saber o que foi/será realizado.
+                    const stepServiceName = isPackage
+                      ? (appointment.service?.name || (appointment as any)?.service_name_snapshot || null)
+                      : null;
+                    // Primary label: para pacote mostra o serviço da etapa; senão o nome do serviço.
                     const primaryLabel = isPackage
-                      ? (packageName || serviceName || 'Pacote (registro removido)')
+                      ? (stepServiceName || packageName || 'Pacote (registro removido)')
                       : (serviceName || 'Atendimento');
-                    // Secondary line: indicates it is a package entry
-                    const secondaryLabel = isPackage ? 'Pacote' : null;
+                    // Secondary line: nome do pacote (contexto) quando for etapa de pacote.
+                    const secondaryLabel = isPackage ? (packageName ? `Pacote: ${packageName}` : 'Pacote') : null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
                     const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));

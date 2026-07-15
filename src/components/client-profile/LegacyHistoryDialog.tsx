@@ -28,6 +28,7 @@ import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useClientPackages } from '@/hooks/useClientPackages';
+import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 

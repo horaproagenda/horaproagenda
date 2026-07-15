@@ -29,6 +29,9 @@ interface PackageAppointmentDetail {
   package_id: string;
   session_number: number;
   original_session_number?: number;
+  sequence_order?: number | null;
+  service_id?: string | null;
+  service?: { id: string; name: string } | null;
   status: string;
   scheduled_date: string | null;
   appointment_id: string | null;
@@ -37,6 +40,7 @@ interface PackageAppointmentDetail {
     start_time: string;
     end_time: string;
     status: string;
+    service?: { id: string; name: string } | null;
   } | null;
 }
 

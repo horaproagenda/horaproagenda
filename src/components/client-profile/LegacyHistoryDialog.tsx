@@ -1649,15 +1649,20 @@ function PackageForm(props: PackageFormProps) {
         </div>
 
         {pkgSessions.map((row, i) => {
-          // Rótulo do serviço da etapa (para sequencial vinculado, usa a PA pendente na posição i)
+          // Rótulo do serviço da etapa (nome + duração), sempre exibido em sequencial
           let stepLabel: string | null = null;
+          let stepDurationMin: number | null = null;
           if (kind === 'sequential') {
             if (linkExistingPackage) {
-              const pa = pendingSessions[i];
-              const svcId = pa?.service_id;
-              const svc = svcId ? services.find((s) => s.id === svcId) : null;
+              const pa: any = pendingSessions[i];
+              // Prioridade: PA.service_id > template step service > serviço base
+              const svcId = pa?.resolvedServiceId || pa?.service_id || pa?.templateStep?.service_id;
+              const svc = svcId ? services.find((s: any) => s.id === svcId) : null;
               stepLabel = svc?.name || selectedServiceName || null;
+              stepDurationMin = (svc as any)?.duration ?? null;
             } else {
+              // Novo pacote sequencial cadastrado via histórico — todas as etapas
+              // usam o serviço base selecionado (não há template).
               stepLabel = selectedServiceName || null;
             }
           }
@@ -1667,8 +1672,11 @@ function PackageForm(props: PackageFormProps) {
               <Badge variant="outline" className="text-[10px]">#{i + 1}</Badge>
             </div>
             {stepLabel && (
-              <div className="col-span-12 -mt-1 -mb-1">
+              <div className="col-span-12 -mt-1 -mb-1 flex items-center gap-2">
                 <span className="text-[10px] font-medium text-primary">{stepLabel}</span>
+                {stepDurationMin != null && (
+                  <span className="text-[10px] text-muted-foreground">· {stepDurationMin}min</span>
+                )}
               </div>
             )}
             <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>

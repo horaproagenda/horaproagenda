@@ -184,11 +184,12 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     queryKey: ['package_details', selectedPackageId],
     queryFn: async () => {
       if (!selectedPackageId) return null;
-      
+
       const { data, error } = await supabase
         .from('package_appointments')
-        .select(`*, appointment:appointments!package_appointments_appointment_id_fkey(start_time, end_time, status)`)
+        .select(`*, service:services!package_appointments_service_id_fkey(id, name), appointment:appointments!package_appointments_appointment_id_fkey(start_time, end_time, status, service:services(id, name))`)
         .eq('package_id', selectedPackageId)
+        .order('sequence_order', { ascending: true, nullsFirst: false })
         .order('session_number', { ascending: true });
 
       if (error) throw error;

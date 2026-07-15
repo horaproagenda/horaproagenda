@@ -686,6 +686,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     const derivedPkgName = `${selectedService?.name || 'Pacote'} — ${total} sessões`;
 
     setSubmitting(true);
+    const toastId = toast.loading(`Cadastrando pacote com ${filledSessions.length} sessão(ões)…`);
+    let createdPkgId: string | null = null;
     try {
       // 1. Create service_package
       const { data: { user } } = await supabase.auth.getUser();

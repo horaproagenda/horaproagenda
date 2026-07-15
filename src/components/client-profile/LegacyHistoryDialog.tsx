@@ -638,9 +638,16 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           const pending = pendingList[i];
           const start = buildLocalISO(row.date, row.time);
           if (!start) return null;
-          const dur = parseInt(row.duration) || pkgDuration;
+          // Duração: prioriza a linha, senão o serviço do template step, senão pkgDuration
+          const tplStep: any = (pending as any).templateStep || null;
+          const tplStepService = tplStep?.service_id
+            ? services.find((s: any) => s.id === tplStep.service_id)
+            : null;
+          const stepDefaultDur = tplStepService?.duration ?? pkgDuration;
+          const dur = parseInt(row.duration) || stepDefaultDur;
           const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-          const stepServiceId = pending.service_id || pkgServiceId;
+          // service_id: PA existente > template step > serviço base do pacote
+          const stepServiceId = (pending as any).resolvedServiceId || pending.service_id || tplStep?.service_id || pkgServiceId;
 
           const apt = await createLegacyAppointment({
             start_time: start,

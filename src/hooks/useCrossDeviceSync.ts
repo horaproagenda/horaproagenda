@@ -107,9 +107,17 @@ export function useCrossDeviceSync() {
     // Garante que ao abrir o app em um novo celular/notebook/navegador, os
     // dados mais recentes do servidor sejam baixados antes da UI renderizar
     // qualquer valor obsoleto vindo de cache local.
-    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+    // 5. Login / refresh de sessão -> revalida com o throttle padrão.
+    // SIGNED_IN / TOKEN_REFRESHED podem disparar várias vezes por minuto
+    // (auto-refresh do Supabase, foco de aba), então NÃO usam `force`
+    // para evitar refetch global em loop que trava a UI.
+    let lastAuthKey = '';
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        invalidateAll(`auth:${event}`, { force: true });
+        const key = `${event}:${session?.access_token?.slice(-16) ?? ''}`;
+        if (key === lastAuthKey) return; // mesmo token, ignora
+        lastAuthKey = key;
+        invalidateAll(`auth:${event}`);
       }
       if (event === 'SIGNED_OUT') {
         queryClient.clear();

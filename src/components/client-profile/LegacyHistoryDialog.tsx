@@ -1302,6 +1302,9 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 existingPackageOptions={existingPackageOptions}
                 existingPackageAvailable={existingPackageAvailableCount}
                 linkedSessions={existingPackageLinkedSessions}
+                pendingSessions={existingPackagePendingSessions}
+                services={services}
+                selectedServiceName={selectedService?.name}
                 onRequestUndoLink={(id) => setConfirmUnlinkId(id)}
               />
             </TabsContent>

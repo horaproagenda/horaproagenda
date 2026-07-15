@@ -73,7 +73,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series';
+  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series' | 'sibling';
   message: string;
   appointment?: Appointment;
 }
@@ -754,52 +754,61 @@ export function NewAppointmentDialog({
   // Check conflicts for auto-scheduled dates and suggest alternatives
   const previewDateConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
     if (!autoScheduleEnabled || editablePreviewDates.length === 0) return [];
-    
-    return editablePreviewDates.map((previewDate, index) => {
+
+    // Pré-calcula início/fim de cada sessão para detectar choques internos
+    // (uma etapa do pacote agendada em cima da outra) além dos conflitos
+    // externos (agenda, ausências). Sem isso, o formulário deixava passar
+    // colisões dentro da própria série e o backend rejeitava depois.
+    const ranges = editablePreviewDates.map((previewDate, index) => {
       const duration = serviceType === 'service'
         ? currentAppointmentDuration
         : getPackageStepDuration(index);
       const endTime = new Date(previewDate);
       endTime.setMinutes(endTime.getMinutes() + duration);
-      
+      return { start: previewDate, end: endTime, duration };
+    });
+
+    return ranges.map(({ start: previewDate, end: endTime, duration }, index) => {
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
-      
+
+      // Sibling collisions dentro da própria série
+      ranges.forEach((other, otherIndex) => {
+        if (otherIndex === index) return;
+        const overlaps = previewDate < other.end && endTime > other.start;
+        if (!overlaps) return;
+        dateConflicts.push({
+          type: 'sibling',
+          message: `Conflita com a sessão ${otherIndex + 1} (${format(other.start, 'dd/MM HH:mm')})`,
+        });
+      });
+
       // Find alternative if there are conflicts
       let suggestedDate: Date | null = null;
+      const slotIsFree = (candidate: Date) => {
+        const candidateEnd = new Date(candidate);
+        candidateEnd.setMinutes(candidateEnd.getMinutes() + duration);
+        if (checkConflictsForDateTime(candidate, candidateEnd).length > 0) return false;
+        return !ranges.some((other, otherIndex) => {
+          if (otherIndex === index) return false;
+          return candidate < other.end && candidateEnd > other.start;
+        });
+      };
+
       if (dateConflicts.length > 0) {
-        // Try to find an available slot on the same day first
         const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
-        
-        // Try next slots on the same day
         for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
           const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
-          const testEnd = new Date(testDate);
-          testEnd.setMinutes(testEnd.getMinutes() + duration);
-          
-          if (checkConflictsForDateTime(testDate, testEnd).length === 0) {
-            suggestedDate = testDate;
-            break;
-          }
+          if (slotIsFree(testDate)) { suggestedDate = testDate; break; }
         }
-        
-        // If no slot available on the same day, try next day at the same time
         if (!suggestedDate) {
           let tryDate = addDays(previewDate, 1);
           for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-            if (isWorkDay(tryDate)) {
-              const testEnd = new Date(tryDate);
-              testEnd.setMinutes(testEnd.getMinutes() + duration);
-              
-              if (checkConflictsForDateTime(tryDate, testEnd).length === 0) {
-                suggestedDate = tryDate;
-                break;
-              }
-            }
+            if (isWorkDay(tryDate) && slotIsFree(tryDate)) { suggestedDate = tryDate; break; }
             tryDate = addDays(tryDate, 1);
           }
         }
       }
-      
+
       return { index, conflicts: dateConflicts, suggestedDate };
     });
   }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone]);

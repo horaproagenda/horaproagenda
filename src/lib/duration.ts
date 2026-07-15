@@ -14,6 +14,42 @@ export function parseDurationClock(value: string): number | null {
   return hours * 60 + mins;
 }
 
+export type SchedulingDurationService = {
+  id?: string | null;
+  duration?: number | null;
+  service_components?: Array<{ service_id?: string | null }> | null;
+};
+
+/**
+ * Resolve a duração real de um agendamento. Alguns serviços usados como etapa
+ * de pacote/kit guardam a duração total do conjunto (ex.: 760 min) em vez da
+ * duração da aplicação atual. Quando isso acontece, usa a primeira etapa real
+ * cadastrada para evitar término absurdo como 10:30 → 23:10.
+ */
+export function getSchedulingDurationMinutes(
+  service: SchedulingDurationService | null | undefined,
+  services: SchedulingDurationService[] = [],
+  fallbackMinutes = 60,
+): number {
+  const ownDuration = Number(service?.duration);
+  const safeFallback = Number.isFinite(fallbackMinutes) && fallbackMinutes > 0 ? fallbackMinutes : 60;
+  const components = Array.isArray(service?.service_components) ? service.service_components : [];
+  const looksLikeAggregateDuration = components.length > 0 && Number.isFinite(ownDuration) && ownDuration > 8 * 60;
+
+  if (looksLikeAggregateDuration) {
+    const firstComponentId = components.find((component) => component?.service_id)?.service_id;
+    const firstComponent = firstComponentId
+      ? services.find((candidate) => candidate.id === firstComponentId)
+      : null;
+    const componentDuration = Number(firstComponent?.duration);
+    if (Number.isFinite(componentDuration) && componentDuration > 0 && componentDuration <= 8 * 60) {
+      return componentDuration;
+    }
+  }
+
+  return Number.isFinite(ownDuration) && ownDuration > 0 ? ownDuration : safeFallback;
+}
+
 /**
  * Soma minutos a um horário "HH:mm" e devolve o horário resultante como "HH:mm"
  * (relógio de parede 24h). Independe de fuso horário — evita bugs em que a

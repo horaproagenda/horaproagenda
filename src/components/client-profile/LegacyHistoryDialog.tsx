@@ -1580,6 +1580,12 @@ function PackageForm(props: PackageFormProps) {
             Vincular a um pacote {kind === 'sequential' ? 'sequencial' : 'comum'} já cadastrado do cliente
           </Label>
         </div>
+        {!linkExistingPackage && existingPackageOptions.length > 0 && (
+          <div className="rounded border border-warning/50 bg-warning/10 p-2 text-[11px] text-warning-foreground">
+            Este cliente já tem {existingPackageOptions.length} pacote{existingPackageOptions.length > 1 ? 's' : ''} {kind === 'sequential' ? 'sequencial' : 'comum'} com sessões disponíveis.
+            Vincule as sessões realizadas ao pacote existente para evitar cadastrar uma venda duplicada.
+          </div>
+        )}
         {linkExistingPackage && (
           <div>
             <SearchableSelect

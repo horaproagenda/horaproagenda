@@ -816,11 +816,29 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
 
       await invalidateAll();
-      toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`);
+      toast.success(`Pacote ${kind === 'sequential' ? 'sequencial' : 'comum'} histórico cadastrado!`, { id: toastId });
       resetPackage();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || 'Falha ao cadastrar pacote histórico');
+      // Rollback: apaga pacote inteiro (cascata cuida das PAs e appointments
+      // vinculados) para não deixar "1/N realizada" fantasma.
+      if (createdPkgId) {
+        try {
+          const { data: pas } = await supabase
+            .from('package_appointments')
+            .select('appointment_id')
+            .eq('package_id', createdPkgId);
+          const aptIds = (pas || []).map((p: any) => p.appointment_id).filter(Boolean);
+          if (aptIds.length > 0) {
+            await supabase.from('appointments').delete().in('id', aptIds);
+          }
+          await supabase.from('package_appointments').delete().eq('package_id', createdPkgId);
+          await supabase.from('service_packages').delete().eq('id', createdPkgId);
+        } catch (rbErr) {
+          console.error('[LegacyHistory] rollback pkg error', rbErr);
+        }
+      }
+      toast.error(e.message || 'Falha ao cadastrar pacote histórico', { id: toastId });
     } finally {
       setSubmitting(false);
     }

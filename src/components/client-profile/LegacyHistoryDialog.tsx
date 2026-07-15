@@ -215,12 +215,42 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     [selectedExistingPackage]
   );
 
+  // Template do pacote selecionado — fonte da verdade para a ordem dos serviços
+  // (nome, duração) em pacote sequencial. Package_appointments podem ter service_id
+  // faltando/errado (sobretudo em pacotes criados por boleto parcelado antigo);
+  // por isso reconciliamos com os steps do template ordenados por sequence_order.
+  const selectedExistingTemplate = useMemo(() => {
+    const tplId = (selectedExistingPackage as any)?.template_id;
+    if (!tplId) return null;
+    return (packageTemplates || []).find((t: any) => t.id === tplId) || null;
+  }, [packageTemplates, selectedExistingPackage]);
+
+  const selectedExistingTemplateSteps = useMemo(() => {
+    const steps = (selectedExistingTemplate as any)?.steps || [];
+    return [...steps].sort((a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0));
+  }, [selectedExistingTemplate]);
+
   const existingPackagePendingSessions = useMemo(() => {
     if (!selectedExistingPackage) return [] as any[];
+    const sortedTplSteps = selectedExistingTemplateSteps;
     return ((selectedExistingPackage as any).appointments || [])
       .filter((s: any) => s.status !== 'completed' && s.status !== 'missed')
-      .sort((a: any, b: any) => (a.sequence_order || a.session_number) - (b.sequence_order || b.session_number));
-  }, [selectedExistingPackage]);
+      .sort((a: any, b: any) => {
+        const ao = Number(a.sequence_order ?? a.session_number ?? 0);
+        const bo = Number(b.sequence_order ?? b.session_number ?? 0);
+        if (ao !== bo) return ao - bo;
+        return Number(a.session_number ?? 0) - Number(b.session_number ?? 0);
+      })
+      .map((pa: any) => {
+        // Reconcile service_id/duration usando o template step correspondente,
+        // caso a PA esteja sem service_id ou tenha sido criada fora de ordem.
+        const pos = Number(pa.sequence_order ?? pa.session_number ?? 0);
+        const tplStep = pos > 0 ? sortedTplSteps[pos - 1] : null;
+        const resolvedServiceId = pa.service_id || tplStep?.service_id || null;
+        return { ...pa, resolvedServiceId, templateStep: tplStep || null };
+      });
+  }, [selectedExistingPackage, selectedExistingTemplateSteps]);
+
 
   // Total realmente disponível para vincular (inclui sessões virtuais quando o
   // pacote foi criado sem gerar package_appointments — comum em boleto parcelado).

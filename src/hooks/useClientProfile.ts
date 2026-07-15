@@ -782,7 +782,11 @@ export function useClientProfile(clientId: string) {
           const fallbackKey = packageNameSnapshot || notesPackageMatch?.[1]?.trim();
           if (packageId) {
             if (seenPackageIds.has(packageId)) continue;
-            if (!isRetroactiveLegacy && appointmentSaleIds.has(packageId)) continue;
+            // Sempre esconde sessões vinculadas a um pacote que já foi vendido
+            // (o pagamento único da venda é a fonte da verdade). Antes o flag
+            // `isRetroactiveLegacy` fazia bypass e criava um "pagamento
+            // fantasma" ao vincular sessões realizadas via histórico antigo.
+            if (appointmentSaleIds.has(packageId)) continue;
             seenPackageIds.add(packageId);
           } else if (fallbackKey) {
             const key = `name:${fallbackKey.toLowerCase()}`;

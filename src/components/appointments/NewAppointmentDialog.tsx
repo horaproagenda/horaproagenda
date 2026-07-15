@@ -40,7 +40,7 @@ import { Badge } from '@/components/ui/badge';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
+import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
@@ -229,9 +229,6 @@ export function NewAppointmentDialog({
   // Look for package in both templates and client packages (paid packages)
   const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);
-  const currentDuration = serviceType === 'service' 
-    ? (selectedServiceData?.duration || manualDuration) 
-    : (selectedPackageData?.duration || manualDuration);
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);
@@ -260,11 +257,6 @@ export function NewAppointmentDialog({
   const selectedPackageAvailability = existingClientPackage
     ? getPackageAvailabilitySummary(existingClientPackage)
     : null;
-  const existingPackageHasStarted = existingClientPackage
-    ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
-      ?? existingClientPackage.sessions_scheduled > 0
-    : false;
-
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
     if (open) {
@@ -398,8 +390,11 @@ export function NewAppointmentDialog({
       if (sessions?.length) {
         const pending = [...sessions]
           .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
-          .find((s) => !s.appointment_id && s.status === 'pending');
-        const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
+          .find((s) => !s.appointment_id && !['completed', 'missed'].includes(s.status));
+        const nextIndex = pending
+          ? Math.max(0, Number(pending.sequence_order || pending.session_number || 1) - 1)
+          : Math.min(sessions.length, Math.max(0, packageSequenceSteps.length - 1));
+        const svcId = pending?.service_id || packageSequenceSteps[nextIndex]?.service_id || packageSequenceSteps[0]?.service_id;
         return svcId ? services.find((s) => s.id === svcId) || null : null;
       }
       const svcId = packageSequenceSteps[0]?.service_id;
@@ -409,17 +404,60 @@ export function NewAppointmentDialog({
     return svcId ? services.find((s) => s.id === svcId) || null : null;
   }, [existingClientPackage, selectedPackageData, packageSequenceSteps, services]);
 
+  const nextPackageStepIndex = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type !== 'sequential') return 0;
+
+    const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+    if (!sessions?.length) return 0;
+
+    const pending = [...sessions]
+      .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
+      .find((session) => !session.appointment_id && !['completed', 'missed'].includes(session.status));
+
+    if (!pending) {
+      return Math.min(sessions.length, Math.max(0, packageSequenceSteps.length - 1));
+    }
+
+    const order = Number(pending?.sequence_order || pending?.session_number || 1);
+    return Math.max(0, order - 1);
+  }, [existingClientPackage, packageSequenceSteps.length, selectedPackageData]);
+
+  const autoScheduleSessionCount = useMemo(() => {
+    if (!selectedPackageData) return 0;
+    if (existingClientPackage) {
+      return Math.max(0, selectedPackageAvailability?.schedulableSessions ?? packageRemainingSessions);
+    }
+    return Math.max(0, Number(selectedPackageData.total_sessions || 1));
+  }, [existingClientPackage, packageRemainingSessions, selectedPackageAvailability?.schedulableSessions, selectedPackageData]);
+
+  const getPackageStepDuration = useCallback((relativeIndex = 0) => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (!packageData) return manualDuration || 60;
+
+    if (packageData.package_type === 'sequential') {
+      const absoluteIndex = nextPackageStepIndex + relativeIndex;
+      const stepServiceId = packageSequenceSteps[absoluteIndex]?.service_id
+        || (relativeIndex === 0 ? (nextPackageStepService as any)?.id : null)
+        || (packageData as any)?.service_id;
+      const stepService = stepServiceId ? services.find((service) => service.id === stepServiceId) : null;
+      return getSchedulingDurationMinutes(stepService as any, services as any, manualDuration || 60, absoluteIndex);
+    }
+
+    return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);
+  }, [existingClientPackage, manualDuration, nextPackageStepIndex, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
+
+  const currentAppointmentDuration = serviceType === 'service'
+    ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
+    : getPackageStepDuration(0);
+
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
 
     // Para pacote sequencial, a duração de cada agendamento é a duração do
     // serviço da ETAPA atual (Avaliação, Axila+Virilha, etc.) — não a soma
     // do pacote inteiro. Caso contrário, término = 08:00 + 12h40 = 20:40.
-    const isSequential = selectedPackageData?.package_type === 'sequential';
-    const stepDuration = (nextPackageStepService as any)?.duration;
-    const duration = serviceType === 'service'
-      ? (selectedServiceData?.duration || 60)
-      : (isSequential ? (stepDuration || 60) : (selectedPackageData?.duration || 60));
+    const duration = currentAppointmentDuration || 60;
 
     const startTime = createDateTimeInTimeZone(date, time, settings?.timezone);
 
@@ -444,7 +482,7 @@ export function NewAppointmentDialog({
     }
 
     return { startTime, endTime, endLabel: effectiveEndLabel };
-  }, [date, time, endTimeOverride, selectedServiceData, selectedPackageData, serviceType, settings?.timezone]);
+  }, [date, time, endTimeOverride, currentAppointmentDuration, settings?.timezone]);
 
   // Reset end-time override when start time or service/package changes
   useEffect(() => {
@@ -457,7 +495,9 @@ export function NewAppointmentDialog({
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     
     const packageData = existingClientPackage || selectedPackageData;
-    const totalSessions = packageData?.total_sessions || 1;
+    const totalSessions = serviceType === 'package'
+      ? Math.max(1, autoScheduleSessionCount || 1)
+      : packageData?.total_sessions || 1;
     if (totalSessions <= 1) return [];
 
     const workSundays = settings?.work_sundays ?? false;
@@ -467,7 +507,7 @@ export function NewAppointmentDialog({
     let currentDate = appointmentTimes.startTime;
 
     for (let i = 1; i < totalSessions; i++) {
-      const previousStep = packageSequenceSteps[i - 1];
+      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
       // Para pacotes sequenciais, o intervalo ENTRE a etapa i-1 e a etapa i é
       // sempre `previousStep.interval_after_days` (semântica "dias APÓS esta
       // etapa"). Bug anterior usava o intervalo da própria etapa i, o que
@@ -513,7 +553,7 @@ export function NewAppointmentDialog({
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, packageSequenceSteps, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
+  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount, packageSequenceSteps, nextPackageStepIndex, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
 
   // Update preview dates when calculation changes
   useEffect(() => {
@@ -715,11 +755,10 @@ export function NewAppointmentDialog({
   const previewDateConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
     if (!autoScheduleEnabled || editablePreviewDates.length === 0) return [];
     
-    const duration = serviceType === 'service' 
-      ? (selectedServiceData?.duration || 60) 
-      : (selectedPackageData?.duration || 60);
-    
     return editablePreviewDates.map((previewDate, index) => {
+      const duration = serviceType === 'service'
+        ? currentAppointmentDuration
+        : getPackageStepDuration(index);
       const endTime = new Date(previewDate);
       endTime.setMinutes(endTime.getMinutes() + duration);
       
@@ -763,7 +802,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, selectedPackageData, timeSlots, settings?.timezone]);
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone]);
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
@@ -960,13 +999,17 @@ export function NewAppointmentDialog({
       }
 
       const datesToCheck = repeatServiceEnabled ? editableServiceDates : editablePreviewDates;
-      const duration = (serviceType === 'service' ? selectedServiceData?.duration : selectedPackageData?.duration) || 60;
       const freshAppointments = (queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[];
 
       const conflictingSessions: number[] = [];
       const seen: { start: Date; end: Date }[] = [];
       for (let i = 0; i < datesToCheck.length; i++) {
         const start = datesToCheck[i];
+        const duration = repeatServiceEnabled
+          ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, 60)
+          : serviceType === 'package'
+            ? getPackageStepDuration(i)
+            : currentAppointmentDuration;
         const end = new Date(start.getTime() + duration * 60_000);
         // Sibling collision within this series
         const siblingCollision = seen.some((s) => start < s.end && end > s.start);
@@ -1012,7 +1055,7 @@ export function NewAppointmentDialog({
       return;
     }
 
-    const duration = serviceOrPackage.duration || 60;
+    const duration = currentAppointmentDuration || serviceOrPackage.duration || 60;
     const startTime = appointmentTimes?.startTime ?? createDateTimeInTimeZone(date, time, settings?.timezone);
 
     // Honor user-edited end time when valid; otherwise compute from duration
@@ -1049,9 +1092,11 @@ export function NewAppointmentDialog({
           clientPackageId = newPackage.id;
         }
 
-        // Create the first/next appointment
-        // For packages, use the package's service_id if available, otherwise null
-        const firstSequenceStep = packageSequenceSteps[0];
+        // Create the first/next appointment.
+        // Existing sequential packages may already have sessions linked by the
+        // legacy-history flow, so start from the next pending step instead of
+        // always using step 1.
+        const firstSequenceStep = packageSequenceSteps[nextPackageStepIndex];
         const packageServiceId = firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
         
         // Package is only "paid" if it's an existing client package that was purchased
@@ -1079,15 +1124,19 @@ export function NewAppointmentDialog({
           });
         }
 
-        // If auto-schedule is enabled and it's the first appointment (either new package or existing with 0 sessions scheduled)
-        const isFirstAppointment = !existingClientPackage || !existingPackageHasStarted;
+        // If auto-schedule is enabled, create the remaining pending sessions.
+        // This must also work after importing completed sessions via Histórico
+        // Antigo, when the package has already started but still has available
+        // applications to schedule.
         const packageData = existingClientPackage || selectedPackageData;
-        const totalSessions = packageData?.total_sessions || 1;
+        const totalSessions = existingClientPackage
+          ? Math.max(1, autoScheduleSessionCount || 1)
+          : packageData?.total_sessions || 1;
         
         // Get client info for WhatsApp
         const clientData = clients.find(c => c.id === selectedClient);
         
-        if (autoScheduleEnabled && isFirstAppointment && totalSessions > 1 && editablePreviewDates.length > 1) {
+        if (autoScheduleEnabled && totalSessions > 1 && editablePreviewDates.length > 1) {
           const sessionsToCreate = editablePreviewDates.length - 1;
           let createdCount = 0;
           const failedSessions: number[] = [];
@@ -1097,9 +1146,9 @@ export function NewAppointmentDialog({
           for (let i = 1; i <= sessionsToCreate; i++) {
             // Use editable dates instead of calculated dates
             const futureDate = editablePreviewDates[i];
-            const futureServiceId = packageSequenceSteps[i]?.service_id || packageServiceId;
+            const futureServiceId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
             const futureService = services.find(service => service.id === futureServiceId);
-            const futureDuration = futureService?.duration || duration;
+            const futureDuration = getPackageStepDuration(i) || futureService?.duration || duration;
             
             const futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
@@ -2308,7 +2357,7 @@ Até breve! ✨`;
               {selectedPackageData && serviceType === 'package' && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {formatDurationClock(selectedPackageData.duration || 60)} • 
+                    Duração da próxima aplicação: {formatDurationClock(currentAppointmentDuration || 60)} • 
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
@@ -2339,15 +2388,14 @@ Até breve! ✨`;
                     </Alert>
                   )}
 
-                  {/* Show auto-schedule options for new package OR first appointment of existing package */}
-                  {((!existingClientPackage && selectedClient) || 
-                    (existingClientPackage && selectedClient && !existingPackageHasStarted)) && (
+                  {/* Show auto-schedule options for new packages or remaining schedulable sessions */}
+                  {selectedClient && autoScheduleSessionCount > 1 && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="text-sm font-medium">Agendamento Automático</Label>
                           <p className="text-xs text-muted-foreground">
-                            Agendar todas as {existingClientPackage?.total_sessions || selectedPackageData?.total_sessions} sessões automaticamente
+                             Agendar automaticamente {existingClientPackage ? 'as aplicações restantes' : `todas as ${selectedPackageData?.total_sessions} sessões`}
                           </p>
                         </div>
                         <Switch
@@ -2462,7 +2510,7 @@ Até breve! ✨`;
                                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                                           {selectedPackageData?.package_type === 'sequential' && (() => {
                                             const name = resolveSessionServiceLabel({
-                                              index,
+                                              index: nextPackageStepIndex + index,
                                               steps: packageSequenceSteps as any,
                                               services: services as any,
                                               pkg: selectedPackageData as any,

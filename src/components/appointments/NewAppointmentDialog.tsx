@@ -2358,7 +2358,7 @@ Até breve! ✨`;
               {selectedPackageData && serviceType === 'package' && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Duração: {formatDurationClock(selectedPackageData.duration || 60)} • 
+                    Duração da próxima aplicação: {formatDurationClock(currentAppointmentDuration || 60)} • 
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
@@ -2389,15 +2389,14 @@ Até breve! ✨`;
                     </Alert>
                   )}
 
-                  {/* Show auto-schedule options for new package OR first appointment of existing package */}
-                  {((!existingClientPackage && selectedClient) || 
-                    (existingClientPackage && selectedClient && !existingPackageHasStarted)) && (
+                  {/* Show auto-schedule options for new packages or remaining schedulable sessions */}
+                  {selectedClient && autoScheduleSessionCount > 1 && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="text-sm font-medium">Agendamento Automático</Label>
                           <p className="text-xs text-muted-foreground">
-                            Agendar todas as {existingClientPackage?.total_sessions || selectedPackageData?.total_sessions} sessões automaticamente
+                             Agendar automaticamente {existingClientPackage ? 'as aplicações restantes' : `todas as ${selectedPackageData?.total_sessions} sessões`}
                           </p>
                         </div>
                         <Switch

@@ -1608,11 +1608,29 @@ function PackageForm(props: PackageFormProps) {
           </Button>
         </div>
 
-        {pkgSessions.map((row, i) => (
+        {pkgSessions.map((row, i) => {
+          // Rótulo do serviço da etapa (para sequencial vinculado, usa a PA pendente na posição i)
+          let stepLabel: string | null = null;
+          if (kind === 'sequential') {
+            if (linkExistingPackage) {
+              const pa = pendingSessions[i];
+              const svcId = pa?.service_id;
+              const svc = svcId ? services.find((s) => s.id === svcId) : null;
+              stepLabel = svc?.name || selectedServiceName || null;
+            } else {
+              stepLabel = selectedServiceName || null;
+            }
+          }
+          return (
           <div key={row.id} className="grid grid-cols-12 gap-2 p-2 rounded border bg-muted/20">
             <div className="col-span-1 flex items-center justify-center">
               <Badge variant="outline" className="text-[10px]">#{i + 1}</Badge>
             </div>
+            {stepLabel && (
+              <div className="col-span-12 -mt-1 -mb-1">
+                <span className="text-[10px] font-medium text-primary">{stepLabel}</span>
+              </div>
+            )}
             <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>
               <Label className="text-[10px]">Data</Label>
               <Input type="date" value={row.date} onChange={(e) => updateSession(row.id, { date: e.target.value })} className="h-8 text-xs" />

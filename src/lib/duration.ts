@@ -30,6 +30,7 @@ export function getSchedulingDurationMinutes(
   service: SchedulingDurationService | null | undefined,
   services: SchedulingDurationService[] = [],
   fallbackMinutes = 60,
+  componentIndex?: number,
 ): number {
   const ownDuration = Number(service?.duration);
   const safeFallback = Number.isFinite(fallbackMinutes) && fallbackMinutes > 0 ? fallbackMinutes : 60;
@@ -37,11 +38,15 @@ export function getSchedulingDurationMinutes(
   const looksLikeAggregateDuration = components.length > 0 && Number.isFinite(ownDuration) && ownDuration > 8 * 60;
 
   if (looksLikeAggregateDuration) {
-    const firstComponentId = components.find((component) => component?.service_id)?.service_id;
-    const firstComponent = firstComponentId
-      ? services.find((candidate) => candidate.id === firstComponentId)
+    const indexedComponentId = Number.isInteger(componentIndex) && componentIndex! >= 0
+      ? components[componentIndex!]?.service_id
       : null;
-    const componentDuration = Number(firstComponent?.duration);
+    const fallbackComponentId = components.find((component) => component?.service_id)?.service_id;
+    const componentId = indexedComponentId || fallbackComponentId;
+    const componentService = componentId
+      ? services.find((candidate) => candidate.id === componentId)
+      : null;
+    const componentDuration = Number(componentService?.duration);
     if (Number.isFinite(componentDuration) && componentDuration > 0 && componentDuration <= 8 * 60) {
       return componentDuration;
     }

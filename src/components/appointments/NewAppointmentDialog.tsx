@@ -257,11 +257,6 @@ export function NewAppointmentDialog({
   const selectedPackageAvailability = existingClientPackage
     ? getPackageAvailabilitySummary(existingClientPackage)
     : null;
-  const existingPackageHasStarted = existingClientPackage
-    ? existingClientPackage.appointments?.some(session => Boolean(session.appointment_id) || ['completed', 'missed'].includes(session.status))
-      ?? existingClientPackage.sessions_scheduled > 0
-    : false;
-
   // Reset form and apply prefilled values when dialog opens
   useEffect(() => {
     if (open) {

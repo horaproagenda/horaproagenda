@@ -18,7 +18,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { getClientCreditTransactionTypeLabel } from '@/lib/clientCreditPayment';
-import { buildActivePackageSessionSequenceMap, getPackageApplicationLabel, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
+import { buildActivePackageSessionSequenceMap, isPackageSessionRealized, sortPackageSessionsByChronologicalSequence } from '@/lib/packageSequence';
 
 interface ClientCreditsTabProps {
   clientId: string;
@@ -29,6 +29,9 @@ interface PackageAppointmentDetail {
   package_id: string;
   session_number: number;
   original_session_number?: number;
+  sequence_order?: number | null;
+  service_id?: string | null;
+  service?: { id: string; name: string } | null;
   status: string;
   scheduled_date: string | null;
   appointment_id: string | null;
@@ -37,6 +40,7 @@ interface PackageAppointmentDetail {
     start_time: string;
     end_time: string;
     status: string;
+    service?: { id: string; name: string } | null;
   } | null;
 }
 
@@ -180,11 +184,12 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
     queryKey: ['package_details', selectedPackageId],
     queryFn: async () => {
       if (!selectedPackageId) return null;
-      
+
       const { data, error } = await supabase
         .from('package_appointments')
-        .select(`*, appointment:appointments!package_appointments_appointment_id_fkey(start_time, end_time, status)`)
+        .select(`*, service:services!package_appointments_service_id_fkey(id, name), appointment:appointments!package_appointments_appointment_id_fkey(start_time, end_time, status, service:services(id, name))`)
         .eq('package_id', selectedPackageId)
+        .order('sequence_order', { ascending: true, nullsFirst: false })
         .order('session_number', { ascending: true });
 
       if (error) throw error;
@@ -661,31 +666,45 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 const isCompleted = isPackageSessionRealized(effectiveStatus);
                 const isCancelled = effectiveStatus === 'cancelled';
                 const isScheduled = session.appointment_id && !isCompleted && !isCancelled;
-                
+                const isRestante = session.status === 'pending' && !session.appointment_id;
+
                 const getStatusColor = () => {
                   if (isCompleted) return 'bg-green-500/5 border-green-500/20';
                   if (isCancelled) return 'bg-red-500/5 border-red-500/20';
                   if (isScheduled) return 'bg-blue-500/5 border-blue-500/20';
                   return 'bg-orange-500/5 border-orange-500/20';
                 };
-                
+
+                const serviceName =
+                  session.appointment?.service?.name ||
+                  session.service?.name ||
+                  selectedPackage?.name ||
+                  'Serviço';
+
+                const sequenceNumber = packageSequenceMap.get(session.id);
+                const applicationLabel = isRestante || !sequenceNumber
+                  ? 'Aplicação restante'
+                  : `Aplicação ${sequenceNumber}/${selectedPackage?.total_sessions || '-'}`;
+
                 return (
-                  <div key={session.id} className={`p-2 rounded-lg border flex items-center justify-between ${getStatusColor()}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">
-                        {getPackageApplicationLabel(session as any, selectedPackage?.total_sessions, packageSequenceMap.get(session.id))}
-                      </span>
-                      {session.appointment && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(session.appointment.start_time), "dd/MM HH:mm", { locale: ptBR })}
-                        </span>
-                      )}
+                  <div key={session.id} className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${getStatusColor()}`}>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium truncate">
+                          {applicationLabel} <span className="text-muted-foreground font-normal">·</span> {serviceName}
+                        </div>
+                        {session.appointment && (
+                          <div className="text-[10px] text-muted-foreground">
+                            {format(new Date(session.appointment.start_time), "dd/MM HH:mm", { locale: ptBR })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <Badge 
+                    <Badge
                       variant="outline"
-                      className={`text-[10px] px-1.5 py-0 ${status.className}`}
+                      className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}
                     >
-                      {session.status === 'pending' && !session.appointment_id ? 'Pendente' : status.label}
+                      {isRestante ? 'Pendente' : status.label}
                     </Badge>
                   </div>
                 );

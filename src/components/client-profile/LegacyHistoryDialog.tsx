@@ -210,6 +210,22 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     [existingPackagesForTab, existingPackageId]
   );
 
+  // Se o cliente já tem um pacote (comum/sequencial) com sessões disponíveis,
+  // o fluxo padrão passa a ser VINCULAR — nunca cadastrar um pacote novo, para
+  // evitar duplicar a venda que já foi feita manualmente. O usuário ainda pode
+  // desligar o switch caso realmente queira registrar um pacote diferente.
+  useEffect(() => {
+    if (tab !== 'common' && tab !== 'sequential') return;
+    if (existingPackagesForTab.length === 0) return;
+    if (linkExistingPackage) {
+      if (!existingPackageId) setExistingPackageId(existingPackagesForTab[0].id);
+      return;
+    }
+    setLinkExistingPackage(true);
+    setExistingPackageId(existingPackagesForTab[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, existingPackagesForTab.length]);
+
   const selectedExistingPackageSummary = useMemo(
     () => selectedExistingPackage ? getPackageAvailabilitySummary(selectedExistingPackage as any) : null,
     [selectedExistingPackage]

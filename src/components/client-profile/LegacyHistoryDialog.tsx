@@ -557,14 +557,17 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     const pkgDuration = pkgAny.duration || 60;
     const pkgName = pkgAny.name || 'Pacote';
     const pkgProfessionalId = pkgAny.professional_id || null;
-    // Só aceita profissional escolhido no formulário se o pacote ainda não tem um.
     const effectiveProfessionalId = pkgProfessionalId || professionalId || null;
 
     setSubmitting(true);
+    const toastId = toast.loading(`Vinculando ${filledSessions.length} sessão(ões)…`);
+    // Rastreia PAs criadas/tocadas para permitir rollback se algo falhar.
+    const createdPaIds: string[] = [];
+    const touchedPaIds: string[] = [];
+    const createdAptIds: string[] = [];
     try {
-      // 1) Garante que existem package_appointments suficientes para vincular.
-      //    Pacotes vindos de boleto parcelado ou históricos antigos podem não ter
-      //    gerado registros — nesse caso criamos os pendentes que faltam.
+      // 1) Garante package_appointments suficientes (pacotes de boleto parcelado
+      //    podem não ter gerado registros).
       let pendingList: any[] = [...existingPackagePendingSessions];
       const missing = filledSessions.length - pendingList.length;
       if (missing > 0) {
@@ -590,48 +593,73 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           .insert(toInsert)
           .select();
         if (insErr) throw insErr;
+        (inserted || []).forEach((r: any) => createdPaIds.push(r.id));
         pendingList = [...pendingList, ...(inserted || [])];
       }
 
-      for (let i = 0; i < filledSessions.length; i++) {
-        const row = filledSessions[i];
-        const pending = pendingList[i];
-        const start = buildLocalISO(row.date, row.time);
-        if (!start) continue;
-        const dur = parseInt(row.duration) || pkgDuration;
-        const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
-        const stepServiceId = pending.service_id || pkgServiceId;
+      // 2) Cria os agendamentos PRIMEIRO (paralelizado). Só depois marcamos as
+      //    package_appointments como completed. Isso evita o bug de "1/14
+      //    realizada" fantasma quando o edge function falha no meio.
+      const results = await Promise.all(
+        filledSessions.map(async (row, i) => {
+          const pending = pendingList[i];
+          const start = buildLocalISO(row.date, row.time);
+          if (!start) return null;
+          const dur = parseInt(row.duration) || pkgDuration;
+          const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
+          const stepServiceId = pending.service_id || pkgServiceId;
 
-        const { error: updErr } = await supabase
-          .from('package_appointments')
-          .update({ status: 'completed', scheduled_date: start })
-          .eq('id', pending.id);
-        if (updErr) throw updErr;
+          const apt = await createLegacyAppointment({
+            start_time: start,
+            end_time: end,
+            service_id: stepServiceId,
+            professional_id: effectiveProfessionalId,
+            package_appointment_id: pending.id,
+            notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
+          });
+          createdAptIds.push(apt.id);
+          return { pending, apt, start };
+        })
+      );
 
-        const apt = await createLegacyAppointment({
-          start_time: start,
-          end_time: end,
-          service_id: stepServiceId,
-          professional_id: effectiveProfessionalId,
-          package_appointment_id: pending.id,
-          notes: row.notes || `Sessão ${pending.session_number} — ${pkgName}`,
-        });
-
-        await supabase.from('package_appointments').update({ appointment_id: apt.id }).eq('id', pending.id);
-
-        // Vínculo a pacote com venda já feita: NÃO cria lançamento financeiro
-        // nem preenche amount_paid — a venda do pacote já foi registrada.
-      }
-
+      // 3) Marca as PAs como completed apontando para o apt criado — em lote.
+      await Promise.all(
+        results.filter(Boolean).map(async (r: any) => {
+          const { error: updErr } = await supabase
+            .from('package_appointments')
+            .update({ status: 'completed', scheduled_date: r.start, appointment_id: r.apt.id })
+            .eq('id', r.pending.id);
+          if (updErr) throw updErr;
+          touchedPaIds.push(r.pending.id);
+        })
+      );
 
       await invalidateAll();
       toast.success(
-        `${filledSessions.length} sessão(ões) registrada(s) como realizada(s). ${available - filledSessions.length} continuam disponível(is) para agendamento.`
+        `${filledSessions.length} sessão(ões) vinculada(s). ${available - filledSessions.length} continuam disponíveis.`,
+        { id: toastId }
       );
       resetPackage();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message || 'Falha ao vincular sessões ao pacote');
+      // Rollback best-effort: apaga agendamentos criados e reverte PAs.
+      try {
+        if (createdAptIds.length > 0) {
+          await supabase.from('appointments').delete().in('id', createdAptIds);
+        }
+        if (touchedPaIds.length > 0) {
+          await supabase
+            .from('package_appointments')
+            .update({ status: 'pending', scheduled_date: null, appointment_id: null })
+            .in('id', touchedPaIds);
+        }
+        if (createdPaIds.length > 0) {
+          await supabase.from('package_appointments').delete().in('id', createdPaIds);
+        }
+      } catch (rollbackErr) {
+        console.error('[LegacyHistory] rollback error', rollbackErr);
+      }
+      toast.error(e.message || 'Falha ao vincular sessões ao pacote', { id: toastId });
     } finally {
       setSubmitting(false);
     }

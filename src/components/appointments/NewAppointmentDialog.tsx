@@ -229,9 +229,6 @@ export function NewAppointmentDialog({
   // Look for package in both templates and client packages (paid packages)
   const selectedPackageData = catalogPackages.find(p => p.id === selectedService) 
     || clientPackages.find(p => p.id === selectedService);
-  const currentDuration = serviceType === 'service' 
-    ? (selectedServiceData?.duration || manualDuration) 
-    : (selectedPackageData?.duration || manualDuration);
   const activeProfessionals = professionals.filter(p => p.is_active);
   const activeClients = clients.filter(c => c.is_active);
   const activeRooms = rooms.filter(r => r.is_active);

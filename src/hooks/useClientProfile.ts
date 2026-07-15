@@ -751,7 +751,13 @@ export function useClientProfile(clientId: string) {
         // history — even when the client later bought a related sale for the
         // same service/package. Previously they were shadowed by sales,
         // making retroactive Pix payments invisible.
-        const isRetroactiveLegacy = !!((a as any).payment_date);
+        // Legacy retroactive entries are tagged with a `[Histórico]` prefix in
+        // notes by LegacyHistoryDialog. We cannot rely on `payment_date` alone
+        // because a DB trigger stamps it on every paid appointment, which would
+        // bypass sale-vs-appointment dedup and duplicate every paid sale in
+        // the history.
+        const notesStr = String((a as any).notes || '');
+        const isRetroactiveLegacy = notesStr.startsWith('[Histórico]');
 
         if (!isRetroactiveLegacy && a.service_id && saleLinkedServiceIds.has(a.service_id)) continue;
         if ((a.amount_paid || 0) <= 0) continue;

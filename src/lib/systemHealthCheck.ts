@@ -270,8 +270,13 @@ export async function autoRepair(
           break;
         }
         case 'cache': {
-          await queryClient?.invalidateQueries({ predicate: () => true, refetchType: 'active' });
-          actions.push('Cache invalidado e refetch disparado');
+          // Reexecuta APENAS queries em erro/ativas — evita refetch global que
+          // trava a UI e mantém a percepção de "carregando eterno".
+          await queryClient?.refetchQueries({
+            type: 'active',
+            predicate: (q) => q.state.status === 'error',
+          });
+          actions.push('Queries em erro reexecutadas');
           break;
         }
         case 'sw': {

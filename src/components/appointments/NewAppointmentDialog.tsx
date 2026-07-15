@@ -398,7 +398,7 @@ export function NewAppointmentDialog({
       if (sessions?.length) {
         const pending = [...sessions]
           .sort((a, b) => (a.sequence_order || a.session_number || 0) - (b.sequence_order || b.session_number || 0))
-          .find((s) => !s.appointment_id && s.status === 'pending');
+          .find((s) => !s.appointment_id && !['completed', 'missed'].includes(s.status));
         const svcId = pending?.service_id || packageSequenceSteps[0]?.service_id;
         return svcId ? services.find((s) => s.id === svcId) || null : null;
       }

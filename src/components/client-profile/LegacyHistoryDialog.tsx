@@ -712,6 +712,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .select()
         .single();
       if (pkgErr) throw pkgErr;
+      createdPkgId = pkg.id;
 
       // 2. Cria as PAs como 'pending' e depois cria os appointments em paralelo.
       //    Só marcamos como 'completed' após o agendamento existir — evita PA

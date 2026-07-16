@@ -1087,7 +1087,11 @@ export function NewAppointmentDialog({
           if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
           return start < aEnd && end > aStart;
         });
-        if (siblingCollision || externalCollision || absenceCollision) {
+        // Fora do expediente ou dia fechado devem bloquear o salvar também —
+        // caso contrário o backend rejeita depois com "conflito de horário".
+        const businessHoursIssue = checkBusinessHoursForRange(start, end);
+        const closedDayIssue = !isWorkDay(start);
+        if (siblingCollision || externalCollision || absenceCollision || businessHoursIssue || closedDayIssue) {
           conflictingSessions.push(i + 1);
         }
         seen.push({ start, end });
@@ -1095,7 +1099,7 @@ export function NewAppointmentDialog({
 
       if (conflictingSessions.length > 0) {
         toast.error(
-          `Sessões ${conflictingSessions.join(', ')} têm conflito de horário. Ajuste as datas antes de salvar.`,
+          `Sessões ${conflictingSessions.join(', ')} estão fora do expediente ou em conflito. Ajuste as datas na pré-visualização antes de salvar.`,
           { duration: 8000 },
         );
         return;

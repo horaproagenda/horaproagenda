@@ -176,18 +176,10 @@ export function MinhasPreferenciasSettings() {
               <Label className="text-[11px]">Arrastar e soltar</Label>
               <p className="text-[10px] text-muted-foreground">Mover agendamentos arrastando</p>
             </div>
-            <div className="flex items-center gap-2">
-              {inheritedBadge(prefs?.drag_and_drop_enabled)}
-              <Switch
-                checked={prefs?.drag_and_drop_enabled ?? effective?.drag_and_drop_enabled ?? true}
-                onCheckedChange={(v) => update.mutate({ drag_and_drop_enabled: v })}
-              />
-              {prefs?.drag_and_drop_enabled !== null && prefs?.drag_and_drop_enabled !== undefined && (
-                <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => resetField('drag_and_drop_enabled')}>
-                  <RotateCcw className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+            <Switch
+              checked={prefs?.drag_and_drop_enabled ?? effective?.drag_and_drop_enabled ?? true}
+              onCheckedChange={(v) => update.mutate({ drag_and_drop_enabled: v })}
+            />
           </div>
           <div className="flex items-center justify-between py-1">
             <div>
@@ -197,18 +189,10 @@ export function MinhasPreferenciasSettings() {
               </Label>
               <p className="text-[10px] text-muted-foreground">Marcar como "Atendido" automaticamente</p>
             </div>
-            <div className="flex items-center gap-2">
-              {inheritedBadge(prefs?.auto_complete_appointments)}
-              <Switch
-                checked={prefs?.auto_complete_appointments ?? effective?.auto_complete_appointments ?? false}
-                onCheckedChange={(v) => update.mutate({ auto_complete_appointments: v })}
-              />
-              {prefs?.auto_complete_appointments !== null && prefs?.auto_complete_appointments !== undefined && (
-                <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => resetField('auto_complete_appointments')}>
-                  <RotateCcw className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
+            <Switch
+              checked={prefs?.auto_complete_appointments ?? effective?.auto_complete_appointments ?? false}
+              onCheckedChange={(v) => update.mutate({ auto_complete_appointments: v })}
+            />
           </div>
         </section>
 

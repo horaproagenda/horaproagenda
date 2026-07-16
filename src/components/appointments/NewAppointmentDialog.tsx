@@ -73,7 +73,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series' | 'sibling';
+  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series' | 'sibling' | 'business_hours' | 'closed_day';
   message: string;
   appointment?: Appointment;
 }

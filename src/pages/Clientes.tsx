@@ -105,7 +105,13 @@ const Clientes = () => {
   const handleResume = () => {
     if (savedState?.page) setCurrentPage(savedState.page);
     if (savedState?.search) setSearchTerm(savedState.search);
+    // Se o usuário estava visualizando um cliente específico, volta direto
+    // para o perfil dele em vez de apenas restaurar a rolagem da listagem.
+    const targetId = savedState?.lastItemId;
     restore();
+    if (targetId) {
+      navigate(`/clientes/${targetId}`);
+    }
   };
 
   // Salva mudanças relevantes

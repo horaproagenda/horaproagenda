@@ -40,6 +40,7 @@ import { useServices } from '@/hooks/useServices';
 import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
+import { NewCategoryDialog } from './NewCategoryDialog';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -69,7 +70,7 @@ interface NewPackageDialogProps {
   lockType?: boolean;
 }
 
-const categories = [
+const DEFAULT_CATEGORIES = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
@@ -79,6 +80,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCategories]));
   const { activeServices } = useServices();
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
@@ -260,7 +263,20 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Categoria *</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-xs">Categoria *</FormLabel>
+                      <NewCategoryDialog
+                        existingCategories={categories}
+                        onCategoryCreated={(cat) => {
+                          setCustomCategories((prev) => [...prev, cat]);
+                          field.onChange(cat);
+                        }}
+                      >
+                        <button type="button" className="text-[10px] text-primary hover:underline">
+                          + Nova
+                        </button>
+                      </NewCategoryDialog>
+                    </div>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-8 text-sm">
@@ -276,6 +292,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 )}
               />
             </div>
+
 
             {!lockType && (
               <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">

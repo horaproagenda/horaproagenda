@@ -268,8 +268,11 @@ serve(async (req) => {
     const baseRequiredAmount = isPackageAppointment 
       ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
-    // CRITICAL: discount must be subtracted from the required total so paid+discount=full triggers 'paid' status
-    const discountFromBody = Math.max(0, Number(body.discount_amount || 0));
+    // CRITICAL: discount must be subtracted from the required total so paid+discount=full triggers 'paid' status.
+    // Also honor any discount already persisted on the appointment so a client that sends 0 by mistake
+    // does not resurrect a phantom "pending" remainder equal to the previously granted discount.
+    const persistedDiscount = Math.max(0, Number((appointment as any).discount_amount || 0));
+    const discountFromBody = Math.max(0, Number(body.discount_amount || 0), persistedDiscount);
     const totalRequiredAmount = Math.max(0, baseRequiredAmount + additionalItemsTotal - discountFromBody);
 
     if (body.used_client_credit && body.used_client_credit > 0) {
@@ -378,7 +381,7 @@ serve(async (req) => {
     // 6. Update appointment payment
     // CRITICAL: persist discount_amount so it survives reloads and the
     // totalRequired calc remains coherent on follow-up updates.
-    const discountToPersist = Math.max(0, Number(body.discount_amount || 0));
+    const discountToPersist = discountFromBody;
     // Compute payment_date:
     // - If this is the first time amount_paid becomes > 0 -> stamp today (BRT).
     // - If amount_paid is being reset to 0 -> clear it.

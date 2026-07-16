@@ -1373,9 +1373,13 @@ export function AppointmentDetailDialog({
   // Calculate credit to be used from client's available balance
   const availableClientCredit = appointment.client?.credit_balance || 0;
   
-  // Remaining amount after discount (subtrai o desconto já persistido no
-  // agendamento + o desconto novo aplicado agora na baixa)
-  const remainingAfterDiscount = Math.max(0, finalAppointmentTotal - persistedDiscount - amountPaid - discount);
+  // Remaining amount after discount. O campo `discount` já representa o
+  // desconto TOTAL do agendamento (é pré-preenchido com o persistido e o
+  // usuário pode ajustar). Subtrair também `persistedDiscount` gerava
+  // dupla-subtração — o app cobrava a menos e o pagamento ficava "parcial"
+  // com um resto fantasma no valor do desconto.
+  const effectiveDiscount = Math.max(persistedDiscount, discount);
+  const remainingAfterDiscount = Math.max(0, finalAppointmentTotal - amountPaid - effectiveDiscount);
   const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
   const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);
   const isClientCreditInvalid = paymentMethodCreditUsed > 0 && !!clientCreditValidationMessage;

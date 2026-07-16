@@ -40,6 +40,7 @@ import { useServices } from '@/hooks/useServices';
 import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
+import { NewCategoryDialog } from './NewCategoryDialog';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),

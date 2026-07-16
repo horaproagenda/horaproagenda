@@ -1278,9 +1278,12 @@ export function NewAppointmentDialog({
 
           // Compose WhatsApp notification and open preview (do NOT auto-send)
           if (sendWhatsappNotification && clientData?.phone) {
-            const sessionsList = editablePreviewDates.map((d, i) =>
-              `📅 Sessão ${i + 1}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-            ).join('\n');
+            const sessionsList = editablePreviewDates.map((d, i) => {
+              const stepSvcId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
+              const stepSvc = services.find((s) => s.id === stepSvcId);
+              const svcName = stepSvc?.name || packageData?.name || 'Serviço';
+              return `📅 Sessão ${i + 1} — ${svcName}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+            }).join('\n');
 
             const message = `Olá ${clientData.name}! 👋
 

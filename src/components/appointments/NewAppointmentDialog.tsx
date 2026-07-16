@@ -848,7 +848,7 @@ export function NewAppointmentDialog({
 
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone]);
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone, checkBusinessHoursForRange, isWorkDay]);
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);

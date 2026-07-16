@@ -2400,6 +2400,13 @@ export type Database = {
             referencedRelation: "service_packages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "package_appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
         ]
       }
       package_template_products: {

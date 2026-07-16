@@ -195,6 +195,31 @@ export function NewAppointmentDialog({
     if (holiday && holiday.type === 'national') return false;
     return true;
   }, [getHolidayForDate]);
+
+  // Valida se um intervalo (start-end) cabe dentro do horário de funcionamento
+  // do dia. Retorna mensagem de erro ou null. Usado tanto na pré-visualização
+  // quanto na validação final antes de salvar, para que o formulário nunca
+  // envie sessões fora do expediente (evita rejeição do backend).
+  const checkBusinessHoursForRange = useCallback((start: Date, end: Date): string | null => {
+    if (!settings) return null;
+    const dow = start.getDay();
+    const hours = getBusinessHoursForDay(dow);
+    if (!hours.isOpen) {
+      const dayName = dow === 0 ? 'domingos' : dow === 6 ? 'sábados' : 'este dia';
+      return `Estabelecimento fechado (${dayName})`;
+    }
+    const toMin = (hhmm: string) => {
+      const [h, m] = String(hhmm).substring(0, 5).split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const startMin = start.getHours() * 60 + start.getMinutes();
+    const endMin = end.getHours() * 60 + end.getMinutes();
+    const openMin = toMin(hours.open);
+    const closeMin = toMin(hours.close);
+    if (startMin < openMin) return `Antes do horário de abertura (${String(hours.open).substring(0, 5)})`;
+    if (endMin > closeMin) return `Ultrapassa o fechamento (${String(hours.close).substring(0, 5)})`;
+    return null;
+  }, [settings, getBusinessHoursForDay]);
   const catalogPackages = useMemo(() => {
     const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
     const templatePackages = packageTemplates

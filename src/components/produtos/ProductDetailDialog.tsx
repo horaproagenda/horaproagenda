@@ -1848,19 +1848,26 @@ export function ProductDetailDialog({
                     productServiceLinks.map(sp => {
                       const service = services.find(s => s.id === sp.service_id);
                       const isEstimated = sp.tracking_method === 'estimated';
-                      
-                      let remainingAppointments = 0;
-                      if (isEstimated && sp.estimated_appointments && sp.container_amount) {
-                        const containersRemaining = product.current_stock / sp.container_amount;
-                        remainingAppointments = Math.floor(containersRemaining * sp.estimated_appointments);
-                      } else if (sp.quantity_per_use > 0) {
+                      const isOrphan = !service;
+                      const hasEstimate = !!(sp.estimated_appointments && sp.estimated_appointments > 0);
+                      const hasContainer = !!(sp.container_amount && sp.container_amount > 0);
+
+                      let remainingAppointments: number | null = null;
+                      if (isEstimated && hasEstimate && hasContainer) {
+                        const containersRemaining = product.current_stock / (sp.container_amount as number);
+                        remainingAppointments = Math.floor(containersRemaining * (sp.estimated_appointments as number));
+                      } else if (!isEstimated && sp.quantity_per_use > 0) {
                         remainingAppointments = Math.floor(product.current_stock / sp.quantity_per_use);
                       }
 
                       return (
-                        <TableRow key={sp.id}>
+                        <TableRow key={sp.id} className={isOrphan ? 'opacity-70' : ''}>
                           <TableCell>
-                            <Badge variant="outline">{service?.name || '-'}</Badge>
+                            {isOrphan ? (
+                              <Badge variant="destructive" className="text-xs">Serviço removido</Badge>
+                            ) : (
+                              <Badge variant="outline">{service.name}</Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-xs">
@@ -1869,18 +1876,28 @@ export function ProductDetailDialog({
                           </TableCell>
                           <TableCell>
                             {isEstimated ? (
-                              <div className="text-sm">
-                                <span className="font-medium">{sp.container_amount} {sp.container_unit}</span>
-                                <span className="text-muted-foreground"> → {sp.estimated_appointments} atend.</span>
-                              </div>
+                              hasContainer ? (
+                                <div className="text-sm">
+                                  <span className="font-medium">{sp.container_amount} {sp.container_unit}</span>
+                                  <span className="text-muted-foreground">
+                                    {hasEstimate ? ` → ${sp.estimated_appointments} atend.` : ' → a calcular'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Vínculo incompleto — reconfigure</span>
+                              )
                             ) : (
                               <span>{sp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/uso</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={remainingAppointments < 5 ? 'destructive' : 'secondary'}>
-                              {remainingAppointments} atendimentos
-                            </Badge>
+                            {remainingAppointments === null ? (
+                              <span className="text-xs text-muted-foreground italic">—</span>
+                            ) : (
+                              <Badge variant={remainingAppointments < 5 ? 'destructive' : 'secondary'}>
+                                {remainingAppointments} atendimentos
+                              </Badge>
+                            )}
                           </TableCell>
                           {canEdit && (
                             <TableCell>
@@ -2099,16 +2116,24 @@ export function ProductDetailDialog({
                     </TableRow>
                   ) : (
                     productTemplateLinks.map(tp => {
+                      const template = tp.template || templates.find(t => t.id === tp.template_id);
+                      const isOrphan = !template;
                       const isEstimated = tp.tracking_method === 'estimated';
-                      
+                      const hasEstimate = !!(tp.estimated_appointments && tp.estimated_appointments > 0);
+                      const hasContainer = !!(tp.container_amount && tp.container_amount > 0);
+
                       return (
-                        <TableRow key={tp.id}>
+                        <TableRow key={tp.id} className={isOrphan ? 'opacity-70' : ''}>
                           <TableCell>
-                            <Badge variant="outline">{tp.template?.name || '-'}</Badge>
+                            {isOrphan ? (
+                              <Badge variant="destructive" className="text-xs">Pacote removido</Badge>
+                            ) : (
+                              <Badge variant="outline">{template.name}</Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">
-                              {tp.template?.total_sessions || 0} sessões
+                              {template?.total_sessions || 0} sessões
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -2118,10 +2143,16 @@ export function ProductDetailDialog({
                           </TableCell>
                           <TableCell>
                             {isEstimated ? (
-                              <div className="text-sm">
-                                <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
-                                <span className="text-muted-foreground"> → {tp.estimated_appointments} atend.</span>
-                              </div>
+                              hasContainer ? (
+                                <div className="text-sm">
+                                  <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
+                                  <span className="text-muted-foreground">
+                                    {hasEstimate ? ` → ${tp.estimated_appointments} atend.` : ' → a calcular'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Vínculo incompleto — reconfigure</span>
+                              )
                             ) : (
                               <span>{tp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
                             )}

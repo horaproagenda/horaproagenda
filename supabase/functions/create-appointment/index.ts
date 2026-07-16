@@ -285,25 +285,39 @@ serve(async (req) => {
       const dayOfWeek = getLocalDayOfWeekFromUTC(body.start_time, timezoneOffset);
 
       // Resolve per-professional override (professional_preferences) for day flags and hours.
+      // professional_preferences is keyed by user_id (auth user), while body.professional_id
+      // is a row id from `professionals` — resolve the user_id first, then load prefs.
       let proWorkSundays: boolean | null = null;
       let proWorkSaturdays: boolean | null = null;
+      let proWeekdayOpen: string | null = null;
+      let proWeekdayClose: string | null = null;
       let proSundayOpen: string | null = null;
       let proSundayClose: string | null = null;
       let proSaturdayOpen: string | null = null;
       let proSaturdayClose: string | null = null;
       if (body.professional_id) {
-        const { data: prefs } = await supabase
-          .from('professional_preferences')
-          .select('work_sundays, work_saturdays, sunday_opening_time, sunday_closing_time, saturday_opening_time, saturday_closing_time')
-          .eq('professional_id', body.professional_id)
+        const { data: pro } = await supabase
+          .from('professionals')
+          .select('user_id')
+          .eq('id', body.professional_id)
           .maybeSingle();
-        if (prefs) {
-          proWorkSundays = prefs.work_sundays;
-          proWorkSaturdays = prefs.work_saturdays;
-          proSundayOpen = prefs.sunday_opening_time;
-          proSundayClose = prefs.sunday_closing_time;
-          proSaturdayOpen = prefs.saturday_opening_time;
-          proSaturdayClose = prefs.saturday_closing_time;
+        const proUserId = pro?.user_id;
+        if (proUserId) {
+          const { data: prefs } = await supabase
+            .from('professional_preferences')
+            .select('work_sundays, work_saturdays, opening_time, closing_time, sunday_opening_time, sunday_closing_time, saturday_opening_time, saturday_closing_time')
+            .eq('user_id', proUserId)
+            .maybeSingle();
+          if (prefs) {
+            proWorkSundays = prefs.work_sundays;
+            proWorkSaturdays = prefs.work_saturdays;
+            proWeekdayOpen = prefs.opening_time;
+            proWeekdayClose = prefs.closing_time;
+            proSundayOpen = prefs.sunday_opening_time;
+            proSundayClose = prefs.sunday_closing_time;
+            proSaturdayOpen = prefs.saturday_opening_time;
+            proSaturdayClose = prefs.saturday_closing_time;
+          }
         }
       }
 
@@ -318,15 +332,16 @@ serve(async (req) => {
         errors.push({ field: 'start_time', message: 'Profissional/estabelecimento não atende aos sábados.' });
       }
 
-      // Resolve effective opening/closing for the day (per-day fields fall back to global hours).
-      let dayOpen = businessSettings.opening_time;
-      let dayClose = businessSettings.closing_time;
+      // Resolve effective opening/closing for the day.
+      // Professional preferences (weekday + weekend) take precedence over global business_settings.
+      let dayOpen = proWeekdayOpen || businessSettings.opening_time;
+      let dayClose = proWeekdayClose || businessSettings.closing_time;
       if (dayOfWeek === 0) {
-        dayOpen = proSundayOpen || businessSettings.sunday_opening_time || businessSettings.opening_time;
-        dayClose = proSundayClose || businessSettings.sunday_closing_time || businessSettings.closing_time;
+        dayOpen = proSundayOpen || businessSettings.sunday_opening_time || proWeekdayOpen || businessSettings.opening_time;
+        dayClose = proSundayClose || businessSettings.sunday_closing_time || proWeekdayClose || businessSettings.closing_time;
       } else if (dayOfWeek === 6) {
-        dayOpen = proSaturdayOpen || businessSettings.saturday_opening_time || businessSettings.opening_time;
-        dayClose = proSaturdayClose || businessSettings.saturday_closing_time || businessSettings.closing_time;
+        dayOpen = proSaturdayOpen || businessSettings.saturday_opening_time || proWeekdayOpen || businessSettings.opening_time;
+        dayClose = proSaturdayClose || businessSettings.saturday_closing_time || proWeekdayClose || businessSettings.closing_time;
       }
 
       const [openHour, openMinute] = String(dayOpen).split(':').map(Number);

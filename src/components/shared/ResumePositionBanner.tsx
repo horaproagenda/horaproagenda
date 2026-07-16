@@ -35,7 +35,7 @@ export function ResumePositionBanner({
   const computedLabel =
     label ??
     (state.lastItemLabel
-      ? `Continuar em "${state.lastItemLabel}"`
+      ? `Voltar para o perfil de ${state.lastItemLabel}`
       : state.letter
         ? `Voltar para a letra "${state.letter}"`
         : state.search

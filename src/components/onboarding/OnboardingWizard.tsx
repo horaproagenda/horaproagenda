@@ -177,7 +177,7 @@ export function OnboardingWizard({ open }: Props) {
 
       await markCompleted();
       toast.success('Cadastro concluído! Bem-vindo ao Hora Pro.');
-      navigate('/agenda');
+      setShowSuccess(true);
     } finally {
       setSaving(false);
     }

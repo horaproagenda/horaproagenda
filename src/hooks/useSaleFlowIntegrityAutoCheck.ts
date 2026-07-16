@@ -41,7 +41,7 @@ export function useSaleFlowIntegrityAutoCheck() {
           return;
         }
 
-        logSyncEvent('sale-flow:needs-review', 'warning', { trigger, count: ghostSales.length });
+        logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, count: ghostSales.length });
       } catch (e) {
         logSyncEvent('sale-flow:error', 'error', { trigger, error: String(e) });
       } finally {

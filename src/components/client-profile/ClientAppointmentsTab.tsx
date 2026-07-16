@@ -266,9 +266,13 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     }
     const linhas = appointmentsToSend.map(apt => {
       const isPkg = !!apt.package_appointment;
+      const serviceName = apt.service?.name || null;
+      const packageName = apt.package_appointment?.package?.name || null;
+      // Sempre priorizar o nome do serviço (ex.: "Avaliação", "Axila + Virilha").
+      // Para pacotes, complementar com o nome do pacote entre parênteses.
       const nome = isPkg
-        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
-        : (apt.service?.name || 'Serviço');
+        ? (serviceName ? `${serviceName}${packageName ? ` (${packageName})` : ''}` : (packageName || 'Pacote'))
+        : (serviceName || 'Serviço');
       const data = format(new Date(apt.start_time), 'dd/MM/yyyy');
       const hora = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
       const status = getAppointmentStatusConfig(apt.status).label;

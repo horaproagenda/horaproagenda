@@ -516,7 +516,7 @@ Até breve! ✨`;
         // Fetch all package sessions with their per-step interval_after_days
         const { data: pkgSessions, error: pkgErr } = await supabase
           .from('package_appointments')
-          .select('id, appointment_id, sequence_order, session_number, interval_after_days, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
+          .select('id, appointment_id, sequence_order, session_number, interval_after_days, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status, professional_id, room_id)')
           .eq('package_id', params.package_id)
           .order('sequence_order', { ascending: true, nullsFirst: false })
           .order('session_number', { ascending: true });
@@ -529,12 +529,33 @@ Até breve! ✨`;
           return { updated: 0, appointments: [] };
         }
 
+        // Load business settings for validation (best-effort)
+        let bhCfg: BusinessHoursConfig | null = null;
+        try {
+          const { data: bs } = await supabase
+            .from('business_settings')
+            .select('opening_time, closing_time, saturday_opening_time, saturday_closing_time, sunday_opening_time, sunday_closing_time, work_saturdays, work_sundays')
+            .maybeSingle();
+          if (bs) bhCfg = bs as any;
+        } catch (_) { /* ignore */ }
+
         const following = (pkgSessions || []).slice(sourceIdx + 1);
-        const updatedAppointments: any[] = [];
-        // Cursor starts at the moved appointment; each next session date
-        // = previous session date + previous session's interval_after_days.
+        const seriesAptIds = new Set(
+          (pkgSessions || [])
+            .map((pa: any) => pa.appointment_id)
+            .filter(Boolean)
+        );
+
+        // Phase 1: compute proposed dates (with business-hour adjustment + chronological guard)
+        type Proposed = {
+          pa: any;
+          apt: any;
+          start: Date;
+          end: Date;
+          duration: number;
+        };
+        const proposed: Proposed[] = [];
         let cursor = new Date(params.new_start_time);
-        // interval used to advance from source to first-following:
         let prevInterval = Number((pkgSessions![sourceIdx] as any)?.interval_after_days) || params.interval_days || 7;
 
         for (const pa of following) {
@@ -545,8 +566,7 @@ Até breve! ✨`;
             continue;
           }
 
-          const nextStart = addDays(cursor, prevInterval);
-          // Preserve original wall-clock time from the moved appointment
+          let nextStart = addDays(cursor, prevInterval);
           nextStart.setHours(
             params.new_start_time.getHours(),
             params.new_start_time.getMinutes(),
@@ -555,26 +575,90 @@ Até breve! ✨`;
           const origStart = new Date(apt.start_time);
           const origEnd = new Date(apt.end_time);
           const duration = origEnd.getTime() - origStart.getTime();
-          const nextEnd = new Date(nextStart.getTime() + duration);
 
+          // Adjust to business hours / open days
+          if (bhCfg) {
+            nextStart = adjustToBusinessHours(nextStart, duration, bhCfg, 14);
+          }
+
+          // Chronological guard: must be strictly after previous proposed
+          const minStart = proposed.length
+            ? new Date(proposed[proposed.length - 1].end.getTime())
+            : new Date(params.new_start_time.getTime() + 60_000);
+          if (nextStart.getTime() < minStart.getTime()) {
+            nextStart = new Date(minStart);
+            if (bhCfg) nextStart = adjustToBusinessHours(nextStart, duration, bhCfg, 14);
+          }
+
+          const nextEnd = new Date(nextStart.getTime() + duration);
+          proposed.push({ pa, apt, start: nextStart, end: nextEnd, duration });
+          cursor = nextStart;
+          prevInterval = Number(pa.interval_after_days) || prevInterval;
+        }
+
+        // Phase 2: validate conflicts against appointments outside the series
+        const conflicts: Array<{ session_number: number | null; reason: string }> = [];
+        for (const p of proposed) {
+          const filters: string[] = [];
+          if (p.apt.professional_id) filters.push(`professional_id.eq.${p.apt.professional_id}`);
+          if (p.apt.room_id) filters.push(`room_id.eq.${p.apt.room_id}`);
+          if (filters.length === 0) continue;
+
+          const { data: conf } = await supabase
+            .from('appointments')
+            .select('id, start_time, end_time')
+            .or(filters.join(','))
+            .lt('start_time', p.end.toISOString())
+            .gt('end_time', p.start.toISOString())
+            .not('status', 'in', '(cancelled,missed)');
+
+          const external = (conf || []).filter(
+            (c: any) => !seriesAptIds.has(c.id) && c.id !== p.apt.id
+          );
+          if (external.length > 0) {
+            conflicts.push({
+              session_number: p.pa.session_number ?? null,
+              reason: `Conflito de horário em ${format(p.start, "dd/MM 'às' HH:mm", { locale: ptBR })}`,
+            });
+          }
+        }
+
+        if (conflicts.length > 0) {
+          const preview = conflicts.slice(0, 3).map(c => `Etapa ${c.session_number ?? '?'}: ${c.reason}`).join('\n');
+          throw new Error(
+            `Não foi possível ajustar ${conflicts.length} etapa(s) por conflito.\n${preview}${conflicts.length > 3 ? '\n...' : ''}`
+          );
+        }
+
+        // Phase 3: apply updates (all-or-nothing best-effort with rollback of applied ones on failure)
+        const updatedAppointments: any[] = [];
+        const rollback: Array<{ id: string; start: string; end: string }> = [];
+        for (const p of proposed) {
+          rollback.push({ id: p.apt.id, start: p.apt.start_time, end: p.apt.end_time });
           const { data: updated, error: updErr } = await supabase
             .from('appointments')
             .update({
-              start_time: nextStart.toISOString(),
-              end_time: nextEnd.toISOString(),
+              start_time: p.start.toISOString(),
+              end_time: p.end.toISOString(),
               updated_by: user.id,
             })
-            .eq('id', apt.id)
+            .eq('id', p.apt.id)
             .select()
             .single();
 
-          if (!updErr && updated) {
-            updatedAppointments.push(updated);
-            cursor = nextStart;
-            prevInterval = Number(pa.interval_after_days) || prevInterval;
-          } else {
-            prevInterval = Number(pa.interval_after_days) || prevInterval;
+          if (updErr || !updated) {
+            // Rollback previously applied updates
+            for (const rb of rollback.slice(0, -1)) {
+              await supabase
+                .from('appointments')
+                .update({ start_time: rb.start, end_time: rb.end })
+                .eq('id', rb.id);
+            }
+            throw new Error(
+              `Falha ao atualizar etapa ${p.pa.session_number ?? '?'}: ${updErr?.message || 'erro desconhecido'}. Alterações revertidas.`
+            );
           }
+          updatedAppointments.push(updated);
         }
 
         return { updated: updatedAppointments.length, appointments: updatedAppointments };

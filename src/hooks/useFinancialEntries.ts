@@ -132,6 +132,21 @@ export function useFinancialEntries() {
 
   const deleteEntry = useMutation({
     mutationFn: async (id: string) => {
+      // If the entry is linked to a sale, cascade purge the whole sale so that
+      // package, package_appointments, appointments, boletos and caixa entries
+      // are removed in real-time — fixing "phantom packages" in the client profile.
+      const { data: entry } = await supabase
+        .from('financial_entries')
+        .select('id, sale_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (entry?.sale_id) {
+        const { error: rpcError } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: entry.sale_id });
+        if (rpcError) throw rpcError;
+        return;
+      }
+
       const { error } = await supabase
         .from('financial_entries')
         .delete()
@@ -141,6 +156,18 @@ export function useFinancialEntries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['client_services'] });
+      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
       toast.success('Lançamento excluído com sucesso!');
     },
     onError: (error: any) => {

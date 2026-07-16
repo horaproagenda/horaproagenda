@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { logSyncEvent } from '@/lib/syncAudit';
 
@@ -15,7 +14,6 @@ const MIN_INTERVAL_MS = 120_000; // 2 min throttle
  * Throttled para 1x a cada 2 minutos por dispositivo.
  */
 export function useSaleFlowIntegrityAutoCheck() {
-  const queryClient = useQueryClient();
   const lastRunRef = useRef(0);
   const runningRef = useRef(false);
 
@@ -72,5 +70,5 @@ export function useSaleFlowIntegrityAutoCheck() {
       window.clearTimeout(boot);
       sub.subscription.unsubscribe();
     };
-  }, [queryClient]);
+  }, []);
 }

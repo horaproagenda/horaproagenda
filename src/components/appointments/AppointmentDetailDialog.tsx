@@ -919,7 +919,14 @@ export function AppointmentDetailDialog({
       expectedVersion: appointment.version,
     }, {
       onSuccess: () => {
-        const isPackageApt = !!appointment.package_appointment;
+        // Resolve package_id robustly: some fetches nest it under `.package.id`,
+        // others expose it as `.package_id`; older/legacy rows may only expose
+        // it via the snapshot fields. Same for recurring detection.
+        const resolvedPackageId =
+          (appointment as any)?.package_appointment?.package?.id ||
+          (appointment as any)?.package_appointment?.package_id ||
+          null;
+        const isPackageApt = !!appointment.package_appointment || !!resolvedPackageId;
         const isRecurringApt = !!appointment.recurring_group_id;
         const dateChanged =
           new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
@@ -935,24 +942,28 @@ export function AppointmentDetailDialog({
               propagate_type: 'recurring',
               recurring_group_id: appointment.recurring_group_id!,
             });
-          } else if (isPackageApt && appointment.package_appointment?.package_id) {
+          } else if (isPackageApt && resolvedPackageId) {
             propagateSeriesDates.mutate({
               appointment_id: appointment.id,
               new_start_time: newStartTime,
               new_end_time: newEndTime,
               propagate_type: 'package',
-              package_id: appointment.package_appointment.package_id,
+              package_id: resolvedPackageId,
             });
           }
         } else if (dateChanged && (isPackageApt || isRecurringApt)) {
-          // Ask the user whether to also shift following steps
-          setPendingPropagation({
-            new_start_time: newStartTime,
-            new_end_time: newEndTime,
-            type: isRecurringApt ? 'recurring' : 'package',
-            recurring_group_id: appointment.recurring_group_id || undefined,
-            package_id: appointment.package_appointment?.package_id,
-          });
+          // Ask the user whether to also shift following steps.
+          // For packages, only ask when we could actually resolve the package id
+          // (otherwise the confirmation would be a dead-end).
+          if (isRecurringApt || (isPackageApt && resolvedPackageId)) {
+            setPendingPropagation({
+              new_start_time: newStartTime,
+              new_end_time: newEndTime,
+              type: isRecurringApt ? 'recurring' : 'package',
+              recurring_group_id: appointment.recurring_group_id || undefined,
+              package_id: resolvedPackageId || undefined,
+            });
+          }
         }
 
         setIsEditing(false);

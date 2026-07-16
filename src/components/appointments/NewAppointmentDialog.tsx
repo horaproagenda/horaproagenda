@@ -865,6 +865,14 @@ export function NewAppointmentDialog({
 
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
 
+      const bhErr = checkBusinessHoursForRange(previewDate, endTime);
+      if (bhErr) dateConflicts.push({ type: 'business_hours', message: bhErr } as ConflictInfo);
+      if (!isWorkDay(previewDate)) {
+        const dw = previewDate.getDay();
+        const dn = dw === 0 ? 'domingo' : dw === 6 ? 'sábado' : 'este dia';
+        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dn}` } as ConflictInfo);
+      }
+
       // Detect overlap with siblings within the same series being created
       editableServiceDates.forEach((other, otherIdx) => {
         if (otherIdx === index) return;

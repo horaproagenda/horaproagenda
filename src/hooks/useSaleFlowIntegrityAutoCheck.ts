@@ -33,13 +33,24 @@ export function useSaleFlowIntegrityAutoCheck() {
         if (error) throw error;
         const report = (data || {}) as Record<string, any[]>;
         const ghostSales = report.sales_with_boleto_no_installments || [];
+        const orphanPackages = report.packages_without_active_sale || [];
 
-        if (ghostSales.length === 0) {
+        // Auto-heal orphan packages (packages whose originating sale was deleted)
+        if (orphanPackages.length > 0) {
+          const { data: healed, error: healError } = await (supabase as any).rpc('heal_orphan_service_packages');
+          if (healError) {
+            logSyncEvent('sale-flow:heal-error', 'error', { trigger, error: String(healError) });
+          } else {
+            logSyncEvent('sale-flow:orphan-packages-healed', 'ok', { trigger, result: healed });
+          }
+        }
+
+        if (ghostSales.length === 0 && orphanPackages.length === 0) {
           logSyncEvent('sale-flow:healthy', 'ok', { trigger });
           return;
         }
 
-        logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, count: ghostSales.length });
+        logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, ghostSales: ghostSales.length, orphanPackages: orphanPackages.length });
       } catch (e) {
         logSyncEvent('sale-flow:error', 'error', { trigger, error: String(e) });
       } finally {

@@ -7,6 +7,6 @@ Regra:
 - single_sales é a fonte da verdade da venda. Quando uma venda é desfeita, TUDO que ela gerou some.
 - Cascata: appointments (via package_appointments do pacote), package_appointments, service_packages (se não houver outra venda), client_services com sale_id, financial_entries com sale_id, cash_transactions reference_type=single_sale.
 - financial_entries criado em useSingleSales DEVE incluir sale_id para permitir cleanup.
-- Trigger AFTER DELETE em boleto_installments aciona purge automaticamente quando a última parcela é apagada.
+- Excluir parcelas de boleto NÃO deve apagar automaticamente a venda; isso pode remover vendas legítimas durante correções manuais. Use purge_single_sale_cascade somente quando a venda inteira for desfeita intencionalmente.
 - Painel "Integridade Financeiro × Agenda" em Configurações lista órfãos via audit_sale_flow_integrity().
 - RPC pública: purge_single_sale_cascade(_sale_id uuid) e audit_sale_flow_integrity().

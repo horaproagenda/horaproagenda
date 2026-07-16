@@ -693,7 +693,15 @@ export function useClientProfile(clientId: string) {
               ? sale.service.price
               : sale.final_amount || 0
       );
-      const basePayment = sale.paid_at
+      // Boleto parcelado é exibido parcela a parcela. Quando todas as parcelas
+      // são quitadas, `single_sales.paid_at` fica preenchido apenas para marcar
+      // a venda como quitada; não é um quarto pagamento pelo valor total.
+      const activeInstallments = ((sale as any).boleto_installments || [])
+        .filter((i: any) => i.status !== 'cancelled')
+        .sort((a: any, b: any) => a.installment_number - b.installment_number);
+      const hasBoletoInstallments = activeInstallments.length > 0;
+
+      const basePayment = sale.paid_at && !hasBoletoInstallments
         ? [{
             id: sale.id,
             date: sale.paid_at.split('T')[0] || sale.sale_date || sale.created_at.split('T')[0],
@@ -704,9 +712,6 @@ export function useClientProfile(clientId: string) {
         : [];
 
       // Active installments: exclude cancelled ones; renumber sequentially
-      const activeInstallments = ((sale as any).boleto_installments || [])
-        .filter((i: any) => i.status !== 'cancelled')
-        .sort((a: any, b: any) => a.installment_number - b.installment_number);
       const activeTotal = activeInstallments.length;
 
       const boletoPayments = activeInstallments

@@ -923,7 +923,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone]);
+  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone, checkBusinessHoursForRange]);
 
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);

@@ -381,7 +381,7 @@ serve(async (req) => {
     // 6. Update appointment payment
     // CRITICAL: persist discount_amount so it survives reloads and the
     // totalRequired calc remains coherent on follow-up updates.
-    const discountToPersist = Math.max(0, Number(body.discount_amount || 0));
+    const discountToPersist = discountFromBody;
     // Compute payment_date:
     // - If this is the first time amount_paid becomes > 0 -> stamp today (BRT).
     // - If amount_paid is being reset to 0 -> clear it.

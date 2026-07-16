@@ -5220,6 +5220,7 @@ export type Database = {
         Returns: Json
       }
       heal_legacy_data: { Args: never; Returns: Json }
+      heal_orphan_service_packages: { Args: never; Returns: Json }
       heal_package_service_links: {
         Args: { _package_id: string }
         Returns: Json

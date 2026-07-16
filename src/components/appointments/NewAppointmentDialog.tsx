@@ -73,7 +73,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 interface ConflictInfo {
-  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series' | 'sibling';
+  type: 'professional' | 'room' | 'equipment' | 'absence' | 'series' | 'sibling' | 'business_hours' | 'closed_day';
   message: string;
   appointment?: Appointment;
 }
@@ -195,6 +195,31 @@ export function NewAppointmentDialog({
     if (holiday && holiday.type === 'national') return false;
     return true;
   }, [getHolidayForDate]);
+
+  // Valida se um intervalo (start-end) cabe dentro do horário de funcionamento
+  // do dia. Retorna mensagem de erro ou null. Usado tanto na pré-visualização
+  // quanto na validação final antes de salvar, para que o formulário nunca
+  // envie sessões fora do expediente (evita rejeição do backend).
+  const checkBusinessHoursForRange = useCallback((start: Date, end: Date): string | null => {
+    if (!settings) return null;
+    const dow = start.getDay();
+    const hours = getBusinessHoursForDay(dow);
+    if (!hours.isOpen) {
+      const dayName = dow === 0 ? 'domingos' : dow === 6 ? 'sábados' : 'este dia';
+      return `Estabelecimento fechado (${dayName})`;
+    }
+    const toMin = (hhmm: string) => {
+      const [h, m] = String(hhmm).substring(0, 5).split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const startMin = start.getHours() * 60 + start.getMinutes();
+    const endMin = end.getHours() * 60 + end.getMinutes();
+    const openMin = toMin(hours.open);
+    const closeMin = toMin(hours.close);
+    if (startMin < openMin) return `Antes do horário de abertura (${String(hours.open).substring(0, 5)})`;
+    if (endMin > closeMin) return `Ultrapassa o fechamento (${String(hours.close).substring(0, 5)})`;
+    return null;
+  }, [settings, getBusinessHoursForDay]);
   const catalogPackages = useMemo(() => {
     const legacyPackages = packages.filter(p => p.is_active && !p.client_id);
     const templatePackages = packageTemplates
@@ -771,6 +796,18 @@ export function NewAppointmentDialog({
     return ranges.map(({ start: previewDate, end: endTime, duration }, index) => {
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
 
+      // Fora do expediente: bloqueia salvar e alerta na pré-visualização.
+      const bhError = checkBusinessHoursForRange(previewDate, endTime);
+      if (bhError) {
+        dateConflicts.push({ type: 'business_hours', message: bhError } as ConflictInfo);
+      }
+      // Dia não trabalhado (ex.: domingo sem work_sundays).
+      if (!isWorkDay(previewDate)) {
+        const dow = previewDate.getDay();
+        const dayName = dow === 0 ? 'domingo' : dow === 6 ? 'sábado' : 'este dia';
+        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dayName}` } as ConflictInfo);
+      }
+
       // Sibling collisions dentro da própria série
       ranges.forEach((other, otherIndex) => {
         if (otherIndex === index) return;
@@ -811,7 +848,7 @@ export function NewAppointmentDialog({
 
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone]);
+  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone, checkBusinessHoursForRange, isWorkDay]);
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
@@ -827,6 +864,14 @@ export function NewAppointmentDialog({
       endTime.setMinutes(endTime.getMinutes() + duration);
 
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
+
+      const bhErr = checkBusinessHoursForRange(previewDate, endTime);
+      if (bhErr) dateConflicts.push({ type: 'business_hours', message: bhErr } as ConflictInfo);
+      if (!isWorkDay(previewDate)) {
+        const dw = previewDate.getDay();
+        const dn = dw === 0 ? 'domingo' : dw === 6 ? 'sábado' : 'este dia';
+        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dn}` } as ConflictInfo);
+      }
 
       // Detect overlap with siblings within the same series being created
       editableServiceDates.forEach((other, otherIdx) => {
@@ -878,7 +923,7 @@ export function NewAppointmentDialog({
       
       return { index, conflicts: dateConflicts, suggestedDate };
     });
-  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone]);
+  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone, checkBusinessHoursForRange]);
 
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
@@ -1042,7 +1087,11 @@ export function NewAppointmentDialog({
           if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
           return start < aEnd && end > aStart;
         });
-        if (siblingCollision || externalCollision || absenceCollision) {
+        // Fora do expediente ou dia fechado devem bloquear o salvar também —
+        // caso contrário o backend rejeita depois com "conflito de horário".
+        const businessHoursIssue = checkBusinessHoursForRange(start, end);
+        const closedDayIssue = !isWorkDay(start);
+        if (siblingCollision || externalCollision || absenceCollision || businessHoursIssue || closedDayIssue) {
           conflictingSessions.push(i + 1);
         }
         seen.push({ start, end });
@@ -1050,7 +1099,7 @@ export function NewAppointmentDialog({
 
       if (conflictingSessions.length > 0) {
         toast.error(
-          `Sessões ${conflictingSessions.join(', ')} têm conflito de horário. Ajuste as datas antes de salvar.`,
+          `Sessões ${conflictingSessions.join(', ')} estão fora do expediente ou em conflito. Ajuste as datas na pré-visualização antes de salvar.`,
           { duration: 8000 },
         );
         return;

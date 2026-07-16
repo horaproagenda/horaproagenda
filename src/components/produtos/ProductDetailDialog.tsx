@@ -2116,16 +2116,24 @@ export function ProductDetailDialog({
                     </TableRow>
                   ) : (
                     productTemplateLinks.map(tp => {
+                      const template = tp.template || templates.find(t => t.id === tp.template_id);
+                      const isOrphan = !template;
                       const isEstimated = tp.tracking_method === 'estimated';
-                      
+                      const hasEstimate = !!(tp.estimated_appointments && tp.estimated_appointments > 0);
+                      const hasContainer = !!(tp.container_amount && tp.container_amount > 0);
+
                       return (
-                        <TableRow key={tp.id}>
+                        <TableRow key={tp.id} className={isOrphan ? 'opacity-70' : ''}>
                           <TableCell>
-                            <Badge variant="outline">{tp.template?.name || '-'}</Badge>
+                            {isOrphan ? (
+                              <Badge variant="destructive" className="text-xs">Pacote removido</Badge>
+                            ) : (
+                              <Badge variant="outline">{template.name}</Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">
-                              {tp.template?.total_sessions || 0} sessões
+                              {template?.total_sessions || 0} sessões
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -2135,10 +2143,16 @@ export function ProductDetailDialog({
                           </TableCell>
                           <TableCell>
                             {isEstimated ? (
-                              <div className="text-sm">
-                                <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
-                                <span className="text-muted-foreground"> → {tp.estimated_appointments} atend.</span>
-                              </div>
+                              hasContainer ? (
+                                <div className="text-sm">
+                                  <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
+                                  <span className="text-muted-foreground">
+                                    {hasEstimate ? ` → ${tp.estimated_appointments} atend.` : ' → a calcular'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Vínculo incompleto — reconfigure</span>
+                              )
                             ) : (
                               <span>{tp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/sessão</span>
                             )}

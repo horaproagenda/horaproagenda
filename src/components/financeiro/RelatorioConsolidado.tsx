@@ -250,6 +250,28 @@ export function RelatorioConsolidado() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<ConsolidatedEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
+
+  // When user clicks delete: if the entry is linked to a PACKAGE sale, route
+  // through the "Cancelar Pacote" form (refund + reason) instead of a raw purge.
+  const handleDeleteClick = async (entry: ConsolidatedEntry) => {
+    if (entry.saleId) {
+      try {
+        const { data: sale } = await supabase
+          .from('single_sales')
+          .select('id, item_type, package_id')
+          .eq('id', entry.saleId)
+          .maybeSingle();
+        if (sale && (sale.item_type === 'package' || sale.package_id)) {
+          setCancelPackageSaleId(entry.saleId);
+          return;
+        }
+      } catch (err) {
+        console.error('[RelatorioConsolidado] sale lookup failed', err);
+      }
+    }
+    setDeleteTarget(entry);
+  };
 
   const invalidateAllFinancial = () => {
     const keys = [

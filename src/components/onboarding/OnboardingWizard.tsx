@@ -62,6 +62,7 @@ export function OnboardingWizard({ open }: Props) {
   const [specialty, setSpecialty] = useState('');
   const [isCommission, setIsCommission] = useState(false);
   const [commissionPct, setCommissionPct] = useState<string>('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
 
   useEffect(() => {

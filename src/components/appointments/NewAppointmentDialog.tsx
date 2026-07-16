@@ -796,6 +796,18 @@ export function NewAppointmentDialog({
     return ranges.map(({ start: previewDate, end: endTime, duration }, index) => {
       const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
 
+      // Fora do expediente: bloqueia salvar e alerta na pré-visualização.
+      const bhError = checkBusinessHoursForRange(previewDate, endTime);
+      if (bhError) {
+        dateConflicts.push({ type: 'business_hours', message: bhError } as ConflictInfo);
+      }
+      // Dia não trabalhado (ex.: domingo sem work_sundays).
+      if (!isWorkDay(previewDate)) {
+        const dow = previewDate.getDay();
+        const dayName = dow === 0 ? 'domingo' : dow === 6 ? 'sábado' : 'este dia';
+        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dayName}` } as ConflictInfo);
+      }
+
       // Sibling collisions dentro da própria série
       ranges.forEach((other, otherIndex) => {
         if (otherIndex === index) return;

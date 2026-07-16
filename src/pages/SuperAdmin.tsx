@@ -327,11 +327,14 @@ export default function SuperAdmin() {
           />
         </Card>
 
+        <NewSignupsPanel />
+
         <WhatsappPoolCostPanel />
 
         <InterestLeadsPanel />
 
         <WhatsappReleasePanel />
+
 
 
 

@@ -933,18 +933,34 @@ export function NewAppointmentDialog({
     if (!date || !time || !settings) return null;
     const dayOfWeek = date.getDay();
     const hours = getBusinessHoursForDay(dayOfWeek);
-    
+
     if (!hours.isOpen) {
       const dayName = dayOfWeek === 0 ? 'Domingo' : 'Sábado';
       return `Estabelecimento fechado ${dayName === 'Domingo' ? 'aos domingos' : 'aos sábados'}`;
     }
-    
-    if (time < hours.open || time >= hours.close) {
-      return `Horário fora do funcionamento (${hours.open} - ${hours.close})`;
+
+    // Comparar em minutos evita erros com "HH:mm" vs "HH:mm:ss" e permite
+    // considerar o horário de término (start + duração) — o backend rejeita
+    // sessões cujo end_time ultrapassa o fechamento, então validamos aqui.
+    const toMin = (hhmm: string) => {
+      const [h, m] = String(hhmm).substring(0, 5).split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const openMin = toMin(hours.open);
+    const closeMin = toMin(hours.close);
+    const startMin = toMin(time);
+    const duration = Number(currentAppointmentDuration) || 60;
+    const endMin = startMin + duration;
+
+    if (startMin < openMin) {
+      return `Antes do horário de abertura (${String(hours.open).substring(0, 5)})`;
     }
-    
+    if (endMin > closeMin) {
+      return `O serviço ultrapassa o fechamento (${String(hours.close).substring(0, 5)}). Escolha um horário mais cedo.`;
+    }
+
     return null;
-  }, [date, time, settings, getBusinessHoursForDay]);
+  }, [date, time, settings, getBusinessHoursForDay, currentAppointmentDuration]);
 
   // Client's frequent services - services from appointment history
   const clientFrequentServices = useMemo(() => {

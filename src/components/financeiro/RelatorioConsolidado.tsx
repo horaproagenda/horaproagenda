@@ -571,6 +571,13 @@ export function RelatorioConsolidado() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CancelPackageDialog
+        open={!!cancelPackageSaleId}
+        onOpenChange={(o) => { if (!o) setCancelPackageSaleId(null); }}
+        saleId={cancelPackageSaleId}
+        onSuccess={invalidateAllFinancial}
+      />
     </div>
   );
 }

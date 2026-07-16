@@ -70,7 +70,7 @@ interface NewPackageDialogProps {
   lockType?: boolean;
 }
 
-const categories = [
+const DEFAULT_CATEGORIES = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 

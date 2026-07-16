@@ -214,15 +214,8 @@ export function MinhasPreferenciasSettings() {
                     <p className="text-[10px] text-muted-foreground">{desc}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {inheritedBadge(override)}
-                  <Switch checked={value} onCheckedChange={(v) => update.mutate({ [key]: v } as never)} />
-                  {override !== null && override !== undefined && (
-                    <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => resetField(key)}>
-                      <RotateCcw className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
+                <Switch checked={value} onCheckedChange={(v) => update.mutate({ [key]: v } as never)} />
+
               </div>
             );
           })}

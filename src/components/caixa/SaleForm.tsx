@@ -496,6 +496,7 @@ export function SaleForm() {
           itemFinal = itemFinal + itemFeeShare;
         }
 
+        const isDeferredPayment = isBoleto || isCheque;
         const saleData: any = {
           client_id: selectedClientId,
           original_amount: item.total,
@@ -508,8 +509,8 @@ export function SaleForm() {
           item_type: item.type,
           description: item.name,
           notes: `Venda ${saleInfo.code} - Qtd: ${item.quantity}${selectedCardBrand ? ` - ${selectedCardBrand.name} ${installments}x` : ''}`,
-          paid_at: new Date().toISOString(),
-          paid_by: user?.id,
+          paid_at: isDeferredPayment ? null : new Date().toISOString(),
+          paid_by: isDeferredPayment ? null : user?.id,
           created_by: user?.id,
         };
 

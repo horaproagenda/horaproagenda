@@ -5222,6 +5222,10 @@ export type Database = {
       }
       heal_phantom_package_sessions: { Args: never; Returns: number }
       is_account_active: { Args: { _user_id: string }; Returns: boolean }
+      is_boleto_installment_sale: {
+        Args: { _sale_id: string }
+        Returns: boolean
+      }
       is_identifier_blocked: {
         Args: {
           p_cnpj?: string

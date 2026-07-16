@@ -6,10 +6,10 @@ import { logSyncEvent } from '@/lib/syncAudit';
 const MIN_INTERVAL_MS = 120_000; // 2 min throttle
 
 /**
- * Roda automaticamente o audit_sale_flow_integrity e dispara
- * purge_single_sale_cascade nas vendas de boleto sem nenhuma parcela
- * (vendas-fantasma). Mantém pacotes, serviços disponíveis, agendamentos
- * e lançamentos financeiros sincronizados sem necessidade de UI manual.
+ * Roda automaticamente o audit_sale_flow_integrity para detectar divergências
+ * no fluxo venda → boleto → pacote/serviço. Não apaga vendas automaticamente:
+ * uma venda legítima pode ficar temporariamente sem parcelas durante correções
+ * manuais, e apagar em background remove o pacote real do cliente.
  *
  * Triggers: login, foco da janela, retorno online, visibilitychange.
  * Throttled para 1x a cada 2 minutos por dispositivo.
@@ -41,25 +41,7 @@ export function useSaleFlowIntegrityAutoCheck() {
           return;
         }
 
-        logSyncEvent('sale-flow:purge', 'ok', { trigger, count: ghostSales.length });
-        let purged = 0;
-        for (const s of ghostSales) {
-          const { error: pErr } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: s.id });
-          if (!pErr) purged++;
-        }
-
-        if (purged > 0) {
-          await queryClient.invalidateQueries({
-            predicate: (q) => {
-              const k = q.queryKey?.[0] as string;
-              return [
-                'single_sales', 'client-sales', 'service_packages', 'client_services',
-                'financial_entries', 'appointments', 'package_appointments',
-              ].includes(k);
-            },
-            refetchType: 'active',
-          });
-        }
+        logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, count: ghostSales.length });
       } catch (e) {
         logSyncEvent('sale-flow:error', 'error', { trigger, error: String(e) });
       } finally {

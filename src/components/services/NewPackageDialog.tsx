@@ -263,7 +263,20 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs">Categoria *</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-xs">Categoria *</FormLabel>
+                      <NewCategoryDialog
+                        existingCategories={categories}
+                        onCategoryCreated={(cat) => {
+                          setCustomCategories((prev) => [...prev, cat]);
+                          field.onChange(cat);
+                        }}
+                      >
+                        <button type="button" className="text-[10px] text-primary hover:underline">
+                          + Nova
+                        </button>
+                      </NewCategoryDialog>
+                    </div>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-8 text-sm">
@@ -279,6 +292,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 )}
               />
             </div>
+
 
             {!lockType && (
               <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">

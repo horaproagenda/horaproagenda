@@ -35,9 +35,10 @@ export function getSchedulingDurationMinutes(
   const ownDuration = Number(service?.duration);
   const safeFallback = Number.isFinite(fallbackMinutes) && fallbackMinutes > 0 ? fallbackMinutes : 60;
   const components = Array.isArray(service?.service_components) ? service.service_components : [];
-  const looksLikeAggregateDuration = components.length > 0 && Number.isFinite(ownDuration) && ownDuration > 8 * 60;
+  const AGGREGATE_THRESHOLD = 8 * 60; // 8h — beyond a realistic single-session duration
+  const looksLikeAggregateDuration = Number.isFinite(ownDuration) && ownDuration > AGGREGATE_THRESHOLD;
 
-  if (looksLikeAggregateDuration) {
+  if (looksLikeAggregateDuration && components.length > 0) {
     const indexedComponentId = Number.isInteger(componentIndex) && componentIndex! >= 0
       ? components[componentIndex!]?.service_id
       : null;
@@ -47,9 +48,18 @@ export function getSchedulingDurationMinutes(
       ? services.find((candidate) => candidate.id === componentId)
       : null;
     const componentDuration = Number(componentService?.duration);
-    if (Number.isFinite(componentDuration) && componentDuration > 0 && componentDuration <= 8 * 60) {
+    if (Number.isFinite(componentDuration) && componentDuration > 0 && componentDuration <= AGGREGATE_THRESHOLD) {
       return componentDuration;
     }
+  }
+
+  // Defensive cap: a single service duration greater than 8h is almost always
+  // a data-entry mistake (total package duration typed into the service
+  // duration field). Scheduling such a value guarantees "fora do horário de
+  // funcionamento" errors and blocks the auto-scheduling flow. Fall back to
+  // a sane value so the appointment can still be created.
+  if (looksLikeAggregateDuration) {
+    return safeFallback;
   }
 
   return Number.isFinite(ownDuration) && ownDuration > 0 ? ownDuration : safeFallback;

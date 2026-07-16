@@ -62,6 +62,7 @@ export function OnboardingWizard({ open }: Props) {
   const [specialty, setSpecialty] = useState('');
   const [isCommission, setIsCommission] = useState(false);
   const [commissionPct, setCommissionPct] = useState<string>('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
 
   useEffect(() => {
@@ -176,11 +177,50 @@ export function OnboardingWizard({ open }: Props) {
 
       await markCompleted();
       toast.success('Cadastro concluído! Bem-vindo ao Hora Pro.');
-      navigate('/agenda');
+      setShowSuccess(true);
     } finally {
       setSaving(false);
     }
   };
+
+  if (showSuccess) {
+    return (
+      <Dialog open={open}>
+        <DialogContent
+          className="max-w-lg"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-center">Cadastro concluído!</DialogTitle>
+            <DialogDescription className="text-center space-y-3 pt-2">
+              <span className="block">
+                Seu cadastro foi finalizado com sucesso. Em poucos minutos, o
+                login do <strong>WhatsApp</strong> será liberado para o seu perfil.
+              </span>
+              <span className="block">
+                Nossa equipe foi notificada automaticamente sobre o seu cadastro
+                e providenciará a disponibilização da sua instância de WhatsApp
+                assim que possível.
+              </span>
+              <span className="block text-xs">
+                Você já pode começar a explorar a agenda enquanto isso.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-2">
+            <Button onClick={() => navigate('/agenda')} className="gap-2">
+              Ir para a agenda
+              <CheckCircle2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open}>

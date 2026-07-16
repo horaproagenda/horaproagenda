@@ -63,4 +63,14 @@ describe('getSchedulingDurationMinutes', () => {
 
     expect(getSchedulingDurationMinutes(services[2], services, 60, 1)).toBe(60);
   });
+
+  it('faz fallback para a duração padrão quando o serviço tem duração agregada sem componentes cadastrados', () => {
+    // Regressão: serviço com duração agregada digitada por engano (ex.: 760 min)
+    // e sem service_components estava sendo usado direto no agendamento,
+    // fazendo o término estourar o horário de funcionamento e quebrar o
+    // agendamento automático de pacotes sequenciais.
+    const services = [{ id: 'axila', duration: 760 }];
+    expect(getSchedulingDurationMinutes(services[0], services, 60)).toBe(60);
+    expect(getSchedulingDurationMinutes(services[0], services, 90)).toBe(90);
+  });
 });

@@ -15,7 +15,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
  * Fields left untouched (null) inherit from the account's global settings.
  */
 export function MinhasPreferenciasSettings() {
-  const { prefs, effective, update, resetField } = useProfessionalPreferences();
+  const { prefs, effective, update } = useProfessionalPreferences();
   const { settings: global } = useBusinessSettings();
 
   const [opening, setOpening] = useState('');

@@ -3939,6 +3939,27 @@ export type Database = {
           },
         ]
       }
+      signup_notifications: {
+        Row: {
+          created_at: string
+          email_sent: boolean
+          id: string
+          notified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_sent?: boolean
+          id?: string
+          notified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_sent?: boolean
+          id?: string
+          notified_at?: string | null
+        }
+        Relationships: []
+      }
       single_sales: {
         Row: {
           account_owner_id: string

@@ -5001,6 +5001,10 @@ export type Database = {
         Args: { p_codigo: string; p_id: string }
         Returns: boolean
       }
+      convert_product_quantity: {
+        Args: { _from: string; _to: string; _value: number }
+        Returns: number
+      }
       corrigir_agendamentos_duplicados: {
         Args: never
         Returns: {

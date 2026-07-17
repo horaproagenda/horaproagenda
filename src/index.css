@@ -183,92 +183,113 @@ input::-webkit-clear-button {
 
 @layer base {
   :root {
-    /* Hora Pro — Paleta Areia Quente + Âmbar Dourado */
-    --background: 38 33% 94%;         /* #F5F1EA areia quente */
+    /* ============================================================
+       Hora Pro — Paleta oficial (Areia Quente + Âmbar Dourado + Petróleo + Grafite)
+       Tons e subtons derivados da paleta principal.
+       Base:
+         Areia Quente #F5F1EA  (fundo, sidebar)
+         Âmbar Dourado #F4A261 (botões, destaques)
+         Petróleo #0F4C5C      (acento secundário / gráficos)
+         Grafite #2A2D34       (texto)
+       ============================================================ */
+
+    /* Superfícies — tons de areia */
+    --background: 38 33% 94%;         /* #F5F1EA areia quente base */
     --foreground: 222 10% 18%;        /* #2A2D34 grafite */
 
-    --card: 38 30% 97%;
+    --card: 38 40% 98%;               /* areia clara (quase creme) */
     --card-foreground: 222 10% 18%;
 
-    --popover: 38 30% 97%;
+    --popover: 38 40% 98%;
     --popover-foreground: 222 10% 18%;
 
-    --primary: 27 87% 67%;            /* #F4A261 âmbar dourado (botões) */
-    --primary-foreground: 222 10% 18%; /* grafite */
+    /* Primária — âmbar dourado e subtons */
+    --primary: 27 87% 67%;            /* #F4A261 âmbar dourado */
+    --primary-foreground: 222 15% 12%;
+    --primary-hover: 22 82% 60%;      /* âmbar mais tostado no hover */
+    --primary-active: 18 78% 52%;     /* âmbar queimado no active */
+    --primary-soft: 30 90% 90%;       /* âmbar pastel para fundos suaves */
+    --primary-glow: 32 95% 75%;       /* âmbar claro luminoso */
 
-    --secondary: 38 20% 88%;
+    /* Secundária — areia média */
+    --secondary: 36 25% 90%;
     --secondary-foreground: 222 10% 18%;
 
-    --muted: 38 20% 88%;
-    --muted-foreground: 222 8% 40%;
+    --muted: 36 22% 88%;
+    --muted-foreground: 222 8% 42%;
 
-    --accent: 27 87% 67%;             /* #F4A261 âmbar dourado */
-    --accent-foreground: 222 10% 18%;
+    /* Acento — petróleo (par cromático complementar do âmbar) */
+    --accent: 191 71% 21%;            /* #0F4C5C petróleo */
+    --accent-foreground: 38 33% 96%;
+    --accent-soft: 191 40% 92%;       /* petróleo lavado */
 
     --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 38 15% 82%;
-    --input: 38 15% 82%;
+    --border: 36 20% 84%;
+    --input: 36 20% 84%;
     --ring: 27 87% 67%;
 
-    --radius: 1.5rem;
+    --radius: 1.25rem;
 
-    --sidebar-background: 38 33% 94%;  /* #F5F1EA areia quente (fundo + barra lateral) */
-    --sidebar-foreground: 222 10% 18%; /* #2A2D34 grafite */
-    --sidebar-primary: 27 87% 67%;    /* #F4A261 âmbar dourado */
-    --sidebar-primary-foreground: 222 10% 18%;
-    --sidebar-accent: 38 20% 82%;
+    /* Sidebar — areia quente com acento âmbar */
+    --sidebar-background: 38 33% 94%;
+    --sidebar-foreground: 222 10% 18%;
+    --sidebar-primary: 27 87% 67%;
+    --sidebar-primary-foreground: 222 15% 12%;
+    --sidebar-accent: 36 28% 88%;
     --sidebar-accent-foreground: 222 10% 18%;
-    --sidebar-border: 38 15% 82%;
+    --sidebar-border: 36 20% 84%;
     --sidebar-ring: 27 87% 67%;
 
-
-    /* Custom tokens */
-    --success: 152 50% 45%;
+    /* Estados semânticos alinhados à paleta */
+    --success: 158 52% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 20 15% 15%;
-    --info: 210 60% 55%;
+    --warning: 32 92% 52%;            /* âmbar mais saturado */
+    --warning-foreground: 20 30% 12%;
+    --info: 191 71% 30%;              /* petróleo iluminado */
     --info-foreground: 0 0% 100%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.75));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--primary) / 0.35), hsl(var(--primary) / 0.18));
-    --gradient-hero: linear-gradient(180deg, hsl(30 25% 98%) 0%, hsl(30 30% 94%) 100%);
-
-    /* Shadows */
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.18);
-
-    /* Estados interativos derivados do --primary (hover/active/disabled).
-       Mantém contraste e legibilidade ao trocar a cor em Aparência. */
-    --primary-hover: var(--primary);
-    --primary-active: var(--primary);
-    --primary-soft: var(--primary);
     --interactive-disabled-opacity: 0.5;
+
+    /* Gradients — combinam âmbar, areia e petróleo */
+    --gradient-primary: linear-gradient(135deg, hsl(27 90% 72%) 0%, hsl(18 78% 55%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(191 71% 24%) 0%, hsl(191 55% 32%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(38 40% 97%) 0%, hsl(36 30% 90%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(38 45% 96%) 0%, hsl(30 55% 88%) 60%, hsl(27 70% 82%) 100%);
+    --gradient-petrol-amber: linear-gradient(120deg, hsl(191 71% 21%) 0%, hsl(191 50% 32%) 55%, hsl(27 87% 67%) 100%);
+
+    /* Shadows — sombras quentes tingidas com grafite/petróleo */
+    --shadow-2xs: 0 1px 2px 0 hsl(191 40% 15% / 0.04);
+    --shadow-xs:  0 1px 3px 0 hsl(191 40% 15% / 0.06);
+    --shadow-sm:  0 2px 4px -1px hsl(191 40% 15% / 0.08), 0 1px 2px 0 hsl(191 40% 15% / 0.05);
+    --shadow:     0 4px 10px -3px hsl(191 40% 15% / 0.10), 0 2px 4px -2px hsl(191 40% 15% / 0.06);
+    --shadow-md:  0 6px 14px -4px hsl(191 40% 15% / 0.12), 0 3px 6px -3px hsl(191 40% 15% / 0.08);
+    --shadow-lg:  0 12px 24px -8px hsl(191 40% 15% / 0.16), 0 4px 8px -4px hsl(191 40% 15% / 0.10);
+    --shadow-xl:  0 20px 40px -12px hsl(191 40% 15% / 0.20), 0 8px 16px -8px hsl(191 40% 15% / 0.12);
+    --shadow-2xl: 0 32px 60px -20px hsl(191 40% 15% / 0.28);
+    --shadow-glow: 0 0 24px hsl(var(--primary) / 0.35);
+    --shadow-glow-petrol: 0 0 24px hsl(var(--accent) / 0.30);
 
     /* Font families */
     --font-display: 'Playfair Display', serif;
     --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --chart-1: 191 71% 21%;
-    --chart-2: 27 87% 67%;
-    --chart-3: 191 45% 40%;
-    --chart-4: 27 60% 50%;
-    --chart-5: 222 10% 45%;
-    --sidebar: 191 71% 21%;
     --font-serif: 'Merriweather', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+
+    /* Charts — sequência harmônica da paleta */
+    --chart-1: 27 87% 67%;    /* âmbar dourado */
+    --chart-2: 191 71% 30%;   /* petróleo */
+    --chart-3: 18 78% 55%;    /* âmbar queimado */
+    --chart-4: 191 45% 55%;   /* petróleo claro */
+    --chart-5: 36 40% 60%;    /* areia tostada */
+    --chart-6: 222 10% 45%;   /* grafite claro */
+
+    --sidebar: 38 33% 94%;
     --tracking-normal: 0em;
     --spacing: 0.25rem;
   }
+
 
   .dark {
     --background: 191 30% 8%;

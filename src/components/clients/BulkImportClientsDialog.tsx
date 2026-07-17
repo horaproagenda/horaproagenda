@@ -599,7 +599,7 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
                         <TableCell className="text-xs">{getRowProfessionalLabel(client)}</TableCell>
                         <TableCell>
                           {client.valid ? (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
+                            <Badge variant="outline" className="text-primary border-primary/30">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               OK
                             </Badge>

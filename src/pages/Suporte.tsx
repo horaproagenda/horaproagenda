@@ -73,21 +73,21 @@ const Suporte = () => {
       title: "WhatsApp",
       description: "(37) 99135-5495",
       href: buildWebWhatsappUrl("5537991355495", ""),
-      color: "bg-green-500",
+      color: "bg-primary/80",
     },
     {
       icon: <Mail className="h-5 w-5" />,
       title: "E-mail",
       description: "horaproagenda@gmail.com",
       href: "mailto:horaproagenda@gmail.com",
-      color: "bg-blue-500",
+      color: "bg-accent/80",
     },
     {
       icon: <Phone className="h-5 w-5" />,
       title: "Telefone",
       description: "(37) 99135-5495",
       href: "tel:+5537991355495",
-      color: "bg-purple-500",
+      color: "bg-accent/80",
     },
   ];
 

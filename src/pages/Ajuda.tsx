@@ -195,9 +195,9 @@ const Ajuda = () => {
   ];
 
   const statusList = [
-    { status: "scheduled", label: "Agendado", color: "bg-blue-500", description: "O agendamento foi criado e aguarda confirmação do cliente. Envie uma mensagem para confirmar." },
-    { status: "confirmed", label: "Confirmado", color: "bg-green-500", description: "O cliente confirmou que irá comparecer. O agendamento está garantido." },
-    { status: "completed", label: "Concluído", color: "bg-purple-500", description: "O atendimento foi realizado com sucesso. Agora você pode registrar o pagamento." },
+    { status: "scheduled", label: "Agendado", color: "bg-accent/80", description: "O agendamento foi criado e aguarda confirmação do cliente. Envie uma mensagem para confirmar." },
+    { status: "confirmed", label: "Confirmado", color: "bg-primary/80", description: "O cliente confirmou que irá comparecer. O agendamento está garantido." },
+    { status: "completed", label: "Concluído", color: "bg-accent/80", description: "O atendimento foi realizado com sucesso. Agora você pode registrar o pagamento." },
     { status: "cancelled", label: "Cancelado", color: "bg-red-500", description: "O agendamento foi cancelado pelo cliente ou pela clínica. Não será realizado." },
     { status: "missed", label: "Faltou", color: "bg-orange-500", description: "O cliente não compareceu no horário marcado. Considere entrar em contato." },
     { status: "rescheduled", label: "Reagendado", color: "bg-yellow-500", description: "O agendamento foi remarcado para outra data ou horário." },
@@ -206,7 +206,7 @@ const Ajuda = () => {
   const paymentStatus = [
     { status: "pending", label: "Pendente", color: "bg-gray-500", description: "O pagamento ainda não foi realizado. O valor total está em aberto." },
     { status: "partial", label: "Parcial", color: "bg-yellow-500", description: "Parte do valor foi paga. Há um saldo restante a receber." },
-    { status: "paid", label: "Pago", color: "bg-green-500", description: "O valor total foi recebido. O pagamento está completo." },
+    { status: "paid", label: "Pago", color: "bg-primary/80", description: "O valor total foi recebido. O pagamento está completo." },
   ];
 
   const permissions = [
@@ -255,7 +255,7 @@ const Ajuda = () => {
                   <Card className="card-hover h-full">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="bg-green-500 p-2 rounded-lg text-white">
+                        <div className="bg-primary/80 p-2 rounded-lg text-white">
                           <MessageSquare className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
@@ -274,7 +274,7 @@ const Ajuda = () => {
                   <Card className="card-hover h-full">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="bg-blue-500 p-2 rounded-lg text-white">
+                        <div className="bg-accent/80 p-2 rounded-lg text-white">
                           <Mail className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
@@ -293,7 +293,7 @@ const Ajuda = () => {
                   <Card className="card-hover h-full">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="bg-purple-500 p-2 rounded-lg text-white">
+                        <div className="bg-accent/80 p-2 rounded-lg text-white">
                           <Phone className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
@@ -309,8 +309,8 @@ const Ajuda = () => {
 
               <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
                 <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novidades</TabsTrigger>
-                <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
-                <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
+                <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">Módulos</TabsTrigger>
+                <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">Status</TabsTrigger>
                 <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Permissões</TabsTrigger>
                 <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
@@ -340,10 +340,10 @@ const Ajuda = () => {
                     <div className="space-y-1.5 pt-1">
                       {CURRENT_CHANGELOG.changes.map((c, i) => {
                         const styleMap: Record<string, { cls: string; icon: JSX.Element }> = {
-                          'novo':       { cls: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30', icon: <Sparkles className="h-3 w-3" /> },
-                          'melhoria':   { cls: 'bg-sky-500/15 text-sky-700 border-sky-500/30',             icon: <Wrench className="h-3 w-3" /> },
+                          'novo':       { cls: 'bg-primary/80/15 text-primary border-primary/30/30', icon: <Sparkles className="h-3 w-3" /> },
+                          'melhoria':   { cls: 'bg-accent/80/15 text-accent border-accent/30/30',             icon: <Wrench className="h-3 w-3" /> },
                           'correção':   { cls: 'bg-amber-500/15 text-amber-700 border-amber-500/30',       icon: <Check className="h-3 w-3" /> },
-                          'segurança':  { cls: 'bg-violet-500/15 text-violet-700 border-violet-500/30',    icon: <ShieldCheck className="h-3 w-3" /> },
+                          'segurança':  { cls: 'bg-accent/80/15 text-accent border-accent/30/30',    icon: <ShieldCheck className="h-3 w-3" /> },
                         };
                         const s = styleMap[c.type];
                         return (

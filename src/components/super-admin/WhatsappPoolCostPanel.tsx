@@ -237,7 +237,7 @@ export function WhatsappPoolCostPanel() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Card className="p-3 bg-emerald-500/5 border-emerald-500/20">
+            <Card className="p-3 bg-primary/80/5 border-primary/30/20">
               <div className="flex items-center gap-2 text-[11px] uppercase text-muted-foreground mb-1">
                 <Zap className="h-3 w-3" /> Custo mensal cobrado
               </div>
@@ -345,7 +345,7 @@ export function WhatsappPoolCostPanel() {
                         <code className="text-foreground truncate">{row.instance_id}</code>
                         {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre · sem custo</Badge>}
                         {row.status === 'assigned' && (
-                          <Badge className="bg-green-500 text-[10px]">
+                          <Badge className="bg-primary/80 text-[10px]">
                             em uso · {profName} · desde {fmtDate(row.activated_at)}
                           </Badge>
                         )}
@@ -377,7 +377,7 @@ function StatCard({
 }: { label: string; value: number; hint?: string; variant?: 'default' | 'success' | 'primary' | 'muted' }) {
   const cls = {
     default: 'bg-muted/30',
-    success: 'bg-emerald-500/10 border-emerald-500/30',
+    success: 'bg-primary/80/10 border-primary/30/30',
     primary: 'bg-primary/10 border-primary/30',
     muted: 'bg-muted/40 text-muted-foreground',
   }[variant];

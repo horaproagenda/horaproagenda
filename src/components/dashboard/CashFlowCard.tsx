@@ -60,10 +60,10 @@ export function CashFlowCard({ data }: CashFlowCardProps) {
 
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground flex items-center gap-1">
-            <ArrowUpCircle className="h-3 w-3 text-green-500" />
+            <ArrowUpCircle className="h-3 w-3 text-primary" />
             Entradas
           </span>
-          <span className="font-medium text-green-500">+{formatCurrency(data.income)}</span>
+          <span className="font-medium text-primary">+{formatCurrency(data.income)}</span>
         </div>
 
         <div className="flex items-center justify-between text-xs">

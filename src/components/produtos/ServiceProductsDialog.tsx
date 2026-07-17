@@ -823,7 +823,7 @@ export function ServiceProductsDialog() {
                           <TableCell className="py-1.5 text-xs">
                             <div className="flex items-center gap-2">
                               {product && isEstimatedTracking(product.product_type) ? (
-                                <Droplets className="h-3 w-3 text-blue-500" />
+                                <Droplets className="h-3 w-3 text-accent" />
                               ) : (
                                 <Box className="h-3 w-3 text-amber-500" />
                               )}
@@ -979,7 +979,7 @@ export function ServiceProductsDialog() {
                       return (
                         <TableRow key={tp.id}>
                           <TableCell className="py-1.5 text-xs">
-                            <Badge variant="outline" className="bg-purple-500/10 border-purple-500/30 text-purple-700">
+                            <Badge variant="outline" className="bg-accent/80/10 border-accent/30/30 text-accent">
                               <Layers className="h-3 w-3 mr-1" />
                               {tp.template?.name || '-'}
                             </Badge>
@@ -987,7 +987,7 @@ export function ServiceProductsDialog() {
                           <TableCell className="py-1.5 text-xs">
                             <div className="flex items-center gap-2">
                               {product && isEstimatedTracking(product.product_type) ? (
-                                <Droplets className="h-3 w-3 text-blue-500" />
+                                <Droplets className="h-3 w-3 text-accent" />
                               ) : (
                                 <Box className="h-3 w-3 text-amber-500" />
                               )}

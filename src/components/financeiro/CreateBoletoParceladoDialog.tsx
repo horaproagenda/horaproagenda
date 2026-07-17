@@ -503,21 +503,21 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
             <TabsList className="flex w-full h-auto p-1 gap-1 bg-muted/50">
               <TabsTrigger
                 value="beneficiario"
-                className="flex-1 gap-1 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=inactive]:text-blue-700 dark:data-[state=inactive]:text-blue-300"
+                className="flex-1 gap-1 data-[state=active]:bg-accent/80 data-[state=active]:text-white data-[state=inactive]:text-accent dark:data-[state=inactive]:text-accent/80"
               >
                 <Building2 className="h-3.5 w-3.5" />Beneficiário
               </TabsTrigger>
               <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
               <TabsTrigger
                 value="pagador"
-                className="flex-1 gap-1 data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=inactive]:text-purple-700 dark:data-[state=inactive]:text-purple-300"
+                className="flex-1 gap-1 data-[state=active]:bg-accent/80 data-[state=active]:text-white data-[state=inactive]:text-accent dark:data-[state=inactive]:text-accent/80"
               >
                 <User className="h-3.5 w-3.5" />Pagador
               </TabsTrigger>
               <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" />
               <TabsTrigger
                 value="financeiro"
-                className="flex-1 gap-1 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:text-emerald-700 dark:data-[state=inactive]:text-emerald-300"
+                className="flex-1 gap-1 data-[state=active]:bg-primary/80 data-[state=active]:text-white data-[state=inactive]:text-primary dark:data-[state=inactive]:text-primary/80"
               >
                 <Receipt className="h-3.5 w-3.5" />Financeiro
               </TabsTrigger>

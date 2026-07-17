@@ -568,9 +568,9 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               </div>
             </RadioGroup>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/80/10 border border-primary/30/20">
               <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-green-600" />
+                <MessageCircle className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Notificar cliente por WhatsApp</span>
               </div>
               <Switch
@@ -648,9 +648,9 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                 </div>
               </RadioGroup>
 
-              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-primary/80/10 border border-primary/30/20">
                 <div className="flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4 text-green-600" />
+                  <MessageCircle className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Notificar cliente por WhatsApp</span>
                 </div>
                 <Switch

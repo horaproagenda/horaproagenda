@@ -226,7 +226,7 @@ export function AtendimentosPorProfissional() {
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Receita Total</p>
-            <p className="text-lg font-bold text-emerald-600">
+            <p className="text-lg font-bold text-primary">
               {formatCurrency(profSummaries.reduce((s, p) => s + p.totalRevenue, 0))}
             </p>
           </CardContent>
@@ -234,7 +234,7 @@ export function AtendimentosPorProfissional() {
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Comissões</p>
-            <p className="text-lg font-bold text-blue-600">
+            <p className="text-lg font-bold text-accent">
               {formatCurrency(profSummaries.reduce((s, p) => s + p.totalCommission, 0))}
             </p>
           </CardContent>
@@ -266,7 +266,7 @@ export function AtendimentosPorProfissional() {
                       <Calendar className="h-3 w-3" />
                       {item.totalServices} atend.
                     </span>
-                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                    <span className="flex items-center gap-1 text-primary font-medium">
                       <DollarSign className="h-3 w-3" />
                       {formatCurrency(item.totalRevenue)}
                     </span>
@@ -278,7 +278,7 @@ export function AtendimentosPorProfissional() {
                 </div>
                 <div className="flex items-center gap-2">
                   {item.totalPaidCommissions > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 bg-emerald-50">
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary bg-primary/10">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       {formatCurrency(item.totalPaidCommissions)} pago
                     </Badge>
@@ -362,9 +362,9 @@ export function AtendimentosPorProfissional() {
             <div className="space-y-4">
               {/* Commission payments history */}
               {selectedProfPaidCommissions.length > 0 && (
-                <Card className="border-emerald-200 bg-emerald-50/50">
+                <Card className="border-primary/30 bg-primary/10/50">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-emerald-700 flex items-center gap-2">
+                    <CardTitle className="text-sm text-primary flex items-center gap-2">
                       <CheckCircle className="h-4 w-4" />
                       Histórico de Pagamentos de Comissões
                     </CardTitle>
@@ -384,7 +384,7 @@ export function AtendimentosPorProfissional() {
                             <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">
                               {cp.created_at ? format(parseISO(cp.created_at), 'dd/MM/yyyy HH:mm') : '-'}
                             </TableCell>
-                            <TableCell className="text-xs py-2 font-semibold text-emerald-700 tabular-nums">
+                            <TableCell className="text-xs py-2 font-semibold text-primary tabular-nums">
                               {formatCurrency(Number(cp.amount || 0))}
                             </TableCell>
                             <TableCell className="text-xs py-2 text-muted-foreground">{cp.description}</TableCell>
@@ -417,7 +417,7 @@ export function AtendimentosPorProfissional() {
                             <Badge variant="secondary" className="text-[10px] h-5">
                               {month.appointments.length} atend.
                             </Badge>
-                            <span className="text-emerald-600 font-medium tabular-nums">{formatCurrency(monthRevenue)}</span>
+                            <span className="text-primary font-medium tabular-nums">{formatCurrency(monthRevenue)}</span>
                             <span className="text-amber-600 font-medium tabular-nums">{formatCurrency(monthCommission)}</span>
                           </div>
                         </div>

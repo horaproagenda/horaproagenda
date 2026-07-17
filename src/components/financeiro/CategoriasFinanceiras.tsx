@@ -424,7 +424,7 @@ export function CategoriasFinanceiras() {
     if (entry.status === 'paid') {
       const isPartial = entry.notes?.includes('Pagamento parcial');
       if (isPartial) return <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">Parcial</Badge>;
-      return <Badge className="bg-green-100 text-green-700 text-[10px]">Pago</Badge>;
+      return <Badge className="bg-primary/10 text-primary text-[10px]">Pago</Badge>;
     }
     const dueDate = parseISO(entry.due_date + 'T12:00:00');
     const today = new Date(); today.setHours(0,0,0,0);
@@ -457,11 +457,11 @@ export function CategoriasFinanceiras() {
                 </Badge>
               )}
               {group.paidCount === group.entries.length && (
-                <Badge className="bg-green-100 text-green-700 text-[10px] shrink-0">Quitado</Badge>
+                <Badge className="bg-primary/10 text-primary text-[10px] shrink-0">Quitado</Badge>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`text-sm font-medium ${cat.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`text-sm font-medium ${cat.type === 'income' ? 'text-primary' : 'text-red-600'}`}>
                 R$ {group.totalAmount.toFixed(2)}
               </span>
               <Button
@@ -701,7 +701,7 @@ export function CategoriasFinanceiras() {
                     </div>
                     <div className="rounded-lg border p-3 text-center">
                       <p className="text-xs text-muted-foreground">Pagas</p>
-                      <p className="text-lg font-bold text-green-600">{detailGroup.paidCount}</p>
+                      <p className="text-lg font-bold text-primary">{detailGroup.paidCount}</p>
                     </div>
                     <div className="rounded-lg border p-3 text-center">
                       <p className="text-xs text-muted-foreground">Pendentes</p>
@@ -996,7 +996,7 @@ export function CategoriasFinanceiras() {
           {/* Income Categories */}
           {incomeCats.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-green-600 mb-2">Receitas</h3>
+              <h3 className="text-sm font-semibold text-primary mb-2">Receitas</h3>
               <Accordion type="multiple" className="w-full">
                 {incomesByCategory.map((cat) => (
                   <AccordionItem key={cat.id} value={cat.id}>
@@ -1008,7 +1008,7 @@ export function CategoriasFinanceiras() {
                           <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-green-600">R$ {cat.total.toFixed(2)}</span>
+                          <span className="text-primary">R$ {cat.total.toFixed(2)}</span>
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEntryDialog(cat.id, 'income'); }} title="Adicionar receita">
                             <Plus className="h-4 w-4 text-primary" />
                           </Button>

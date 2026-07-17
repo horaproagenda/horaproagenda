@@ -368,7 +368,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
               <Button
                 size="sm"
                 variant="default"
-                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                className="h-8 text-xs bg-primary hover:bg-primary text-white"
                 onClick={handleSendWhatsApp}
                 disabled={selectedAppointments.size === 0}
                 title="Enviar lista pelo WhatsApp"
@@ -474,7 +474,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                               if (!s) return null;
                               const tone =
                                 s.tone === 'done'
-                                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'
+                                  ? 'bg-primary/80/10 text-primary border-primary/30/30'
                                   : s.tone === 'missed'
                                     ? 'bg-red-500/10 text-red-700 border-red-500/30'
                                     : s.tone === 'cancelled'

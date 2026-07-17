@@ -75,7 +75,7 @@ export default function Unsubscribe() {
             </>
           )}
           {state === 'submitting' && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Processando…</div>}
-          {state === 'success' && <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-5 w-5" /> Inscrição cancelada com sucesso.</div>}
+          {state === 'success' && <div className="flex items-center gap-2 text-primary"><CheckCircle2 className="h-5 w-5" /> Inscrição cancelada com sucesso.</div>}
           {state === 'already' && <div className="flex items-center gap-2 text-muted-foreground"><CheckCircle2 className="h-5 w-5" /> Você já havia cancelado a inscrição.</div>}
           {state === 'invalid' && <div className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" /> Link inválido ou expirado.</div>}
           {state === 'error' && <div className="flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" /> Erro ao processar. Tente novamente.</div>}

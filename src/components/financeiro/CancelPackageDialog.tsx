@@ -289,7 +289,7 @@ export function CancelPackageDialog({ open, onOpenChange, saleId, onSuccess }: C
               onChange={(e) => { setCostPerApplication(e.target.value); setAutoCostInfo(null); }}
               className="h-8 text-xs" />
             {autoCostInfo && (
-              <p className="text-[10px] text-emerald-600 flex items-start gap-1">
+              <p className="text-[10px] text-primary flex items-start gap-1">
                 <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
                 <span>{autoCostInfo}</span>
               </p>

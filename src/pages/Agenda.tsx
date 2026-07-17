@@ -1092,7 +1092,7 @@ const Agenda = () => {
                   <Badge variant="secondary" className={cn(
                     "gap-1 text-[10px] sm:text-xs border",
                     holiday.type === 'commemorative'
-                      ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800"
+                      ? "bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80 border-accent/30 dark:border-accent/30"
                       : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800"
                   )}>
                     <Umbrella className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -1263,18 +1263,18 @@ const Agenda = () => {
                     {holiday && !isSelected && (
                       <Umbrella className={cn(
                         "absolute top-1 right-1 h-2.5 w-2.5",
-                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                        holiday.type === 'commemorative' ? "text-accent" : "text-amber-500"
                       )} />
                     )}
                     <span className={cn(
                       'text-[10px] sm:text-xs font-medium uppercase whitespace-nowrap tracking-tight',
-                      isSelected ? 'text-primary-foreground/80' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400') : 'text-muted-foreground'
+                      isSelected ? 'text-primary-foreground/80' : holiday ? (holiday.type === 'commemorative' ? 'text-accent dark:text-accent/80' : 'text-amber-600 dark:text-amber-400') : 'text-muted-foreground'
                     )}>
                       {format(day, 'EEE', { locale: ptBR }).slice(0, 3)}
                     </span>
                     <span className={cn(
                       'text-lg font-semibold',
-                      isSelected ? 'text-primary-foreground' : holiday ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300') : 'text-foreground'
+                      isSelected ? 'text-primary-foreground' : holiday ? (holiday.type === 'commemorative' ? 'text-accent dark:text-accent/80' : 'text-amber-700 dark:text-amber-300') : 'text-foreground'
                     )}>
                       {format(day, 'd')}
                     </span>
@@ -1411,7 +1411,7 @@ const Agenda = () => {
                         ? 'bg-primary text-primary-foreground shadow-glow' 
                         : holiday && isCurrentMonth
                           ? (holiday.type === 'commemorative'
-                              ? 'bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30'
+                              ? 'bg-accent/10 dark:bg-accent/20 hover:bg-accent/10 dark:hover:bg-accent/30'
                               : 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30')
                           : hasAbsence && isCurrentMonth
                             ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800'
@@ -1424,7 +1424,7 @@ const Agenda = () => {
                     {holiday && !isSelected && isCurrentMonth && (
                       <Umbrella className={cn(
                         "absolute top-1 right-1 h-2.5 w-2.5",
-                        holiday.type === 'commemorative' ? "text-sky-500" : "text-amber-500"
+                        holiday.type === 'commemorative' ? "text-accent" : "text-amber-500"
                       )} />
                     )}
                     {/* Absence indicator */}
@@ -1436,7 +1436,7 @@ const Agenda = () => {
                       isSelected 
                         ? 'text-primary-foreground' 
                         : holiday && isCurrentMonth 
-                          ? (holiday.type === 'commemorative' ? 'text-sky-700 dark:text-sky-300' : 'text-amber-700 dark:text-amber-300')
+                          ? (holiday.type === 'commemorative' ? 'text-accent dark:text-accent/80' : 'text-amber-700 dark:text-amber-300')
                           : hasAbsence && isCurrentMonth
                             ? 'text-orange-700 dark:text-orange-300'
                             : 'text-foreground'

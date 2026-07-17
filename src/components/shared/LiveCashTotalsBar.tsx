@@ -38,11 +38,11 @@ export function LiveCashTotalsBar({ compact = false, className = '' }: Props) {
   }
 
   const items = [
-    { label: 'Entradas', value: t.income, Icon: ArrowDownCircle, color: 'text-emerald-600' },
+    { label: 'Entradas', value: t.income, Icon: ArrowDownCircle, color: 'text-primary' },
     { label: 'Saídas', value: t.expense, Icon: ArrowUpCircle, color: 'text-destructive' },
     { label: 'Descontos', value: t.discounts, Icon: Percent, color: 'text-amber-600' },
     { label: 'Taxas Cartão', value: t.cardFees, Icon: CreditCard, color: 'text-orange-600' },
-    { label: 'Líquido', value: t.net, Icon: TrendingUp, color: 'text-blue-600' },
+    { label: 'Líquido', value: t.net, Icon: TrendingUp, color: 'text-accent' },
     { label: 'Saldo Atual', value: t.balance, Icon: Wallet, color: 'text-primary' },
   ];
 
@@ -58,8 +58,8 @@ export function LiveCashTotalsBar({ compact = false, className = '' }: Props) {
         </span>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/80 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary/80" />
           </span>
           Atualizado {format(t.lastUpdate, 'HH:mm:ss')}
         </span>

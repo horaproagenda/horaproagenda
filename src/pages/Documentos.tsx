@@ -47,17 +47,17 @@ const templateTypeConfig = {
   anamnese: { 
     label: 'Anamnese', 
     icon: Stethoscope, 
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
+    color: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80' 
   },
   contract: { 
     label: 'Contrato', 
     icon: FileSignature, 
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
+    color: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80' 
   },
   consent: { 
     label: 'Termo', 
     icon: FileCheck, 
-    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+    color: 'bg-primary/10 text-primary dark:bg-primary/30 dark:text-primary/80' 
   },
   facial: { 
     label: 'Facial', 
@@ -195,7 +195,7 @@ const Documentos = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="h-9 bg-muted/50 p-1 gap-1">
                 <TabsTrigger value="all" className="text-xs border border-transparent data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-700 data-[state=active]:border-slate-500/40">Todos</TabsTrigger>
-                <TabsTrigger value="anamnese" className="text-xs border border-transparent data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40">Anamneses</TabsTrigger>
+                <TabsTrigger value="anamnese" className="text-xs border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">Anamneses</TabsTrigger>
                 <TabsTrigger value="contracts" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Contratos/Termos</TabsTrigger>
               </TabsList>
 

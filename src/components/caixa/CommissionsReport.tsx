@@ -345,28 +345,28 @@ export function CommissionsReport({
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <Card className="overflow-hidden border-l-4 border-l-blue-500 bg-gradient-to-br from-accent/5 to-transparent shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Atendimentos</p>
-                <p className="text-lg font-bold text-blue-600 mt-0.5">{totals.totalServices}</p>
+                <p className="text-lg font-bold text-accent mt-0.5">{totals.totalServices}</p>
               </div>
-              <Calendar className="h-7 w-7 text-blue-500/30" />
+              <Calendar className="h-7 w-7 text-accent/30" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <Card className="overflow-hidden border-l-4 border-l-emerald-500 bg-gradient-to-br from-primary/5 to-transparent shadow-sm hover:shadow-md transition-all">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Receita Total</p>
-                <p className="text-lg font-bold text-emerald-600 mt-0.5">
+                <p className="text-lg font-bold text-primary mt-0.5">
                   R$ {totals.totalRevenue.toFixed(2)}
                 </p>
               </div>
-              <DollarSign className="h-7 w-7 text-emerald-500/30" />
+              <DollarSign className="h-7 w-7 text-primary/30" />
             </div>
           </CardContent>
         </Card>
@@ -435,7 +435,7 @@ export function CommissionsReport({
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Receita</p>
-                            <p className="text-sm font-semibold text-emerald-600">R$ {data.totalRevenue.toFixed(2)}</p>
+                            <p className="text-sm font-semibold text-primary">R$ {data.totalRevenue.toFixed(2)}</p>
                           </div>
                           {data.professional.is_commission_based ? (
                             <div className="text-right min-w-[100px]">
@@ -444,7 +444,7 @@ export function CommissionsReport({
                                   {data.commissionPercentage}%
                                 </Badge>
                                 {data.isPaid && (
-                                  <Badge variant="outline" className="text-[10px] h-5 text-emerald-600 border-emerald-300 bg-emerald-50">
+                                  <Badge variant="outline" className="text-[10px] h-5 text-primary border-primary/30 bg-primary/10">
                                     <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                     Pago
                                   </Badge>
@@ -507,7 +507,7 @@ export function CommissionsReport({
                           <div className="flex items-center justify-between pt-4 border-t mt-4">
                             <div>
                               {data.isPaid ? (
-                                <p className="text-xs text-emerald-600 flex items-center gap-1">
+                                <p className="text-xs text-primary flex items-center gap-1">
                                   <CheckCircle className="h-3.5 w-3.5" />
                                   Comissão paga em {data.paidAt ? format(parseISO(data.paidAt), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                                 </p>
@@ -564,7 +564,7 @@ export function CommissionsReport({
                   <p className="text-muted-foreground">Receita:</p>
                   <p className="font-medium">R$ {selectedCommission.totalRevenue.toFixed(2)}</p>
                   <p className="text-muted-foreground">Comissão ({selectedCommission.commissionPercentage}%):</p>
-                  <p className="font-bold text-green-600">R$ {selectedCommission.commissionValue.toFixed(2)}</p>
+                  <p className="font-bold text-primary">R$ {selectedCommission.commissionValue.toFixed(2)}</p>
                 </div>
               </div>
 

@@ -229,7 +229,7 @@ export default function AdminPanel() {
         <Tabs defaultValue="access" className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1 flex-wrap">
             <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">Logs de Acesso</TabsTrigger>
-            <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Profissionais</TabsTrigger>
+            <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">Profissionais</TabsTrigger>
             <TabsTrigger value="assinatura" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40 gap-1"><CreditCard className="h-3 w-3" />Assinatura</TabsTrigger>
           </TabsList>
 

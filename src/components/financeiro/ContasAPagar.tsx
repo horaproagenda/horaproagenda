@@ -475,7 +475,7 @@ export function ContasAPagar() {
       if (isPartialPaid) {
         return <span className="text-sm font-semibold text-yellow-600">Parcialmente Pago</span>;
       }
-      return <span className="text-sm font-semibold text-green-600">Pago</span>;
+      return <span className="text-sm font-semibold text-primary">Pago</span>;
     }
     const dueDate = parseISO(entry.due_date + 'T12:00:00');
     const today = new Date();
@@ -761,7 +761,7 @@ export function ContasAPagar() {
               size="sm" 
               onClick={openBatchPayDialog} 
               disabled={selectedEntryIds.size === 0}
-              className="h-8 text-xs bg-green-600 hover:bg-green-700"
+              className="h-8 text-xs bg-primary hover:bg-primary"
             >
               <DollarSign className="h-3.5 w-3.5 mr-1" />
               Dar Baixa ({selectedEntryIds.size})
@@ -817,7 +817,7 @@ export function ContasAPagar() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => openPayDialog(entry)} 
-                            className="h-7 px-2 gap-1 text-[11px] text-green-700 border-green-300 hover:bg-green-50"
+                            className="h-7 px-2 gap-1 text-[11px] text-primary border-primary/30 hover:bg-primary/10"
                           >
                             <DollarSign className="h-3 w-3" />
                             Dar Baixa
@@ -913,7 +913,7 @@ export function ContasAPagar() {
                 <Separator />
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Valor total:</span>
-                  <span className="font-bold text-green-600 tabular-nums">R$ {batchTotal.toFixed(2)}</span>
+                  <span className="font-bold text-primary tabular-nums">R$ {batchTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Forma de pagamento:</span>
@@ -930,7 +930,7 @@ export function ContasAPagar() {
               </div>
               <div className="flex gap-2 justify-end">
                 <Button size="sm" variant="outline" onClick={() => setBatchConfirmStep(false)}>Voltar</Button>
-                <Button size="sm" onClick={handleBatchConfirm} className="bg-green-600 hover:bg-green-700">
+                <Button size="sm" onClick={handleBatchConfirm} className="bg-primary hover:bg-primary">
                   <Check className="h-3.5 w-3.5 mr-1.5" />
                   Confirmar Pagamento
                 </Button>
@@ -940,7 +940,7 @@ export function ContasAPagar() {
             <div className="space-y-3">
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
-                <p className="text-base font-bold text-green-600 tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
+                <p className="text-base font-bold text-primary tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Forma de Pagamento</Label>
@@ -969,7 +969,7 @@ export function ContasAPagar() {
                 <Button size="sm" onClick={() => {
                   if (!batchPaymentMethodId) { toast.error('Selecione a forma de pagamento'); return; }
                   setBatchConfirmStep(true);
-                }} className="bg-green-600 hover:bg-green-700">
+                }} className="bg-primary hover:bg-primary">
                   Revisar e Confirmar
                 </Button>
               </div>
@@ -1009,7 +1009,7 @@ export function ContasAPagar() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Valor pago:</span>
-                  <span className="font-bold text-green-600">R$ {paid.toFixed(2)}</span>
+                  <span className="font-bold text-primary">R$ {paid.toFixed(2)}</span>
                 </div>
                 {isPartial && (
                   <div className="flex justify-between text-sm">
@@ -1060,7 +1060,7 @@ export function ContasAPagar() {
                 <Button variant="outline" onClick={() => setConfirmationStep(false)}>
                   Voltar
                 </Button>
-                <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
+                <Button onClick={handleConfirmPayment} className="bg-primary hover:bg-primary">
                   <Check className="h-4 w-4 mr-2" />
                   Confirmar Pagamento
                 </Button>
@@ -1168,12 +1168,12 @@ export function ContasAPagar() {
                   Cancelar
                 </Button>
                 {isEditingPayment ? (
-                  <Button onClick={handleConfirmPayment} className="bg-green-600 hover:bg-green-700">
+                  <Button onClick={handleConfirmPayment} className="bg-primary hover:bg-primary">
                     <Check className="h-4 w-4 mr-2" />
                     Salvar Alterações
                   </Button>
                 ) : (
-                  <Button onClick={handleGoToConfirmation} className="bg-green-600 hover:bg-green-700">
+                  <Button onClick={handleGoToConfirmation} className="bg-primary hover:bg-primary">
                     Revisar e Confirmar
                   </Button>
                 )}

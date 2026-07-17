@@ -477,10 +477,10 @@ export function CashRegisterReportDialog({
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <ArrowUp className="h-3 w-3 text-green-600" />
+                  <ArrowUp className="h-3 w-3 text-primary" />
                   Total Recebido
                 </p>
-                <p className="font-semibold text-green-600">{formatCurrency(totals.income)}</p>
+                <p className="font-semibold text-primary">{formatCurrency(totals.income)}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -498,8 +498,8 @@ export function CashRegisterReportDialog({
                 <p className="font-semibold">{formatCurrency(Number(register.closing_balance || 0))}</p>
               </div>
               <div className={`p-3 rounded-lg ${
-                Number(register.difference || 0) === 0 ? 'bg-green-100 dark:bg-green-950' :
-                Number(register.difference || 0) > 0 ? 'bg-blue-100 dark:bg-blue-950' :
+                Number(register.difference || 0) === 0 ? 'bg-primary/10 dark:bg-primary' :
+                Number(register.difference || 0) > 0 ? 'bg-accent/10 dark:bg-accent' :
                 'bg-red-100 dark:bg-red-950'
               }`}>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -511,7 +511,7 @@ export function CashRegisterReportDialog({
                   Diferença
                 </p>
                 <p className={`font-semibold ${
-                  Number(register.difference || 0) >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                  Number(register.difference || 0) >= 0 ? 'text-primary dark:text-primary/80' : 'text-red-700 dark:text-red-300'
                 }`}>
                   {Number(register.difference || 0) >= 0 ? '+' : ''}{formatCurrency(Number(register.difference || 0))}
                 </p>
@@ -524,10 +524,10 @@ export function CashRegisterReportDialog({
             <div>
               <h4 className="text-sm font-semibold mb-3">Recebimentos por Forma de Pagamento</h4>
               <div className="p-3 rounded-lg bg-muted/30 space-y-1">
-                <PaymentRow icon={CreditCard} label="Cartão de Crédito" value={breakdown.credit} color="text-purple-600" />
-                <PaymentRow icon={CreditCard} label="Cartão de Débito" value={breakdown.debit} color="text-blue-600" />
-                <PaymentRow icon={Smartphone} label="PIX" value={breakdown.pix} color="text-emerald-600" />
-                <PaymentRow icon={Banknote} label="Dinheiro" value={breakdown.cash} color="text-green-600" />
+                <PaymentRow icon={CreditCard} label="Cartão de Crédito" value={breakdown.credit} color="text-accent" />
+                <PaymentRow icon={CreditCard} label="Cartão de Débito" value={breakdown.debit} color="text-accent" />
+                <PaymentRow icon={Smartphone} label="PIX" value={breakdown.pix} color="text-primary" />
+                <PaymentRow icon={Banknote} label="Dinheiro" value={breakdown.cash} color="text-primary" />
                 <PaymentRow icon={FileText} label="Boleto" value={breakdown.boleto} color="text-amber-600" />
                 <PaymentRow icon={FileText} label="Cheque" value={breakdown.check} color="text-orange-600" />
                 <PaymentRow icon={Receipt} label="Outros" value={breakdown.other} />
@@ -536,7 +536,7 @@ export function CashRegisterReportDialog({
                 
                 <div className="flex justify-between items-center py-1.5 font-semibold">
                   <span>Total</span>
-                  <span className="text-green-600">{formatCurrency(totals.income)}</span>
+                  <span className="text-primary">{formatCurrency(totals.income)}</span>
                 </div>
               </div>
             </div>
@@ -563,7 +563,7 @@ export function CashRegisterReportDialog({
                           )}
                         </div>
                       </div>
-                      <span className={`font-medium text-sm ${t.type === 'income' ? 'text-green-600' : 'text-destructive'}`}>
+                      <span className={`font-medium text-sm ${t.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
                         {t.type === 'income' ? '+' : '-'}{formatCurrency(Number(t.amount))}
                       </span>
                     </div>

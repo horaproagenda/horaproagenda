@@ -35,8 +35,8 @@ const statusLabels: Record<QuoteStatus, string> = {
 
 const statusColors: Record<QuoteStatus, string> = {
   draft: 'bg-gray-100 text-gray-700',
-  sent: 'bg-blue-100 text-blue-700',
-  accepted: 'bg-green-100 text-green-700',
+  sent: 'bg-accent/10 text-accent',
+  accepted: 'bg-primary/10 text-primary',
   rejected: 'bg-red-100 text-red-700',
   expired: 'bg-orange-100 text-orange-700',
 };

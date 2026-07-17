@@ -261,9 +261,9 @@ export function ExtratoFinanceiro() {
 
   const sourceColor = (source: string) => {
     switch (source) {
-      case 'financial': return 'bg-blue-100 text-blue-700';
-      case 'cash': return 'bg-green-100 text-green-700';
-      case 'commission': return 'bg-purple-100 text-purple-700';
+      case 'financial': return 'bg-accent/10 text-accent';
+      case 'cash': return 'bg-primary/10 text-primary';
+      case 'commission': return 'bg-accent/10 text-accent';
       case 'product': return 'bg-orange-100 text-orange-700';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -328,9 +328,9 @@ export function ExtratoFinanceiro() {
 
         {/* Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
-          <div className="bg-green-50 dark:bg-green-950/30 rounded-md p-2 text-center">
+          <div className="bg-primary/10 dark:bg-primary/30 rounded-md p-2 text-center">
             <p className="text-[10px] text-muted-foreground">Entradas</p>
-            <p className="text-xs font-bold text-green-600">R$ {totals.totalIncome.toFixed(2)}</p>
+            <p className="text-xs font-bold text-primary">R$ {totals.totalIncome.toFixed(2)}</p>
           </div>
           <div className="bg-red-50 dark:bg-red-950/30 rounded-md p-2 text-center">
             <p className="text-[10px] text-muted-foreground">Saídas</p>
@@ -346,7 +346,7 @@ export function ExtratoFinanceiro() {
           </div>
           <div className="bg-muted/50 rounded-md p-2 text-center col-span-2 sm:col-span-1">
             <p className="text-[10px] text-muted-foreground">Saldo Líquido</p>
-            <p className={`text-xs font-bold ${totals.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xs font-bold ${totals.balance >= 0 ? 'text-primary' : 'text-red-600'}`}>
               R$ {totals.balance.toFixed(2)}
             </p>
           </div>
@@ -378,7 +378,7 @@ export function ExtratoFinanceiro() {
                   <TableCell className="text-[11px] py-1 px-2">
                     <div className="flex items-center gap-1.5">
                       {entry.type === 'income' ? (
-                        <ArrowUpCircle className="h-3 w-3 text-green-500 shrink-0" />
+                        <ArrowUpCircle className="h-3 w-3 text-primary shrink-0" />
                       ) : (
                         <ArrowDownCircle className="h-3 w-3 text-red-500 shrink-0" />
                       )}
@@ -392,7 +392,7 @@ export function ExtratoFinanceiro() {
                   </TableCell>
                   <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.category}</TableCell>
                   <TableCell className="text-[11px] py-1 px-2 truncate max-w-[100px]">{entry.paymentMethod}</TableCell>
-                  <TableCell className={`text-[11px] py-1 px-2 text-right ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right ${entry.type === 'income' ? 'text-primary' : 'text-red-600'}`}>
                     R$ {entry.grossAmount.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-[11px] py-1 px-2 text-right text-orange-600">
@@ -401,10 +401,10 @@ export function ExtratoFinanceiro() {
                   <TableCell className="text-[11px] py-1 px-2 text-right text-yellow-600">
                     {entry.cardFee > 0 ? `- R$ ${entry.cardFee.toFixed(2)}` : '-'}
                   </TableCell>
-                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${entry.type === 'income' ? 'text-primary' : 'text-red-600'}`}>
                     R$ {entry.netAmount.toFixed(2)}
                   </TableCell>
-                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${(entry.runningBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <TableCell className={`text-[11px] py-1 px-2 text-right font-medium ${(entry.runningBalance || 0) >= 0 ? 'text-primary' : 'text-red-600'}`}>
                     R$ {(entry.runningBalance || 0).toFixed(2)}
                   </TableCell>
                 </TableRow>

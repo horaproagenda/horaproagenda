@@ -528,7 +528,7 @@ export function FillDocumentDialog({
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-green-600 flex items-center gap-1.5">
+                    <Label className="text-sm font-medium text-primary flex items-center gap-1.5">
                       <PenTool className="h-4 w-4" />
                       Assinatura Capturada ✓
                     </Label>

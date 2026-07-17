@@ -1700,8 +1700,8 @@ Até breve! ✨`;
 
                   {/* Client's paid services - shown first */}
                   {selectedClient && clientPaidServices.length > 0 && (
-                    <div className="border-b border-green-500/20">
-                      <div className="px-2.5 py-1 text-[11px] font-semibold text-green-600 bg-green-500/10 flex items-center gap-1">
+                    <div className="border-b border-primary/30/20">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/80/10 flex items-center gap-1">
                         <Briefcase className="h-3 w-3" />
                         Serviços Pagos do Cliente
                       </div>
@@ -1720,7 +1720,7 @@ Até breve! ✨`;
                       ).map(({ first: paidService, count, totalPaid }) => (
                           <div
                             key={`client-svc-${paidService.id}`}
-                            className="px-2 py-1.5 hover:bg-green-500/10 cursor-pointer border-b border-border/50 bg-green-500/5"
+                            className="px-2 py-1.5 hover:bg-primary/80/10 cursor-pointer border-b border-border/50 bg-primary/80/5"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1733,14 +1733,14 @@ Até breve! ✨`;
                             }}
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-medium text-green-700 truncate">{paidService.service?.name}</span>
+                              <span className="text-xs font-medium text-primary truncate">{paidService.service?.name}</span>
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 {count > 1 && (
-                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700">
+                                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-primary/30 text-primary">
                                     {count}x disponíveis
                                   </Badge>
                                 )}
-                                <Badge className="text-[10px] h-5 px-1.5 bg-green-500 text-white">
+                                <Badge className="text-[10px] h-5 px-1.5 bg-primary/80 text-white">
                                   <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                   PAGO
                                 </Badge>
@@ -1804,7 +1804,7 @@ Até breve! ✨`;
                               key={`client-pkg-group-${pkg.id}`}
                               className={cn(
                                 "px-2 py-1.5 cursor-pointer border-b border-border/50",
-                                isPaid ? "hover:bg-green-500/10 bg-green-500/5" : "hover:bg-primary/5 bg-primary/5"
+                                isPaid ? "hover:bg-primary/80/10 bg-primary/80/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
                               onMouseDown={(e) => {
                                 e.preventDefault();
@@ -1818,7 +1818,7 @@ Até breve! ✨`;
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className={cn("text-xs font-medium truncate", isPaid ? "text-green-700" : "text-primary")}>{pkg.name}</span>
+                                  <span className={cn("text-xs font-medium truncate", isPaid ? "text-primary" : "text-primary")}>{pkg.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-semibold gap-0.5 border border-border">
@@ -1832,14 +1832,14 @@ Até breve! ✨`;
                                     </Badge>
                                   )}
                                   {selectableRemaining > 0 && (
-                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-green-500 text-green-700">
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-primary/30 text-primary">
                                       {hasMultipleInstallments
                                         ? `${selectableRemaining}x nesta parcela`
                                         : `${selectableRemaining}x disponíveis`}
                                     </Badge>
                                   )}
                                   {isPaid ? (
-                                    <Badge className="h-5 px-1.5 text-[10px] bg-green-500 text-white">
+                                    <Badge className="h-5 px-1.5 text-[10px] bg-primary/80 text-white">
                                       <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                       PAGO
                                     </Badge>
@@ -1902,21 +1902,21 @@ Até breve! ✨`;
                       <>
                         {/* Serviços — AZUL */}
                         {simpleServices.length > 0 && (
-                          <div className="border-b border-sky-500/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-sky-700 bg-sky-500/10 flex items-center gap-1">
+                          <div className="border-b border-accent/30/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
                               <Briefcase className="h-3 w-3" /> Serviços
                             </div>
                             {simpleServices.map(service => (
                               <div
                                 key={`svc-${service.id}`}
-                                className="px-2 py-1.5 hover:bg-sky-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-sky-500"
+                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-sky-500"
                                 onMouseDown={pick(service.id, service.name, 'service')}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium truncate">{service.name}</span>
-                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-sky-400 text-sky-700">Serviço</Badge>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-accent/30 text-accent">Serviço</Badge>
                                 </div>
-                                <div className="text-[10px] font-medium text-sky-700/80 uppercase tracking-wide">Categoria: Serviço</div>
+                                <div className="text-[10px] font-medium text-accent/80 uppercase tracking-wide">Categoria: Serviço</div>
                                 <div className="text-[11px] text-muted-foreground">
                                   {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                                 </div>
@@ -1927,21 +1927,21 @@ Até breve! ✨`;
 
                         {/* Kits de Serviços — TEAL */}
                         {kitServices.length > 0 && (
-                          <div className="border-b border-teal-500/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-500/10 flex items-center gap-1">
+                          <div className="border-b border-accent/30/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
                               <Package className="h-3 w-3" /> Kits de Serviços
                             </div>
                             {kitServices.map(service => (
                               <div
                                 key={`kit-${service.id}`}
-                                className="px-2 py-1.5 hover:bg-teal-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-teal-500"
+                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-teal-500"
                                 onMouseDown={pick(service.id, service.name, 'service')}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium truncate">{service.name}</span>
-                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-teal-400 text-teal-700">Kit</Badge>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-accent/30 text-accent">Kit</Badge>
                                 </div>
-                                <div className="text-[10px] font-medium text-teal-700/80 uppercase tracking-wide">Categoria: Kit de Serviços</div>
+                                <div className="text-[10px] font-medium text-accent/80 uppercase tracking-wide">Categoria: Kit de Serviços</div>
                                 <div className="text-[11px] text-muted-foreground">
                                   {formatDurationClock(service.duration)} • R$ {Number(service.price).toFixed(2)}
                                 </div>
@@ -1952,21 +1952,21 @@ Até breve! ✨`;
 
                         {/* Pacotes Comuns — VIOLETA */}
                         {commonPkgs.length > 0 && (
-                          <div className="border-b border-violet-500/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-violet-700 bg-violet-500/10 flex items-center gap-1">
+                          <div className="border-b border-accent/30/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
                               <Package className="h-3 w-3" /> Pacotes Comuns
                             </div>
                             {commonPkgs.map(pkg => (
                               <div
                                 key={`pkgc-${pkg.id}`}
-                                className="px-2 py-1.5 hover:bg-violet-500/10 cursor-pointer border-b border-border/50 border-l-4 border-l-violet-500"
+                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-violet-500"
                                 onMouseDown={pick(pkg.id, pkg.name, 'package')}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-medium truncate">{pkg.name}</span>
-                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-violet-400 text-violet-700">Pacote Comum</Badge>
+                                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] flex-shrink-0 border-accent/30 text-accent">Pacote Comum</Badge>
                                 </div>
-                                <div className="text-[10px] font-medium text-violet-700/80 uppercase tracking-wide">Categoria: Pacote Comum</div>
+                                <div className="text-[10px] font-medium text-accent/80 uppercase tracking-wide">Categoria: Pacote Comum</div>
                                 <div className="text-[11px] text-muted-foreground">
                                   {pkg.total_sessions} sessões • R$ {Number(pkg.total_price).toFixed(2)}
                                 </div>
@@ -2106,9 +2106,9 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
+            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/10/40 p-3 dark:border-accent/30/40 dark:bg-accent/20">
               <div className="space-y-2">
-                <Label className="text-sky-700 dark:text-sky-300 font-medium">Data *</Label>
+                <Label className="text-accent dark:text-accent/80 font-medium">Data *</Label>
                 <DatePickerWithInput
                   value={date}
                   onChange={setDate}
@@ -2122,7 +2122,7 @@ Até breve! ✨`;
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-sky-700 dark:text-sky-300">Início *</Label>
+                  <Label className="text-xs text-accent dark:text-accent/80">Início *</Label>
                   <div className="flex items-center gap-1">
                     <div className="relative flex-1">
                       <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -2160,7 +2160,7 @@ Até breve! ✨`;
                               >
                                 <div className="flex items-center gap-2 w-full">
                                   {isAvailable ? (
-                                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                                    <CheckCircle className="h-3 w-3 text-primary shrink-0" />
                                   ) : (
                                     <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
                                   )}
@@ -2178,7 +2178,7 @@ Até breve! ✨`;
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-sky-700 dark:text-sky-300 flex items-center justify-between">
+                  <Label className="text-xs text-accent dark:text-accent/80 flex items-center justify-between">
                     <span>Término</span>
                     {endTimeOverride && (
                       <button
@@ -2230,7 +2230,7 @@ Até breve! ✨`;
                       {repeatServiceEnabled && (
                         <div className="space-y-3 pt-2 border-t">
                           {usingPaidServiceId && paidSiblingCount > 1 && (
-                            <div className="text-[11px] rounded-md bg-green-500/10 border border-green-500/30 text-green-700 px-2 py-1.5">
+                            <div className="text-[11px] rounded-md bg-primary/80/10 border border-primary/30/30 text-primary px-2 py-1.5">
                               Este cliente possui <strong>{paidSiblingCount} aplicações pagas</strong> deste serviço. Cada agendamento criado consumirá uma aplicação.
                             </div>
                           )}
@@ -2314,9 +2314,9 @@ Até breve! ✨`;
                           </div>
 
                           {/* WhatsApp notification toggle for recurring services */}
-                          <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                          <div className="flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
                             <div className="flex items-center gap-2">
-                              <MessageCircle className="h-4 w-4 text-green-600" />
+                              <MessageCircle className="h-4 w-4 text-primary" />
                               <div className="flex flex-col">
                                 <span className="text-xs font-medium">Enviar todos por WhatsApp</span>
                                 <span className="text-[10px] text-muted-foreground">
@@ -2685,10 +2685,10 @@ Até breve! ✨`;
                                               type="button"
                                               variant="outline"
                                               size="sm"
-                                              className="h-6 text-[10px] px-2 bg-green-500/10 border-green-500/30 hover:bg-green-500/20"
+                                              className="h-6 text-[10px] px-2 bg-primary/80/10 border-primary/30/30 hover:bg-primary/80/20"
                                               onClick={() => updateEditableDate(index, conflictInfo.suggestedDate!)}
                                             >
-                                              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                                              <CheckCircle className="h-3 w-3 mr-1 text-primary" />
                                               Usar: {format(conflictInfo.suggestedDate, "EEE, dd/MM 'às' HH:mm", { locale: ptBR })}
                                             </Button>
                                           )}
@@ -2703,9 +2703,9 @@ Até breve! ✨`;
 
                           {/* WhatsApp notification toggle */}
                           {editablePreviewDates.length > 0 && (
-                            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
                               <div className="flex items-center gap-2">
-                                <MessageCircle className="h-4 w-4 text-green-600" />
+                                <MessageCircle className="h-4 w-4 text-primary" />
                                 <span className="text-xs font-medium">Notificar por WhatsApp</span>
                               </div>
                               <Switch
@@ -2721,8 +2721,8 @@ Até breve! ✨`;
                 </div>
               )}
 
-            <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50/40 p-3 dark:border-violet-900/40 dark:bg-violet-950/20">
-              <Label className="text-violet-700 dark:text-violet-300 font-medium">Profissional *</Label>
+            <div className="space-y-2 rounded-lg border border-accent/30 bg-accent/10/40 p-3 dark:border-accent/30/40 dark:bg-accent/20">
+              <Label className="text-accent dark:text-accent/80 font-medium">Profissional *</Label>
               <SearchableSelect
                 options={activeProfessionals.map(p => ({
                   value: p.id,

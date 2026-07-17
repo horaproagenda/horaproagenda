@@ -499,7 +499,7 @@ const Servicos: React.FC = () => {
         {/* Line 2: Tabs (Serviços / Pacotes) */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="services" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Serviços</TabsTrigger>
+            <TabsTrigger value="services" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">Serviços</TabsTrigger>
             <TabsTrigger value="packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Pacotes</TabsTrigger>
           </TabsList>
 
@@ -539,7 +539,7 @@ const Servicos: React.FC = () => {
               'flex items-start gap-2 rounded-md border p-2.5 text-xs',
               serviceTypeFilter === 'kit'
                 ? 'border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
-                : 'border-sky-200 bg-sky-50/60 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100'
+                : 'border-accent/30 bg-accent/10 text-accent'
             )}>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <p className="leading-relaxed">
@@ -670,7 +670,7 @@ const Servicos: React.FC = () => {
                 {standardServices.length > 0 && (
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
                       <h3 className="text-sm font-semibold">Serviços</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{standardServices.length}</Badge>
                     </div>
@@ -685,7 +685,7 @@ const Servicos: React.FC = () => {
                 {kitServices.length > 0 && (
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Layers className="h-3.5 w-3.5 text-teal-600" />
+                      <Layers className="h-3.5 w-3.5 text-accent" />
                       <h3 className="text-sm font-semibold">Kits de Serviços</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{kitServices.length}</Badge>
                     </div>
@@ -766,7 +766,7 @@ const Servicos: React.FC = () => {
               'flex items-start gap-2 rounded-md border p-2.5 text-xs',
               packageTypeFilter === 'sequential'
                 ? 'border-primary/30 bg-primary/10 text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
-                : 'border-violet-200 bg-violet-50/60 text-violet-900 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-100'
+                : 'border-primary/30 bg-primary/10 text-primary'
             )}>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <p className="leading-relaxed">

@@ -680,7 +680,7 @@ export function PrecificacaoServicos() {
                         </div>
                         <div className="p-2 bg-background rounded">
                           <span className="text-muted-foreground">Lucro</span>
-                          <p className="font-medium text-green-600">R$ {actualProfit.toFixed(2)}</p>
+                          <p className="font-medium text-primary">R$ {actualProfit.toFixed(2)}</p>
                         </div>
                         <div className="p-2 bg-background rounded">
                           <span className="text-muted-foreground">Margem</span>
@@ -690,7 +690,7 @@ export function PrecificacaoServicos() {
                           <span className="text-muted-foreground">
                             Lucro por {calculationType === 'service' ? 'Serviço' : 'Pacote'}
                           </span>
-                          <p className="font-medium text-green-600">+{profitType === 'percentage' ? profitValue + '%' : 'R$ ' + profitValue.toFixed(2)}</p>
+                          <p className="font-medium text-primary">+{profitType === 'percentage' ? profitValue + '%' : 'R$ ' + profitValue.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
@@ -700,12 +700,12 @@ export function PrecificacaoServicos() {
                 {/* Current Price Analysis */}
                 <Card className={cn(
                   "border",
-                  isProfitable ? "border-green-500/30 bg-green-50/50 dark:bg-green-950/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
+                  isProfitable ? "border-primary/30/30 bg-primary/10/50 dark:bg-primary/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
                 )}>
                   <CardHeader className="pb-2">
                     <CardTitle className={cn(
                       "text-sm flex items-center gap-2",
-                      isProfitable ? "text-green-600" : "text-red-600"
+                      isProfitable ? "text-primary" : "text-red-600"
                     )}>
                       {isProfitable ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                       Preço Atual: R$ {currentPrice.toFixed(2)}
@@ -715,7 +715,7 @@ export function PrecificacaoServicos() {
                     <div className="space-y-3">
                       <div className={cn(
                         "text-3xl font-bold",
-                        isProfitable ? "text-green-600" : "text-red-600"
+                        isProfitable ? "text-primary" : "text-red-600"
                       )}>
                         {isProfitable ? '+' : ''} R$ {currentProfit.toFixed(2)}
                       </div>
@@ -726,7 +726,7 @@ export function PrecificacaoServicos() {
                         </div>
                         <div className="p-2 bg-background rounded">
                           <span className="text-muted-foreground">Margem Atual</span>
-                          <p className={cn("font-medium", currentMargin >= 0 ? "text-green-600" : "text-red-600")}>
+                          <p className={cn("font-medium", currentMargin >= 0 ? "text-primary" : "text-red-600")}>
                             {currentMargin.toFixed(1)}%
                           </p>
                         </div>
@@ -752,9 +752,9 @@ export function PrecificacaoServicos() {
               </div>
 
               {/* Goal Suggestion Panel - How many appointments needed */}
-              <Card className="border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20">
+              <Card className="border-accent/30/30 bg-accent/10/50 dark:bg-accent/20">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-blue-600">
+                  <CardTitle className="text-sm flex items-center gap-2 text-accent">
                     <BarChart3 className="h-4 w-4" />
                     Sugestão de Meta Mensal
                   </CardTitle>
@@ -800,12 +800,12 @@ export function PrecificacaoServicos() {
                             </p>
                           </div>
                           
-                          <div className="p-3 bg-background rounded-lg border border-green-200">
+                          <div className="p-3 bg-background rounded-lg border border-primary/30">
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <div className="w-2 h-2 rounded-full bg-primary/80" />
                               <span className="text-xs text-muted-foreground">Lucro R$ 1.000</span>
                             </div>
-                            <p className="text-lg font-bold text-green-600">
+                            <p className="text-lg font-bold text-primary">
                               {profitPerItem > 0 ? targetProfit1000 : '∞'}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
@@ -813,12 +813,12 @@ export function PrecificacaoServicos() {
                             </p>
                           </div>
                           
-                          <div className="p-3 bg-background rounded-lg border border-green-300">
+                          <div className="p-3 bg-background rounded-lg border border-primary/30">
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="w-2 h-2 rounded-full bg-green-600" />
+                              <div className="w-2 h-2 rounded-full bg-primary" />
                               <span className="text-xs text-muted-foreground">Lucro R$ 3.000</span>
                             </div>
-                            <p className="text-lg font-bold text-green-600">
+                            <p className="text-lg font-bold text-primary">
                               {profitPerItem > 0 ? targetProfit3000 : '∞'}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
@@ -826,12 +826,12 @@ export function PrecificacaoServicos() {
                             </p>
                           </div>
                           
-                          <div className="p-3 bg-background rounded-lg border border-green-400">
+                          <div className="p-3 bg-background rounded-lg border border-primary/30">
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="w-2 h-2 rounded-full bg-green-700" />
+                              <div className="w-2 h-2 rounded-full bg-primary" />
                               <span className="text-xs text-muted-foreground">Lucro R$ 5.000</span>
                             </div>
-                            <p className="text-lg font-bold text-green-600">
+                            <p className="text-lg font-bold text-primary">
                               {profitPerItem > 0 ? targetProfit5000 : '∞'}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
@@ -908,20 +908,20 @@ export function PrecificacaoServicos() {
                         </TableCell>
                         <TableCell className={cn(
                           "text-xs text-right font-medium",
-                          profit >= 0 ? "text-green-600" : "text-red-600"
+                          profit >= 0 ? "text-primary" : "text-red-600"
                         )}>
                           {profit >= 0 ? '+' : ''} R$ {profit.toFixed(2)}
                         </TableCell>
                         <TableCell className={cn(
                           "text-xs text-right font-medium",
-                          margin >= 30 ? "text-green-600" : margin >= 0 ? "text-yellow-600" : "text-red-600"
+                          margin >= 30 ? "text-primary" : margin >= 0 ? "text-yellow-600" : "text-red-600"
                         )}>
                           {margin.toFixed(1)}%
                         </TableCell>
                         <TableCell className="text-center">
                           {isProfitable ? (
                             margin >= 30 ? (
-                              <Badge className="bg-green-100 text-green-700 text-[10px]">
+                              <Badge className="bg-primary/10 text-primary text-[10px]">
                                 Saudável
                               </Badge>
                             ) : (

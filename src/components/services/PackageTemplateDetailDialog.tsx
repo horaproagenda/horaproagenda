@@ -360,7 +360,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                    <DollarSign className="h-5 w-5 text-green-600" />
+                    <DollarSign className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor Total</p>
                       <p className="font-semibold">{formatCurrency(Number(pkg.price || 0))}</p>
@@ -368,7 +368,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                    <Layers className="h-5 w-5 text-purple-500" />
+                    <Layers className="h-5 w-5 text-accent" />
                     <div>
                       <p className="text-xs text-muted-foreground">Total de Aplicações</p>
                       <p className="font-semibold">{pkg.total_sessions}</p>
@@ -392,7 +392,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 col-span-2">
-                    <DollarSign className="h-5 w-5 text-blue-500" />
+                    <DollarSign className="h-5 w-5 text-accent" />
                     <div>
                       <p className="text-xs text-muted-foreground">Valor por Aplicação</p>
                       <p className="font-semibold">{formatCurrency(Number(pkg.price || 0) / Math.max(1, Number(pkg.total_sessions || 1)))}</p>
@@ -411,7 +411,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <div className="space-y-2">
                       {professionalName && (
                         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                          <User className="h-5 w-5 text-purple-500" />
+                          <User className="h-5 w-5 text-accent" />
                           <div>
                             <p className="text-xs text-muted-foreground">Profissional</p>
                             <p className="font-semibold">{professionalName}</p>
@@ -421,7 +421,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
 
                       {roomName && (
                         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                          <Home className="h-5 w-5 text-blue-500" />
+                          <Home className="h-5 w-5 text-accent" />
                           <div>
                             <p className="text-xs text-muted-foreground">Sala</p>
                             <p className="font-semibold">{roomName}</p>

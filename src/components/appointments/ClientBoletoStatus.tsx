@@ -84,9 +84,9 @@ export function ClientBoletoStatus({ clientId, serviceId, packageId }: Props) {
 
   if (data.pending > 0) {
     return (
-      <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/30">
-        <FileText className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-xs text-blue-700 dark:text-blue-400">
+      <Alert className="border-accent/30 bg-accent/10 dark:bg-accent/30">
+        <FileText className="h-4 w-4 text-accent" />
+        <AlertDescription className="text-xs text-accent dark:text-accent/80">
           <strong>Cliente paga por boleto parcelado.</strong> Pagamentos em dia — {data.pending} parcela(s) pendente(s) totalizando R$ {data.pendingAmount.toFixed(2)}.
         </AlertDescription>
       </Alert>
@@ -94,9 +94,9 @@ export function ClientBoletoStatus({ clientId, serviceId, packageId }: Props) {
   }
 
   return (
-    <Alert className="border-green-500 bg-green-50 dark:bg-green-950/30">
-      <CheckCircle2 className="h-4 w-4 text-green-600" />
-      <AlertDescription className="text-xs text-green-700 dark:text-green-400">
+    <Alert className="border-primary/30 bg-primary/10 dark:bg-primary/30">
+      <CheckCircle2 className="h-4 w-4 text-primary" />
+      <AlertDescription className="text-xs text-primary dark:text-primary/80">
         <strong>Cliente paga por boleto parcelado.</strong> Todas as parcelas quitadas.
       </AlertDescription>
     </Alert>

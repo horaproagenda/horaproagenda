@@ -110,15 +110,15 @@ export default function Financeiro() {
               <div className="flex items-center gap-2">
                 <div className={cn(
                   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                  balance >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"
+                  balance >= 0 ? "bg-primary/80/10" : "bg-red-500/10"
                 )}>
-                  <TrendingUp className={cn("h-4 w-4", balance >= 0 ? "text-emerald-600" : "text-red-500")} />
+                  <TrendingUp className={cn("h-4 w-4", balance >= 0 ? "text-primary" : "text-red-500")} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Saldo</p>
                   <p className={cn(
                     "text-sm sm:text-base font-bold truncate tabular-nums leading-tight",
-                    balance >= 0 ? "text-emerald-600" : "text-red-600"
+                    balance >= 0 ? "text-primary" : "text-red-600"
                   )}>
                     R$ {balance.toFixed(0)}
                   </p>
@@ -151,16 +151,16 @@ export default function Financeiro() {
           <div className="overflow-x-auto -mx-2 px-2 scrollbar-thin">
           <TabsList className="inline-flex w-max min-w-full h-auto gap-1.5 bg-muted/50 p-1">
             {[
-              { v: 'relatorio', label: 'Relatório', Icon: FileText, color: 'text-sky-600', active: 'data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40' },
+              { v: 'relatorio', label: 'Relatório', Icon: FileText, color: 'text-accent', active: 'data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40' },
               { v: 'extrato', label: 'Extratos', Icon: FileText, color: 'text-accent', active: 'data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40' },
               { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle, color: 'text-red-600', active: 'data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40' },
               { v: 'categorias', label: 'Categorias', Icon: Tag, color: 'text-amber-600', active: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40' },
-              { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-emerald-600', active: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40' },
+              { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-primary', active: 'data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40' },
               { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'metas', label: 'Metas', Icon: Target, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'precificacao', label: 'Precificação', Icon: Calculator, color: 'text-orange-600', active: 'data-[state=active]:bg-orange-500/15 data-[state=active]:text-orange-700 data-[state=active]:border-orange-500/40' },
-              { v: 'dashboard', label: 'Dashboard', Icon: BarChart3, color: 'text-teal-600', active: 'data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40' },
+              { v: 'dashboard', label: 'Dashboard', Icon: BarChart3, color: 'text-accent', active: 'data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40' },
             ].map(({ v, label, Icon, color, active }) => (
               <TabsTrigger
                 key={v}

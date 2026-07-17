@@ -37,8 +37,8 @@ const stageLabels: Record<TreatmentStage, string> = {
 
 const stageColors: Record<TreatmentStage, string> = {
   before: 'bg-orange-100 text-orange-700',
-  during: 'bg-blue-100 text-blue-700',
-  after: 'bg-green-100 text-green-700',
+  during: 'bg-accent/10 text-accent',
+  after: 'bg-primary/10 text-primary',
 };
 
 const stageFilterOptions: { value: StageFilter; label: string }[] = [

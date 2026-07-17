@@ -114,20 +114,20 @@ export default function ClienteDetalhes() {
         {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-7 h-auto bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="report" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
-              <BarChart3 className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+            <TabsTrigger value="report" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+              <BarChart3 className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Relatório</span>
             </TabsTrigger>
-            <TabsTrigger value="credits" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
-              <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+            <TabsTrigger value="credits" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+              <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Créditos</span>
             </TabsTrigger>
             <TabsTrigger value="appointments" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Agenda</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40">
-              <FileText className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <TabsTrigger value="documents" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+              <FileText className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Docs</span>
             </TabsTrigger>
             <TabsTrigger value="quotes" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">

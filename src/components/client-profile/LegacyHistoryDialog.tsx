@@ -1398,7 +1398,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
               {csvResult && (
                 <div className="space-y-2 p-3 rounded bg-muted/50">
                   <div className="flex gap-2 text-xs">
-                    <Badge className="bg-green-500/10 text-green-600 gap-1"><CheckCircle2 className="h-3 w-3" />{csvResult.success} importados</Badge>
+                    <Badge className="bg-primary/80/10 text-primary gap-1"><CheckCircle2 className="h-3 w-3" />{csvResult.success} importados</Badge>
                     {csvResult.failed > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />{csvResult.failed} falharam</Badge>}
                   </div>
                   {csvResult.errors.length > 0 && (

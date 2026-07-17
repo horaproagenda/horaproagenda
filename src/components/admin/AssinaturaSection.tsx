@@ -94,10 +94,10 @@ export function AssinaturaSection() {
       )}
 
       {isActive && !isGrandfathered && (
-        <Card className="border-green-500/40 bg-green-500/5">
+        <Card className="border-primary/30/40 bg-primary/80/5">
           <CardContent className="pt-6 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-600" />
+              <Check className="h-5 w-5 text-primary" />
               <div>
                 <p className="font-medium">Assinatura ativa</p>
                 <p className="text-sm text-muted-foreground">
@@ -191,13 +191,13 @@ function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: Plan
     <Card
       className={`cursor-pointer transition-all hover:shadow-lg ${
         isSelected ? 'ring-2 ring-primary shadow-lg' : ''
-      } ${isCurrent ? 'border-green-500/60' : ''}`}
+      } ${isCurrent ? 'border-primary/30/60' : ''}`}
       onClick={onSelect}
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{plan.name}</CardTitle>
-          {isCurrent && <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15">Atual</Badge>}
+          {isCurrent && <Badge className="bg-primary/80/15 text-primary hover:bg-primary/80/15">Atual</Badge>}
           {isSelected && !isCurrent && (
             <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
               <Check className="h-4 w-4 text-primary-foreground" />
@@ -266,7 +266,7 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
           <span className="tabular-nums">{formatBRL(planTotal)}</span>
         </div>
         {!isMonthly && saved > 0 && (
-          <div className="text-xs text-emerald-600 text-right">
+          <div className="text-xs text-primary text-right">
             Você economiza {formatBRL(saved)} no plano por ciclo
           </div>
         )}

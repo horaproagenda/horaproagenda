@@ -474,7 +474,7 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
                 </Badge>
               </div>
               <div className="flex items-center gap-1.5">
-                <Badge className="gap-1 bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                <Badge className="gap-1 bg-primary/80/10 text-primary hover:bg-primary/80/20">
                   <CheckCircle2 className="h-3 w-3" />
                   {validCount} válidos
                 </Badge>
@@ -512,11 +512,11 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
           {/* Import done */}
           {importStatus === 'done' && (
             <Alert className={cn(
-              importResults.failed === 0 ? 'border-green-500 bg-green-500/10' : 'border-yellow-500 bg-yellow-500/10'
+              importResults.failed === 0 ? 'border-primary/30 bg-primary/80/10' : 'border-yellow-500 bg-yellow-500/10'
             )}>
               <CheckCircle2 className={cn(
                 'h-4 w-4',
-                importResults.failed === 0 ? 'text-green-500' : 'text-yellow-500'
+                importResults.failed === 0 ? 'text-primary' : 'text-yellow-500'
               )} />
               <AlertDescription>
                 Importação concluída! {importResults.success} sucesso, {importResults.failed} falhas.
@@ -560,7 +560,7 @@ export function ImportAppointmentsDialog({ open, onOpenChange }: ImportAppointme
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
                         )}
                         {row.errors.length === 0 && row.warnings.length === 0 && (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
                         )}
                       </div>
                     </div>

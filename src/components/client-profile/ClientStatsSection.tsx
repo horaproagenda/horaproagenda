@@ -19,7 +19,7 @@ export function ClientStatsSection({ stats }: ClientStatsSectionProps) {
     : 0;
 
   const statItems = [
-    { icon: Calendar, value: stats.totalAppointments, label: 'Agendados', color: 'text-blue-500' },
+    { icon: Calendar, value: stats.totalAppointments, label: 'Agendados', color: 'text-accent' },
     { icon: CheckCircle, value: stats.completedAppointments, label: 'Realizados', color: 'text-success' },
     { icon: XCircle, value: stats.cancelledAppointments, label: 'Cancelados', color: 'text-destructive' },
     { icon: UserX, value: stats.missedAppointments, label: 'Faltou', color: 'text-warning' },

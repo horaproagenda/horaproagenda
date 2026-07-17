@@ -262,7 +262,7 @@ serve(async (req) => {
     const userMetadata = {
       full_name: fullName.trim(),
       phone: phoneE164,
-      cpf: cpfDigits,
+      cpf: cpfDigits ? cpfDigits : null,
       company_name: companyName || null,
       cnpj: cnpj || null,
       city: city || null,
@@ -352,7 +352,7 @@ serve(async (req) => {
     await supabaseAdmin.from("trial_registrations").upsert({
       email: normalizedEmail,
       phone: phoneE164,
-      cpf: cpfDigits,
+      cpf: cpfDigits ? cpfDigits : null,
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,

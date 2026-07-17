@@ -379,79 +379,9 @@ const Configuracoes = () => {
           <WhatsappSettings />
           <WhatsappTemplatesSettings />
 
-          {/* Aparência */}
-          <Card className="card-hover">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <Palette className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-medium">Aparência</CardTitle>
-                  <CardDescription className="text-xs">Personalize a interface</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs">Cor Principal</Label>
-                <p className="text-[10px] text-muted-foreground">
-                  Escolha a cor que será aplicada em toda a agenda.
-                </p>
-                <div className="grid grid-cols-8 gap-2 pt-1">
-                  {PRIMARY_COLOR_PALETTE.map((color) => {
-                    const selected = appearance.primaryColor === color.hsl;
-                    return (
-                      <button
-                        key={color.hsl}
-                        type="button"
-                        title={color.name}
-                        aria-label={color.name}
-                        onClick={() => {
-                          updateAppearance({ primaryColor: color.hsl });
-                          toast.success(`Cor principal: ${color.name}`);
-                        }}
-                        className={`relative h-7 w-7 rounded-full border-2 transition-all hover:scale-110 ${
-                          selected ? 'border-foreground ring-2 ring-foreground/30' : 'border-border'
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                      >
-                        {selected && (
-                          <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-white drop-shadow" strokeWidth={3} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="flex items-center justify-between py-1 border-t pt-3">
-                <div>
-                  <Label className="text-xs">Modo escuro</Label>
-                  <p className="text-[10px] text-muted-foreground">Tema dark</p>
-                </div>
-                <Switch
-                  checked={appearance.darkMode}
-                  onCheckedChange={(checked) => {
-                    updateAppearance({ darkMode: checked });
-                    toast.success(checked ? 'Modo escuro ativado' : 'Modo claro ativado');
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <Label className="text-xs">Animações</Label>
-                  <p className="text-[10px] text-muted-foreground">Efeitos visuais e transições</p>
-                </div>
-                <Switch
-                  checked={appearance.animations}
-                  onCheckedChange={(checked) => {
-                    updateAppearance({ animations: checked });
-                    toast.success(checked ? 'Animações ativadas' : 'Animações desativadas');
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Aparência da interface removida — a paleta do app é padronizada (Petróleo + Âmbar).
+              A cor do agendamento por profissional continua configurável na aba do profissional. */}
+
 
           {isAdmin && <BulkDeleteDialog />}
 

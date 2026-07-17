@@ -71,25 +71,26 @@ const Suporte = () => {
     {
       icon: <MessageSquare className="h-5 w-5" />,
       title: "WhatsApp",
-      description: "Atendimento rápido",
-      href: buildWebWhatsappUrl("5511999999999", ""),
+      description: "(37) 99135-5495",
+      href: buildWebWhatsappUrl("5537991355495", ""),
       color: "bg-green-500",
     },
     {
       icon: <Mail className="h-5 w-5" />,
       title: "E-mail",
-      description: "suporte@seuapp.com.br",
-      href: "mailto:suporte@seuapp.com.br",
+      description: "horaproagenda@gmail.com",
+      href: "mailto:horaproagenda@gmail.com",
       color: "bg-blue-500",
     },
     {
       icon: <Phone className="h-5 w-5" />,
       title: "Telefone",
-      description: "(11) 99999-9999",
-      href: "tel:+5511999999999",
+      description: "(37) 99135-5495",
+      href: "tel:+5537991355495",
       color: "bg-purple-500",
     },
   ];
+
 
   const faqs = [
     { question: "Como faço para agendar um cliente?", answer: "Vá até a Agenda, clique em um horário ou use 'Novo Agendamento'." },

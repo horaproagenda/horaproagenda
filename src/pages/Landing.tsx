@@ -366,7 +366,7 @@ export default function Landing() {
                 <div>
                   <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground">
                     <Clock className="h-3.5 w-3.5 text-primary" />
-                    Teste grátis · sem cartão
+                    Planos mensal, semestral e anual
                   </span>
                   <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl">
                     {PRIMARY_TAGLINE}
@@ -378,7 +378,7 @@ export default function Landing() {
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Link to="/auth">
                       <Button size="lg" className="gap-2">
-                        Começar grátis
+                        Criar minha conta
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>

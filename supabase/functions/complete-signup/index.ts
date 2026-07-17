@@ -149,7 +149,7 @@ serve(async (req) => {
     {
       const { data: blockCheck } = await supabaseAdmin.rpc("is_identifier_blocked", {
         p_email: normalizedEmail,
-        p_cpf: cpfDigits,
+        p_cpf: cpfDigits || null,
         p_cnpj: cnpj ?? null,
         p_phone: phoneE164 ?? null,
       });

@@ -126,15 +126,15 @@ export default function Financeiro() {
               </div>
             </CardContent>
           </Card>
-          <Card className="card-hover border-l-2 border-l-blue-500">
+          <Card className="card-hover border-l-2 border-l-accent">
             <CardContent className="p-2 sm:p-2.5">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
-                  <Landmark className="h-4 w-4 text-blue-600" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10">
+                  <Landmark className="h-4 w-4 text-accent" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Bancos</p>
-                  <p className="text-sm sm:text-base font-bold truncate tabular-nums leading-tight text-blue-600">
+                  <p className="text-sm sm:text-base font-bold truncate tabular-nums leading-tight text-accent">
                     {banks.filter(b => b.is_active).length}
                   </p>
                 </div>

@@ -13,11 +13,13 @@ import {
   BarChart3, Settings, FileText, Clock, CreditCard,
   Building2, UserCog, Check, X, ChevronDown, ChevronRight,
   HelpCircle, Bell, Shield, ClipboardList, Sparkles, Rocket,
-  MessageCircle, Wrench, ShieldCheck
+  MessageCircle, Wrench, ShieldCheck,
+  MessageSquare, Mail, Phone, ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CURRENT_CHANGELOG } from "@/lib/changelog";
 import { APP_VERSION_LABEL } from "@/lib/version";
+import { buildWebWhatsappUrl } from "@/lib/whatsappLink";
 
 
 

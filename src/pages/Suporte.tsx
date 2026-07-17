@@ -46,9 +46,10 @@ const Suporte = () => {
       `*Assunto:* ${formData.subject}\n\n` +
       `*Mensagem:*\n${formData.message}`;
     
-    const whatsappNumber = "5511999999999";
+    const whatsappNumber = "5537991355495";
     setWhatsappPreviewPhone(whatsappNumber);
     setWhatsappPreviewMessage(whatsappMessage);
+
     setWhatsappPreviewOpen(true);
 
     setIsSubmitting(false);

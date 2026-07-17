@@ -295,9 +295,12 @@ export function ContasAReceber() {
   };
 
   const handleDelete = async (item: typeof allReceivables[0]) => {
-    if (item.type === 'financial_entry') {
-      await deleteEntry.mutate(item.id);
-    }
+    if (item.type !== 'financial_entry') return;
+    const ok = window.confirm(
+      `Excluir este lançamento a receber (R$ ${item.amount.toFixed(2)})?\n\nEsta ação remove apenas este lançamento. Vendas de pacote devem ser canceladas em "Relatório".`
+    );
+    if (!ok) return;
+    await deleteEntry.mutate(item.id);
   };
 
   const totalPending = allReceivables.reduce((sum, e) => sum + e.amount, 0);

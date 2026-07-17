@@ -878,7 +878,7 @@ const Servicos: React.FC = () => {
                 {nonSequentialPackages.length > 0 && (
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Package className="h-3.5 w-3.5 text-violet-600" />
+                      <Package className="h-3.5 w-3.5 text-primary" />
                       <h3 className="text-sm font-semibold">Pacotes comuns</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{nonSequentialPackages.length}</Badge>
                     </div>

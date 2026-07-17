@@ -561,16 +561,16 @@ export default function ProfissionalDetalhes() {
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-5 h-10 bg-muted/50 p-1 gap-1">
-                <TabsTrigger value="info" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
-                  <User className="h-3.5 w-3.5 hidden sm:block text-indigo-600" />
+                <TabsTrigger value="info" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+                  <User className="h-3.5 w-3.5 hidden sm:block text-accent" />
                   Informações
                 </TabsTrigger>
                 <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
                   <TrendingUp className="h-3.5 w-3.5 hidden sm:block text-emerald-600" />
                   Desempenho
                 </TabsTrigger>
-                <TabsTrigger value="commissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">
-                  <DollarSign className="h-3.5 w-3.5 hidden sm:block text-violet-600" />
+                <TabsTrigger value="commissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+                  <DollarSign className="h-3.5 w-3.5 hidden sm:block text-primary" />
                   Comissões
                 </TabsTrigger>
                 <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">

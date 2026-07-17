@@ -311,7 +311,7 @@ const Ajuda = () => {
                 <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novidades</TabsTrigger>
                 <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>
                 <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Status</TabsTrigger>
-                <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">Permissões</TabsTrigger>
+                <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Permissões</TabsTrigger>
                 <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
 

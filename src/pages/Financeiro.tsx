@@ -152,12 +152,12 @@ export default function Financeiro() {
           <TabsList className="inline-flex w-max min-w-full h-auto gap-1.5 bg-muted/50 p-1">
             {[
               { v: 'relatorio', label: 'Relatório', Icon: FileText, color: 'text-sky-600', active: 'data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40' },
-              { v: 'extrato', label: 'Extratos', Icon: FileText, color: 'text-indigo-600', active: 'data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40' },
+              { v: 'extrato', label: 'Extratos', Icon: FileText, color: 'text-accent', active: 'data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40' },
               { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle, color: 'text-red-600', active: 'data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40' },
               { v: 'categorias', label: 'Categorias', Icon: Tag, color: 'text-amber-600', active: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40' },
               { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-emerald-600', active: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40' },
               { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
-              { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-violet-600', active: 'data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40' },
+              { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'metas', label: 'Metas', Icon: Target, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'precificacao', label: 'Precificação', Icon: Calculator, color: 'text-orange-600', active: 'data-[state=active]:bg-orange-500/15 data-[state=active]:text-orange-700 data-[state=active]:border-orange-500/40' },
               { v: 'dashboard', label: 'Dashboard', Icon: BarChart3, color: 'text-teal-600', active: 'data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40' },

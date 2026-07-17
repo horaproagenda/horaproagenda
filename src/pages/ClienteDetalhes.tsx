@@ -122,8 +122,8 @@ export default function ClienteDetalhes() {
               <CreditCard className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="leading-tight">Créditos</span>
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-violet-500/15 data-[state=active]:text-violet-700 data-[state=active]:border-violet-500/40">
-              <Calendar className="h-3.5 w-3.5 text-violet-600 shrink-0" />
+            <TabsTrigger value="appointments" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+              <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Agenda</span>
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 data-[state=active]:border-teal-500/40">
@@ -138,8 +138,8 @@ export default function ClienteDetalhes() {
               <Image className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Fotos</span>
             </TabsTrigger>
-            <TabsTrigger value="info" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
-              <Info className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+            <TabsTrigger value="info" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+              <Info className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Info</span>
             </TabsTrigger>
           </TabsList>

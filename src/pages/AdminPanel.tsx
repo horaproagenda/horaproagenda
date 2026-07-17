@@ -228,7 +228,7 @@ export default function AdminPanel() {
 
         <Tabs defaultValue="access" className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1 flex-wrap">
-            <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">Logs de Acesso</TabsTrigger>
+            <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">Logs de Acesso</TabsTrigger>
             <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Profissionais</TabsTrigger>
             <TabsTrigger value="assinatura" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40 gap-1"><CreditCard className="h-3 w-3" />Assinatura</TabsTrigger>
           </TabsList>
@@ -457,7 +457,7 @@ export default function AdminPanel() {
                   </Badge>
                 </div>
                 <ManageProfessionalsDialog>
-                  <button className="w-full py-2.5 px-4 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-all duration-300 text-sm font-medium tracking-wide">
+                  <button className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-all duration-300 text-sm font-medium tracking-wide">
                     Adicionar / Gerenciar Profissionais
                   </button>
                 </ManageProfessionalsDialog>

@@ -128,7 +128,7 @@ export function useAppearanceSettings() {
     // Persist to DB so the choice follows the account across devices
     if (user?.id) {
       const dbPatch: Record<string, unknown> = { user_id: user.id };
-      if (patch.primaryColor !== undefined) dbPatch.primary_color = patch.primaryColor;
+      // primaryColor é padronizado no tema; não persiste como preferência individual
       if (patch.darkMode !== undefined) dbPatch.dark_mode = patch.darkMode;
       if (patch.animations !== undefined) dbPatch.animations = patch.animations;
       if (Object.keys(dbPatch).length > 1) {

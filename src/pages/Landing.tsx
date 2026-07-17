@@ -680,13 +680,13 @@ export default function Landing() {
                 Comece a usar hoje, em 2 minutos
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-                Crie sua conta, cadastre seus serviços e comece a receber agendamentos. Sem
-                instalar nada, sem cartão de crédito.
+                Crie sua conta, escolha um plano, cadastre seus serviços e comece a receber
+                agendamentos. Sem instalar nada.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link to="/auth">
                   <Button size="lg" className="gap-2">
-                    Criar conta grátis
+                    Criar minha conta
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

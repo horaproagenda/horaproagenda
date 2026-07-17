@@ -477,7 +477,7 @@ export function PacotesFinanceiro() {
         <Card className="bg-card/50">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-blue-500" />
+              <Package className="h-4 w-4 text-accent" />
               <div>
                 <p className="text-lg font-bold">{summary.totalSoldCount}</p>
                 <p className="text-[10px] text-muted-foreground">Pacotes vendidos</p>
@@ -488,7 +488,7 @@ export function PacotesFinanceiro() {
         <Card className="bg-card/50">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <DollarSign className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-lg font-bold">R$ {summary.totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
                 <p className="text-[10px] text-muted-foreground">Total pago</p>
@@ -499,9 +499,9 @@ export function PacotesFinanceiro() {
         <Card className="bg-card/50">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-amber-500" />
+              <CheckCircle2 className="h-4 w-4 text-primary" />
               <div>
-                <p className="text-lg font-bold text-amber-600">{summary.totalCancelled}</p>
+                <p className="text-lg font-bold text-primary">{summary.totalCancelled}</p>
                 <p className="text-[10px] text-muted-foreground">Cancelados</p>
               </div>
             </div>
@@ -510,9 +510,9 @@ export function PacotesFinanceiro() {
         <Card className="bg-card/50">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-red-500" />
+              <RotateCcw className="h-4 w-4 text-destructive" />
               <div>
-                <p className="text-lg font-bold text-red-600">R$ {summary.totalRefunded.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+                <p className="text-lg font-bold text-destructive">R$ {summary.totalRefunded.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
                 <p className="text-[10px] text-muted-foreground">Total devolvido</p>
               </div>
             </div>
@@ -638,9 +638,9 @@ export function PacotesFinanceiro() {
                         {r.isCancelled ? (
                           <Badge variant="destructive" className="text-[10px]">Cancelado</Badge>
                         ) : r.isCompleted ? (
-                          <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Finalizado</Badge>
+                          <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">Finalizado</Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">Ativo</Badge>
+                          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Ativo</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -713,7 +713,7 @@ export function PacotesFinanceiro() {
                 className="h-8 text-xs"
               />
               {autoCostInfo && (
-                <p className="text-[10px] text-emerald-600 flex items-start gap-1">
+                <p className="text-[10px] text-primary flex items-start gap-1">
                   <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
                   <span>{autoCostInfo}</span>
                 </p>

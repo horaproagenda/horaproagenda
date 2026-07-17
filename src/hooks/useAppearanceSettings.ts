@@ -38,10 +38,10 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
   { name: 'Preto Suave',     hsl: '240 6% 18%',  hex: '#2C2C30' },
 ];
 
-const STORAGE_KEY = 'appearance-settings-v1';
+const STORAGE_KEY = 'appearance-settings-v2';
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
-  primaryColor: '25 35% 38%',
+  primaryColor: '27 87% 67%', // Âmbar Dourado #F4A261 — cor padrão dos botões
   darkMode: false,
   animations: true,
 };

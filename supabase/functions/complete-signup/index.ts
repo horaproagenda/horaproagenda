@@ -127,9 +127,9 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "A senha deve ter pelo menos 6 caracteres." }, 400);
     }
 
-    // CPF mandatory + valid
+    // CPF optional — when provided, must be valid
     const cpfDigits = (cpf || "").replace(/\D/g, "");
-    if (!cpfDigits || !isValidCPF(cpfDigits)) {
+    if (cpfDigits && !isValidCPF(cpfDigits)) {
       return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
     }
 

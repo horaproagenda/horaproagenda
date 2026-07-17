@@ -47,6 +47,14 @@ export const BILLING_PERIODS: BillingPeriod[] = [
   { months: 12, discount: 1 - 1276.86 / 1320,   label: 'Anual',     badge: '-3%' },
 ];
 
+// Stripe price IDs por ciclo (produto Hora Pro, preço por 1 usuário).
+// A quantidade cobrada no checkout é `seats`.
+export const BILLING_PRICE_IDS: Record<number, string> = {
+  1:  'price_1TuHspDgjrAVrKo6SqvNvXCD', // R$ 110,00 / mês
+  6:  'price_1TuHtBDgjrAVrKo6tBrtH47r', // R$ 645,62 / semestre
+  12: 'price_1TuHtUDgjrAVrKo6gUCWH4pH', // R$ 1.276,86 / ano
+};
+
 
 /** Calcula total para N meses aplicando o desconto correspondente. */
 export function periodTotal(monthlyPriceBRL: number, months: number): number {

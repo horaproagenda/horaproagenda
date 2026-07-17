@@ -334,6 +334,7 @@ serve(async (req) => {
 
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: userId,
+      account_owner_id: userId,
       full_name: fullName.trim(),
       email: normalizedEmail,
       phone: phoneE164,

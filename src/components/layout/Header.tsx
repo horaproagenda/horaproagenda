@@ -57,29 +57,6 @@ function AdminShortcut() {
     );
   }
 
-  if (hasRole('admin')) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-9 w-9"
-            aria-label="Painel Admin"
-            asChild
-          >
-            <Link to="/admin">
-              <ShieldCheck className="h-4 w-4 md:h-5 md:w-5" />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Painel Admin</p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
   return null;
 }
 

@@ -269,10 +269,12 @@ serve(async (req) => {
       ? (packageData?.total_price || 0)
       : (appointment.service?.price || 0);
     // CRITICAL: discount must be subtracted from the required total so paid+discount=full triggers 'paid' status.
-    // Also honor any discount already persisted on the appointment so a client that sends 0 by mistake
-    // does not resurrect a phantom "pending" remainder equal to the previously granted discount.
+    // Honor whatever discount the client sends (including lowering or clearing it). Only fall back to the
+    // persisted discount when the body omits the field entirely — never silently clamp it upward.
     const persistedDiscount = Math.max(0, Number((appointment as any).discount_amount || 0));
-    const discountFromBody = Math.max(0, Number(body.discount_amount || 0), persistedDiscount);
+    const discountFromBody = body.discount_amount === undefined || body.discount_amount === null
+      ? persistedDiscount
+      : Math.max(0, Number(body.discount_amount) || 0);
     const totalRequiredAmount = Math.max(0, baseRequiredAmount + additionalItemsTotal - discountFromBody);
 
     if (body.used_client_credit && body.used_client_credit > 0) {

@@ -1378,7 +1378,10 @@ export function AppointmentDetailDialog({
   // usuário pode ajustar). Subtrair também `persistedDiscount` gerava
   // dupla-subtração — o app cobrava a menos e o pagamento ficava "parcial"
   // com um resto fantasma no valor do desconto.
-  const effectiveDiscount = Math.max(persistedDiscount, discount);
+  // Honor whatever the user has in the discount field — including lowering or clearing
+  // a previously persisted discount. Clamping to persistedDiscount would silently ignore
+  // corrections and over-discount the payment.
+  const effectiveDiscount = Math.max(0, discount);
   const remainingAfterDiscount = Math.max(0, finalAppointmentTotal - amountPaid - effectiveDiscount);
   const creditLimitForPayment = getClientCreditPaymentLimit(availableClientCredit, remainingAfterDiscount);
   const clientCreditValidationMessage = validateClientCreditPayment(paymentMethodCreditUsed, availableClientCredit, remainingAfterDiscount);

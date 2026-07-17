@@ -169,6 +169,7 @@ export default {
   		},
   		boxShadow: {
   			glow: 'var(--shadow-glow)',
+  			'glow-petrol': 'var(--shadow-glow-petrol)',
   			'2xs': 'var(--shadow-2xs)',
   			xs: 'var(--shadow-xs)',
   			sm: 'var(--shadow-sm)',
@@ -176,7 +177,15 @@ export default {
   			lg: 'var(--shadow-lg)',
   			xl: 'var(--shadow-xl)',
   			'2xl': 'var(--shadow-2xl)'
+  		},
+  		backgroundImage: {
+  			'gradient-primary': 'var(--gradient-primary)',
+  			'gradient-accent': 'var(--gradient-accent)',
+  			'gradient-hero': 'var(--gradient-hero)',
+  			'gradient-warm': 'var(--gradient-warm)',
+  			'gradient-petrol-amber': 'var(--gradient-petrol-amber)'
   		}
+
   	}
   },
   plugins: [require("tailwindcss-animate")],

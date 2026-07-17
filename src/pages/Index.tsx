@@ -45,24 +45,6 @@ function AdminShortcutCard() {
     );
   }
 
-  if (hasRole('admin')) {
-    return (
-      <Link to="/admin">
-        <Card className="card-hover bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="rounded-full bg-primary/10 p-2">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">Painel Admin</p>
-              <p className="text-xs text-muted-foreground truncate">Clique para abrir</p>
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
-    );
-  }
-
   return null;
 }
 

@@ -30,6 +30,59 @@ function getInitials(name?: string | null, email?: string | null): string {
   return (email?.[0] || 'U').toUpperCase();
 }
 
+function AdminShortcut() {
+  const { user, hasRole } = useAuth();
+  const isPlatformOwner = isSuperAdminEmail(user?.email);
+
+  if (hasRole('super_admin') && isPlatformOwner) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            aria-label="Super Admin"
+            asChild
+          >
+            <Link to="/super-admin">
+              <Crown className="h-4 w-4 md:h-5 md:w-5" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Painel Super Admin</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (hasRole('admin')) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            aria-label="Painel Admin"
+            asChild
+          >
+            <Link to="/admin">
+              <ShieldCheck className="h-4 w-4 md:h-5 md:w-5" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Painel Admin</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return null;
+}
+
 export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   const { refreshAll, isRefreshing } = useGlobalRefresh();
   const { user, profile } = useAuth();

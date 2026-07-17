@@ -7,38 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Lista permitida de priceIds (mantém sincronizado com src/lib/plans.ts)
-const ALLOWED_PRICE_IDS = new Set<string>([
-  'price_1TegO6DgjrAVrKo6qmm4QTAq',
-  'price_1TegOYDgjrAVrKo6SWKhm34E',
-  'price_1TegOrDgjrAVrKo6Fvsq1Vku',
-  'price_1TegPCDgjrAVrKo6a1AsVWED',
-  'price_1TegQXDgjrAVrKo68iqKHYkx',
-  'price_1TegRlDgjrAVrKo6pgIqgceO',
-  'price_1TegSSDgjrAVrKo60IQOSOMn',
-  'price_1TegSvDgjrAVrKo6d1LDLKgI',
-]);
-
-// Mapa priceId -> seats / nome (espelha src/lib/plans.ts).
-// O preço mensal é sempre seats * R$110,00 (preço por usuário).
-const PER_SEAT_MONTHLY_BRL = 110;
-const PRICE_INFO: Record<string, { seats: number; monthly: number; name: string }> = {
-  'price_1TegO6DgjrAVrKo6qmm4QTAq': { seats: 1,  monthly: 1  * PER_SEAT_MONTHLY_BRL, name: '1 usuário' },
-  'price_1TegOYDgjrAVrKo6SWKhm34E': { seats: 3,  monthly: 3  * PER_SEAT_MONTHLY_BRL, name: '3 usuários' },
-  'price_1TegOrDgjrAVrKo6Fvsq1Vku': { seats: 6,  monthly: 6  * PER_SEAT_MONTHLY_BRL, name: '6 usuários' },
-  'price_1TegPCDgjrAVrKo6a1AsVWED': { seats: 10, monthly: 10 * PER_SEAT_MONTHLY_BRL, name: '10 usuários' },
-  'price_1TegQXDgjrAVrKo68iqKHYkx': { seats: 15, monthly: 15 * PER_SEAT_MONTHLY_BRL, name: '15 usuários' },
-  'price_1TegRlDgjrAVrKo6pgIqgceO': { seats: 20, monthly: 20 * PER_SEAT_MONTHLY_BRL, name: '20 usuários' },
-  'price_1TegSSDgjrAVrKo60IQOSOMn': { seats: 25, monthly: 25 * PER_SEAT_MONTHLY_BRL, name: '25 usuários' },
-  'price_1TegSvDgjrAVrKo6d1LDLKgI': { seats: 30, monthly: 30 * PER_SEAT_MONTHLY_BRL, name: '30 usuários' },
+// Planos por número de usuários (mantém sincronizado com src/lib/plans.ts).
+// Cobrança = quantity (seats) × price recorrente do ciclo escolhido.
+const PLAN_SEATS: Record<string, number> = {
+  'price_1TegO6DgjrAVrKo6qmm4QTAq': 1,
+  'price_1TegOYDgjrAVrKo6SWKhm34E': 3,
+  'price_1TegOrDgjrAVrKo6Fvsq1Vku': 6,
+  'price_1TegPCDgjrAVrKo6a1AsVWED': 10,
+  'price_1TegQXDgjrAVrKo68iqKHYkx': 15,
+  'price_1TegRlDgjrAVrKo6pgIqgceO': 20,
+  'price_1TegSSDgjrAVrKo60IQOSOMn': 25,
+  'price_1TegSvDgjrAVrKo6d1LDLKgI': 30,
 };
 
-// Descontos aplicados por ciclo (mensal / semestral / anual). Calibrado para
-// que 1 usuário pague R$110/mês, R$645,62/semestre e R$1.276,86/ano.
-const DISCOUNT: Record<number, number> = {
-  1: 0,
-  6: 1 - 645.62 / 660,
-  12: 1 - 1276.86 / 1320,
+// Stripe price IDs recorrentes por ciclo (produto Hora Pro, valor por 1 usuário).
+const BILLING_PRICE_IDS: Record<number, string> = {
+  1:  'price_1TuHspDgjrAVrKo6SqvNvXCD', // R$ 110,00 / mês
+  6:  'price_1TuHtBDgjrAVrKo6tBrtH47r', // R$ 645,62 / semestre
+  12: 'price_1TuHtUDgjrAVrKo6gUCWH4pH', // R$ 1.276,86 / ano
 };
 
 

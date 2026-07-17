@@ -136,7 +136,7 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between border-b border-border bg-background/95 px-3 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-2">
+    <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between border-b border-border bg-gradient-warm/90 px-3 md:px-6 backdrop-blur supports-[backdrop-filter]:bg-background/70 gap-2 shadow-sm">
       <div className="flex items-center gap-2 min-w-0">
         <Button
           variant="ghost"

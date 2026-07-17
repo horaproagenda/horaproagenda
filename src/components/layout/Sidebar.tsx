@@ -127,7 +127,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
         className={cn(
           // Safe-area: respeita notch/status bar/home indicator (iOS) e display cutout (Android).
           // Sem isto, em PWA o menu mobile cobre o relógio/bateria do sistema.
-          "fixed left-0 top-0 z-40 h-[100dvh] border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out pt-safe pb-safe pl-safe",
+          "fixed left-0 top-0 z-40 h-[100dvh] border-r border-sidebar-border bg-gradient-warm transition-all duration-300 ease-in-out pt-safe pb-safe pl-safe shadow-sm",
           effectiveCollapsed ? "w-[72px]" : "w-64",
           // Mobile: oculta por padrão, abre como drawer
           "md:translate-x-0",
@@ -202,8 +202,8 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                         cn(
                           'flex items-center justify-center rounded-lg p-3 transition-all duration-200 touch-manipulation select-none active:scale-[0.97]',
                           isActive
-                            ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                            ? 'bg-primary-soft text-primary-foreground shadow-sm ring-1 ring-primary/30'
+                            : 'text-sidebar-foreground hover:bg-primary-soft/60 hover:text-foreground'
                         )
                       }
                     >
@@ -222,10 +222,10 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98] active:bg-sidebar-accent/70',
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98]',
                       isActive
-                        ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        ? 'bg-primary-soft text-primary-foreground shadow-sm ring-1 ring-primary/30'
+                        : 'text-sidebar-foreground hover:bg-primary-soft/60 hover:text-foreground'
                     )
                   }
                 >
@@ -288,11 +288,11 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           {/* Footer */}
           {!effectiveCollapsed ? (
             <div className="border-t border-sidebar-border p-4">
-              <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-4">
-                <p className="text-xs font-medium text-foreground">
+              <div className="rounded-lg bg-gradient-petrol-amber p-4 text-primary-foreground shadow-md">
+                <p className="text-xs font-medium">
                   {profile?.full_name || 'Usuário'}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs opacity-90">
                   {profile?.email || 'Sistema de Agendamento'}
                 </p>
               </div>

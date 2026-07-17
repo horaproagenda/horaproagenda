@@ -296,13 +296,6 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   {profile?.email || 'Sistema de Agendamento'}
                 </p>
               </div>
-                <p className="text-xs font-medium text-foreground">
-                  {profile?.full_name || 'Usuário'}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {profile?.email || 'Sistema de Agendamento'}
-                </p>
-              </div>
               <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
                 {BRAND.name} · {APP_VERSION_LABEL}
               </p>

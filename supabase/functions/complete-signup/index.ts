@@ -127,9 +127,9 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "A senha deve ter pelo menos 6 caracteres." }, 400);
     }
 
-    // CPF mandatory + valid
+    // CPF optional — when provided, must be valid
     const cpfDigits = (cpf || "").replace(/\D/g, "");
-    if (!cpfDigits || !isValidCPF(cpfDigits)) {
+    if (cpfDigits && !isValidCPF(cpfDigits)) {
       return jsonResponse({ success: false, error: "CPF inválido. Verifique e tente novamente." }, 400);
     }
 
@@ -149,7 +149,7 @@ serve(async (req) => {
     {
       const { data: blockCheck } = await supabaseAdmin.rpc("is_identifier_blocked", {
         p_email: normalizedEmail,
-        p_cpf: cpfDigits,
+        p_cpf: cpfDigits || null,
         p_cnpj: cnpj ?? null,
         p_phone: phoneE164 ?? null,
       });
@@ -243,23 +243,26 @@ serve(async (req) => {
       }
     }
 
-    // Block duplicate CPF across registrations — but allow the SAME email to
-    // retry (idempotent recovery from a previous attempt that created the
-    // trial_registrations row and/or the auth user but failed to log in).
-    const { data: cpfDup } = await supabaseAdmin
-      .from("trial_registrations")
-      .select("id, email")
-      .eq("cpf", cpfDigits)
-      .maybeSingle();
-    if (cpfDup && (cpfDup.email ?? "").toLowerCase() !== normalizedEmail) {
-      return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
+    // Block duplicate CPF across registrations (only when CPF was provided) —
+    // but allow the SAME email to retry (idempotent recovery from a previous
+    // attempt that created the trial_registrations row and/or the auth user
+    // but failed to log in).
+    if (cpfDigits) {
+      const { data: cpfDup } = await supabaseAdmin
+        .from("trial_registrations")
+        .select("id, email")
+        .eq("cpf", cpfDigits)
+        .maybeSingle();
+      if (cpfDup && (cpfDup.email ?? "").toLowerCase() !== normalizedEmail) {
+        return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
+      }
     }
 
 
     const userMetadata = {
       full_name: fullName.trim(),
       phone: phoneE164,
-      cpf: cpfDigits,
+      cpf: cpfDigits ? cpfDigits : null,
       company_name: companyName || null,
       cnpj: cnpj || null,
       city: city || null,
@@ -292,7 +295,7 @@ serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        if (existingUser?.id && existingTrial?.cpf === cpfDigits) {
+        if (existingUser?.id && (!cpfDigits || existingTrial?.cpf === cpfDigits)) {
           userId = existingUser.id;
         } else {
           return jsonResponse(
@@ -349,7 +352,7 @@ serve(async (req) => {
     await supabaseAdmin.from("trial_registrations").upsert({
       email: normalizedEmail,
       phone: phoneE164,
-      cpf: cpfDigits,
+      cpf: cpfDigits ? cpfDigits : null,
       full_name: fullName.trim(),
       company_name: companyName || null,
       cnpj: cnpj || null,

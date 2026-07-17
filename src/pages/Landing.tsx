@@ -116,8 +116,8 @@ const faq = [
     a: 'Sim. O sistema envia lembretes, confirmações e cobranças automáticas pelo WhatsApp.',
   },
   {
-    q: 'Posso testar grátis?',
-    a: 'Sim. Há período de teste gratuito disponível no cadastro inicial — sem cartão de crédito.',
+    q: 'Como funciona a assinatura?',
+    a: 'A assinatura é paga por usuário, com planos mensal, semestral ou anual. Sem período de teste — o acesso é liberado após a confirmação do pagamento.',
   },
   {
     q: 'Posso usar em mais de um dispositivo?',
@@ -303,13 +303,13 @@ export default function Landing() {
         <title>Hora Pro — {PRIMARY_TAGLINE}</title>
         <meta
           name="description"
-          content="Hora Pro: agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real, no celular ou desktop. Teste grátis."
+          content="Hora Pro: agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real, no celular ou desktop."
         />
         <link rel="canonical" href={`${BRAND.url}/`} />
         <meta property="og:title" content={`Hora Pro — ${PRIMARY_TAGLINE}`} />
         <meta
           property="og:description"
-          content="Agenda profissional com WhatsApp, financeiro, pacotes e comissões. Teste grátis, sem cartão."
+          content="Agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real."
         />
         <meta property="og:url" content={`${BRAND.url}/`} />
         <meta property="og:type" content="website" />
@@ -343,11 +343,11 @@ export default function Landing() {
                   size="sm"
                   className="gap-1.5 bg-gradient-to-r from-primary to-primary/80 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                 >
-                  Criar conta grátis
+                  Criar minha conta
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
                 <span className="mt-1 hidden text-[10px] font-medium text-muted-foreground sm:block">
-                  Sem cartão · 2 minutos
+                  Assinatura mensal, semestral ou anual
                 </span>
               </Link>
             </nav>
@@ -366,7 +366,7 @@ export default function Landing() {
                 <div>
                   <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground">
                     <Clock className="h-3.5 w-3.5 text-primary" />
-                    Teste grátis · sem cartão
+                    Planos mensal, semestral e anual
                   </span>
                   <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl">
                     {PRIMARY_TAGLINE}
@@ -378,7 +378,7 @@ export default function Landing() {
                   <div className="mt-8 flex flex-wrap gap-3">
                     <Link to="/auth">
                       <Button size="lg" className="gap-2">
-                        Começar grátis
+                        Criar minha conta
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>
@@ -680,13 +680,13 @@ export default function Landing() {
                 Comece a usar hoje, em 2 minutos
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-                Crie sua conta, cadastre seus serviços e comece a receber agendamentos. Sem
-                instalar nada, sem cartão de crédito.
+                Crie sua conta, escolha um plano, cadastre seus serviços e comece a receber
+                agendamentos. Sem instalar nada.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link to="/auth">
                   <Button size="lg" className="gap-2">
-                    Criar conta grátis
+                    Criar minha conta
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>

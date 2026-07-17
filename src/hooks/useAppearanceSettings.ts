@@ -49,11 +49,9 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
 function applyAppearance(settings: AppearanceSettings) {
   const root = document.documentElement;
 
-  // Primary color
-  root.style.setProperty('--primary', settings.primaryColor);
-  root.style.setProperty('--ring', settings.primaryColor);
-  root.style.setProperty('--sidebar-primary', settings.primaryColor);
-  root.style.setProperty('--sidebar-ring', settings.primaryColor);
+  // Cores da interface (botões, fundo, barra lateral, texto) são padronizadas
+  // via tokens em index.css. O profissional personaliza apenas a cor dos seus
+  // horários na agenda (agenda_color), não o tema global do aplicativo.
 
   // Dark mode
   if (settings.darkMode) {

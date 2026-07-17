@@ -245,10 +245,6 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
-  const { data: whatsappCost } = useWhatsappInstanceCost(plan.seats);
-  const waMonthly = whatsappCost?.totalBrl ?? 0;
-  const waCycle = waMonthly * billingMonths;
-  const grandTotal = planTotal + waCycle;
 
   return (
     <Card className="max-w-md mx-auto">
@@ -262,12 +258,12 @@ function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheck
         {!isMonthly && (
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Plano sem desconto</span>
-            <span className="line-through">{formatBRL(fullPrice + waCycle)}</span>
+            <span className="line-through">{formatBRL(fullPrice)}</span>
           </div>
         )}
         <div className="flex justify-between text-lg font-bold border-t pt-3">
           <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
-          <span className="tabular-nums">{formatBRL(grandTotal)}</span>
+          <span className="tabular-nums">{formatBRL(planTotal)}</span>
         </div>
         {!isMonthly && saved > 0 && (
           <div className="text-xs text-emerald-600 text-right">

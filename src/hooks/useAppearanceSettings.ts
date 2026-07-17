@@ -10,6 +10,7 @@ export interface AppearanceSettings {
 }
 
 export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[] = [
+  { name: 'Âmbar Dourado',   hsl: '27 87% 67%',  hex: '#F4A261' },
   { name: 'Marrom Neutro',   hsl: '25 35% 38%',  hex: '#7D573D' },
   { name: 'Marrom Claro',    hsl: '28 40% 55%',  hex: '#B08868' },
   { name: 'Café',            hsl: '20 25% 28%',  hex: '#594236' },
@@ -19,7 +20,7 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
   { name: 'Coral',           hsl: '14 90% 60%',  hex: '#F26D3D' },
   { name: 'Vermelho',        hsl: '0 72% 51%',   hex: '#DC2626' },
   { name: 'Laranja',         hsl: '24 95% 53%',  hex: '#F97316' },
-  { name: 'Âmbar',           hsl: '38 92% 50%',  hex: '#F59E0B' },
+  { name: 'Âmbar Claro',     hsl: '38 92% 50%',  hex: '#F59E0B' },
   { name: 'Dourado',         hsl: '45 80% 50%',  hex: '#E6B800' },
   { name: 'Verde Lima',      hsl: '84 70% 45%',  hex: '#84CC16' },
   { name: 'Verde',           hsl: '152 60% 40%', hex: '#16A34A' },

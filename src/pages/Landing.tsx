@@ -116,8 +116,8 @@ const faq = [
     a: 'Sim. O sistema envia lembretes, confirmações e cobranças automáticas pelo WhatsApp.',
   },
   {
-    q: 'Posso testar grátis?',
-    a: 'Sim. Há período de teste gratuito disponível no cadastro inicial — sem cartão de crédito.',
+    q: 'Como funciona a assinatura?',
+    a: 'A assinatura é paga por usuário, com planos mensal, semestral ou anual. Sem período de teste — o acesso é liberado após a confirmação do pagamento.',
   },
   {
     q: 'Posso usar em mais de um dispositivo?',

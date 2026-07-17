@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Palette, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
+import { Building2, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

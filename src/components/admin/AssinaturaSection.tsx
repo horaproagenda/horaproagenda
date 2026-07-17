@@ -186,11 +186,6 @@ function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: Plan
   const isMonthly = billingMonths === 1;
   const totalCycle = periodTotal(plan.priceBRL, billingMonths);
   const effectiveMonthly = totalCycle / billingMonths;
-  const { data: whatsappCost } = useWhatsappInstanceCost(plan.seats);
-  const waMonthly = whatsappCost?.totalBrl ?? 0;
-  const waCycle = waMonthly * billingMonths;
-  const grandTotalCycle = totalCycle + waCycle;
-  const grandTotalMonthly = effectiveMonthly + waMonthly;
 
   return (
     <Card
@@ -217,17 +212,17 @@ function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: Plan
       <CardContent>
         <div className="space-y-2">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-2xl font-bold">{formatBRL(grandTotalMonthly)}</span>
+            <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
             <span className="text-sm text-muted-foreground">/mês</span>
             {!isMonthly && (
               <span className="text-xs text-muted-foreground line-through">
-                {formatBRL(plan.priceBRL + waMonthly)}
+                {formatBRL(plan.priceBRL)}
               </span>
             )}
           </div>
           {!isMonthly && (
             <div className="border-t pt-1.5 text-[10px] text-muted-foreground">
-              {formatBRL(grandTotalCycle)} a cada {billingMonths} meses
+              {formatBRL(totalCycle)} a cada {billingMonths} meses
             </div>
           )}
         </div>

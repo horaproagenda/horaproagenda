@@ -60,7 +60,7 @@ const text = {
   margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: 'hsl(333, 71%, 50%)',
+  backgroundColor: '#0F4C5C',
   color: '#ffffff',
   fontSize: '14px',
   borderRadius: '12px',

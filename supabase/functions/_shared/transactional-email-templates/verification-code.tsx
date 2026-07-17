@@ -75,7 +75,7 @@ const text = {
   margin: '0 0 20px',
 }
 const codeBox = {
-  backgroundColor: 'hsl(333, 71%, 50%)',
+  backgroundColor: '#0F4C5C',
   borderRadius: '12px',
   padding: '24px',
   textAlign: 'center' as const,

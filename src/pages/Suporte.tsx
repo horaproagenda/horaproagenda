@@ -107,20 +107,28 @@ const Suporte = () => {
           {/* Opções de contato rápido */}
           <div className="grid gap-3 md:grid-cols-3">
             {contactOptions.map((option, index) => (
-              <Card key={index} className="card-hover cursor-pointer" onClick={() => window.open(option.href, "_blank")}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`${option.color} p-2 rounded-lg text-white`}>
-                      {option.icon}
+              <a
+                key={index}
+                href={option.href}
+                target={option.title === "WhatsApp" ? "_blank" : undefined}
+                rel={option.title === "WhatsApp" ? "noopener noreferrer" : undefined}
+                className="block"
+              >
+                <Card className="card-hover h-full">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`${option.color} p-2 rounded-lg text-white`}>
+                        {option.icon}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-sm">{option.title}</h3>
+                        <p className="text-xs text-muted-foreground">{option.description}</p>
+                      </div>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-sm">{option.title}</h3>
-                      <p className="text-xs text-muted-foreground">{option.description}</p>
-                    </div>
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </a>
             ))}
           </div>
 

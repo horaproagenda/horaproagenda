@@ -243,6 +243,70 @@ const Ajuda = () => {
                   {APP_VERSION_LABEL}
                 </Badge>
               </div>
+
+              {/* Opções de contato clicáveis */}
+              <div className="grid gap-3 md:grid-cols-3 mb-4">
+                <a
+                  href={buildWebWhatsappUrl("5537991355495", "")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Card className="card-hover h-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-green-500 p-2 rounded-lg text-white">
+                          <MessageSquare className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-sm">WhatsApp</h3>
+                          <p className="text-xs text-muted-foreground">(37) 99135-5495</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </a>
+                <a
+                  href="mailto:horaproagenda@gmail.com"
+                  className="block"
+                >
+                  <Card className="card-hover h-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-500 p-2 rounded-lg text-white">
+                          <Mail className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-sm">E-mail</h3>
+                          <p className="text-xs text-muted-foreground">horaproagenda@gmail.com</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </a>
+                <a
+                  href="tel:+5537991355495"
+                  className="block"
+                >
+                  <Card className="card-hover h-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-purple-500 p-2 rounded-lg text-white">
+                          <Phone className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-sm">Telefone</h3>
+                          <p className="text-xs text-muted-foreground">(37) 99135-5495</p>
+                        </div>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </a>
+              </div>
+
               <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
                 <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novidades</TabsTrigger>
                 <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Módulos</TabsTrigger>

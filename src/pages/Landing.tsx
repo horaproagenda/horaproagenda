@@ -343,11 +343,11 @@ export default function Landing() {
                   size="sm"
                   className="gap-1.5 bg-gradient-to-r from-primary to-primary/80 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
                 >
-                  Criar conta grátis
+                  Criar minha conta
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
                 <span className="mt-1 hidden text-[10px] font-medium text-muted-foreground sm:block">
-                  Sem cartão · 2 minutos
+                  Assinatura mensal, semestral ou anual
                 </span>
               </Link>
             </nav>

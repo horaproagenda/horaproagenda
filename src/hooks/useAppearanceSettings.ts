@@ -97,7 +97,7 @@ export function useAppearanceSettings() {
         if (error) return;
         if (!data) return;
         const patch: Partial<AppearanceSettings> = {};
-        if (data.primary_color) patch.primaryColor = data.primary_color;
+        // primaryColor é padronizado no tema; não sobrescreve pela DB
         if (typeof data.dark_mode === 'boolean') patch.darkMode = data.dark_mode;
         if (typeof data.animations === 'boolean') patch.animations = data.animations;
         if (Object.keys(patch).length > 0) {

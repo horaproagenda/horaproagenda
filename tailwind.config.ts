@@ -76,7 +76,11 @@ export default {
   			foreground: 'hsl(var(--foreground))',
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				foreground: 'hsl(var(--primary-foreground))',
+  				hover: 'hsl(var(--primary-hover))',
+  				active: 'hsl(var(--primary-active))',
+  				soft: 'hsl(var(--primary-soft))',
+  				glow: 'hsl(var(--primary-glow))'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -92,8 +96,10 @@ export default {
   			},
   			accent: {
   				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				foreground: 'hsl(var(--accent-foreground))',
+  				soft: 'hsl(var(--accent-soft))'
   			},
+
   			popover: {
   				DEFAULT: 'hsl(var(--popover))',
   				foreground: 'hsl(var(--popover-foreground))'
@@ -163,6 +169,7 @@ export default {
   		},
   		boxShadow: {
   			glow: 'var(--shadow-glow)',
+  			'glow-petrol': 'var(--shadow-glow-petrol)',
   			'2xs': 'var(--shadow-2xs)',
   			xs: 'var(--shadow-xs)',
   			sm: 'var(--shadow-sm)',
@@ -170,7 +177,15 @@ export default {
   			lg: 'var(--shadow-lg)',
   			xl: 'var(--shadow-xl)',
   			'2xl': 'var(--shadow-2xl)'
+  		},
+  		backgroundImage: {
+  			'gradient-primary': 'var(--gradient-primary)',
+  			'gradient-accent': 'var(--gradient-accent)',
+  			'gradient-hero': 'var(--gradient-hero)',
+  			'gradient-warm': 'var(--gradient-warm)',
+  			'gradient-petrol-amber': 'var(--gradient-petrol-amber)'
   		}
+
   	}
   },
   plugins: [require("tailwindcss-animate")],

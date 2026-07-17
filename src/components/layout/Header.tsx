@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Menu, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Camera, Crown, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -9,6 +10,7 @@ import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 
 interface HeaderProps {
   title: string;
@@ -26,6 +28,59 @@ function getInitials(name?: string | null, email?: string | null): string {
     if (initials) return initials;
   }
   return (email?.[0] || 'U').toUpperCase();
+}
+
+function AdminShortcut() {
+  const { user, hasRole } = useAuth();
+  const isPlatformOwner = isSuperAdminEmail(user?.email);
+
+  if (hasRole('super_admin') && isPlatformOwner) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            aria-label="Super Admin"
+            asChild
+          >
+            <Link to="/super-admin">
+              <Crown className="h-4 w-4 md:h-5 md:w-5" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Painel Super Admin</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (hasRole('admin')) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            aria-label="Painel Admin"
+            asChild
+          >
+            <Link to="/admin">
+              <ShieldCheck className="h-4 w-4 md:h-5 md:w-5" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Painel Admin</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return null;
 }
 
 export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
@@ -148,6 +203,9 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
         </Tooltip>
 
         <NotificationsPanel />
+
+        {/* Admin / Super Admin shortcut */}
+        <AdminShortcut />
 
         {/* User Menu */}
         <div className="flex items-center gap-3">

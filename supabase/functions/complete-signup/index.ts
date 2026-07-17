@@ -295,7 +295,7 @@ serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        if (existingUser?.id && existingTrial?.cpf === cpfDigits) {
+        if (existingUser?.id && (!cpfDigits || existingTrial?.cpf === cpfDigits)) {
           userId = existingUser.id;
         } else {
           return jsonResponse(

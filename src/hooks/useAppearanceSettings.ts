@@ -10,6 +10,7 @@ export interface AppearanceSettings {
 }
 
 export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[] = [
+  { name: 'Âmbar Dourado',   hsl: '27 87% 67%',  hex: '#F4A261' },
   { name: 'Marrom Neutro',   hsl: '25 35% 38%',  hex: '#7D573D' },
   { name: 'Marrom Claro',    hsl: '28 40% 55%',  hex: '#B08868' },
   { name: 'Café',            hsl: '20 25% 28%',  hex: '#594236' },
@@ -19,7 +20,7 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
   { name: 'Coral',           hsl: '14 90% 60%',  hex: '#F26D3D' },
   { name: 'Vermelho',        hsl: '0 72% 51%',   hex: '#DC2626' },
   { name: 'Laranja',         hsl: '24 95% 53%',  hex: '#F97316' },
-  { name: 'Âmbar',           hsl: '38 92% 50%',  hex: '#F59E0B' },
+  { name: 'Âmbar Claro',     hsl: '38 92% 50%',  hex: '#F59E0B' },
   { name: 'Dourado',         hsl: '45 80% 50%',  hex: '#E6B800' },
   { name: 'Verde Lima',      hsl: '84 70% 45%',  hex: '#84CC16' },
   { name: 'Verde',           hsl: '152 60% 40%', hex: '#16A34A' },
@@ -37,10 +38,10 @@ export const PRIMARY_COLOR_PALETTE: { name: string; hsl: string; hex: string }[]
   { name: 'Preto Suave',     hsl: '240 6% 18%',  hex: '#2C2C30' },
 ];
 
-const STORAGE_KEY = 'appearance-settings-v1';
+const STORAGE_KEY = 'appearance-settings-v2';
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
-  primaryColor: '25 35% 38%',
+  primaryColor: '27 87% 67%', // Âmbar Dourado #F4A261 — cor padrão dos botões
   darkMode: false,
   animations: true,
 };
@@ -48,11 +49,9 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
 function applyAppearance(settings: AppearanceSettings) {
   const root = document.documentElement;
 
-  // Primary color
-  root.style.setProperty('--primary', settings.primaryColor);
-  root.style.setProperty('--ring', settings.primaryColor);
-  root.style.setProperty('--sidebar-primary', settings.primaryColor);
-  root.style.setProperty('--sidebar-ring', settings.primaryColor);
+  // Cores da interface (botões, fundo, barra lateral, texto) são padronizadas
+  // via tokens em index.css. O profissional personaliza apenas a cor dos seus
+  // horários na agenda (agenda_color), não o tema global do aplicativo.
 
   // Dark mode
   if (settings.darkMode) {
@@ -98,7 +97,7 @@ export function useAppearanceSettings() {
         if (error) return;
         if (!data) return;
         const patch: Partial<AppearanceSettings> = {};
-        if (data.primary_color) patch.primaryColor = data.primary_color;
+        // primaryColor é padronizado no tema; não sobrescreve pela DB
         if (typeof data.dark_mode === 'boolean') patch.darkMode = data.dark_mode;
         if (typeof data.animations === 'boolean') patch.animations = data.animations;
         if (Object.keys(patch).length > 0) {
@@ -129,7 +128,7 @@ export function useAppearanceSettings() {
     // Persist to DB so the choice follows the account across devices
     if (user?.id) {
       const dbPatch: Record<string, unknown> = { user_id: user.id };
-      if (patch.primaryColor !== undefined) dbPatch.primary_color = patch.primaryColor;
+      // primaryColor é padronizado no tema; não persiste como preferência individual
       if (patch.darkMode !== undefined) dbPatch.dark_mode = patch.darkMode;
       if (patch.animations !== undefined) dbPatch.animations = patch.animations;
       if (Object.keys(dbPatch).length > 1) {

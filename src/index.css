@@ -183,45 +183,46 @@ input::-webkit-clear-button {
 
 @layer base {
   :root {
-    /* Hora Pro — Paleta Petróleo + Âmbar (Warm Sand base) */
-    --background: 38 33% 94%;         /* #F5F1EA warm sand */
-    --foreground: 222 10% 18%;        /* #2A2D34 graphite */
+    /* Hora Pro — Paleta Areia Quente + Âmbar Dourado */
+    --background: 38 33% 94%;         /* #F5F1EA areia quente */
+    --foreground: 222 10% 18%;        /* #2A2D34 grafite */
 
-    --card: 0 0% 100%;
+    --card: 38 30% 97%;
     --card-foreground: 222 10% 18%;
 
-    --popover: 0 0% 100%;
+    --popover: 38 30% 97%;
     --popover-foreground: 222 10% 18%;
 
-    --primary: 191 71% 21%;           /* #0F4C5C petróleo profundo */
-    --primary-foreground: 38 33% 96%;
+    --primary: 27 87% 67%;            /* #F4A261 âmbar dourado (botões) */
+    --primary-foreground: 222 10% 18%; /* grafite */
 
-    --secondary: 191 30% 88%;
-    --secondary-foreground: 191 71% 18%;
+    --secondary: 38 20% 88%;
+    --secondary-foreground: 222 10% 18%;
 
     --muted: 38 20% 88%;
     --muted-foreground: 222 8% 40%;
 
     --accent: 27 87% 67%;             /* #F4A261 âmbar dourado */
-    --accent-foreground: 222 15% 15%;
+    --accent-foreground: 222 10% 18%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
 
     --border: 38 15% 82%;
     --input: 38 15% 82%;
-    --ring: 191 71% 21%;
+    --ring: 27 87% 67%;
 
     --radius: 1.5rem;
 
-    --sidebar-background: 191 71% 21%;
-    --sidebar-foreground: 38 33% 96%;
-    --sidebar-primary: 27 87% 67%;
-    --sidebar-primary-foreground: 222 15% 15%;
-    --sidebar-accent: 191 60% 28%;
-    --sidebar-accent-foreground: 38 33% 96%;
-    --sidebar-border: 191 50% 30%;
+    --sidebar-background: 38 33% 94%;  /* #F5F1EA areia quente (fundo + barra lateral) */
+    --sidebar-foreground: 222 10% 18%; /* #2A2D34 grafite */
+    --sidebar-primary: 27 87% 67%;    /* #F4A261 âmbar dourado */
+    --sidebar-primary-foreground: 222 10% 18%;
+    --sidebar-accent: 38 20% 82%;
+    --sidebar-accent-foreground: 222 10% 18%;
+    --sidebar-border: 38 15% 82%;
     --sidebar-ring: 27 87% 67%;
+
 
     /* Custom tokens */
     --success: 152 50% 45%;

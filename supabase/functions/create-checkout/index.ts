@@ -76,71 +76,52 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
-    let session: Stripe.Checkout.Session;
+    const info = PRICE_INFO[priceId];
+    if (!info) throw new Error("Plano não encontrado");
+    const discount = DISCOUNT[billingMonths];
+    const totalBRL = Math.round(info.monthly * billingMonths * (1 - discount) * 100) / 100;
+    const unitAmountCents = Math.round(totalBRL * 100);
+    const periodLabel =
+      billingMonths === 1 ? 'mensal' : billingMonths === 6 ? 'semestral' : billingMonths === 12 ? 'anual' : `${billingMonths} meses`;
+    const label = `${info.name} · ${periodLabel}${discount ? ` (-${Math.round(discount * 100)}%)` : ''}`;
 
-    if (billingMonths === 1) {
-      // Assinatura recorrente mensal (cartão).
-      session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        customer_email: customerId ? undefined : user.email,
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/assinatura/cancelado`,
-        subscription_data: { metadata: { user_id: user.id } },
-        metadata: { user_id: user.id, price_id: priceId, billing_months: '1' },
-        allow_promotion_codes: true,
-      });
-    } else {
-      // Assinatura recorrente trimestral/semestral/anual com desconto aplicado
-      // ao valor da cobrança recorrente (cobra automaticamente a cada N meses).
-      // Apenas cartão é suportado pelo Stripe para subscriptions no BR.
-      const info = PRICE_INFO[priceId];
-      if (!info) throw new Error("Plano não encontrado");
-      const discount = DISCOUNT[billingMonths];
-      const totalBRL = Math.round(info.monthly * billingMonths * (1 - discount) * 100) / 100;
-      const unitAmountCents = Math.round(totalBRL * 100);
-      const label = `${info.name} · ${billingMonths} meses${discount ? ` (-${Math.round(discount * 100)}%)` : ''}`;
-
-      session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        customer_email: customerId ? undefined : user.email,
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{
-          quantity: 1,
-          price_data: {
-            currency: 'brl',
-            unit_amount: unitAmountCents,
-            recurring: { interval: 'month', interval_count: billingMonths },
-            product: PRICE_INFO[priceId] ? undefined : undefined,
-            product_data: {
-              name: `Hora Pro — ${label}`,
-            },
-          } as Stripe.Checkout.SessionCreateParams.LineItem.PriceData,
-        }],
-        success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/assinatura/cancelado`,
-        subscription_data: {
-          metadata: {
-            user_id: user.id,
-            price_id: priceId,
-            billing_months: String(billingMonths),
-            seats: String(info.seats),
-            kind: 'recurring_multi_month',
+    const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      customer_email: customerId ? undefined : user.email,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: 'brl',
+          unit_amount: unitAmountCents,
+          recurring: { interval: 'month', interval_count: billingMonths },
+          product_data: {
+            name: `Hora Pro — ${label}`,
           },
-        },
+        } as Stripe.Checkout.SessionCreateParams.LineItem.PriceData,
+      }],
+      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/assinatura/cancelado`,
+      subscription_data: {
         metadata: {
           user_id: user.id,
           price_id: priceId,
           billing_months: String(billingMonths),
           seats: String(info.seats),
-          kind: 'recurring_multi_month',
+          kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
         },
-        allow_promotion_codes: true,
-      });
-    }
+      },
+      metadata: {
+        user_id: user.id,
+        price_id: priceId,
+        billing_months: String(billingMonths),
+        seats: String(info.seats),
+        kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
+      },
+      allow_promotion_codes: true,
+    });
+
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

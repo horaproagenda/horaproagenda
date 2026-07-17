@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, Crown, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Camera, Crown, Menu, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -52,29 +52,6 @@ function AdminShortcut() {
         </TooltipTrigger>
         <TooltipContent>
           <p>Painel Super Admin</p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  if (hasRole('admin')) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative h-9 w-9"
-            aria-label="Painel Admin"
-            asChild
-          >
-            <Link to="/admin">
-              <ShieldCheck className="h-4 w-4 md:h-5 md:w-5" />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Painel Admin</p>
         </TooltipContent>
       </Tooltip>
     );

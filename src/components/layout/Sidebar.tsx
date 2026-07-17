@@ -288,7 +288,14 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           {/* Footer */}
           {!effectiveCollapsed ? (
             <div className="border-t border-sidebar-border p-4">
-              <div className="rounded-lg bg-gradient-to-r from-primary/10 to-accent/10 p-4">
+              <div className="rounded-lg bg-gradient-petrol-amber p-4 text-primary-foreground shadow-md">
+                <p className="text-xs font-medium">
+                  {profile?.full_name || 'Usuário'}
+                </p>
+                <p className="mt-1 text-xs opacity-90">
+                  {profile?.email || 'Sistema de Agendamento'}
+                </p>
+              </div>
                 <p className="text-xs font-medium text-foreground">
                   {profile?.full_name || 'Usuário'}
                 </p>

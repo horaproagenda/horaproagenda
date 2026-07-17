@@ -73,7 +73,7 @@ export default function Cadastros() {
                 <Badge variant="secondary" className="text-xs">{activeEquipment} ativos</Badge>
               </div>
               <ManageEquipmentDialog>
-                <button className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all duration-300 text-sm font-medium tracking-wide">
+                <button className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-all duration-300 text-sm font-medium tracking-wide">
                   Gerenciar Equipamentos
                 </button>
               </ManageEquipmentDialog>

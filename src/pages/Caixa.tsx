@@ -31,8 +31,8 @@ export default function Caixa() {
               <Wallet className="h-3.5 w-3.5 text-amber-600" />
               <span className="hidden sm:inline">Controle</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-indigo-500/15 data-[state=active]:text-indigo-700 data-[state=active]:border-indigo-500/40">
-              <History className="h-3.5 w-3.5 text-indigo-600" />
+            <TabsTrigger value="historico" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+              <History className="h-3.5 w-3.5 text-accent" />
               <span className="hidden sm:inline">Histórico</span>
             </TabsTrigger>
           </TabsList>

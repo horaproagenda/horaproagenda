@@ -627,7 +627,7 @@ const Servicos: React.FC = () => {
                 lockType={serviceTypeFilter === 'kit' ? 'kit' : 'service'}
                 onServiceCreated={refetch}
               >
-                <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white btn-vibrant">
+                <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary-hover text-primary-foreground btn-vibrant">
                   <Plus className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium tracking-wide">{serviceTypeFilter === 'kit' ? 'Novo Kit de Serviços' : 'Novo Serviço'}</span>
                 </Button>
@@ -878,7 +878,7 @@ const Servicos: React.FC = () => {
                 {nonSequentialPackages.length > 0 && (
                   <section className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Package className="h-3.5 w-3.5 text-violet-600" />
+                      <Package className="h-3.5 w-3.5 text-primary" />
                       <h3 className="text-sm font-semibold">Pacotes comuns</h3>
                       <Badge variant="secondary" className="text-[10px] h-5">{nonSequentialPackages.length}</Badge>
                     </div>

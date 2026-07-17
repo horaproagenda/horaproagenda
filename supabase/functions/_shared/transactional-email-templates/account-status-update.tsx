@@ -127,8 +127,8 @@ export const template = {
 
 const main = { backgroundColor: '#ffffff', fontFamily: '"Poppins", "Helvetica Neue", Arial, sans-serif' }
 const container = { padding: '20px 25px', maxWidth: '520px' }
-const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#000000', margin: '0 0 16px' }
-const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.6', margin: '0 0 14px' }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#0F4C5C', margin: '0 0 16px' }
+const text = { fontSize: '14px', color: '#2A2D34', lineHeight: '1.6', margin: '0 0 14px' }
 const highlight = {
   backgroundColor: '#F5F1EA',
   border: '1px solid #F4A261',

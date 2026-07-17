@@ -16,8 +16,9 @@ import {
   MessageCircle, Wrench, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CHANGELOG, CURRENT_CHANGELOG } from "@/lib/changelog";
-import { APP_VERSION_LABEL, APP_VERSION } from "@/lib/version";
+import { CURRENT_CHANGELOG } from "@/lib/changelog";
+import { APP_VERSION_LABEL } from "@/lib/version";
+
 
 
 const Ajuda = () => {

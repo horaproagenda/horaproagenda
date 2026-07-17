@@ -132,21 +132,10 @@ export function useFinancialEntries() {
 
   const deleteEntry = useMutation({
     mutationFn: async (id: string) => {
-      // If the entry is linked to a sale, cascade purge the whole sale so that
-      // package, package_appointments, appointments, boletos and caixa entries
-      // are removed in real-time — fixing "phantom packages" in the client profile.
-      const { data: entry } = await supabase
-        .from('financial_entries')
-        .select('id, sale_id')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (entry?.sale_id) {
-        const { error: rpcError } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: entry.sale_id });
-        if (rpcError) throw rpcError;
-        return;
-      }
-
+      // IMPORTANT: deleting a single receivable/payable must NOT cascade the whole sale.
+      // Package-linked sales must be undone explicitly through CancelPackageDialog
+      // (see RelatorioConsolidado), otherwise a stray trash click in "Contas a Receber"
+      // would wipe an entire package + its scheduled sessions with no confirmation.
       const { error } = await supabase
         .from('financial_entries')
         .delete()

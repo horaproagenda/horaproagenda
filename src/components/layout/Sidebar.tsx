@@ -202,8 +202,8 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                         cn(
                           'flex items-center justify-center rounded-lg p-3 transition-all duration-200 touch-manipulation select-none active:scale-[0.97]',
                           isActive
-                            ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                            ? 'bg-primary-soft text-primary-foreground shadow-sm ring-1 ring-primary/30'
+                            : 'text-sidebar-foreground hover:bg-primary-soft/60 hover:text-foreground'
                         )
                       }
                     >

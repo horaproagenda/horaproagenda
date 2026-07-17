@@ -104,22 +104,25 @@ const Index = () => {
     >
       <PageTransition>
         {/* Filter */}
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select 
-            value={selectedProfessional || 'all'} 
-            onValueChange={(v) => setSelectedProfessional(v === 'all' ? null : v)}
-          >
-            <SelectTrigger className="w-[180px] h-8 text-sm">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os profissionais</SelectItem>
-              {professionals.filter(p => p.is_active).map(prof => (
-                <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            <Select 
+              value={selectedProfessional || 'all'} 
+              onValueChange={(v) => setSelectedProfessional(v === 'all' ? null : v)}
+            >
+              <SelectTrigger className="w-[180px] h-8 text-sm">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os profissionais</SelectItem>
+                {professionals.filter(p => p.is_active).map(prof => (
+                  <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AdminShortcutCard />
         </div>
 
         {/* Sales Overview */}

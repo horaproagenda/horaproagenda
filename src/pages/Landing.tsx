@@ -303,13 +303,13 @@ export default function Landing() {
         <title>Hora Pro — {PRIMARY_TAGLINE}</title>
         <meta
           name="description"
-          content="Hora Pro: agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real, no celular ou desktop. Teste grátis."
+          content="Hora Pro: agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real, no celular ou desktop."
         />
         <link rel="canonical" href={`${BRAND.url}/`} />
         <meta property="og:title" content={`Hora Pro — ${PRIMARY_TAGLINE}`} />
         <meta
           property="og:description"
-          content="Agenda profissional com WhatsApp, financeiro, pacotes e comissões. Teste grátis, sem cartão."
+          content="Agenda profissional com WhatsApp, financeiro, pacotes e comissões — em tempo real."
         />
         <meta property="og:url" content={`${BRAND.url}/`} />
         <meta property="og:type" content="website" />

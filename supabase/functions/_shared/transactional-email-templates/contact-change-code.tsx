@@ -62,10 +62,10 @@ export const template = {
 
 const main = { backgroundColor: '#ffffff', fontFamily: '"Poppins", "Helvetica Neue", Arial, sans-serif' }
 const container = { padding: '20px 25px', maxWidth: '500px' }
-const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#000000', margin: '0 0 20px' }
-const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.5', margin: '0 0 20px' }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#0F4C5C', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#2A2D34', lineHeight: '1.5', margin: '0 0 20px' }
 const codeBox = {
-  backgroundColor: 'hsl(333, 71%, 50%)',
+  backgroundColor: '#0F4C5C',
   borderRadius: '12px',
   padding: '24px',
   textAlign: 'center' as const,

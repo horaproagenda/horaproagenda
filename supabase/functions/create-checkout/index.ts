@@ -19,19 +19,28 @@ const ALLOWED_PRICE_IDS = new Set<string>([
   'price_1TegSvDgjrAVrKo6d1LDLKgI',
 ]);
 
-// Mapa priceId -> seats / nome (espelha src/lib/plans.ts)
+// Mapa priceId -> seats / nome (espelha src/lib/plans.ts).
+// O preço mensal é sempre seats * R$110,00 (preço por usuário).
+const PER_SEAT_MONTHLY_BRL = 110;
 const PRICE_INFO: Record<string, { seats: number; monthly: number; name: string }> = {
-  'price_1TegO6DgjrAVrKo6qmm4QTAq': { seats: 1,  monthly: 59.90,   name: '1 usuário' },
-  'price_1TegOYDgjrAVrKo6SWKhm34E': { seats: 3,  monthly: 129.90,  name: '3 usuários' },
-  'price_1TegOrDgjrAVrKo6Fvsq1Vku': { seats: 6,  monthly: 259.80,  name: '6 usuários' },
-  'price_1TegPCDgjrAVrKo6a1AsVWED': { seats: 10, monthly: 433.30,  name: '10 usuários' },
-  'price_1TegQXDgjrAVrKo68iqKHYkx': { seats: 15, monthly: 649.50,  name: '15 usuários' },
-  'price_1TegRlDgjrAVrKo6pgIqgceO': { seats: 20, monthly: 866.00,  name: '20 usuários' },
-  'price_1TegSSDgjrAVrKo60IQOSOMn': { seats: 25, monthly: 1082.50, name: '25 usuários' },
-  'price_1TegSvDgjrAVrKo6d1LDLKgI': { seats: 30, monthly: 1299.00, name: '30 usuários' },
+  'price_1TegO6DgjrAVrKo6qmm4QTAq': { seats: 1,  monthly: 1  * PER_SEAT_MONTHLY_BRL, name: '1 usuário' },
+  'price_1TegOYDgjrAVrKo6SWKhm34E': { seats: 3,  monthly: 3  * PER_SEAT_MONTHLY_BRL, name: '3 usuários' },
+  'price_1TegOrDgjrAVrKo6Fvsq1Vku': { seats: 6,  monthly: 6  * PER_SEAT_MONTHLY_BRL, name: '6 usuários' },
+  'price_1TegPCDgjrAVrKo6a1AsVWED': { seats: 10, monthly: 10 * PER_SEAT_MONTHLY_BRL, name: '10 usuários' },
+  'price_1TegQXDgjrAVrKo68iqKHYkx': { seats: 15, monthly: 15 * PER_SEAT_MONTHLY_BRL, name: '15 usuários' },
+  'price_1TegRlDgjrAVrKo6pgIqgceO': { seats: 20, monthly: 20 * PER_SEAT_MONTHLY_BRL, name: '20 usuários' },
+  'price_1TegSSDgjrAVrKo60IQOSOMn': { seats: 25, monthly: 25 * PER_SEAT_MONTHLY_BRL, name: '25 usuários' },
+  'price_1TegSvDgjrAVrKo6d1LDLKgI': { seats: 30, monthly: 30 * PER_SEAT_MONTHLY_BRL, name: '30 usuários' },
 };
 
-const DISCOUNT: Record<number, number> = { 1: 0, 3: 0.02, 6: 0.03, 12: 0.05 };
+// Descontos aplicados por ciclo (mensal / semestral / anual). Calibrado para
+// que 1 usuário pague R$110/mês, R$645,62/semestre e R$1.276,86/ano.
+const DISCOUNT: Record<number, number> = {
+  1: 0,
+  6: 1 - 645.62 / 660,
+  12: 1 - 1276.86 / 1320,
+};
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

@@ -22,6 +22,27 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'v1.0.4',
+    date: '17/07/2026',
+    highlights: [
+      'Nova identidade visual Hora Pro (paleta petróleo + âmbar)',
+      'Assinaturas via Stripe (mensal, semestral e anual por usuário)',
+      'Correções em agendamento automático de pacotes sequenciais',
+      'Correções em descontos, exclusão de vendas e estoque de produtos',
+    ],
+    changes: [
+      { type: 'novo', description: 'Paleta oficial Hora Pro aplicada em toda a interface (Âmbar Dourado, Areia Quente e Grafite), com gradientes, sombras e estados de botão padronizados.' },
+      { type: 'novo', description: 'Integração completa com Stripe: checkout por assentos nos planos Mensal (R$ 110), Semestral (R$ 645,62) e Anual (R$ 1.276,86).' },
+      { type: 'novo', description: 'Notificação por e-mail e painel Super Admin anonimizado para novos cadastros; períodos de teste removidos.' },
+      { type: 'melhoria', description: 'Agendamento automático de pacotes sequenciais respeita horário comercial, feriados, ausências e intervalos por etapa.' },
+      { type: 'melhoria', description: 'Mensagens de WhatsApp sempre exibem o nome do serviço (não apenas do pacote) e passam pela prévia editável.' },
+      { type: 'melhoria', description: 'Baixa de estoque agregada automaticamente ao concluir atendimentos vinculados a serviços, kits e pacotes, com conversão de unidades.' },
+      { type: 'correção', description: 'Exclusão de venda de pacote agora remove sales, parcelas e agendamentos vinculados em tempo real, sem registros fantasma.' },
+      { type: 'correção', description: 'Desconto em agendamento não é mais subtraído em duplicidade na baixa do pagamento.' },
+      { type: 'correção', description: 'Preferências de aparência do profissional não sobrescrevem mais a paleta padrão do aplicativo.' },
+    ],
+  },
+  {
     version: 'v1.0.3',
     date: '13/06/2026',
     highlights: [
@@ -40,6 +61,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { type: 'segurança', description: 'Mensagem padrão alerta o cliente que o link é único e não deve ser compartilhado.' },
     ],
   },
+
   {
     version: 'v1.0.2',
     date: '06/2026',

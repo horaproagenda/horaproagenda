@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
 import { useIsSmartphone } from '@/hooks/use-mobile';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Users, Filter, ShieldCheck, Crown } from 'lucide-react';
+import { Calendar, Users, Filter, Crown } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';

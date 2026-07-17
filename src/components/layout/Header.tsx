@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Menu, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Camera, Crown, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -9,6 +10,7 @@ import { useGlobalRefresh } from '@/hooks/useGlobalRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 
 interface HeaderProps {
   title: string;

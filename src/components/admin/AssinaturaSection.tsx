@@ -119,9 +119,10 @@ export function AssinaturaSection() {
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-1">Escolha seu plano</h2>
         <p className="text-muted-foreground text-sm">
-          Cobrança recorrente automática: escolha mensal, trimestral, semestral ou anual.
+          Cobrança recorrente automática: escolha mensal, semestral ou anual.
           Períodos mais longos têm desconto. Cobrado no cartão a cada ciclo.
         </p>
+
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
-import { useAppearanceSettings, PRIMARY_COLOR_PALETTE } from '@/hooks/useAppearanceSettings';
+
 import { useContactChangeVerification, type ContactChangeType } from '@/hooks/useContactChangeVerification';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,7 +38,7 @@ const Configuracoes = () => {
   const { hasRole, user, profile } = useAuth();
   const isAdmin = hasRole('admin');
   const { settings, updateSettings } = useBusinessSettings();
-  const { settings: appearance, updateSettings: updateAppearance } = useAppearanceSettings();
+
 
   // Clinic info
   const [professionalName, setProfessionalName] = useState('');

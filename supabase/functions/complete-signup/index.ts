@@ -243,16 +243,19 @@ serve(async (req) => {
       }
     }
 
-    // Block duplicate CPF across registrations — but allow the SAME email to
-    // retry (idempotent recovery from a previous attempt that created the
-    // trial_registrations row and/or the auth user but failed to log in).
-    const { data: cpfDup } = await supabaseAdmin
-      .from("trial_registrations")
-      .select("id, email")
-      .eq("cpf", cpfDigits)
-      .maybeSingle();
-    if (cpfDup && (cpfDup.email ?? "").toLowerCase() !== normalizedEmail) {
-      return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
+    // Block duplicate CPF across registrations (only when CPF was provided) —
+    // but allow the SAME email to retry (idempotent recovery from a previous
+    // attempt that created the trial_registrations row and/or the auth user
+    // but failed to log in).
+    if (cpfDigits) {
+      const { data: cpfDup } = await supabaseAdmin
+        .from("trial_registrations")
+        .select("id, email")
+        .eq("cpf", cpfDigits)
+        .maybeSingle();
+      if (cpfDup && (cpfDup.email ?? "").toLowerCase() !== normalizedEmail) {
+        return jsonResponse({ success: false, error: "Este CPF já possui cadastro." }, 409);
+      }
     }
 
 

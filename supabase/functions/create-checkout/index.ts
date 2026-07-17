@@ -50,8 +50,10 @@ serve(async (req) => {
     const priceId = body?.priceId as string | undefined;
     const billingMonths = Number(body?.billingMonths ?? 1);
     if (!priceId) throw new Error("Price ID is required");
-    if (!ALLOWED_PRICE_IDS.has(priceId)) throw new Error("Price ID not allowed");
-    if (!(billingMonths in DISCOUNT)) throw new Error("billingMonths inválido");
+    const seats = PLAN_SEATS[priceId];
+    if (!seats) throw new Error("Price ID not allowed");
+    const cyclePrice = BILLING_PRICE_IDS[billingMonths];
+    if (!cyclePrice) throw new Error("billingMonths inválido");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -62,30 +64,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
-    const info = PRICE_INFO[priceId];
-    if (!info) throw new Error("Plano não encontrado");
-    const discount = DISCOUNT[billingMonths];
-    const totalBRL = Math.round(info.monthly * billingMonths * (1 - discount) * 100) / 100;
-    const unitAmountCents = Math.round(totalBRL * 100);
-    const periodLabel =
-      billingMonths === 1 ? 'mensal' : billingMonths === 6 ? 'semestral' : billingMonths === 12 ? 'anual' : `${billingMonths} meses`;
-    const label = `${info.name} · ${periodLabel}${discount ? ` (-${Math.round(discount * 100)}%)` : ''}`;
-
     const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: 'brl',
-          unit_amount: unitAmountCents,
-          recurring: { interval: 'month', interval_count: billingMonths },
-          product_data: {
-            name: `Hora Pro — ${label}`,
-          },
-        } as Stripe.Checkout.SessionCreateParams.LineItem.PriceData,
+        price: cyclePrice,
+        quantity: seats,
       }],
       success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/assinatura/cancelado`,
@@ -94,7 +80,7 @@ serve(async (req) => {
           user_id: user.id,
           price_id: priceId,
           billing_months: String(billingMonths),
-          seats: String(info.seats),
+          seats: String(seats),
           kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
         },
       },
@@ -102,7 +88,7 @@ serve(async (req) => {
         user_id: user.id,
         price_id: priceId,
         billing_months: String(billingMonths),
-        seats: String(info.seats),
+        seats: String(seats),
         kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
       },
       allow_promotion_codes: true,

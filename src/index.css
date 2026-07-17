@@ -402,6 +402,27 @@ input::-webkit-clear-button {
     background: var(--gradient-hero);
   }
 
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+
+  .gradient-petrol-amber {
+    background: var(--gradient-petrol-amber);
+  }
+
+  .shadow-glow-petrol {
+    box-shadow: var(--shadow-glow-petrol);
+  }
+
+  /* Texto com gradiente âmbar→petróleo (títulos de destaque) */
+  .text-gradient-brand {
+    background: var(--gradient-petrol-amber);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }

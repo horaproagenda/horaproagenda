@@ -759,7 +759,7 @@ function AuthInner() {
                     <Input id="signup-name" type="text" placeholder="Nome e sobrenome" value={signupName} onChange={(e) => setSignupName(e.target.value)} autoComplete="name" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-cpf">CPF *</Label>
+                    <Label htmlFor="signup-cpf">CPF <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                     <Input id="signup-cpf" type="text" inputMode="numeric" placeholder="000.000.000-00" value={signupCpf} onChange={(e) => setSignupCpf(maskCPF(e.target.value))} />
                   </div>
                   <div className="space-y-2">
@@ -783,7 +783,7 @@ function AuthInner() {
                     <h3 className="text-sm font-semibold mb-3">Sua clínica / estabelecimento</h3>
                     <div className="space-y-3">
                       <div className="space-y-2">
-                        <Label htmlFor="signup-clinic-name">Nome da clínica *</Label>
+                        <Label htmlFor="signup-clinic-name">Nome da clínica <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                         <Input id="signup-clinic-name" type="text" placeholder="Ex: Studio Bella" value={signupClinicName} onChange={(e) => setSignupClinicName(e.target.value)} />
                       </div>
                       <div className="space-y-2">
@@ -813,7 +813,7 @@ function AuthInner() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="signup-clinic-phone">Telefone da clínica *</Label>
+                        <Label htmlFor="signup-clinic-phone">Telefone da clínica <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                         <Input id="signup-clinic-phone" type="text" inputMode="tel" placeholder="(11) 99999-9999" value={signupClinicPhone} onChange={(e) => setSignupClinicPhone(e.target.value)} />
                       </div>
                       <AddressFieldsCep value={signupAddress} onChange={setSignupAddress} required />

@@ -231,15 +231,14 @@ function AuthInner() {
   const validateSignupForm = (): string | null => {
     if (!signupName.trim()) return 'Informe seu nome completo.';
     if (signupName.trim().split(/\s+/).length < 2) return 'Informe nome e sobrenome.';
-    if (!isValidCPF(signupCpf)) return 'CPF inválido.';
+    const cpfDigits = signupCpf.replace(/\D/g, '');
+    if (cpfDigits && !isValidCPF(signupCpf)) return 'CPF inválido.';
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim());
     if (!emailOk) return 'E-mail inválido.';
     if (signupPassword.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
     if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
     const cnpjDigits = signupCnpj.replace(/\D/g, '');
     if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
-    if (!signupClinicName.trim()) return 'Informe o nome da clínica.';
-    if (!signupClinicPhone.trim()) return 'Informe o telefone da clínica.';
     if (!signupBusinessType) return 'Selecione a área de atuação.';
     if (signupBusinessType === 'outro' && !signupBusinessTypeLabel.trim())
       return 'Informe qual é a sua área de atuação.';

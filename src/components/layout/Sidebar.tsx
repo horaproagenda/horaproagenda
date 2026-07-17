@@ -222,10 +222,10 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98] active:bg-sidebar-accent/70',
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98]',
                       isActive
-                        ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        ? 'bg-primary-soft text-primary-foreground shadow-sm ring-1 ring-primary/30'
+                        : 'text-sidebar-foreground hover:bg-primary-soft/60 hover:text-foreground'
                     )
                   }
                 >

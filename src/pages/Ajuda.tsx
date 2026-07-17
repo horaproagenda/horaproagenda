@@ -16,8 +16,9 @@ import {
   MessageCircle, Wrench, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CHANGELOG, CURRENT_CHANGELOG } from "@/lib/changelog";
-import { APP_VERSION_LABEL, APP_VERSION } from "@/lib/version";
+import { CURRENT_CHANGELOG } from "@/lib/changelog";
+import { APP_VERSION_LABEL } from "@/lib/version";
+
 
 
 const Ajuda = () => {
@@ -294,45 +295,8 @@ const Ajuda = () => {
                 </Card>
               )}
 
-              <Card className="card-hover">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Histórico de versões
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Veja o que mudou nas versões anteriores
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {CHANGELOG.filter(c => c.version !== APP_VERSION).map((entry) => (
-                    <Collapsible key={entry.version}>
-                      <CollapsibleTrigger className="w-full">
-                        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/40 hover:bg-muted transition-colors cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[10px]">{entry.version}</Badge>
-                            <span className="text-[11px] text-muted-foreground">{entry.date}</span>
-                          </div>
-                          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="px-3 py-2 space-y-1.5 bg-muted/20 rounded-b-lg -mt-1">
-                          {entry.changes.map((c, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                              <Badge variant="outline" className="text-[9px] capitalize shrink-0 h-4 px-1">
-                                {c.type}
-                              </Badge>
-                              <p className="text-[11px] text-muted-foreground leading-relaxed">{c.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))}
-                </CardContent>
-              </Card>
             </TabsContent>
+
 
 
 

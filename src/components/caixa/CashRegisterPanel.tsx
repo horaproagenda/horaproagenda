@@ -460,7 +460,7 @@ export function CashRegisterPanel() {
               <Receipt className="h-6 w-6" />
               Caixa #{currentOpenRegister.register_number}
             </CardTitle>
-            <Badge variant="secondary" className="bg-green-100 text-green-800 px-3 py-1">
+            <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />
               Aberto desde {format(parseISO(currentOpenRegister.opened_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </Badge>
@@ -477,7 +477,7 @@ export function CashRegisterPanel() {
             <Dialog open={transactionType === 'suprimento'} onOpenChange={(o) => !o && setTransactionType(null)}>
               <DialogTrigger asChild>
                 <Button variant="outline" onClick={() => setTransactionType('suprimento')}>
-                  <ArrowDownCircle className="h-4 w-4 mr-2 text-green-600" />
+                  <ArrowDownCircle className="h-4 w-4 mr-2 text-primary" />
                   Suprimento
                 </Button>
               </DialogTrigger>
@@ -743,7 +743,7 @@ export function CashRegisterPanel() {
         <CardHeader className="pb-2 pt-3 px-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-sm flex items-center gap-1.5">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-primary" />
               Vendas Recebidas
             </CardTitle>
             <PeriodTabs value={salesPeriod} onChange={setSalesPeriod} />
@@ -751,9 +751,9 @@ export function CashRegisterPanel() {
         </CardHeader>
         <CardContent className="px-3 pb-3">
           <div className="grid grid-cols-4 gap-2 mb-2">
-            <div className="p-2 bg-green-50 dark:bg-green-950 rounded-md">
+            <div className="p-2 bg-primary/10 dark:bg-primary rounded-md">
               <div className="text-[10px] text-muted-foreground">Valor Bruto</div>
-              <div className="text-base font-bold text-green-600">
+              <div className="text-base font-bold text-primary">
                 R$ {salesSummary.total.toFixed(2)}
               </div>
               <div className="text-[10px] text-muted-foreground">
@@ -822,7 +822,7 @@ export function CashRegisterPanel() {
                           </TableCell>
                           <TableCell className="text-[11px] py-1 px-2">{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
                           <TableCell className="text-[11px] py-1 px-2">{format(parseISO(transaction.created_at), 'dd/MM/yy HH:mm')}</TableCell>
-                          <TableCell className="text-[11px] text-right font-medium text-green-600 py-1 px-2">
+                          <TableCell className="text-[11px] text-right font-medium text-primary py-1 px-2">
                             R$ {Number(transaction.amount).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-[11px] text-right py-1 px-2">

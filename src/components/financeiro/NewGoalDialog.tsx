@@ -169,12 +169,12 @@ export function NewGoalDialog({ open, onOpenChange, editingGoal }: NewGoalDialog
               
               {/* Data Source Info */}
               {selectedGoalType && (
-                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
                   <div className="flex items-start gap-2">
-                    <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <Info className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
                     <div className="text-xs space-y-1">
-                      <p className="font-medium text-blue-800">{selectedGoalType.description}</p>
-                      <p className="text-blue-600">
+                      <p className="font-medium text-accent">{selectedGoalType.description}</p>
+                      <p className="text-accent">
                         <span className="font-medium">Fonte dos dados:</span> {selectedGoalType.source}
                       </p>
                     </div>

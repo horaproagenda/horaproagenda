@@ -47,11 +47,11 @@ export function BoletoAuditLogDialog({ open, onOpenChange }: Props) {
 
   const getEventBadge = (eventType: string) => {
     const colors: Record<string, string> = {
-      payment: 'bg-green-100 text-green-700',
-      batch_payment: 'bg-green-100 text-green-700',
-      edit: 'bg-blue-100 text-blue-700',
+      payment: 'bg-primary/10 text-primary',
+      batch_payment: 'bg-primary/10 text-primary',
+      edit: 'bg-accent/10 text-accent',
       cancel: 'bg-red-100 text-red-700',
-      sync: 'bg-purple-100 text-purple-700',
+      sync: 'bg-accent/10 text-accent',
       create: 'bg-gray-100 text-gray-700',
     };
     return (

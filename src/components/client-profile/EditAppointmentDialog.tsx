@@ -384,7 +384,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             )}
 
             {isRecurringOrPackage && (
-              <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-[11px] text-blue-700 dark:text-blue-300">
+              <div className="p-2.5 rounded-lg bg-accent/10 dark:bg-accent/30 border border-accent/30 dark:border-accent/30 text-[11px] text-accent dark:text-accent/80">
                 Ao salvar, você poderá optar por ajustar as próximas aplicações desta série/pacote.
               </div>
             )}

@@ -43,9 +43,9 @@ const KIND_LABEL: Record<DivergenceKind, string> = {
 };
 
 const KIND_BADGE: Record<DivergenceKind, string> = {
-  ok: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/40',
+  ok: 'bg-primary/80/15 text-primary border-primary/30/40',
   missing_financial: 'bg-amber-500/15 text-amber-700 border-amber-500/40',
-  missing_cash: 'bg-sky-500/15 text-sky-700 border-sky-500/40',
+  missing_cash: 'bg-accent/80/15 text-accent border-accent/30/40',
   missing_appointment_payment: 'bg-red-500/15 text-red-700 border-red-500/40',
   amount_mismatch: 'bg-orange-500/15 text-orange-700 border-orange-500/40',
 };
@@ -249,7 +249,7 @@ export function ConciliacaoPagamentos() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
-          <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500/70" />
+          <CheckCircle2 className="mx-auto h-8 w-8 text-primary/70" />
           <p className="mt-2 text-sm text-muted-foreground">
             {filter === 'divergent'
               ? 'Nenhuma divergência encontrada — financeiro, caixa e perfil do cliente estão alinhados.'
@@ -335,7 +335,7 @@ function StatCard({
       : tone === 'orange'
       ? 'text-orange-600'
       : tone === 'sky'
-      ? 'text-sky-600'
+      ? 'text-accent'
       : 'text-foreground';
   return (
     <Card>

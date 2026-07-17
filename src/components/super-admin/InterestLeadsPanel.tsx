@@ -134,7 +134,7 @@ export function InterestLeadsPanel() {
                 <TableCell className="text-xs">{fmt(r.created_at)}</TableCell>
                 <TableCell className="text-xs">
                   {r.contacted_at
-                    ? <Badge className="bg-green-100 text-green-800">Contatado em {fmt(r.contacted_at)}</Badge>
+                    ? <Badge className="bg-primary/10 text-primary">Contatado em {fmt(r.contacted_at)}</Badge>
                     : <Badge variant="secondary">Pendente</Badge>}
                 </TableCell>
                 <TableCell className="text-right">

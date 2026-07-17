@@ -423,9 +423,9 @@ export default function ProfissionalDetalhes() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      completed: 'bg-green-500/10 text-green-600 border-green-500/20',
-      scheduled: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-      confirmed: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+      completed: 'bg-primary/80/10 text-primary border-primary/30/20',
+      scheduled: 'bg-accent/80/10 text-accent border-accent/30/20',
+      confirmed: 'bg-accent/80/10 text-accent border-accent/30/20',
       cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
       missed: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
     };
@@ -565,16 +565,16 @@ export default function ProfissionalDetalhes() {
                   <User className="h-3.5 w-3.5 hidden sm:block text-accent" />
                   Informações
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
-                  <TrendingUp className="h-3.5 w-3.5 hidden sm:block text-emerald-600" />
+                <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+                  <TrendingUp className="h-3.5 w-3.5 hidden sm:block text-primary" />
                   Desempenho
                 </TabsTrigger>
                 <TabsTrigger value="commissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
                   <DollarSign className="h-3.5 w-3.5 hidden sm:block text-primary" />
                   Comissões
                 </TabsTrigger>
-                <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
-                  <Calendar className="h-3.5 w-3.5 hidden sm:block text-sky-600" />
+                <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+                  <Calendar className="h-3.5 w-3.5 hidden sm:block text-accent" />
                   Histórico
                 </TabsTrigger>
                 <TabsTrigger value="permissions" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
@@ -785,7 +785,7 @@ export default function ProfissionalDetalhes() {
                             <TableCell className="text-xs capitalize py-3">{stat.fullMonth}</TableCell>
                             <TableCell className="text-xs text-center py-3">{stat.atendimentos}</TableCell>
                             <TableCell className="text-xs text-right py-3">{formatCurrency(stat.faturamento)}</TableCell>
-                            <TableCell className="text-xs text-right py-3 font-medium text-green-600">
+                            <TableCell className="text-xs text-right py-3 font-medium text-primary">
                               {formatCurrency(stat.comissao)}
                             </TableCell>
                           </TableRow>
@@ -798,7 +798,7 @@ export default function ProfissionalDetalhes() {
                           <TableCell className="text-xs text-right py-3">
                             {formatCurrency(monthlyStats.reduce((s, m) => s + m.faturamento, 0))}
                           </TableCell>
-                          <TableCell className="text-xs text-right py-3 text-green-600">
+                          <TableCell className="text-xs text-right py-3 text-primary">
                             {formatCurrency(monthlyStats.reduce((s, m) => s + m.comissao, 0))}
                           </TableCell>
                         </TableRow>
@@ -976,13 +976,13 @@ export default function ProfissionalDetalhes() {
                                     key={perm.key}
                                     className={`flex items-center justify-between p-2 rounded text-sm ${
                                       (permissions as any)[perm.key]
-                                        ? 'bg-green-500/10 border border-green-500/20' 
+                                        ? 'bg-primary/80/10 border border-primary/30/20' 
                                         : 'bg-muted/30 border border-transparent'
                                     }`}
                                   >
                                     <span className="text-xs">{perm.label}</span>
                                     <span className={`text-xs font-medium ${
-                                      (permissions as any)[perm.key] ? 'text-green-600' : 'text-muted-foreground'
+                                      (permissions as any)[perm.key] ? 'text-primary' : 'text-muted-foreground'
                                     }`}>
                                       {(permissions as any)[perm.key] ? '✓ Sim' : '✗ Não'}
                                     </span>

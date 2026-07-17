@@ -41,13 +41,13 @@ export function WhatsappQueueStatusPanel() {
           <Badge variant="outline" className="text-[10px]">{snapshot.pending} pendente{snapshot.pending > 1 ? 's' : ''}</Badge>
         )}
         {snapshot.running > 0 && (
-          <Badge className="bg-blue-500 text-[10px]">{snapshot.running} enviando</Badge>
+          <Badge className="bg-accent/80 text-[10px]">{snapshot.running} enviando</Badge>
         )}
         {snapshot.failed > 0 && (
           <Badge variant="destructive" className="text-[10px]">{snapshot.failed} falha{snapshot.failed > 1 ? 's' : ''}</Badge>
         )}
         {snapshot.done > 0 && (
-          <Badge className="bg-green-500 text-[10px]">{snapshot.done} enviada{snapshot.done > 1 ? 's' : ''}</Badge>
+          <Badge className="bg-primary/80 text-[10px]">{snapshot.done} enviada{snapshot.done > 1 ? 's' : ''}</Badge>
         )}
       </div>
       <p className="text-[10px] text-muted-foreground">

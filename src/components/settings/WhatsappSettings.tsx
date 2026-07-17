@@ -325,8 +325,8 @@ export function WhatsappSettings() {
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <MessageSquare className="h-5 w-5 text-green-500" />
+            <div className="h-10 w-10 rounded-lg bg-primary/80/10 flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle>WhatsApp</CardTitle>
@@ -335,7 +335,7 @@ export function WhatsappSettings() {
               </CardDescription>
             </div>
           </div>
-          <Badge className={connected ? 'bg-green-500' : undefined} variant={connected ? 'default' : 'outline'}>
+          <Badge className={connected ? 'bg-primary/80' : undefined} variant={connected ? 'default' : 'outline'}>
             {isLoading && !selectedConnection ? (
               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
             ) : connected ? (
@@ -430,7 +430,7 @@ export function WhatsappSettings() {
             <Button
               onClick={handleConnect}
               disabled={connecting || isLoadingQR}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-primary hover:bg-primary"
             >
               {connecting || isLoadingQR
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />

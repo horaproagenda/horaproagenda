@@ -99,7 +99,7 @@ export function WhatsappPreviewDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-green-500" />
+            <MessageCircle className="h-5 w-5 text-primary" />
             {title}
           </DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
@@ -142,7 +142,7 @@ export function WhatsappPreviewDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSend} disabled={isLoading} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+          <Button onClick={handleSend} disabled={isLoading} className="gap-2 bg-primary hover:bg-primary text-white">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
             Enviar direto
           </Button>

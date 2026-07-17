@@ -228,7 +228,7 @@ export function FinancialDashboard() {
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Boletos Pagos</p>
-            <p className="text-lg font-bold text-emerald-600">{formatCurrency(boletoPendencies.paidAmount)}</p>
+            <p className="text-lg font-bold text-primary">{formatCurrency(boletoPendencies.paidAmount)}</p>
             <p className="text-[10px] text-muted-foreground">{boletoPendencies.paid} parcelas</p>
           </CardContent>
         </Card>

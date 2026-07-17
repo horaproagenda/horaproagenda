@@ -199,18 +199,18 @@ export function PackageConsistencyReport() {
         <CardContent className="space-y-4">
           {/* Summary */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="border-blue-500/20 bg-blue-500/5">
+            <Card className="border-accent/30/20 bg-accent/80/5">
               <CardContent className="pt-4">
-                <p className="text-2xl font-bold text-blue-600">{report?.totalSales || 0}</p>
+                <p className="text-2xl font-bold text-accent">{report?.totalSales || 0}</p>
                 <p className="text-sm text-muted-foreground">Total de vendas de pacotes</p>
               </CardContent>
             </Card>
-            <Card className="border-green-500/20 bg-green-500/5">
+            <Card className="border-primary/30/20 bg-primary/80/5">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{report?.consistent.length || 0}</p>
+                    <p className="text-2xl font-bold text-primary">{report?.consistent.length || 0}</p>
                     <p className="text-sm text-muted-foreground">Consistentes</p>
                   </div>
                 </div>
@@ -251,9 +251,9 @@ export function PackageConsistencyReport() {
           )}
 
           {!hasInconsistencies && report && (
-            <Alert className="border-green-500/50 bg-green-500/10">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-600">Tudo certo!</AlertTitle>
+            <Alert className="border-primary/30/50 bg-primary/80/10">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-primary">Tudo certo!</AlertTitle>
               <AlertDescription>
                 Todas as vendas de pacotes estão consistentes com os pacotes dos clientes.
               </AlertDescription>

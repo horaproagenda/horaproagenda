@@ -258,14 +258,14 @@ export function ContasAReceber() {
 
   const getStatusBadge = (item: typeof allReceivables[0] & { isPartial?: boolean }) => {
     if (item.status === 'paid') {
-      return <Badge className="bg-green-500 hover:bg-green-600 text-[10px] h-5 px-1.5">Recebido</Badge>;
+      return <Badge className="bg-primary/80 hover:bg-primary text-[10px] h-5 px-1.5">Recebido</Badge>;
     }
     const dueDate = parseISO(item.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     if ('isPartial' in item && item.isPartial) {
-      return <Badge className="bg-blue-500 hover:bg-blue-600 text-[10px] h-5 px-1.5">Parcial</Badge>;
+      return <Badge className="bg-accent/80 hover:bg-accent text-[10px] h-5 px-1.5">Parcial</Badge>;
     }
     
     if (isAfter(today, dueDate)) {
@@ -276,10 +276,10 @@ export function ContasAReceber() {
 
   const getTypeBadge = (type: 'financial_entry' | 'appointment' | 'boleto') => {
     if (type === 'appointment') {
-      return <Badge variant="outline" className="text-blue-600 border-blue-300 text-[10px] h-5 px-1.5"><Calendar className="h-2.5 w-2.5 mr-0.5" />Agend.</Badge>;
+      return <Badge variant="outline" className="text-accent border-accent/30 text-[10px] h-5 px-1.5"><Calendar className="h-2.5 w-2.5 mr-0.5" />Agend.</Badge>;
     }
     if (type === 'boleto') {
-      return <Badge variant="outline" className="text-purple-600 border-purple-300 text-[10px] h-5 px-1.5">Boleto</Badge>;
+      return <Badge variant="outline" className="text-accent border-accent/30 text-[10px] h-5 px-1.5">Boleto</Badge>;
     }
     return null;
   };
@@ -309,7 +309,7 @@ export function ContasAReceber() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
         <CardTitle className="text-sm font-semibold">A Receber</CardTitle>
-        <div className="text-xs font-bold text-green-600">
+        <div className="text-xs font-bold text-primary">
           Total: R$ {totalPending.toFixed(2)}
         </div>
       </CardHeader>
@@ -345,7 +345,7 @@ export function ContasAReceber() {
                       <TableCell className="text-[11px] py-1.5 px-2 max-w-[120px] truncate">{item.description}</TableCell>
                       <TableCell className="text-[11px] py-1.5 px-2 max-w-[100px] truncate">{item.clientName}</TableCell>
                       <TableCell className="py-1.5 px-2">{getTypeBadge(item.type)}</TableCell>
-                      <TableCell className="text-green-600 font-medium text-[11px] py-1.5 px-2 whitespace-nowrap">
+                      <TableCell className="text-primary font-medium text-[11px] py-1.5 px-2 whitespace-nowrap">
                         R$ {item.amount.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-[11px] py-1.5 px-2">{item.installments}x</TableCell>
@@ -360,7 +360,7 @@ export function ContasAReceber() {
                               onClick={() => handleMarkAsReceived(item)} 
                               title="Marcar como recebido"
                             >
-                              <Check className="h-3 w-3 text-green-600" />
+                              <Check className="h-3 w-3 text-primary" />
                             </Button>
                           )}
                           {item.type === 'appointment' && (
@@ -383,7 +383,7 @@ export function ContasAReceber() {
                               onClick={() => markBoletoPaid.mutate({ id: (item as any).boletoId })}
                               title="Dar baixa no boleto"
                             >
-                              <Check className="h-3 w-3 text-green-600" />
+                              <Check className="h-3 w-3 text-primary" />
                             </Button>
                           )}
                           {item.type === 'financial_entry' && (

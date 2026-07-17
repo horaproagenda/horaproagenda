@@ -298,18 +298,18 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                 {/* Sessions Management - Only show for client-specific packages */}
                 {pkg.client_id && (
                   <div 
-                    className="rounded-lg bg-blue-500/10 p-4 cursor-pointer hover:bg-blue-500/15 transition-colors"
+                    className="rounded-lg bg-accent/80/10 p-4 cursor-pointer hover:bg-accent/80/15 transition-colors"
                     onClick={() => setShowSessionsList(!showSessionsList)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <ListChecks className="h-6 w-6 text-blue-500" />
+                        <ListChecks className="h-6 w-6 text-accent" />
                         <div className="text-left">
                           <p className="text-2xl font-bold">{pkg.sessions_scheduled} / {pkg.total_sessions}</p>
                           <p className="text-xs text-muted-foreground">Gerenciar Sessões</p>
                         </div>
                       </div>
-                      {showSessionsList ? <ChevronUp className="h-5 w-5 text-blue-500" /> : <ChevronDown className="h-5 w-5 text-blue-500" />}
+                      {showSessionsList ? <ChevronUp className="h-5 w-5 text-accent" /> : <ChevronDown className="h-5 w-5 text-accent" />}
                     </div>
                   </div>
                 )}
@@ -340,7 +340,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                    <Layers className="h-5 w-5 text-purple-500" />
+                    <Layers className="h-5 w-5 text-accent" />
                     <div>
                       <p className="text-xs text-muted-foreground">Total de Sessões</p>
                       <p className="font-semibold">{pkg.total_sessions}</p>
@@ -364,7 +364,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                    <Calendar className="h-5 w-5 text-blue-500" />
+                    <Calendar className="h-5 w-5 text-accent" />
                     <div>
                       <p className="text-xs text-muted-foreground">Agendamento</p>
                       <p className="font-semibold">{pkg.auto_schedule ? 'Automático' : 'Manual'}</p>
@@ -372,7 +372,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                   </div>
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                    <Calendar className="h-5 w-5 text-green-500" />
+                    <Calendar className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Sessões Agendadas</p>
                       <p className="font-semibold">{pkg.sessions_scheduled} / {pkg.total_sessions}</p>
@@ -401,7 +401,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
 
                       {professionalName && (
                         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                          <User className="h-5 w-5 text-purple-500" />
+                          <User className="h-5 w-5 text-accent" />
                           <div>
                             <p className="text-xs text-muted-foreground">Profissional</p>
                             <p className="font-semibold">{professionalName}</p>
@@ -411,7 +411,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
 
                       {roomName && (
                         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                          <Home className="h-5 w-5 text-blue-500" />
+                          <Home className="h-5 w-5 text-accent" />
                           <div>
                             <p className="text-xs text-muted-foreground">Sala</p>
                             <p className="font-semibold">{roomName}</p>

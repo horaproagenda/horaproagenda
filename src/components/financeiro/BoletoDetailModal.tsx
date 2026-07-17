@@ -85,7 +85,7 @@ export function BoletoDetailModal({
   }, 0);
 
   const getStatusBadge = (inst: any) => {
-    if (inst.status === 'paid') return <Badge className="bg-green-100 text-green-700 text-[10px]">Pago</Badge>;
+    if (inst.status === 'paid') return <Badge className="bg-primary/10 text-primary text-[10px]">Pago</Badge>;
     if (inst.status === 'cancelled') return <Badge variant="secondary" className="text-[10px]">Cancelado</Badge>;
     if (inst.status === 'overdue' || (inst.status === 'pending' && new Date(inst.due_date + 'T12:00:00') < new Date())) {
       return <Badge className="bg-red-100 text-red-700 text-[10px]">Atrasado</Badge>;
@@ -218,7 +218,7 @@ export function BoletoDetailModal({
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-xs">Total: <span className="font-medium">R$ {totalAmount.toFixed(2)}</span></p>
-                    <p className="text-xs text-green-600">Pago: R$ {totalPaid.toFixed(2)}</p>
+                    <p className="text-xs text-primary">Pago: R$ {totalPaid.toFixed(2)}</p>
                     <p className="text-xs text-orange-600">Pendente: R$ {totalPending.toFixed(2)}</p>
                   </div>
                 </CardContent>
@@ -365,7 +365,7 @@ export function BoletoDetailModal({
                           {isEditing ? (
                             <>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={requestSaveEdit}>
-                                <Check className="h-3.5 w-3.5 text-green-600" />
+                                <Check className="h-3.5 w-3.5 text-primary" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
                                 <X className="h-3.5 w-3.5" />
@@ -385,7 +385,7 @@ export function BoletoDetailModal({
                                     title="Dar baixa"
                                     onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
                                   >
-                                    <Check className="h-3.5 w-3.5 text-green-600" />
+                                    <Check className="h-3.5 w-3.5 text-primary" />
                                   </Button>
                                   <Button
                                     variant="ghost"
@@ -428,7 +428,7 @@ export function BoletoDetailModal({
                   <h4 className="text-sm font-medium mb-2">Histórico de Pagamentos</h4>
                   <div className="space-y-1.5">
                     {paidInstallments.map(inst => (
-                      <div key={inst.id} className="flex items-center justify-between text-xs p-2 rounded border bg-green-50 dark:bg-green-950/20">
+                      <div key={inst.id} className="flex items-center justify-between text-xs p-2 rounded border bg-primary/10 dark:bg-primary/20">
                         <span>Parcela {inst.installment_number}/{inst.total_installments}</span>
                         <span>R$ {Number(inst.amount).toFixed(2)}</span>
                         <span className="text-muted-foreground">

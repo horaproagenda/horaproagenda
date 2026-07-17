@@ -106,7 +106,7 @@ export function WhatsappReleasePanel() {
                 <TableCell className="text-xs">{r.email ?? '—'}</TableCell>
                 <TableCell className="text-xs">{fmt(r.created_at)}</TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" onClick={() => approve(r)} className="bg-green-600 hover:bg-green-700">
+                  <Button size="sm" onClick={() => approve(r)} className="bg-primary hover:bg-primary">
                     <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Liberar QR Code
                   </Button>
                 </TableCell>

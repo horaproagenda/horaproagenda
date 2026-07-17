@@ -52,7 +52,7 @@ import { useReminders, type Reminder } from '@/hooks/useReminders';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PRIORITIES = [
-  { value: 'low', label: 'Baixa', color: 'text-blue-500' },
+  { value: 'low', label: 'Baixa', color: 'text-accent' },
   { value: 'normal', label: 'Normal', color: 'text-yellow-500' },
   { value: 'high', label: 'Alta', color: 'text-red-500' },
 ];
@@ -435,8 +435,8 @@ export function RemindersPanel() {
             Pendentes
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredActiveReminders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
-            <CheckCircle className="h-3 w-3 text-emerald-600" />
+          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+            <CheckCircle className="h-3 w-3 text-primary" />
             Concluídos
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredCompletedReminders.length}</Badge>
           </TabsTrigger>

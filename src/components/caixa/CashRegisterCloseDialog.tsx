@@ -299,18 +299,18 @@ export function CashRegisterCloseDialog({
             {/* Payments Breakdown */}
             <div className="space-y-1">
               <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                <DollarSign className="h-4 w-4 text-green-600" />
+                <DollarSign className="h-4 w-4 text-primary" />
                 Recebimentos por Forma de Pagamento
               </h4>
               
-              <PaymentRow icon={CreditCard} label="Cartão de Crédito" value={breakdown.credit} color="text-purple-600" />
-              <PaymentRow icon={CreditCard} label="Cartão de Débito" value={breakdown.debit} color="text-blue-600" />
-              <PaymentRow icon={Smartphone} label="PIX" value={breakdown.pix} color="text-emerald-600" />
-              <PaymentRow icon={Banknote} label="Dinheiro" value={breakdown.cash} color="text-green-600" />
+              <PaymentRow icon={CreditCard} label="Cartão de Crédito" value={breakdown.credit} color="text-accent" />
+              <PaymentRow icon={CreditCard} label="Cartão de Débito" value={breakdown.debit} color="text-accent" />
+              <PaymentRow icon={Smartphone} label="PIX" value={breakdown.pix} color="text-primary" />
+              <PaymentRow icon={Banknote} label="Dinheiro" value={breakdown.cash} color="text-primary" />
               <PaymentRow icon={FileText} label="Boleto" value={breakdown.boleto} color="text-amber-600" />
               <PaymentRow icon={FileText} label="Cheque" value={breakdown.check} color="text-orange-600" />
               {breakdown.transfer > 0 && (
-                <PaymentRow icon={Receipt} label="Transferência" value={breakdown.transfer} color="text-cyan-600" />
+                <PaymentRow icon={Receipt} label="Transferência" value={breakdown.transfer} color="text-accent" />
               )}
               {breakdown.other > 0 && (
                 <PaymentRow icon={Receipt} label="Outros" value={breakdown.other} />
@@ -320,7 +320,7 @@ export function CashRegisterCloseDialog({
               
               <div className="flex justify-between items-center py-2 font-semibold">
                 <span>Total Recebido</span>
-                <span className="text-green-600">{formatCurrency(totals.income)}</span>
+                <span className="text-primary">{formatCurrency(totals.income)}</span>
               </div>
             </div>
 
@@ -425,8 +425,8 @@ export function CashRegisterCloseDialog({
             {/* Difference */}
             {closingBalance && (
               <div className={`p-3 rounded-lg flex items-center gap-2 ${
-                difference === 0 ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300' :
-                difference > 0 ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300' :
+                difference === 0 ? 'bg-primary/10 dark:bg-primary text-primary dark:text-primary/80' :
+                difference > 0 ? 'bg-accent/10 dark:bg-accent text-accent dark:text-accent/80' :
                 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300'
               }`}>
                 {difference === 0 ? (

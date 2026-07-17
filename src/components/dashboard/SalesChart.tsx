@@ -26,16 +26,16 @@ export function SalesChart({ salesData, clientsData }: SalesChartProps) {
   return (
     <Card className="lg:col-span-2">
       <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-sm text-indigo-700 flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
+        <CardTitle className="text-sm text-accent flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-accent/80" />
           Evolução
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0">
         <Tabs defaultValue="sales" className="w-full">
           <TabsList className="mb-2 h-7 bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="sales" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">Vendas por Mês</TabsTrigger>
-            <TabsTrigger value="clients" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">Novos Clientes</TabsTrigger>
+            <TabsTrigger value="sales" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">Vendas por Mês</TabsTrigger>
+            <TabsTrigger value="clients" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">Novos Clientes</TabsTrigger>
           </TabsList>
 
 

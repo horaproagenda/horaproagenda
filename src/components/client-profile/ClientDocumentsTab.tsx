@@ -56,10 +56,10 @@ const documentTypeLabels: Record<DocumentType, string> = {
 };
 
 const documentTypeColors: Record<DocumentType, string> = {
-  anamnese: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  contract: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  consent: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  quote: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  anamnese: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80',
+  contract: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80',
+  consent: 'bg-primary/10 text-primary dark:bg-primary/30 dark:text-primary/80',
+  quote: 'bg-primary/10 text-primary dark:bg-primary/30 dark:text-primary/80',
   photo: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300',
 };
@@ -499,12 +499,12 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                               {documentTypeLabels[doc.type]}
                             </Badge>
                             {isFilled && !isSigned && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-500 text-blue-600">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-accent/30 text-accent">
                                 Preenchido
                               </Badge>
                             )}
                             {isSigned && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-green-500 text-green-600">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/30 text-primary">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
                                 Assinado
                               </Badge>

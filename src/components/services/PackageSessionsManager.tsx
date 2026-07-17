@@ -537,7 +537,7 @@ Até breve! ✨`;
 
   const getStatusBadge = (session: PackageSession) => {
     if (isSessionCompleted(session)) {
-      return <Badge variant="default" className="bg-green-500">Realizada</Badge>;
+      return <Badge variant="default" className="bg-primary/80">Realizada</Badge>;
     }
     if (isSessionMissed(session)) {
       return <Badge variant="destructive" className="bg-orange-500">Faltou</Badge>;
@@ -574,12 +574,12 @@ Até breve! ✨`;
     <div className="space-y-4">
       {/* Progress Summary */}
       <div className="grid grid-cols-4 gap-2 text-center">
-        <div className="p-2 rounded-lg bg-green-500/10">
-          <p className="text-lg font-bold text-green-600">{completedSessions}</p>
+        <div className="p-2 rounded-lg bg-primary/80/10">
+          <p className="text-lg font-bold text-primary">{completedSessions}</p>
           <p className="text-xs text-muted-foreground">Realizadas/Faltou</p>
         </div>
-        <div className="p-2 rounded-lg bg-blue-500/10">
-          <p className="text-lg font-bold text-blue-600">{scheduledSessions}</p>
+        <div className="p-2 rounded-lg bg-accent/80/10">
+          <p className="text-lg font-bold text-accent">{scheduledSessions}</p>
           <p className="text-xs text-muted-foreground">Agendadas</p>
         </div>
         <div className="p-2 rounded-lg bg-red-500/10">
@@ -895,9 +895,9 @@ Até breve! ✨`;
 
                     {/* WhatsApp notification toggle */}
                     {massReschedulePreview.length > 0 && clientPhone && (
-                      <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+                      <div className="flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
                         <div className="flex items-center gap-2">
-                          <MessageCircle className="h-3 w-3 text-green-600" />
+                          <MessageCircle className="h-3 w-3 text-primary" />
                           <span className="text-xs font-medium">Notificar WhatsApp</span>
                         </div>
                         <Switch

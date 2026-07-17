@@ -519,7 +519,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
                   {roomName && (
                     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                      <Home className="h-5 w-5 text-blue-500" />
+                      <Home className="h-5 w-5 text-accent" />
                       <div>
                         <p className="text-xs text-muted-foreground">Sala</p>
                         <p className="font-semibold">{roomName}</p>
@@ -529,7 +529,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
                   {professionalName && (
                     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 col-span-2">
-                      <User className="h-5 w-5 text-purple-500" />
+                      <User className="h-5 w-5 text-accent" />
                       <div>
                         <p className="text-xs text-muted-foreground">Profissional</p>
                         <p className="font-semibold">{professionalName}</p>

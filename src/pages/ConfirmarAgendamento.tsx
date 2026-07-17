@@ -67,7 +67,7 @@ export default function ConfirmarAgendamento() {
                 Toque em uma das opções abaixo para responder ao salão.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button onClick={() => submit('confirm')} className="bg-green-600 hover:bg-green-700 text-white">
+                <Button onClick={() => submit('confirm')} className="bg-primary hover:bg-primary text-white">
                   <CheckCircle2 className="h-4 w-4 mr-2" /> Confirmar horário
                 </Button>
                 <Button variant="outline" onClick={() => submit('cancel')}>
@@ -87,7 +87,7 @@ export default function ConfirmarAgendamento() {
           {state.kind === 'success' && (
             <div className="space-y-2">
               {state.status === 'confirmed' ? (
-                <CheckCircle2 className="h-12 w-12 mx-auto text-green-600" />
+                <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
               ) : (
                 <XCircle className="h-12 w-12 mx-auto text-destructive" />
               )}

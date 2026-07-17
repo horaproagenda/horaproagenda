@@ -38,7 +38,7 @@ export function DuplicateClientAlert({ duplicates, matchType }: DuplicateClientA
                   {client.is_active ? (
                     <Badge 
                       variant="outline" 
-                      className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400"
+                      className="bg-primary/10 text-primary border-primary/30 dark:bg-primary/30 dark:text-primary/80"
                     >
                       <CheckCircle className="h-3 w-3 mr-1" /> Ativo
                     </Badge>

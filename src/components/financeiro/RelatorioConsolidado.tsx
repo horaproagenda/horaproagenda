@@ -485,9 +485,9 @@ export function RelatorioConsolidado() {
                           className={cn(
                             'text-[10px] px-1.5 py-0',
                             entry.type === 'income'
-                              ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-950/30'
+                              ? 'text-primary border-primary/30 bg-primary/10 dark:bg-primary/30'
                               : entry.type === 'non_cash'
-                              ? 'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
+                              ? 'text-accent border-accent/30 bg-accent/10 dark:bg-accent/30'
                               : 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30'
                           )}
                         >
@@ -500,7 +500,7 @@ export function RelatorioConsolidado() {
                           className={cn(
                             'text-[10px] px-1.5 py-0',
                             entry.status === 'paid'
-                              ? 'text-green-600 border-green-300'
+                              ? 'text-primary border-primary/30'
                               : entry.status === 'pending'
                               ? 'text-yellow-600 border-yellow-300'
                               : 'text-gray-600 border-gray-300'
@@ -514,7 +514,7 @@ export function RelatorioConsolidado() {
                       </TableCell>
                       <TableCell className={cn(
                         "py-1.5 text-xs text-right font-medium whitespace-nowrap",
-                        entry.type === 'income' ? 'text-green-600' : entry.type === 'non_cash' ? 'text-blue-600' : 'text-red-600'
+                        entry.type === 'income' ? 'text-primary' : entry.type === 'non_cash' ? 'text-accent' : 'text-red-600'
                       )}>
                         {entry.type === 'income' ? '+' : entry.type === 'non_cash' ? '' : '-'} {formatCurrency(entry.amount)}
                       </TableCell>

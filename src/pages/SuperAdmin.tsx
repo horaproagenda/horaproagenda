@@ -69,11 +69,11 @@ function fmtDate(iso?: string | null) {
 
 function statusBadge(s: string) {
   const map: Record<string, { label: string; cls: string }> = {
-    trial: { label: 'Trial', cls: 'bg-blue-100 text-blue-800' },
-    active: { label: 'Ativa', cls: 'bg-green-100 text-green-800' },
+    trial: { label: 'Trial', cls: 'bg-accent/10 text-accent' },
+    active: { label: 'Ativa', cls: 'bg-primary/10 text-primary' },
     past_due: { label: 'Em atraso', cls: 'bg-amber-100 text-amber-900' },
     canceled: { label: 'Cancelada', cls: 'bg-red-100 text-red-800' },
-    grandfathered: { label: 'Vitalícia', cls: 'bg-purple-100 text-purple-800' },
+    grandfathered: { label: 'Vitalícia', cls: 'bg-accent/10 text-accent' },
   };
   const m = map[s] ?? { label: s, cls: 'bg-muted text-foreground' };
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`}>{m.label}</span>;
@@ -563,7 +563,7 @@ export default function SuperAdmin() {
                       )}
                       {cell(
                         r.is_grandfathered ? (
-                          <span className="text-[11px] text-purple-700">Ilimitado</span>
+                          <span className="text-[11px] text-accent">Ilimitado</span>
                         ) : r.seat_limit > 0 ? (
                           <div className="flex items-center gap-2">
                             <Progress value={pct} className="h-1.5 w-24" />

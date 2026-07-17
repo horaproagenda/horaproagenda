@@ -911,11 +911,11 @@ export default function Produtos() {
                           </TableCell>
                           <TableCell className="py-1">
                             {product.is_for_sale ? (
-                              <div className="flex items-center gap-1 text-green-600">
+                              <div className="flex items-center gap-1 text-primary">
                                 <Store className="h-2.5 w-2.5" /><span className="text-[10px]">Venda</span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1 text-blue-600">
+                              <div className="flex items-center gap-1 text-accent">
                                 <Building2 className="h-2.5 w-2.5" /><span className="text-[10px]">Clínica</span>
                               </div>
                             )}

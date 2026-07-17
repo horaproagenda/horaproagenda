@@ -255,7 +255,7 @@ export function FormasPagamento() {
   };
 
   const getBoletoBadge = (boleto: any) => {
-    if (boleto.status === 'paid') return <Badge className="bg-green-100 text-green-700 text-[10px]">Pago</Badge>;
+    if (boleto.status === 'paid') return <Badge className="bg-primary/10 text-primary text-[10px]">Pago</Badge>;
     if (boleto.status === 'cancelled') return <Badge variant="secondary" className="text-[10px]">Cancelado</Badge>;
     if (boleto.status === 'overdue' || (boleto.status === 'pending' && new Date(boleto.due_date + 'T12:00:00') < new Date())) {
       return <Badge className="bg-red-100 text-red-700 text-[10px]">Atrasado</Badge>;
@@ -393,13 +393,13 @@ export function FormasPagamento() {
           {/* Boleto Tab */}
           <TabsContent value="boleto" className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button type="button" onClick={() => setBoletoFilter('all')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-blue-500", boletoFilter === 'all' && "bg-muted/50 ring-1 ring-blue-500/40")}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10">
-                  <LayoutList className="h-3.5 w-3.5 text-blue-600" />
+              <button type="button" onClick={() => setBoletoFilter('all')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-blue-500", boletoFilter === 'all' && "bg-muted/50 ring-1 ring-accent/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/80/10">
+                  <LayoutList className="h-3.5 w-3.5 text-accent" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Total</p>
-                  <p className="text-sm font-bold tabular-nums leading-tight text-blue-600">{boletoStats.total}</p>
+                  <p className="text-sm font-bold tabular-nums leading-tight text-accent">{boletoStats.total}</p>
                 </div>
               </button>
               <button type="button" onClick={() => setBoletoFilter('pending')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-orange-500", boletoFilter === 'pending' && "bg-muted/50 ring-1 ring-orange-500/40")}>
@@ -422,13 +422,13 @@ export function FormasPagamento() {
                   <p className="text-[9px] text-red-500 tabular-nums leading-tight">R$ {boletoStats.totalOverdue.toFixed(2)}</p>
                 </div>
               </button>
-              <button type="button" onClick={() => setBoletoFilter('paid')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-emerald-500", boletoFilter === 'paid' && "bg-muted/50 ring-1 ring-emerald-500/40")}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              <button type="button" onClick={() => setBoletoFilter('paid')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-emerald-500", boletoFilter === 'paid' && "bg-muted/50 ring-1 ring-primary/40")}>
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/80/10">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-tight">Pagos</p>
-                  <p className="text-sm font-bold text-emerald-600 tabular-nums leading-tight">{boletoStats.paid}</p>
+                  <p className="text-sm font-bold text-primary tabular-nums leading-tight">{boletoStats.paid}</p>
                 </div>
               </button>
             </div>
@@ -475,9 +475,9 @@ export function FormasPagamento() {
             </div>
 
             {/* Info: cancelar vs excluir */}
-            <Alert className="border-blue-500/40 bg-blue-50 dark:bg-blue-950/20 py-2">
-              <Info className="h-3.5 w-3.5 text-blue-600" />
-              <AlertDescription className="text-[11px] text-blue-800 dark:text-blue-300 leading-snug">
+            <Alert className="border-accent/30/40 bg-accent/10 dark:bg-accent/20 py-2">
+              <Info className="h-3.5 w-3.5 text-accent" />
+              <AlertDescription className="text-[11px] text-accent dark:text-accent/80 leading-snug">
                 <strong>Cancelar boleto</strong> <Ban className="inline h-3 w-3 align-text-bottom" />: marca a parcela como <em>cancelada</em>, mantém o registro no histórico de auditoria e <strong>redistribui o valor</strong> entre as parcelas restantes (não apaga). Ideal para boletos que não serão mais cobrados, mas precisam ser rastreáveis.
                 <br />
                 <strong>Excluir parcela</strong> <Trash2 className="inline h-3 w-3 align-text-bottom" />: remove a parcela permanentemente do banco de dados. Use somente em casos de erro de cadastro.
@@ -571,11 +571,11 @@ export function FormasPagamento() {
 
                           {boletoFilter === 'paid' ? (
                             <>
-                              <TableCell className="text-xs text-center text-emerald-700 font-medium tabular-nums">{paid.length}</TableCell>
+                              <TableCell className="text-xs text-center text-primary font-medium tabular-nums">{paid.length}</TableCell>
                               <TableCell className="text-xs tabular-nums">
                                 {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : (nextPaidDue ? format(new Date(nextPaidDue + 'T12:00:00'), 'dd/MM/yyyy') : '-')}
                               </TableCell>
-                              <TableCell className="text-xs font-medium text-emerald-700 tabular-nums whitespace-nowrap">
+                              <TableCell className="text-xs font-medium text-primary tabular-nums whitespace-nowrap">
                                 R$ {totalPaid.toFixed(2)}
                               </TableCell>
                             </>

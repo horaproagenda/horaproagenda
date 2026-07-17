@@ -1374,9 +1374,9 @@ export function SaleForm() {
 
                 {/* Cash Change (Troco) */}
                 {isDinheiro && saleInfo && changeAmount > 0 && (
-                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 space-y-3">
+                  <div className="p-3 rounded-lg bg-accent/80/10 border border-accent/30/30 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                      <span className="text-sm font-medium text-accent dark:text-accent/80">
                         Troco: {formatCurrency(changeAmount)}
                       </span>
                     </div>
@@ -1413,14 +1413,14 @@ export function SaleForm() {
                 {isClientCreditPayment && selectedClient && (
                   <div className={`flex flex-wrap items-center gap-2 text-sm p-3 rounded-lg border ${
                     clientCreditBalance > 0 
-                      ? 'bg-emerald-500/10 border-emerald-500/30' 
+                      ? 'bg-primary/80/10 border-primary/30/30' 
                       : 'bg-destructive/10 border-destructive/30'
                   }`}>
-                    <Badge variant="outline" className={clientCreditBalance > 0 ? 'border-emerald-500/50 text-emerald-700' : 'border-destructive/50 text-destructive'}>
+                    <Badge variant="outline" className={clientCreditBalance > 0 ? 'border-primary/30/50 text-primary' : 'border-destructive/50 text-destructive'}>
                       <Wallet className="h-3 w-3 mr-1" />
                       Crédito Disponível
                     </Badge>
-                    <span className={clientCreditBalance > 0 ? 'text-emerald-700 font-medium' : 'text-destructive font-medium'}>
+                    <span className={clientCreditBalance > 0 ? 'text-primary font-medium' : 'text-destructive font-medium'}>
                       {formatCurrency(clientCreditBalance)}
                     </span>
                     {clientCreditBalance > 0 && paymentAmount > clientCreditBalance && (

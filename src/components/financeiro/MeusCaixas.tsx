@@ -175,12 +175,12 @@ export function MeusCaixas() {
   return (
     <div className="space-y-4">
       {/* Cash Register Status Card */}
-      <Card className={currentOpenRegister ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' : 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20'}>
+      <Card className={currentOpenRegister ? 'border-primary/30/50 bg-primary/10/50 dark:bg-primary/20' : 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20'}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {currentOpenRegister ? (
-                <LockOpen className="h-5 w-5 text-green-600" />
+                <LockOpen className="h-5 w-5 text-primary" />
               ) : (
                 <Lock className="h-5 w-5 text-amber-600" />
               )}
@@ -212,7 +212,7 @@ export function MeusCaixas() {
                     <TrendingUp className="h-4 w-4" />
                     <span>Recebido</span>
                   </div>
-                  <p className="text-xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-primary">
                     R$ {incomeTotal.toFixed(2)}
                   </p>
                 </div>
@@ -397,8 +397,8 @@ export function MeusCaixas() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-green-600">+ Entradas:</span>
-                <span className="font-medium text-green-600">
+                <span className="text-primary">+ Entradas:</span>
+                <span className="font-medium text-primary">
                   R$ {incomeTotal.toFixed(2)}
                 </span>
               </div>
@@ -425,10 +425,10 @@ export function MeusCaixas() {
             </div>
 
             {closingBalance && (
-              <div className={`p-3 rounded-lg ${difference >= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+              <div className={`p-3 rounded-lg ${difference >= 0 ? 'bg-primary/10 dark:bg-primary/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Diferença:</span>
-                  <span className={`text-lg font-bold ${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-lg font-bold ${difference >= 0 ? 'text-primary' : 'text-red-600'}`}>
                     {difference >= 0 ? '+' : ''} R$ {difference.toFixed(2)}
                   </span>
                 </div>
@@ -523,7 +523,7 @@ export function MeusCaixas() {
                 {closingBalance && (
                   <div className="flex justify-between">
                     <span>Falta distribuir:</span>
-                    <span className={`font-medium ${(parseFloat(closingBalance) - totalDistributed) !== 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                    <span className={`font-medium ${(parseFloat(closingBalance) - totalDistributed) !== 0 ? 'text-amber-600' : 'text-primary'}`}>
                       R$ {(parseFloat(closingBalance) - totalDistributed).toFixed(2)}
                     </span>
                   </div>

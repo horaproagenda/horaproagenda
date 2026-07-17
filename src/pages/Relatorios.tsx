@@ -356,7 +356,7 @@ const Relatorios = () => {
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10">
-            <AvatarFallback className={`text-xs font-medium ${type === 'professional' ? 'bg-blue-500/10 text-blue-600' : 'bg-primary/10 text-primary'}`}>
+            <AvatarFallback className={`text-xs font-medium ${type === 'professional' ? 'bg-accent/80/10 text-accent' : 'bg-primary/10 text-primary'}`}>
               {client.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
             </AvatarFallback>
           </Avatar>
@@ -364,7 +364,7 @@ const Relatorios = () => {
             <div className="flex items-center gap-2">
               <h3 className="font-medium text-sm text-foreground truncate">{client.name}</h3>
               {type === 'professional' && (
-                <Badge variant="outline" className="text-[10px] border-blue-500 text-blue-600">Prof.</Badge>
+                <Badge variant="outline" className="text-[10px] border-accent/30 text-accent">Prof.</Badge>
               )}
             </div>
             <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
@@ -416,8 +416,8 @@ const Relatorios = () => {
                 <span className="hidden sm:inline">Aniversários</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{aniversariantes.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-700 data-[state=active]:border-emerald-500/40">
-                <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+                <RotateCcw className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Retornos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{retornos.length}</Badge>
               </TabsTrigger>
@@ -426,8 +426,8 @@ const Relatorios = () => {
                 <span className="hidden sm:inline">Sumidos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{sumidos.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-sky-500/15 data-[state=active]:text-sky-700 data-[state=active]:border-sky-500/40">
-                <Users className="h-3.5 w-3.5 text-sky-600" />
+              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+                <Users className="h-3.5 w-3.5 text-accent" />
                 <span className="hidden sm:inline">Atendimentos</span>
               </TabsTrigger>
               <TabsTrigger value="conciliacao" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
@@ -497,7 +497,7 @@ const Relatorios = () => {
                                 {client.daysOverdue}d atrasado
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-xs">
+                              <Badge variant="outline" className="border-primary/30 text-primary text-xs">
                                 <Clock className="h-3 w-3 mr-1" />
                                 em {client.daysUntilReturn}d
                               </Badge>

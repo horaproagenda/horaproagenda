@@ -136,7 +136,7 @@ export function GoalsPanel() {
     const percentage = getProgressPercentage(goal.calculatedValue, goal.target_value);
 
     if (percentage >= 100) {
-      return { label: 'Atingida', variant: 'default' as const, color: 'text-green-600' };
+      return { label: 'Atingida', variant: 'default' as const, color: 'text-primary' };
     }
     if (isAfter(today, endDate)) {
       return { label: 'Expirada', variant: 'secondary' as const, color: 'text-muted-foreground' };
@@ -144,7 +144,7 @@ export function GoalsPanel() {
     if (percentage >= 75) {
       return { label: 'Quase lá', variant: 'outline' as const, color: 'text-yellow-600' };
     }
-    return { label: 'Em andamento', variant: 'outline' as const, color: 'text-blue-600' };
+    return { label: 'Em andamento', variant: 'outline' as const, color: 'text-accent' };
   };
 
   const handleEdit = (goal: Goal) => {
@@ -259,9 +259,9 @@ export function GoalsPanel() {
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "p-2 rounded-lg",
-                        goal.type === 'revenue' ? 'bg-green-100 text-green-700' :
-                        goal.type === 'appointments' ? 'bg-blue-100 text-blue-700' :
-                        'bg-purple-100 text-purple-700'
+                        goal.type === 'revenue' ? 'bg-primary/10 text-primary' :
+                        goal.type === 'appointments' ? 'bg-accent/10 text-accent' :
+                        'bg-accent/10 text-accent'
                       )}>
                         {getGoalIcon(goal.type)}
                       </div>
@@ -313,7 +313,7 @@ export function GoalsPanel() {
                       value={percentage} 
                       className={cn(
                         "h-2",
-                        percentage >= 100 && "[&>div]:bg-green-500",
+                        percentage >= 100 && "[&>div]:bg-primary/80",
                         percentage >= 75 && percentage < 100 && "[&>div]:bg-yellow-500"
                       )}
                     />
@@ -358,7 +358,7 @@ export function GoalsPanel() {
               <Card key={goal.id} className="bg-muted/30">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100 text-green-700">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
                       <CheckCircle className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">

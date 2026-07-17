@@ -153,7 +153,7 @@ export function MinhasPreferenciasSettings() {
               </Badge>
             )}
             {!isDirty && lastSavedAt && !update.isPending && (
-              <span className="text-[10px] text-emerald-700">
+              <span className="text-[10px] text-primary">
                 ✓ Salvo às {lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}

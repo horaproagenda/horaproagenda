@@ -244,7 +244,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground">Crédito</Label>
               <div className="flex items-center gap-1.5">
-                <p className={`text-sm font-medium ${(client.credit_balance || 0) > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                <p className={`text-sm font-medium ${(client.credit_balance || 0) > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
                   {formatCurrency(client.credit_balance || 0)}
                 </p>
                 {isAdminOrReceptionist && (
@@ -263,7 +263,7 @@ export function ClientInfoTab({ client, onUpdate }: ClientInfoTabProps) {
                   <span className="text-xs">{formData.is_active ? 'Ativo' : 'Inativo'}</span>
                 </div>
               ) : (
-                <p className={`text-sm font-medium ${client.is_active ? 'text-green-600' : 'text-destructive'}`}>
+                <p className={`text-sm font-medium ${client.is_active ? 'text-primary' : 'text-destructive'}`}>
                   {client.is_active ? 'Ativo' : 'Inativo'}
                 </p>
               )}

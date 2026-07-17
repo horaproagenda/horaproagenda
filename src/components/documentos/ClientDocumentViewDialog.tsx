@@ -53,10 +53,10 @@ const documentTypeLabels: Record<string, string> = {
 };
 
 const documentTypeColors: Record<string, string> = {
-  anamnese: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  contract: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  consent: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  quote: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  anamnese: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80',
+  contract: 'bg-accent/10 text-accent dark:bg-accent/30 dark:text-accent/80',
+  consent: 'bg-primary/10 text-primary dark:bg-primary/30 dark:text-primary/80',
+  quote: 'bg-primary/10 text-primary dark:bg-primary/30 dark:text-primary/80',
   photo: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   other: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300',
 };
@@ -350,7 +350,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                 Criado em {format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
               {document.signed_at && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                <p className="text-xs text-primary dark:text-primary/80 mt-1">
                   ✓ Assinado em {format(new Date(document.signed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   {document.signed_by && ` por ${document.signed_by}`}
                 </p>
@@ -435,7 +435,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                   {/* WhatsApp Send Button */}
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20">
+                      <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20">
                         <MessageCircle className="h-4 w-4 mr-1.5" />
                         WhatsApp
                         {whatsappSent && <Check className="h-3 w-3 ml-1" />}
@@ -459,7 +459,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                         </div>
                           <Button 
                           size="sm" 
-                          className="w-full bg-green-600 hover:bg-green-700"
+                          className="w-full bg-primary hover:bg-primary"
                           onClick={handleSendWhatsApp}
                           disabled={isSendingWhatsapp}
                            aria-label="Enviar documento pelo WhatsApp"
@@ -478,7 +478,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                   {/* Email Send Button */}
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20">
+                      <Button variant="outline" size="sm" className="text-accent hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/20">
                         <Mail className="h-4 w-4 mr-1.5" />
                         E-mail
                         {emailSent && <Check className="h-3 w-3 ml-1" />}

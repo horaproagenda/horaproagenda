@@ -30,6 +30,7 @@ import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 import { BRAND, PRIMARY_TAGLINE } from '@/content/brand';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
+import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },

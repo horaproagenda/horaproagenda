@@ -62,6 +62,8 @@ export function AssinaturaSection() {
     [],
   );
 
+  const [isPixLoading, setIsPixLoading] = useState(false);
+
   const handleCheckout = async () => {
     if (!user) {
       toast.error("Você precisa estar logado");
@@ -79,6 +81,26 @@ export function AssinaturaSection() {
       toast.error(msg);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePixCheckout = async () => {
+    if (!user) {
+      toast.error("Você precisa estar logado");
+      return;
+    }
+    setIsPixLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-pix-checkout", {
+        body: { seats: selectedSeats, billingMonths },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento Pix";
+      toast.error(msg);
+    } finally {
+      setIsPixLoading(false);
     }
   };
 

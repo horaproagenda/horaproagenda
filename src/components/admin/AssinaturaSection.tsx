@@ -12,7 +12,7 @@ import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, MessageCircle }
 
 export function AssinaturaSection() {
   const { user } = useAuth();
-  const { subscription, trialDaysLeft } = useAccountSubscription();
+  const { subscription } = useAccountSubscription();
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
   const [billingMonths, setBillingMonths] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +21,7 @@ export function AssinaturaSection() {
   const currentPriceId = subscription?.stripe_price_id ?? null;
   const isActive = subscription?.status === 'active';
   const isGrandfathered = subscription?.is_grandfathered;
-  const isTrial = subscription?.status === 'trial';
+  
 
   const handleCheckout = async () => {
     if (!selectedPriceId) {
@@ -75,23 +75,8 @@ export function AssinaturaSection() {
         </Card>
       )}
 
-      {isTrial && !isGrandfathered && (
-        <Card className="border-primary/40 bg-primary/5">
-          <CardContent className="pt-6 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <div>
-                <p className="font-medium">Período de teste grátis</p>
-                <p className="text-sm text-muted-foreground">
-                  {trialDaysLeft > 0
-                    ? <>Faltam <strong>{trialDaysLeft}</strong> {trialDaysLeft === 1 ? 'dia' : 'dias'} para o fim do trial. Escolha um plano para continuar sem interrupção.</>
-                    : <>Seu período de teste terminou. Assine para continuar usando o sistema.</>}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Bloco de trial removido — não há período de teste gratuito. */}
+
 
       {isActive && !isGrandfathered && (
         <Card className="border-primary/30/40 bg-primary/80/5">

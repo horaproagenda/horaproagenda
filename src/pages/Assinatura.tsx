@@ -27,38 +27,46 @@ export default function Assinatura() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
       <header className="border-b border-border/60 bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BrandMark className="h-8 w-8" />
-            <span className="font-semibold tracking-tight">Hora Pro</span>
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <BrandMark className="h-8 w-8 shrink-0" />
+            <span className="font-semibold tracking-tight truncate">Hora Pro</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/assinatura/status">
-                <Activity className="h-4 w-4 mr-2" /> Ver status
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" asChild className="px-2 sm:px-3">
+              <Link to="/assinatura/status" aria-label="Ver status da assinatura">
+                <Activity className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Ver status</span>
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4 mr-2" /> Sair
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut()}
+              className="px-2 sm:px-3"
+              aria-label="Sair"
+            >
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sair</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-10 md:py-14 space-y-12">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-8 md:py-14 space-y-10 md:space-y-12">
         {/* Hero */}
         <section className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             Sua clínica, no controle total
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight break-words">
             Escolha o plano ideal e{" "}
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               libere seu acesso
             </span>
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             Assinatura por usuário, sem fidelidade. Após a confirmação do pagamento, sua agenda é
             liberada automaticamente e em tempo real.
           </p>

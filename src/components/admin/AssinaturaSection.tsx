@@ -1,44 +1,79 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
-import { useWhatsappInstanceCost } from "@/hooks/useWhatsappInstanceCost";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, MessageCircle } from "lucide-react";
+import {
+  Check,
+  Users,
+  CreditCard,
+  Loader2,
+  Settings2,
+  Sparkles,
+  TrendingDown,
+  Star,
+  ShieldCheck,
+} from "lucide-react";
+
+/** Rótulo curto por ciclo — usado em várias telas. */
+const CYCLE_META: Record<number, { short: string; long: string; per: string }> = {
+  1: { short: "Mensal", long: "por mês", per: "mês" },
+  6: { short: "Semestral", long: "a cada 6 meses", per: "semestre" },
+  12: { short: "Anual", long: "por ano", per: "ano" },
+};
 
 export function AssinaturaSection() {
   const { user } = useAuth();
   const { subscription } = useAccountSubscription();
-  const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
-  const [billingMonths, setBillingMonths] = useState<number>(1);
+
+  // Ciclo padrão: o de maior economia (anual).
+  const [billingMonths, setBillingMonths] = useState<number>(12);
+  // Plano padrão: 1 usuário. Fica invariante ao trocar ciclo.
+  const [selectedPriceId, setSelectedPriceId] = useState<string>(PLANS[0].priceId);
+
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
   const currentPriceId = subscription?.stripe_price_id ?? null;
-  const isActive = subscription?.status === 'active';
+  const isActive = subscription?.status === "active";
   const isGrandfathered = subscription?.is_grandfathered;
-  
+
+  const selectedPlan = useMemo(
+    () => PLANS.find((p) => p.priceId === selectedPriceId) ?? PLANS[0],
+    [selectedPriceId],
+  );
+
+  // Ciclo com maior desconto → base do destaque "Recomendado".
+  const recommendedMonths = useMemo(
+    () =>
+      BILLING_PERIODS.reduce((best, p) => (p.discount > best.discount ? p : best))
+        .months,
+    [],
+  );
 
   const handleCheckout = async () => {
-    if (!selectedPriceId) {
-      toast.error("Selecione um plano");
-      return;
-    }
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
     }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId: selectedPriceId, billingMonths },
       });
       if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao iniciar checkout";
       toast.error(msg);
@@ -50,9 +85,9 @@ export function AssinaturaSection() {
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir portal";
       toast.error(msg);
@@ -62,225 +97,378 @@ export function AssinaturaSection() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       {isGrandfathered && (
         <Card className="border-primary/40 bg-primary/5">
           <CardContent className="pt-6 flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <div>
+            <Sparkles className="h-5 w-5 text-primary shrink-0" />
+            <div className="min-w-0">
               <p className="font-medium">Conta vitalícia (grandfathered)</p>
-              <p className="text-sm text-muted-foreground">Você tem acesso ilimitado sem necessidade de assinatura.</p>
+              <p className="text-sm text-muted-foreground">
+                Você tem acesso ilimitado sem necessidade de assinatura.
+              </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Bloco de trial removido — não há período de teste gratuito. */}
-
-
       {isActive && !isGrandfathered && (
-        <Card className="border-primary/30/40 bg-primary/80/5">
-          <CardContent className="pt-6 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-primary" />
-              <div>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Check className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0">
                 <p className="font-medium">Assinatura ativa</p>
-                <p className="text-sm text-muted-foreground">
-                  {subscription?.seat_limit} usuário(s) · Próximo ciclo em {' '}
+                <p className="text-sm text-muted-foreground truncate">
+                  {subscription?.seat_limit} usuário(s) · Próximo ciclo em{" "}
                   {subscription?.current_period_end
-                    ? new Date(subscription.current_period_end).toLocaleDateString('pt-BR')
-                    : '—'}
+                    ? new Date(subscription.current_period_end).toLocaleDateString(
+                        "pt-BR",
+                      )
+                    : "—"}
                 </p>
               </div>
             </div>
-            <Button variant="outline" onClick={handlePortal} disabled={portalLoading}>
-              {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Settings2 className="h-4 w-4 mr-2" />}
+            <Button
+              variant="outline"
+              onClick={handlePortal}
+              disabled={portalLoading}
+              className="w-full sm:w-auto"
+            >
+              {portalLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Settings2 className="h-4 w-4 mr-2" />
+              )}
               Gerenciar assinatura
             </Button>
           </CardContent>
         </Card>
       )}
 
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-1">Escolha seu plano</h2>
-        <p className="text-muted-foreground text-sm">
-          Cobrança recorrente automática: escolha mensal, semestral ou anual.
-          Períodos mais longos têm desconto. Cobrado no cartão a cada ciclo.
-        </p>
-
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-2">
-        {BILLING_PERIODS.map((p) => {
-          const active = billingMonths === p.months;
-          return (
-            <button
-              key={p.months}
-              type="button"
-              onClick={() => setBillingMonths(p.months)}
-              className={`px-4 py-2 rounded-full border text-sm font-medium transition-all ${
-                active
-                  ? 'bg-primary text-primary-foreground border-primary shadow'
-                  : 'bg-background border-border hover:border-primary/40'
-              }`}
+      {/* Passo 1: quantidade de usuários */}
+      <Card className="border-border/60">
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+              1
+            </span>
+            Quantos usuários vão acessar?
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <Select
+              value={selectedPriceId}
+              onValueChange={(v) => setSelectedPriceId(v)}
             >
-              {p.label}
-              {p.badge && (
-                <span className={`ml-2 text-xs ${active ? 'opacity-90' : 'text-primary'}`}>{p.badge}</span>
-              )}
-            </button>
-          );
-        })}
+              <SelectTrigger className="w-full sm:w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLANS.map((p) => (
+                  <SelectItem key={p.priceId} value={p.priceId}>
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {p.seats} {p.seats === 1 ? "usuário" : "usuários"}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Base:{" "}
+              <span className="font-medium text-foreground">
+                {formatBRL(selectedPlan.priceBRL / selectedPlan.seats)}
+              </span>{" "}
+              por usuário/mês.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Passo 2: comparação lado a lado dos ciclos */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+            2
+          </span>
+          Escolha o ciclo de cobrança
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          {BILLING_PERIODS.map((p) => (
+            <CycleCard
+              key={p.months}
+              months={p.months}
+              plan={selectedPlan}
+              selected={billingMonths === p.months}
+              recommended={p.months === recommendedMonths}
+              currentActive={
+                isActive &&
+                currentPriceId === selectedPlan.priceId /* mesma quantidade de usuários */
+              }
+              onSelect={() => setBillingMonths(p.months)}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {PLANS.map((plan) => (
-          <PlanCard
-            key={plan.priceId}
-            plan={plan}
-            billingMonths={billingMonths}
-            isCurrent={currentPriceId === plan.priceId}
-            isSelected={selectedPriceId === plan.priceId}
-            onSelect={() => setSelectedPriceId(plan.priceId)}
-          />
-        ))}
-      </div>
-
-      {selectedPriceId && (
-        <SubscriptionSummary
-          plan={PLANS.find(p => p.priceId === selectedPriceId)!}
-          billingMonths={billingMonths}
-          isActive={isActive}
-          isLoading={isLoading}
-          onCheckout={handleCheckout}
-        />
-      )}
+      {/* Passo 3: resumo + CTA */}
+      <SubscriptionSummary
+        plan={selectedPlan}
+        billingMonths={billingMonths}
+        isActive={isActive}
+        isLoading={isLoading}
+        onCheckout={handleCheckout}
+      />
     </div>
   );
 }
 
-interface PlanCardProps {
-  plan: typeof PLANS[number];
-  billingMonths: number;
-  isCurrent: boolean;
-  isSelected: boolean;
+/* ---------------- Cycle Card ---------------- */
+
+interface CycleCardProps {
+  months: number;
+  plan: (typeof PLANS)[number];
+  selected: boolean;
+  recommended: boolean;
+  currentActive: boolean;
   onSelect: () => void;
 }
 
-function PlanCard({ plan, billingMonths, isCurrent, isSelected, onSelect }: PlanCardProps) {
-  const isMonthly = billingMonths === 1;
-  const totalCycle = periodTotal(plan.priceBRL, billingMonths);
-  const effectiveMonthly = totalCycle / billingMonths;
+function CycleCard({
+  months,
+  plan,
+  selected,
+  recommended,
+  currentActive,
+  onSelect,
+}: CycleCardProps) {
+  const meta = CYCLE_META[months];
+  const totalCycle = periodTotal(plan.priceBRL, months);
+  const effectiveMonthly = totalCycle / months;
+  const fullPrice = plan.priceBRL * months;
+  const saved = fullPrice - totalCycle;
+  const isMonthly = months === 1;
 
   return (
-    <Card
-      className={`cursor-pointer transition-all hover:shadow-lg ${
-        isSelected ? 'ring-2 ring-primary shadow-lg' : ''
-      } ${isCurrent ? 'border-primary/30/60' : ''}`}
+    <button
+      type="button"
       onClick={onSelect}
+      aria-pressed={selected}
+      className={[
+        "relative w-full text-left rounded-2xl border p-4 sm:p-5 transition-all",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "hover:shadow-md hover:border-primary/50",
+        selected
+          ? "border-primary bg-primary/5 shadow-lg ring-2 ring-primary"
+          : "border-border bg-card",
+        recommended && !selected ? "border-primary/40" : "",
+      ].join(" ")}
     >
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{plan.name}</CardTitle>
-          {isCurrent && <Badge className="bg-primary/80/15 text-primary hover:bg-primary/80/15">Atual</Badge>}
-          {isSelected && !isCurrent && (
-            <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-              <Check className="h-4 w-4 text-primary-foreground" />
-            </div>
-          )}
+      {recommended && (
+        <span
+          className={[
+            "absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm",
+            selected
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/90 text-primary-foreground",
+          ].join(" ")}
+        >
+          <Star className="h-3 w-3 fill-current" />
+          Recomendado
+        </span>
+      )}
+
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{meta.short}</p>
+          <p className="text-[11px] text-muted-foreground">Cobrado {meta.long}</p>
         </div>
-        <CardDescription className="flex items-center gap-1">
-          <Users className="h-4 w-4" />
-          {plan.seats} {plan.seats === 1 ? 'usuário' : 'usuários'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-2xl font-bold">{formatBRL(effectiveMonthly)}</span>
-            <span className="text-sm text-muted-foreground">/mês</span>
-            {!isMonthly && (
-              <span className="text-xs text-muted-foreground line-through">
-                {formatBRL(plan.priceBRL)}
-              </span>
+        <div
+          className={[
+            "h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors",
+            selected ? "border-primary bg-primary" : "border-muted-foreground/30",
+          ].join(" ")}
+        >
+          {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-baseline gap-1 flex-wrap">
+          <span className="text-3xl font-bold tabular-nums leading-none">
+            {formatBRL(effectiveMonthly)}
+          </span>
+          <span className="text-xs text-muted-foreground">/mês</span>
+        </div>
+
+        {!isMonthly ? (
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Total:{" "}
+              <span className="font-medium text-foreground tabular-nums">
+                {formatBRL(totalCycle)}
+              </span>{" "}
+              / {meta.per}
+            </p>
+            {saved > 0 && (
+              <div className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                <TrendingDown className="h-3 w-3" />
+                Economia de {formatBRL(saved)}
+              </div>
             )}
           </div>
-          {!isMonthly && (
-            <div className="border-t pt-1.5 text-[10px] text-muted-foreground">
-              {formatBRL(totalCycle)} a cada {billingMonths} meses
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Sem compromisso de longo prazo
+          </p>
+        )}
+      </div>
+
+      {currentActive && (
+        <Badge className="mt-3 bg-primary/15 text-primary hover:bg-primary/15 border-0">
+          Seu plano atual
+        </Badge>
+      )}
+    </button>
   );
 }
 
+/* ---------------- Summary + CTA ---------------- */
+
 interface SubscriptionSummaryProps {
-  plan: typeof PLANS[number];
+  plan: (typeof PLANS)[number];
   billingMonths: number;
   isActive: boolean | undefined;
   isLoading: boolean;
   onCheckout: () => void;
 }
 
-function SubscriptionSummary({ plan, billingMonths, isActive, isLoading, onCheckout }: SubscriptionSummaryProps) {
-  const period = BILLING_PERIODS.find(b => b.months === billingMonths)!;
+function SubscriptionSummary({
+  plan,
+  billingMonths,
+  isActive,
+  isLoading,
+  onCheckout,
+}: SubscriptionSummaryProps) {
+  const meta = CYCLE_META[billingMonths];
   const planTotal = periodTotal(plan.priceBRL, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
 
   return (
-    <Card className="max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Resumo</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex justify-between"><span>Plano</span><span className="font-medium">{plan.name}</span></div>
-        <div className="flex justify-between"><span>Usuários</span><span className="font-medium">{plan.seats}</span></div>
-        <div className="flex justify-between"><span>Período</span><span className="font-medium">{period.label}{period.badge ? ` ${period.badge}` : ''}</span></div>
-        {!isMonthly && (
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Plano sem desconto</span>
-            <span className="line-through">{formatBRL(fullPrice)}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-lg font-bold border-t pt-3">
-          <span>{isMonthly ? 'Total mensal' : `Total a cada ${billingMonths} meses`}</span>
-          <span className="tabular-nums">{formatBRL(planTotal)}</span>
-        </div>
-        {!isMonthly && saved > 0 && (
-          <div className="text-xs text-primary text-right">
-            Você economiza {formatBRL(saved)} no plano por ciclo
-          </div>
-        )}
-        <div className="text-xs text-muted-foreground text-center border-t pt-2">
-          Renovação automática a cada {billingMonths === 1 ? 'mês' : `${billingMonths} meses`}.
-          Cancele a qualquer momento em "Gerenciar assinatura".
-        </div>
-        <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground border-t pt-3">
-          <span className="flex items-center gap-1">
-            <CreditCard className="h-3.5 w-3.5" />
-            Cartão (cobrança recorrente)
+    <Card className="border-primary/30 bg-gradient-to-br from-card to-primary/5">
+      <CardContent className="pt-6 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+            3
           </span>
+          Confirme e ative
         </div>
-        <Button className="w-full" size="lg" onClick={onCheckout} disabled={isLoading}>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <SummaryRow label="Usuários" value={String(plan.seats)} />
+          <SummaryRow label="Ciclo" value={meta.short} />
+          {!isMonthly && (
+            <SummaryRow
+              label="Sem desconto"
+              value={formatBRL(fullPrice)}
+              strike
+              muted
+            />
+          )}
+          <SummaryRow
+            label={isMonthly ? "Total mensal" : `Total por ${meta.per}`}
+            value={formatBRL(planTotal)}
+            highlight
+          />
+        </div>
+
+        {!isMonthly && saved > 0 && (
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+            <TrendingDown className="h-4 w-4 shrink-0" />
+            <span>
+              Você economiza{" "}
+              <span className="font-semibold">{formatBRL(saved)}</span> em relação ao
+              plano mensal.
+            </span>
+          </div>
+        )}
+
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={onCheckout}
+          disabled={isLoading}
+        >
           {isLoading ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</>
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+            </>
           ) : (
             <>
               <CreditCard className="mr-2 h-4 w-4" />
               {isActive
-                ? 'Trocar de plano'
-                : billingMonths === 1
-                  ? 'Assinar agora'
-                  : `Assinar (a cada ${billingMonths} meses)`}
+                ? "Trocar de plano"
+                : isMonthly
+                  ? "Assinar agora"
+                  : `Assinar (${meta.short.toLowerCase()})`}
             </>
           )}
         </Button>
+
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
+          <span className="inline-flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3" /> Pagamento seguro Stripe
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Sparkles className="h-3 w-3" /> Cancele quando quiser
+          </span>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground text-center border-t pt-3">
+          Renovação automática {isMonthly ? "todo mês" : `a cada ${billingMonths} meses`}
+          . Gerencie tudo pelo portal do cliente.
+        </p>
       </CardContent>
     </Card>
   );
 }
 
+function SummaryRow({
+  label,
+  value,
+  highlight,
+  strike,
+  muted,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  strike?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "flex flex-col rounded-lg border p-2.5",
+        highlight ? "border-primary/40 bg-primary/5" : "border-border/60",
+      ].join(" ")}
+    >
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={[
+          "font-semibold tabular-nums",
+          highlight ? "text-lg" : "text-sm",
+          strike ? "line-through" : "",
+          muted ? "text-muted-foreground" : "",
+        ].join(" ")}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}

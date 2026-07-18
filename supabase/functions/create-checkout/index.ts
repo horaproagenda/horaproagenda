@@ -7,24 +7,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Planos por número de usuários (mantém sincronizado com src/lib/plans.ts).
-// Cobrança = quantity (seats) × price recorrente do ciclo escolhido.
-const PLAN_SEATS: Record<string, number> = {
-  'price_1TegO6DgjrAVrKo6qmm4QTAq': 1,
-  'price_1TegOYDgjrAVrKo6SWKhm34E': 3,
-  'price_1TegOrDgjrAVrKo6Fvsq1Vku': 6,
-  'price_1TegPCDgjrAVrKo6a1AsVWED': 10,
-  'price_1TegQXDgjrAVrKo68iqKHYkx': 15,
-  'price_1TegRlDgjrAVrKo6pgIqgceO': 20,
-  'price_1TegSSDgjrAVrKo60IQOSOMn': 25,
-  'price_1TegSvDgjrAVrKo6d1LDLKgI': 30,
-};
+// Seats permitidos (mantém sincronizado com src/lib/plans.ts).
+const ALLOWED_SEATS = new Set<number>([1, 3, 6, 10, 15, 20, 25, 30]);
 
-// Stripe price IDs recorrentes por ciclo (produto Hora Pro, valor por 1 usuário).
+// Stripe price IDs recorrentes por ciclo (produto Hora Pro - Assinatura,
+// preço por 1 usuário). Cobrança = quantity (seats) × price do ciclo.
+// Conta Stripe: acct_1Tue8WDNBKGVlEDv (modo live).
 const BILLING_PRICE_IDS: Record<number, string> = {
-  1:  'price_1TuQJ4De4r0IVr2K1NyASpZr', // R$ 110,00 / mês
-  6:  'price_1TuQJKDe4r0IVr2K5i7DjxIv', // R$ 645,62 / semestre
-  12: 'price_1TuQJbDe4r0IVr2KPb15bK80', // R$ 1.276,86 / ano
+  1:  'price_1Tuf4ZDNBKGVlEDvehLJcVJX', // R$ 110,00 / mês
+  6:  'price_1Tuf5CDNBKGVlEDvaRVN4VqB', // R$ 645,62 / semestre
+  12: 'price_1Tuf5XDNBKGVlEDvwng5c269', // R$ 1.276,86 / ano
 };
 
 
@@ -47,11 +39,9 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
     const body = await req.json().catch(() => ({}));
-    const priceId = body?.priceId as string | undefined;
+    const seats = Number(body?.seats ?? 0);
     const billingMonths = Number(body?.billingMonths ?? 1);
-    if (!priceId) throw new Error("Price ID is required");
-    const seats = PLAN_SEATS[priceId];
-    if (!seats) throw new Error("Price ID not allowed");
+    if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
     const cyclePrice = BILLING_PRICE_IDS[billingMonths];
     if (!cyclePrice) throw new Error("billingMonths inválido");
 
@@ -78,7 +68,6 @@ serve(async (req) => {
       subscription_data: {
         metadata: {
           user_id: user.id,
-          price_id: priceId,
           billing_months: String(billingMonths),
           seats: String(seats),
           kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
@@ -86,7 +75,6 @@ serve(async (req) => {
       },
       metadata: {
         user_id: user.id,
-        price_id: priceId,
         billing_months: String(billingMonths),
         seats: String(seats),
         kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',

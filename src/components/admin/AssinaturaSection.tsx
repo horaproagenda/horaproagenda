@@ -40,18 +40,18 @@ export function AssinaturaSection() {
   // Ciclo padrão: o de maior economia (anual).
   const [billingMonths, setBillingMonths] = useState<number>(12);
   // Plano padrão: 1 usuário. Fica invariante ao trocar ciclo.
-  const [selectedPriceId, setSelectedPriceId] = useState<string>(PLANS[0].priceId);
+  const [selectedSeats, setSelectedSeats] = useState<number>(PLANS[0].seats);
 
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const currentPriceId = subscription?.stripe_price_id ?? null;
+  const currentSeats = subscription?.seat_limit ?? null;
   const isActive = subscription?.status === "active";
   const isGrandfathered = subscription?.is_grandfathered;
 
   const selectedPlan = useMemo(
-    () => PLANS.find((p) => p.priceId === selectedPriceId) ?? PLANS[0],
-    [selectedPriceId],
+    () => PLANS.find((p) => p.seats === selectedSeats) ?? PLANS[0],
+    [selectedSeats],
   );
 
   // Ciclo com maior desconto → base do destaque "Recomendado".
@@ -70,7 +70,7 @@ export function AssinaturaSection() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: selectedPriceId, billingMonths },
+        body: { seats: selectedSeats, billingMonths },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
@@ -157,15 +157,15 @@ export function AssinaturaSection() {
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <Select
-              value={selectedPriceId}
-              onValueChange={(v) => setSelectedPriceId(v)}
+              value={String(selectedSeats)}
+              onValueChange={(v) => setSelectedSeats(Number(v))}
             >
               <SelectTrigger className="w-full sm:w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PLANS.map((p) => (
-                  <SelectItem key={p.priceId} value={p.priceId}>
+                  <SelectItem key={p.seats} value={String(p.seats)}>
                     <span className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       {p.seats} {p.seats === 1 ? "usuário" : "usuários"}
@@ -204,7 +204,7 @@ export function AssinaturaSection() {
               recommended={p.months === recommendedMonths}
               currentActive={
                 isActive &&
-                currentPriceId === selectedPlan.priceId /* mesma quantidade de usuários */
+                currentSeats === selectedPlan.seats /* mesma quantidade de usuários */
               }
               onSelect={() => setBillingMonths(p.months)}
             />

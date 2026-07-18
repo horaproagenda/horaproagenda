@@ -1,30 +1,29 @@
-// Planos mensais do Hora Pro.
-// Cada plano define o número máximo de usuários ativos (admin + colaboradores).
+// Planos do Hora Pro.
+// Modelo simplificado: existe UM produto no Stripe (Hora Pro - Assinatura) com
+// um price recorrente por ciclo. A cobrança é `quantity × price do ciclo`,
+// onde `quantity` é o número de usuários (seats) escolhido pelo cliente.
 export interface Plan {
-  productId: string;
-  priceId: string;
   seats: number;
-  priceBRL: number; // preço mensal em reais
+  priceBRL: number; // preço mensal em reais (referência para exibição)
   name: string;
 }
 
-// Preço base por usuário/mês (R$). O total do plano é seats × PER_SEAT_MONTHLY_BRL.
+// Preço base por usuário/mês (R$). O total mensal do plano é seats × PER_SEAT_MONTHLY_BRL.
 export const PER_SEAT_MONTHLY_BRL = 110;
 
 export const PLANS: Plan[] = [
-  { productId: 'prod_UdyKWqSfnyVzne', priceId: 'price_1TegO6DgjrAVrKo6qmm4QTAq', seats: 1,  priceBRL: 1  * PER_SEAT_MONTHLY_BRL, name: '1 usuário' },
-  { productId: 'prod_UdyLMg0kyRjuD4', priceId: 'price_1TegOYDgjrAVrKo6SWKhm34E', seats: 3,  priceBRL: 3  * PER_SEAT_MONTHLY_BRL, name: '3 usuários' },
-  { productId: 'prod_UdyLfa56HjYEki', priceId: 'price_1TegOrDgjrAVrKo6Fvsq1Vku', seats: 6,  priceBRL: 6  * PER_SEAT_MONTHLY_BRL, name: '6 usuários' },
-  { productId: 'prod_UdyLncotTRCD59', priceId: 'price_1TegPCDgjrAVrKo6a1AsVWED', seats: 10, priceBRL: 10 * PER_SEAT_MONTHLY_BRL, name: '10 usuários' },
-  { productId: 'prod_UdyNFZJ4PBvLLT', priceId: 'price_1TegQXDgjrAVrKo68iqKHYkx', seats: 15, priceBRL: 15 * PER_SEAT_MONTHLY_BRL, name: '15 usuários' },
-  { productId: 'prod_UdyO4ihw5Sa6Nf', priceId: 'price_1TegRlDgjrAVrKo6pgIqgceO', seats: 20, priceBRL: 20 * PER_SEAT_MONTHLY_BRL, name: '20 usuários' },
-  { productId: 'prod_UdyPoKIa4khU4r', priceId: 'price_1TegSSDgjrAVrKo60IQOSOMn', seats: 25, priceBRL: 25 * PER_SEAT_MONTHLY_BRL, name: '25 usuários' },
-  { productId: 'prod_UdyPbVSxOACQ61', priceId: 'price_1TegSvDgjrAVrKo6d1LDLKgI', seats: 30, priceBRL: 30 * PER_SEAT_MONTHLY_BRL, name: '30 usuários' },
+  { seats: 1,  priceBRL: 1  * PER_SEAT_MONTHLY_BRL, name: '1 usuário'   },
+  { seats: 3,  priceBRL: 3  * PER_SEAT_MONTHLY_BRL, name: '3 usuários'  },
+  { seats: 6,  priceBRL: 6  * PER_SEAT_MONTHLY_BRL, name: '6 usuários'  },
+  { seats: 10, priceBRL: 10 * PER_SEAT_MONTHLY_BRL, name: '10 usuários' },
+  { seats: 15, priceBRL: 15 * PER_SEAT_MONTHLY_BRL, name: '15 usuários' },
+  { seats: 20, priceBRL: 20 * PER_SEAT_MONTHLY_BRL, name: '20 usuários' },
+  { seats: 25, priceBRL: 25 * PER_SEAT_MONTHLY_BRL, name: '25 usuários' },
+  { seats: 30, priceBRL: 30 * PER_SEAT_MONTHLY_BRL, name: '30 usuários' },
 ];
 
-export const PRODUCT_TO_SEATS: Record<string, number> = Object.fromEntries(
-  PLANS.map(p => [p.productId, p.seats])
-);
+/** Seats permitidos no checkout — usado como validação no edge function. */
+export const ALLOWED_SEATS: number[] = PLANS.map(p => p.seats);
 
 export const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -47,12 +46,13 @@ export const BILLING_PERIODS: BillingPeriod[] = [
   { months: 12, discount: 1 - 1276.86 / 1320,   label: 'Anual',     badge: '-3%' },
 ];
 
-// Stripe price IDs por ciclo (produto Hora Pro, preço por 1 usuário).
+// Stripe price IDs por ciclo (produto Hora Pro - Assinatura, preço por 1 usuário).
+// Conta Stripe: acct_1Tue8WDNBKGVlEDv (Hora Pro Agenda, modo live).
 // A quantidade cobrada no checkout é `seats`.
 export const BILLING_PRICE_IDS: Record<number, string> = {
-  1:  'price_1TuHspDgjrAVrKo6SqvNvXCD', // R$ 110,00 / mês
-  6:  'price_1TuHtBDgjrAVrKo6tBrtH47r', // R$ 645,62 / semestre
-  12: 'price_1TuHtUDgjrAVrKo6gUCWH4pH', // R$ 1.276,86 / ano
+  1:  'price_1Tuf4ZDNBKGVlEDvehLJcVJX', // R$ 110,00 / mês
+  6:  'price_1Tuf5CDNBKGVlEDvaRVN4VqB', // R$ 645,62 / semestre
+  12: 'price_1Tuf5XDNBKGVlEDvwng5c269', // R$ 1.276,86 / ano
 };
 
 

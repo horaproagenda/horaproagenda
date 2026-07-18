@@ -11,17 +11,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
-// Mapa productId -> seats (espelho de src/lib/plans.ts)
-const PRODUCT_TO_SEATS: Record<string, number> = {
-  'prod_UdyKWqSfnyVzne': 1,
-  'prod_UdyLMg0kyRjuD4': 3,
-  'prod_UdyLfa56HjYEki': 6,
-  'prod_UdyLncotTRCD59': 10,
-  'prod_UdyNFZJ4PBvLLT': 15,
-  'prod_UdyO4ihw5Sa6Nf': 20,
-  'prod_UdyPoKIa4khU4r': 25,
-  'prod_UdyPbVSxOACQ61': 30,
-};
+// Seats vêm de `item.quantity` diretamente (produto único no Stripe,
+// cobrança por quantidade de usuários).
 
 const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : '';
@@ -65,7 +56,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
   const item = sub.items.data[0];
   const productId = item?.price?.product as string | undefined;
   const priceId = item?.price?.id ?? null;
-  const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+  const seats = item?.quantity ?? 0;
 
   let status: 'active' | 'past_due' | 'canceled' | 'trial' = 'active';
   if (sub.status === 'active' || sub.status === 'trialing') status = 'active';
@@ -162,8 +153,7 @@ serve(async (req) => {
           if (ownerId) {
             const periodEnd = new Date(sub.current_period_end * 1000);
             const item = sub.items.data[0];
-            const productId = item?.price?.product as string | undefined;
-            const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+            const seats = item?.quantity ?? 0;
             await sendAccountEmail(
               ownerId,
               'subscription_activated',

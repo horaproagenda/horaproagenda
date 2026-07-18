@@ -7,17 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Mapa de productId -> seats (mantém sincronizado com src/lib/plans.ts)
-const PRODUCT_TO_SEATS: Record<string, number> = {
-  'prod_UdyKWqSfnyVzne': 1,
-  'prod_UdyLMg0kyRjuD4': 3,
-  'prod_UdyLfa56HjYEki': 6,
-  'prod_UdyLncotTRCD59': 10,
-  'prod_UdyNFZJ4PBvLLT': 15,
-  'prod_UdyO4ihw5Sa6Nf': 20,
-  'prod_UdyPoKIa4khU4r': 25,
-  'prod_UdyPbVSxOACQ61': 30,
-};
+// Seats agora vêm de `item.quantity` diretamente (produto único no Stripe,
+// cobrança por quantidade de usuários).
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -88,7 +79,7 @@ serve(async (req) => {
     const item = sub.items.data[0];
     const productId = item.price.product as string;
     const priceId = item.price.id;
-    const seats = PRODUCT_TO_SEATS[productId] ?? 0;
+    const seats = item.quantity ?? 0;
     const currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
 
     logStep("Active subscription found", { productId, priceId, seats });

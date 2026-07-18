@@ -1,0 +1,2 @@
+ALTER TABLE public.whatsapp_templates ALTER COLUMN include_confirmation_buttons SET DEFAULT true;
+UPDATE public.whatsapp_templates SET include_confirmation_buttons = true WHERE type IN ('reminder','confirmation') AND include_confirmation_buttons = false;

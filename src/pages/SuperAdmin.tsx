@@ -611,7 +611,7 @@ export default function SuperAdmin() {
 
           {target && (
             <div className="text-xs text-muted-foreground mb-2">
-              Conta: <span className="font-medium text-foreground">{target.email}</span>
+              Conta: <span className="font-medium text-foreground">{maskEmail(target.email)}</span>
             </div>
           )}
 

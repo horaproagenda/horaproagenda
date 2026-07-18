@@ -54,8 +54,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .maybeSingle();
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 5000, // segurança extra
+    staleTime: 10_000,
+    refetchInterval: 30_000, // realtime já invalida — este é apenas rede de segurança
   });
 
   // Transações do caixa aberto

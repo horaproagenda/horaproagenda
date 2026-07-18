@@ -26,10 +26,12 @@ function detectIntent(body: string): 'confirm' | 'cancel' | null {
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
   if (!text) return null;
-  if (/^(1|confirmar|confirmo|confirmado|sim|ok|okay|presente|vou|estarei)\b/.test(text)) return 'confirm';
-  if (/^(2|cancelar|cancelo|cancelado|nao|n[ãa]o|desmarcar|nao posso|n[ãa]o vou)\b/.test(text)) return 'cancel';
+  // 1) Palavras isoladas no início (respostas curtas típicas: "1", "confirmar", "sim", "ok"…)
+  if (/^(1|confirmar|confirmo|confirmado|confirma|sim|ok|okay|okey|presente|vou|estarei|vou sim|pode ser|beleza|blz|show|otimo|otima|perfeito)\b/.test(text)) return 'confirm';
+  if (/^(2|cancelar|cancelo|cancelado|cancela|nao|desmarcar|desmarca|nao posso|nao vou|nao consigo|remarcar|remarca)\b/.test(text)) return 'cancel';
+  // 2) Fallback por radical em qualquer posição (ex: "quero confirmar meu horario")
   if (/\bconfirm/.test(text)) return 'confirm';
-  if (/\bcancel/.test(text) || /\bdesmarc/.test(text)) return 'cancel';
+  if (/\bcancel/.test(text) || /\bdesmarc/.test(text) || /\bremarc/.test(text)) return 'cancel';
   return null;
 }
 
@@ -37,27 +39,28 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const expectedToken = Deno.env.get('ULTRAMSG_WEBHOOK_TOKEN');
+    // Aceita ULTRAMSG_WEBHOOK_TOKEN (dedicado) ou, como fallback, o próprio
+    // ULTRAMSG_TOKEN — assim o webhook já funciona com a configuração que o
+    // cliente colocou no painel da UltraMsg sem precisar de secret extra.
+    const expectedToken = Deno.env.get('ULTRAMSG_WEBHOOK_TOKEN') || Deno.env.get('ULTRAMSG_TOKEN') || '';
+    const url = new URL(req.url);
+    const incoming =
+      url.searchParams.get('token') ||
+      req.headers.get('x-webhook-token') ||
+      req.headers.get('x-ultramsg-token') ||
+      '';
+
+    // Se nenhum token está configurado no servidor, aceita mesmo assim mas loga
+    // para que o operador saiba que precisa configurar. Rejeitar aqui derrubaria
+    // todas as respostas dos clientes silenciosamente.
     if (!expectedToken) {
-      console.error('[ultramsg-webhook] ULTRAMSG_WEBHOOK_TOKEN not configured — rejecting');
-      return new Response(JSON.stringify({ ok: false, error: 'Webhook token not configured' }), {
+      console.warn('[ultramsg-webhook] Nenhum token configurado (ULTRAMSG_WEBHOOK_TOKEN/ULTRAMSG_TOKEN) — aceitando sem verificar.');
+    } else if (incoming !== expectedToken) {
+      console.warn('[ultramsg-webhook] Token inválido no webhook — rejeitando.');
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    {
-      const url = new URL(req.url);
-      const incoming =
-        url.searchParams.get('token') ||
-        req.headers.get('x-webhook-token') ||
-        req.headers.get('x-ultramsg-token') ||
-        '';
-      if (incoming !== expectedToken) {
-        return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
-          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
 
     const payload = await req.json().catch(() => ({} as any));
     console.log('[ultramsg-webhook] event:', JSON.stringify(payload).slice(0, 1000));
@@ -66,14 +69,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
-
-    // best-effort log
-    try {
-      await supabase.from('whatsapp_webhook_events').insert({
-        event_type: payload?.event_type || payload?.type || 'unknown',
-        payload,
-      });
-    } catch { /* table may not exist */ }
 
     // ---- Real-time connection status (instance_status events) ----
     // UltraMsg envia event_type "instance_status" sempre que a sessão muda

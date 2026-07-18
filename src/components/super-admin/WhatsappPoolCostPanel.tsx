@@ -100,21 +100,14 @@ export function WhatsappPoolCostPanel() {
     return () => { supabase.removeChannel(ch); };
   }, [refetch, refetchTiers]);
 
+  // Privacidade: NÃO buscamos o nome do profissional. O super-admin nunca deve
+  // visualizar dados dos profissionais que estão usando o aplicativo.
+  // Exibimos apenas um código opaco derivado do UUID.
   const profIds = useMemo(
     () => (data ?? []).map(r => r.assigned_professional_id).filter(Boolean) as string[],
     [data],
   );
-  const { data: profMap } = useQuery({
-    queryKey: ['super-admin-pool-profs', profIds.join(',')],
-    queryFn: async () => {
-      if (profIds.length === 0) return {} as Record<string, string>;
-      const { data } = await supabase.from('professionals').select('id, name').in('id', profIds);
-      const m: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { m[p.id] = p.name; });
-      return m;
-    },
-    enabled: profIds.length > 0,
-  });
+  void profIds;
 
   const stats = useMemo(() => {
     const rows = data ?? [];

@@ -1237,7 +1237,8 @@ export function AppointmentDetailDialog({
         || list[0];
       if (match) {
         templateMessage = match.message;
-        includeButtons = !!match.include_confirmation_buttons;
+        // Padrão: incluir botões, a menos que o template desative explicitamente
+        includeButtons = match.include_confirmation_buttons !== false;
       }
     } catch {
       // ignore — falls back to default below

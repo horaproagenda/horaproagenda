@@ -561,7 +561,7 @@ export default function SuperAdmin() {
                     <TableRow key={r.owner_user_id}>
                       {cell(
                         <div>
-                          <div className="font-medium">{r.email ?? '—'}</div>
+                          <div className="font-medium" title="E-mail mascarado para preservar privacidade">{maskEmail(r.email)}</div>
                           <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
                         </div>,
                         'Conta da clínica. O código abaixo é o identificador interno do usuário.',

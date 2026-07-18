@@ -716,9 +716,7 @@ function AuthInner() {
       <Card className="w-full max-w-md shadow-lg animate-scale-in">
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <BrandMark size={56} />
           </div>
           <CardTitle className="text-2xl">Hora Pro</CardTitle>
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>

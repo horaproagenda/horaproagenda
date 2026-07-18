@@ -2576,8 +2576,32 @@ Até breve! ✨`;
                               {hasPreviewConflicts && (
                                 <Alert variant="destructive" className="mb-2 py-2">
                                   <AlertTriangle className="h-3 w-3" />
-                                  <AlertDescription className="text-xs">
-                                    Algumas datas têm conflitos. Altere ou aceite as sugestões.
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>Algumas datas têm conflitos.</span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        // Aplica automaticamente as sugestões de horário livre
+                                        // em todas as sessões com conflito, respeitando expediente
+                                        // e evitando colisões com a própria série.
+                                        setEditablePreviewDates((prev) => {
+                                          const next = [...prev];
+                                          previewDateConflicts.forEach((pc) => {
+                                            if (pc.conflicts.length > 0 && pc.suggestedDate) {
+                                              next[pc.index] = pc.suggestedDate;
+                                            }
+                                          });
+                                          return next;
+                                        });
+                                        toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Auto-resolver todos
+                                    </Button>
                                   </AlertDescription>
                                 </Alert>
                               )}

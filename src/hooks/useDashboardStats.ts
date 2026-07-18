@@ -27,15 +27,17 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
       const lastMonthStart = startOfMonth(subMonths(today, 1));
       const lastMonthEnd = endOfMonth(subMonths(today, 1));
 
-      // Receita recebida: financial_entries type=income + status=paid + paid_at no período
+      // Receita recebida: financial_entries type=receivable + status=paid + paid_date no período
+      const yearStartDate = format(yearStart, 'yyyy-MM-dd');
+      const yearEndDate = format(yearEnd, 'yyyy-MM-dd');
       let entriesQuery = supabase
         .from('financial_entries')
-        .select('amount, paid_at, professional_id, type, status')
-        .eq('type', 'income')
+        .select('amount, paid_date, professional_id, type, status')
+        .eq('type', 'receivable')
         .eq('status', 'paid')
-        .gte('paid_at', yearStart.toISOString())
-        .lte('paid_at', yearEnd.toISOString())
-        .not('paid_at', 'is', null);
+        .gte('paid_date', yearStartDate)
+        .lte('paid_date', yearEndDate)
+        .not('paid_date', 'is', null);
 
       if (professionalId) {
         entriesQuery = entriesQuery.eq('professional_id', professionalId);
@@ -48,10 +50,10 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
       let lastMonthQuery = supabase
         .from('financial_entries')
         .select('amount')
-        .eq('type', 'income')
+        .eq('type', 'receivable')
         .eq('status', 'paid')
-        .gte('paid_at', lastMonthStart.toISOString())
-        .lte('paid_at', lastMonthEnd.toISOString());
+        .gte('paid_date', format(lastMonthStart, 'yyyy-MM-dd'))
+        .lte('paid_date', format(lastMonthEnd, 'yyyy-MM-dd'));
       if (professionalId) lastMonthQuery = lastMonthQuery.eq('professional_id', professionalId);
       const { data: lastMonthEntries } = await lastMonthQuery;
 

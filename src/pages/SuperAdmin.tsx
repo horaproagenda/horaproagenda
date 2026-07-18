@@ -735,7 +735,7 @@ export default function SuperAdmin() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                Conta: <span className="font-medium text-foreground">{deleteTarget?.email}</span>
+                Conta: <span className="font-medium text-foreground">{maskEmail(deleteTarget?.email)}</span>
               </span>
               <span className="block">
                 Esta ação <strong>exclui o usuário do Auth, perfil, papéis e cadastros</strong> e

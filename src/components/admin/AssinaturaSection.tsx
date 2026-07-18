@@ -21,7 +21,7 @@ export function AssinaturaSection() {
   const currentPriceId = subscription?.stripe_price_id ?? null;
   const isActive = subscription?.status === 'active';
   const isGrandfathered = subscription?.is_grandfathered;
-  const isTrial = subscription?.status === 'trial';
+  
 
   const handleCheckout = async () => {
     if (!selectedPriceId) {

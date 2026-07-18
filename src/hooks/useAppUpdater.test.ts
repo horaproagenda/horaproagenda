@@ -62,22 +62,31 @@ afterEach(() => {
 });
 
 describe('useAppUpdater', () => {
-  it('verifica atualizações periodicamente (20s) e ao montar', async () => {
+  it('verifica atualizações no boot, após 2s e periodicamente (15s)', async () => {
     renderHook(() => useAppUpdater());
     // Aguarda promessa de getRegistration resolver
     await act(async () => { await Promise.resolve(); });
 
-    expect(mockRegistration.update).toHaveBeenCalledTimes(1); // checagem inicial
+    // checagem imediata no boot
+    expect(mockRegistration.update).toHaveBeenCalledTimes(1);
 
+    // re-checagem em 2s para pegar SW que demorou a registrar
     await act(async () => {
-      vi.advanceTimersByTime(20_000);
+      vi.advanceTimersByTime(2_000);
     });
     expect(mockRegistration.update).toHaveBeenCalledTimes(2);
 
+    // primeiro tick do polling a 15s (13s após o de 2s)
     await act(async () => {
-      vi.advanceTimersByTime(20_000);
+      vi.advanceTimersByTime(13_000);
     });
     expect(mockRegistration.update).toHaveBeenCalledTimes(3);
+
+    // segundo tick 15s depois
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    expect(mockRegistration.update).toHaveBeenCalledTimes(4);
   });
 
   it('mostra toast e aciona SKIP_WAITING quando uma nova versão é instalada', async () => {

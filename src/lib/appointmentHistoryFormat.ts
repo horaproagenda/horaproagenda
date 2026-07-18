@@ -194,5 +194,5 @@ export function resolveAuthorName(
   professionalsByEmail: Map<string, string>
 ): string {
   if (!userEmail) return '';
-  return professionalsByEmail.get(userEmail.toLowerCase()) || 'Sistema';
+  return professionalsByEmail.get(userEmail.toLowerCase()) || userEmail;
 }

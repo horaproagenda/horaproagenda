@@ -516,6 +516,7 @@ export type Database = {
       }
       audit_log: {
         Row: {
+          account_owner_id: string | null
           command_tag: string | null
           detail: Json | null
           event_time: string | null
@@ -528,6 +529,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           command_tag?: string | null
           detail?: Json | null
           event_time?: string | null
@@ -540,6 +542,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           command_tag?: string | null
           detail?: Json | null
           event_time?: string | null

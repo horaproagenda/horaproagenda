@@ -114,6 +114,22 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     }
   };
 
+  // Prefetch dos chunks das rotas visíveis quando o menu está expandido
+  // ou quando o drawer mobile é aberto — o usuário claramente está prestes
+  // a navegar. Executa em requestIdleCallback para não competir com o
+  // paint atual.
+  useEffect(() => {
+    if (effectiveCollapsed && !mobileOpen) return;
+    prefetchRoutes(visibleNavigation.map((i) => i.href));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveCollapsed, mobileOpen]);
+
+  const prefetchHandlers = (href: string) => ({
+    onMouseEnter: () => prefetchRoute(href),
+    onFocus: () => prefetchRoute(href),
+    onTouchStart: () => prefetchRoute(href),
+  });
+
   return (
     <TooltipProvider delayDuration={0}>
       {/* Backdrop mobile */}

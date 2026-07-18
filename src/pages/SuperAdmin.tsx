@@ -429,7 +429,7 @@ export default function SuperAdmin() {
                     <TableRow key={r.owner_user_id}>
                       {dataCell(
                         <>
-                          <div className="font-medium truncate">{r.email ?? '—'}</div>
+                          <div className="font-medium truncate" title="E-mail mascarado para preservar privacidade">{maskEmail(r.email)}</div>
                           <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
                         </>,
                         'E-mail e código interno da conta responsável.',

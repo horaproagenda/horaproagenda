@@ -5,7 +5,8 @@ export function isProductExpired(product: Product): boolean {
   if (!product.expiry_date) return false;
   const expiry = startOfDay(parseISO(product.expiry_date + 'T00:00:00'));
   const today = startOfDay(new Date());
-  return isBefore(expiry, today) || expiry.getTime() === today.getTime();
+  // Um produto que vence HOJE ainda pode ser usado hoje — só é "vencido" a partir de amanhã.
+  return isBefore(expiry, today);
 }
 
 export function getExpiryStatus(product: Product): {

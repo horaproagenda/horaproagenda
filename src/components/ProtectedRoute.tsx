@@ -82,10 +82,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Trial expirado → redireciona para tela de planos (somente admin paga).
-  // Permite acesso às próprias páginas de assinatura.
+  // Sem assinatura ativa → redireciona para tela de planos (somente admin paga).
+  // Permite acesso às páginas /assinatura* (checkout, sucesso, cancelado).
   const isOnSubscriptionPage = location.pathname.startsWith('/assinatura');
-  if (subscription && !hasAccess && trialExpired && !isOnSubscriptionPage) {
+  if (subscription && !hasAccess && !isOnSubscriptionPage) {
     if (hasRole('admin')) {
       return <Navigate to="/assinatura" replace />;
     }
@@ -95,7 +95,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           <CardHeader className="text-center">
             <CardTitle>Conta com pagamento pendente</CardTitle>
             <CardDescription>
-              O período de teste desta conta terminou. Peça ao administrador para ativar a assinatura.
+              O acesso a esta conta está bloqueado até a aprovação do pagamento. Peça ao administrador para ativar a assinatura.
             </CardDescription>
           </CardHeader>
           <CardContent>

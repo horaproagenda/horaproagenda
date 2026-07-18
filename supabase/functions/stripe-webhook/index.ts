@@ -153,8 +153,7 @@ serve(async (req) => {
           if (ownerId) {
             const periodEnd = new Date(sub.current_period_end * 1000);
             const item = sub.items.data[0];
-            const productId = item?.price?.product as string | undefined;
-            const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+            const seats = item?.quantity ?? 0;
             await sendAccountEmail(
               ownerId,
               'subscription_activated',

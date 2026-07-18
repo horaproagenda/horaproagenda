@@ -18,6 +18,7 @@ import { useAgendaIntegrityAutoCheck } from "@/hooks/useAgendaIntegrityAutoCheck
 import { useSaleFlowIntegrityAutoCheck } from "@/hooks/useSaleFlowIntegrityAutoCheck";
 import { usePaymentIntegrityAutoCheck } from "@/hooks/usePaymentIntegrityAutoCheck";
 import { useLayoutWatchdog } from "@/hooks/useLayoutWatchdog";
+import { recordQuery } from "@/lib/perfMetrics";
 
 // Eager: rotas críticas no boot (login, dashboard, 404, landing pública)
 import Auth from "./pages/Auth";
@@ -90,6 +91,31 @@ const createQueryClient = () => new QueryClient({
   },
 });
 
+/**
+ * Instrumenta o QueryCache para registrar duração de cada fetch no
+ * módulo perfMetrics — sem overhead perceptível, expõe gargalos no
+ * console via `window.__perfMetrics()`.
+ */
+function attachQueryPerfLogging(client: QueryClient) {
+  const cache = client.getQueryCache();
+  const timers = new WeakMap<object, number>();
+  return cache.subscribe((event) => {
+    if (!event) return;
+    const query = event.query as unknown as { queryKey: unknown[]; state: { fetchStatus: string } };
+    if (event.type === 'updated') {
+      const status = query.state.fetchStatus;
+      if (status === 'fetching' && !timers.has(query)) {
+        timers.set(query, performance.now());
+      } else if (status === 'idle' && timers.has(query)) {
+        const start = timers.get(query)!;
+        timers.delete(query);
+        const key = Array.isArray(query.queryKey) ? String(query.queryKey[0] ?? 'unknown') : 'unknown';
+        recordQuery(key, performance.now() - start);
+      }
+    }
+  });
+}
+
 // Componente wrapper para ativar realtime sync + sincronização entre dispositivos
 function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useRealtimeSync();
@@ -119,6 +145,7 @@ function HomeRoute() {
 const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
+  useState(() => attachQueryPerfLogging(queryClient));
   useWheelScrollFix();
   useAppUpdater();
   useVersionWatcher();

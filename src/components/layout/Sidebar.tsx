@@ -30,6 +30,7 @@ import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 import { BRAND, PRIMARY_TAGLINE } from '@/content/brand';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
+import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -112,6 +113,22 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
       setTimeout(() => onToggleCollapse(), 0);
     }
   };
+
+  // Prefetch dos chunks das rotas visíveis quando o menu está expandido
+  // ou quando o drawer mobile é aberto — o usuário claramente está prestes
+  // a navegar. Executa em requestIdleCallback para não competir com o
+  // paint atual.
+  useEffect(() => {
+    if (effectiveCollapsed && !mobileOpen) return;
+    prefetchRoutes(visibleNavigation.map((i) => i.href));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveCollapsed, mobileOpen]);
+
+  const prefetchHandlers = (href: string) => ({
+    onMouseEnter: () => prefetchRoute(href),
+    onFocus: () => prefetchRoute(href),
+    onTouchStart: () => prefetchRoute(href),
+  });
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -198,6 +215,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                       to={item.href}
                       end={item.href === '/'}
                       onClick={handleNavClick}
+                      {...prefetchHandlers(item.href)}
                       className={({ isActive }) =>
                         cn(
                           'flex items-center justify-center rounded-lg p-3 transition-all duration-200 touch-manipulation select-none active:scale-[0.97]',
@@ -220,6 +238,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   to={item.href}
                   end={item.href === '/'}
                   onClick={handleNavClick}
+                  {...prefetchHandlers(item.href)}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98]',

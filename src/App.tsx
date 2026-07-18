@@ -53,6 +53,7 @@ const Suporte = lazy(lazyWithRetry(() => import("./pages/Suporte")));
 const Assinatura = lazy(lazyWithRetry(() => import("./pages/Assinatura")));
 const AssinaturaSucesso = lazy(lazyWithRetry(() => import("./pages/AssinaturaSucesso")));
 const AssinaturaCancelado = lazy(lazyWithRetry(() => import("./pages/AssinaturaCancelado")));
+const AssinaturaStatus = lazy(lazyWithRetry(() => import("./pages/AssinaturaStatus")));
 const PreencherDocumento = lazy(lazyWithRetry(() => import("./pages/PreencherDocumento")));
 const CadastroCliente = lazy(lazyWithRetry(() => import("./pages/CadastroCliente")));
 const Unsubscribe = lazy(lazyWithRetry(() => import("./pages/Unsubscribe")));

@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2, AlertTriangle, Ban, Clock } from 'lucide-react';
+import { BrandMark } from '@/components/brand/BrandMark';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -716,9 +717,7 @@ function AuthInner() {
       <Card className="w-full max-w-md shadow-lg animate-scale-in">
         <CardHeader className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <BrandMark size={56} />
           </div>
           <CardTitle className="text-2xl">Hora Pro</CardTitle>
           <CardDescription>Sistema de agendamento para clínica de estética</CardDescription>

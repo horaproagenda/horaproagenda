@@ -62,44 +62,42 @@ export function FinancialDashboard() {
         .lte('created_at', dateRange.to.toISOString());
 
       // Boleto installments — buscar TODOS os relevantes ao período:
-      //   - Pagos com paid_at dentro do intervalo
+      //   - Pagos com paid_date dentro do intervalo
       //   - Ainda em aberto (pending/overdue) com due_date dentro do intervalo
-      const fromISO = dateRange.from.toISOString();
-      const toISO = dateRange.to.toISOString();
       const fromDate = format(dateRange.from, 'yyyy-MM-dd');
       const toDate = format(dateRange.to, 'yyyy-MM-dd');
 
       const [paidBoletosRes, openBoletosRes] = await Promise.all([
         supabase
           .from('boleto_installments')
-          .select('id, amount, status, due_date, paid_at, installment_number, total_installments')
+          .select('id, amount, status, due_date, paid_date, installment_number, total_installments')
           .eq('status', 'paid')
-          .gte('paid_at', fromISO)
-          .lte('paid_at', toISO),
+          .gte('paid_date', fromDate)
+          .lte('paid_date', toDate),
         supabase
           .from('boleto_installments')
-          .select('id, amount, status, due_date, paid_at, installment_number, total_installments')
+          .select('id, amount, status, due_date, paid_date, installment_number, total_installments')
           .neq('status', 'paid')
           .gte('due_date', fromDate)
           .lte('due_date', toDate),
       ]);
       const boletos = [...(paidBoletosRes.data || []), ...(openBoletosRes.data || [])];
 
-      // Financial entries: usar paid_at para pagos e due_date para pendentes,
+      // Financial entries: usar paid_date para pagos e due_date para pendentes,
       // pois é assim que o dinheiro efetivamente entra/sai no período.
       const [paidEntriesRes, pendingEntriesRes] = await Promise.all([
         supabase
           .from('financial_entries')
-          .select('id, amount, type, status, due_date, paid_at, description, payment_method')
+          .select('id, amount, type, status, due_date, paid_date, description, payment_method_id')
           .eq('status', 'paid')
-          .gte('paid_at', fromISO)
-          .lte('paid_at', toISO),
+          .gte('paid_date', fromDate)
+          .lte('paid_date', toDate),
         supabase
           .from('financial_entries')
-          .select('id, amount, type, status, due_date, paid_at, description, payment_method')
-          .eq('status', 'pending')
-          .gte('due_date', fromISO)
-          .lte('due_date', toISO),
+          .select('id, amount, type, status, due_date, paid_date, description, payment_method_id')
+          .in('status', ['pending', 'overdue'])
+          .gte('due_date', fromDate)
+          .lte('due_date', toDate),
       ]);
       const finEntries = [...(paidEntriesRes.data || []), ...(pendingEntriesRes.data || [])];
 

@@ -42,6 +42,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
+import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -1228,27 +1229,69 @@ export function NewAppointmentDialog({
           let createdCount = 0;
           const failedSessions: number[] = [];
 
+          // Fecha o formulário imediatamente; os agendamentos seguintes são
+          // criados em segundo plano com auto-reagendamento em caso de conflito.
+          onOpenChange(false);
+          toast.info(`Agendando ${editablePreviewDates.length} sessões em segundo plano...`);
+
+
           // Create appointments sequentially to ensure proper conflict detection
           // Each appointment must complete before the next one starts to avoid race conditions
+          // Track created appointments in this run to prevent sibling collisions
+          // when the server hasn't refreshed the appointments cache yet.
+          const createdRanges: { start: Date; end: Date }[] = [
+            { start: firstStart, end: firstEnd },
+          ];
+
           for (let i = 1; i <= sessionsToCreate; i++) {
             // Use editable dates instead of calculated dates
-            const futureDate = editablePreviewDates[i];
+            let futureDate = editablePreviewDates[i];
             const futureServiceId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
             const futureService = services.find(service => service.id === futureServiceId);
             const futureDuration = getPackageStepDuration(i) || futureService?.duration || duration;
-            
-            const futureEnd = new Date(futureDate);
+
+            let futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
 
+            // Fresh snapshot including sessions just created in this loop so we
+            // don't rely on stale WebSocket state for real-time conflict checks.
+            const liveAppointments = ((queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[])
+              .concat(createdRanges.map((r, idx) => ({
+                id: `__local_${idx}`,
+                start_time: r.start.toISOString(),
+                end_time: r.end.toISOString(),
+                professional_id: selectedProfessional || packageData?.professional_id || null,
+                room_id: selectedRoom || packageData?.room_id || null,
+                status: 'scheduled',
+              })));
+
+            // If the requested slot collides with anything, shift automatically to
+            // the next free slot instead of failing with "conflito de horário".
             try {
-              // Wait for each appointment to be fully created before proceeding
-              // This ensures the Edge Function can properly detect conflicts
+              const safeStart = findNextAvailablePackageSlot(
+                futureDate,
+                futureDuration,
+                liveAppointments,
+                {
+                  professional_id: selectedProfessional || packageData?.professional_id || null,
+                  room_id: selectedRoom || packageData?.room_id || null,
+                },
+              );
+              if (safeStart.getTime() !== futureDate.getTime()) {
+                futureDate = safeStart;
+                futureEnd = new Date(safeStart.getTime() + futureDuration * 60000);
+              }
+            } catch (slotErr) {
+              console.warn(`Auto-slot falhou na sessão ${i + 1}:`, slotErr);
+            }
+
+            try {
               const futureAppointment = await createAppointment.mutateAsync({
                 client_id: selectedClient,
                 service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
-                notes: `${futureService?.name ? futureService.name + ' — ' : ''}${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
+                notes: `${futureService?.name ? futureService.name + ' — ' : ''}${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`,
                 professional_id: selectedProfessional || packageData?.professional_id || undefined,
                 room_id: selectedRoom || packageData?.room_id || undefined,
                 payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -1260,6 +1303,7 @@ export function NewAppointmentDialog({
                   appointmentId: futureAppointment.id,
                 });
               }
+              createdRanges.push({ start: futureDate, end: futureEnd });
               createdCount++;
             } catch (error) {
               console.error(`Error creating session ${i + 1}:`, error);
@@ -2575,8 +2619,32 @@ Até breve! ✨`;
                               {hasPreviewConflicts && (
                                 <Alert variant="destructive" className="mb-2 py-2">
                                   <AlertTriangle className="h-3 w-3" />
-                                  <AlertDescription className="text-xs">
-                                    Algumas datas têm conflitos. Altere ou aceite as sugestões.
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>Algumas datas têm conflitos.</span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        // Aplica automaticamente as sugestões de horário livre
+                                        // em todas as sessões com conflito, respeitando expediente
+                                        // e evitando colisões com a própria série.
+                                        setEditablePreviewDates((prev) => {
+                                          const next = [...prev];
+                                          previewDateConflicts.forEach((pc) => {
+                                            if (pc.conflicts.length > 0 && pc.suggestedDate) {
+                                              next[pc.index] = pc.suggestedDate;
+                                            }
+                                          });
+                                          return next;
+                                        });
+                                        toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Auto-resolver todos
+                                    </Button>
                                   </AlertDescription>
                                 </Alert>
                               )}

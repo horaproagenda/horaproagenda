@@ -3272,6 +3272,7 @@ export type Database = {
           last_connected_at: string | null
           professional_id: string
           token: string
+          token_encrypted: string | null
           updated_at: string
         }
         Insert: {
@@ -3285,6 +3286,7 @@ export type Database = {
           last_connected_at?: string | null
           professional_id: string
           token: string
+          token_encrypted?: string | null
           updated_at?: string
         }
         Update: {
@@ -3298,6 +3300,7 @@ export type Database = {
           last_connected_at?: string | null
           professional_id?: string
           token?: string
+          token_encrypted?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4375,6 +4378,7 @@ export type Database = {
           notes: string | null
           status: string
           token: string
+          token_encrypted: string | null
           updated_at: string
         }
         Insert: {
@@ -4389,6 +4393,7 @@ export type Database = {
           notes?: string | null
           status?: string
           token: string
+          token_encrypted?: string | null
           updated_at?: string
         }
         Update: {
@@ -4403,6 +4408,7 @@ export type Database = {
           notes?: string | null
           status?: string
           token?: string
+          token_encrypted?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5191,6 +5197,15 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
+      get_professional_whatsapp_token: {
+        Args: { _professional_id: string }
+        Returns: {
+          api_url: string
+          instance_id: string
+          is_active: boolean
+          token: string
+        }[]
+      }
       get_seat_usage: {
         Args: { _owner?: string }
         Returns: {
@@ -5205,6 +5220,25 @@ export type Database = {
         Returns: {
           clinic_cnpj: string
           twilio_from_number: string
+        }[]
+      }
+      get_ultramsg_pool_assigned: {
+        Args: never
+        Returns: {
+          api_url: string
+          assigned_professional_id: string
+          id: string
+          instance_id: string
+          token: string
+        }[]
+      }
+      get_ultramsg_pool_row: {
+        Args: { _id: string }
+        Returns: {
+          api_url: string
+          id: string
+          instance_id: string
+          token: string
         }[]
       }
       get_user_account_owner_id: { Args: { _user_id: string }; Returns: string }

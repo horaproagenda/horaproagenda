@@ -79,7 +79,7 @@ serve(async (req) => {
     const item = sub.items.data[0];
     const productId = item.price.product as string;
     const priceId = item.price.id;
-    const seats = PRODUCT_TO_SEATS[productId] ?? 0;
+    const seats = item.quantity ?? 0;
     const currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
 
     logStep("Active subscription found", { productId, priceId, seats });

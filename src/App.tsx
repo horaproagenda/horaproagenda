@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ForcePasswordChangeGate } from "@/components/auth/ForcePasswordChangeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RequireRole } from "@/components/RequireRole";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";

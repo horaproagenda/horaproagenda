@@ -687,7 +687,7 @@ export default function SuperAdmin() {
           {cancelTarget && (
             <div className="space-y-3">
               <div className="text-xs text-muted-foreground">
-                Conta: <span className="font-medium text-foreground">{cancelTarget.email}</span>
+                Conta: <span className="font-medium text-foreground">{maskEmail(cancelTarget.email)}</span>
               </div>
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">
                 Esta ação <strong>exclui permanentemente</strong> o usuário do Auth, remove perfil, papéis e dados de cadastro,

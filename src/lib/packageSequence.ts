@@ -100,9 +100,10 @@ export const buildAppointmentPackageSequenceMap = (appointments: Appointment[]) 
     const packageId = appointment.package_appointment?.package_id || appointment.package_appointment?.package?.id;
     if (!packageId || !appointment.package_appointment) return;
 
-    // Histórico inativo (cancelado/reagendado) deve manter o número original da
-    // aplicação, mas não pode deslocar a numeração ativa do pacote no perfil.
-    if (appointment.status === 'cancelled' || appointment.status === 'rescheduled') return;
+    // Cancelamentos saem da sequência visível da agenda; reagendamentos
+    // continuam ocupando seu slot para não resetar a numeração das próximas
+    // aplicações do pacote.
+    if (appointment.status === 'cancelled') return;
 
     const current = grouped.get(packageId) || [];
     current.push(appointment);

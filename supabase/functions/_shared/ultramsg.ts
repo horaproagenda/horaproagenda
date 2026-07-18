@@ -65,9 +65,7 @@ export async function resolveProfessionalCreds(
 ): Promise<{ creds: UltramsgCreds | null; source: 'professional' | 'global' | 'none' }> {
   if (professional_id) {
     const { data } = await supabaseService
-      .from('professional_whatsapp_credentials')
-      .select('api_url, instance_id, token, is_active')
-      .eq('professional_id', professional_id)
+      .rpc('get_professional_whatsapp_token', { _professional_id: professional_id })
       .maybeSingle();
     if (data?.is_active && data.instance_id && data.token) {
       return {
@@ -76,6 +74,7 @@ export async function resolveProfessionalCreds(
       };
     }
   }
+
   const env = getUltramsgConfig();
   if (env.configured) {
     return { creds: { base: env.base, instance: env.instance, token: env.token }, source: 'global' };

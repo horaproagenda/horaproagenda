@@ -99,9 +99,9 @@ export function useAppointments() {
       // Return directly without additional profile fetches for performance
       return (data || []) as unknown as Appointment[];
     },
-    staleTime: 30000, // Cache for 30 seconds
-    refetchOnWindowFocus: true, // Refetch when user returns to window
-    refetchInterval: 60000, // Poll every 60 seconds as fallback
+    staleTime: 60_000, // Cache por 1 min — realtime invalida imediatamente
+    refetchOnWindowFocus: false, // Realtime cobre; evita refetch pesado a cada troca de aba
+    // Sem refetchInterval — useRealtimeSync já invalida em tempo real via WebSocket
   });
 
   const createAppointment = useMutation({

@@ -238,6 +238,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   to={item.href}
                   end={item.href === '/'}
                   onClick={handleNavClick}
+                  {...prefetchHandlers(item.href)}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98]',

@@ -39,11 +39,9 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
     const body = await req.json().catch(() => ({}));
-    const priceId = body?.priceId as string | undefined;
+    const seats = Number(body?.seats ?? 0);
     const billingMonths = Number(body?.billingMonths ?? 1);
-    if (!priceId) throw new Error("Price ID is required");
-    const seats = PLAN_SEATS[priceId];
-    if (!seats) throw new Error("Price ID not allowed");
+    if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
     const cyclePrice = BILLING_PRICE_IDS[billingMonths];
     if (!cyclePrice) throw new Error("billingMonths inválido");
 
@@ -70,7 +68,6 @@ serve(async (req) => {
       subscription_data: {
         metadata: {
           user_id: user.id,
-          price_id: priceId,
           billing_months: String(billingMonths),
           seats: String(seats),
           kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
@@ -78,7 +75,6 @@ serve(async (req) => {
       },
       metadata: {
         user_id: user.id,
-        price_id: priceId,
         billing_months: String(billingMonths),
         seats: String(seats),
         kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',

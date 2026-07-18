@@ -329,8 +329,9 @@ export function WhatsappPoolCostPanel() {
             ) : (
               <div className="space-y-1">
                 {(data ?? []).map((row) => {
-                  const profName = row.assigned_professional_id
-                    ? profMap?.[row.assigned_professional_id] ?? '—'
+                  // Privacidade: mostramos apenas um código opaco do profissional (nunca o nome).
+                  const profCode = row.assigned_professional_id
+                    ? `#${row.assigned_professional_id.slice(0, 8)}`
                     : null;
                   return (
                     <div key={row.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs">
@@ -338,8 +339,8 @@ export function WhatsappPoolCostPanel() {
                         <code className="text-foreground truncate">{row.instance_id}</code>
                         {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre · sem custo</Badge>}
                         {row.status === 'assigned' && (
-                          <Badge className="bg-primary/80 text-[10px]">
-                            em uso · {profName} · desde {fmtDate(row.activated_at)}
+                          <Badge className="bg-primary/80 text-[10px]" title="Código anônimo — o nome do profissional nunca é exibido no painel Super Admin">
+                            em uso · prof {profCode} · desde {fmtDate(row.activated_at)}
                           </Badge>
                         )}
                         {row.status === 'disabled' && <Badge variant="destructive" className="text-[10px]">desabilitada</Badge>}

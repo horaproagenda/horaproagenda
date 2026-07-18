@@ -204,7 +204,7 @@ export function AssinaturaSection() {
               recommended={p.months === recommendedMonths}
               currentActive={
                 isActive &&
-                currentPriceId === selectedPlan.priceId /* mesma quantidade de usuários */
+                currentSeats === selectedPlan.seats /* mesma quantidade de usuários */
               }
               onSelect={() => setBillingMonths(p.months)}
             />

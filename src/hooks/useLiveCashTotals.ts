@@ -69,8 +69,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .eq('cash_register_id', openRegister!.id);
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 3000,
+    staleTime: 10_000,
+    refetchInterval: 20_000,
   });
 
   // Vendas do caixa atual (para descontos e taxas)

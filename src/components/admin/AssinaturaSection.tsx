@@ -240,7 +240,9 @@ export function AssinaturaSection() {
         billingMonths={billingMonths}
         isActive={isActive}
         isLoading={isLoading}
+        isPixLoading={isPixLoading}
         onCheckout={handleCheckout}
+        onPixCheckout={handlePixCheckout}
       />
     </div>
   );

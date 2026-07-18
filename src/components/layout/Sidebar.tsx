@@ -62,17 +62,39 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
-  const { signOut, profile, hasRole, user } = useAuth();
+  const { signOut, profile, hasRole, user, roles, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
   // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
   // evitando que o primeiro toque abra tooltip em vez de navegar.
   const effectiveCollapsed = isCollapsed && !isMobile;
   const isPlatformOwner = isSuperAdminEmail(user?.email);
   const visibleNavigation = navigation.filter(item => {
-    if (item.superAdminOnly && !(hasRole('super_admin') && isPlatformOwner)) return false;
-    if (item.adminOnly && !hasRole('admin')) return false;
+    // Aguarda o carregamento das roles para evitar esconder itens de admin
+    // durante a hidratação inicial (race condition pós-cadastro).
+    if (item.superAdminOnly) {
+      if (authLoading) return false;
+      return hasRole('super_admin') && isPlatformOwner;
+    }
+    if (item.adminOnly) {
+      if (authLoading) return false;
+      return hasRole('admin');
+    }
     return true;
   });
+
+  // Debug: sinaliza quando o item de admin deveria aparecer mas não aparece.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const adminItem = navigation.find(n => n.adminOnly);
+    if (adminItem && !hasRole('admin')) {
+      // eslint-disable-next-line no-console
+      console.debug('[Sidebar] Painel do Administrador oculto', {
+        userId: user.id,
+        email: user.email,
+        roles,
+      });
+    }
+  }, [authLoading, user, roles, hasRole]);
   const location = useLocation();
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';

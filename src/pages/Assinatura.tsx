@@ -1,9 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { AssinaturaSection } from "@/components/admin/AssinaturaSection";
 import { Button } from "@/components/ui/button";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { Calendar, Users, CreditCard, Bell, ShieldCheck, MessageCircle, BarChart3, Sparkles, LogOut } from "lucide-react";
+import { Calendar, Users, CreditCard, Bell, ShieldCheck, MessageCircle, BarChart3, Sparkles, LogOut, Activity } from "lucide-react";
 
 const HIGHLIGHTS = [
   { icon: Calendar,      title: "Agenda em tempo real",     desc: "Sincronização instantânea entre todos os profissionais e dispositivos." },

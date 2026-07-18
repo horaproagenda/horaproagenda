@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AccessDenied } from '@/components/AccessDenied';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
-import type { AppRole } from '@/contexts/AuthContext';
+import type { AppRole } from '@/types';
 
 interface RequireRoleProps {
   role: AppRole;

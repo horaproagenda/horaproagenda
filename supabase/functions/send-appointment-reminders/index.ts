@@ -90,7 +90,9 @@ function buildVars(apt: any, when: Date) {
 }
 
 function maybeAppendButtons(message: string, tpl: any, apt: any): string {
-  if (!tpl?.include_confirmation_buttons) return message;
+  // Default: SEMPRE incluir botões de Confirmar/Cancelar, a menos que o template
+  // desative explicitamente (include_confirmation_buttons === false).
+  if (tpl && tpl.include_confirmation_buttons === false) return message;
   const token = (apt as any).confirmation_token;
   if (!token) return message;
   const confirmUrl = `${PUBLIC_APP_BASE}/c/${token}?a=confirm`;

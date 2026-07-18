@@ -37,9 +37,10 @@ export function useLiveCashTotals(): LiveCashTotals {
   const queryClient = useQueryClient();
   const [tick, setTick] = useState(0);
 
-  // Tick a cada 1 segundo para forçar recomputação dos totais
+  // Tick a cada 5s para atualizar `lastUpdate` — os valores em si já vêm do
+  // cache invalidado pelo Realtime; recomputar a cada 1s só gera re-renders.
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => (t + 1) % 1_000_000), 1000);
+    const id = setInterval(() => setTick((t) => (t + 1) % 1_000_000), 5000);
     return () => clearInterval(id);
   }, []);
 
@@ -54,8 +55,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .maybeSingle();
       return data;
     },
-    staleTime: 0,
-    refetchInterval: 5000, // segurança extra
+    staleTime: 10_000,
+    refetchInterval: 30_000, // realtime já invalida — este é apenas rede de segurança
   });
 
   // Transações do caixa aberto
@@ -69,8 +70,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .eq('cash_register_id', openRegister!.id);
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 3000,
+    staleTime: 10_000,
+    refetchInterval: 20_000,
   });
 
   // Vendas do caixa atual (para descontos e taxas)
@@ -84,8 +85,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .gte('sale_date', openRegister!.opened_at);
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 3000,
+    staleTime: 10_000,
+    refetchInterval: 20_000,
   });
 
   // Realtime: refresh imediato em mudanças relevantes

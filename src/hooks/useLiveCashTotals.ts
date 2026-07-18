@@ -84,8 +84,8 @@ export function useLiveCashTotals(): LiveCashTotals {
         .gte('sale_date', openRegister!.opened_at);
       return data || [];
     },
-    staleTime: 0,
-    refetchInterval: 3000,
+    staleTime: 10_000,
+    refetchInterval: 20_000,
   });
 
   // Realtime: refresh imediato em mudanças relevantes

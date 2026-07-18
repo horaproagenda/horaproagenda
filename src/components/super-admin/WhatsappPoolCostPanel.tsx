@@ -100,21 +100,14 @@ export function WhatsappPoolCostPanel() {
     return () => { supabase.removeChannel(ch); };
   }, [refetch, refetchTiers]);
 
+  // Privacidade: NÃO buscamos o nome do profissional. O super-admin nunca deve
+  // visualizar dados dos profissionais que estão usando o aplicativo.
+  // Exibimos apenas um código opaco derivado do UUID.
   const profIds = useMemo(
     () => (data ?? []).map(r => r.assigned_professional_id).filter(Boolean) as string[],
     [data],
   );
-  const { data: profMap } = useQuery({
-    queryKey: ['super-admin-pool-profs', profIds.join(',')],
-    queryFn: async () => {
-      if (profIds.length === 0) return {} as Record<string, string>;
-      const { data } = await supabase.from('professionals').select('id, name').in('id', profIds);
-      const m: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => { m[p.id] = p.name; });
-      return m;
-    },
-    enabled: profIds.length > 0,
-  });
+  void profIds;
 
   const stats = useMemo(() => {
     const rows = data ?? [];
@@ -336,8 +329,9 @@ export function WhatsappPoolCostPanel() {
             ) : (
               <div className="space-y-1">
                 {(data ?? []).map((row) => {
-                  const profName = row.assigned_professional_id
-                    ? profMap?.[row.assigned_professional_id] ?? '—'
+                  // Privacidade: mostramos apenas um código opaco do profissional (nunca o nome).
+                  const profCode = row.assigned_professional_id
+                    ? `#${row.assigned_professional_id.slice(0, 8)}`
                     : null;
                   return (
                     <div key={row.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs">
@@ -345,8 +339,8 @@ export function WhatsappPoolCostPanel() {
                         <code className="text-foreground truncate">{row.instance_id}</code>
                         {row.status === 'free' && <Badge variant="outline" className="text-[10px]">livre · sem custo</Badge>}
                         {row.status === 'assigned' && (
-                          <Badge className="bg-primary/80 text-[10px]">
-                            em uso · {profName} · desde {fmtDate(row.activated_at)}
+                          <Badge className="bg-primary/80 text-[10px]" title="Código anônimo — o nome do profissional nunca é exibido no painel Super Admin">
+                            em uso · prof {profCode} · desde {fmtDate(row.activated_at)}
                           </Badge>
                         )}
                         {row.status === 'disabled' && <Badge variant="destructive" className="text-[10px]">desabilitada</Badge>}

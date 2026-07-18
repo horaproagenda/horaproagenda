@@ -67,6 +67,25 @@ function fmtDate(iso?: string | null) {
   }
 }
 
+/**
+ * Máscara de e-mail para preservar a privacidade dos usuários do aplicativo.
+ * Ex.: "mariaterezacastro2@gmail.com" -> "ma****************@g****.com"
+ * O super-admin nunca deve visualizar dados completos dos cadastros dos profissionais.
+ */
+function maskEmail(email?: string | null): string {
+  if (!email) return '—';
+  const at = email.indexOf('@');
+  if (at < 1) return '***';
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  const tld = dot >= 0 ? domain.slice(dot) : '';
+  const domainHead = dot >= 0 ? domain.slice(0, dot) : domain;
+  const maskedLocal = local.length <= 2 ? local[0] + '*' : local.slice(0, 2) + '*'.repeat(Math.max(1, local.length - 2));
+  const maskedDomain = domainHead.length <= 1 ? domainHead + '****' : domainHead[0] + '****';
+  return `${maskedLocal}@${maskedDomain}${tld}`;
+}
+
 function statusBadge(s: string) {
   const map: Record<string, { label: string; cls: string }> = {
     trial: { label: 'Trial', cls: 'bg-accent/10 text-accent' },
@@ -320,7 +339,7 @@ export default function SuperAdmin() {
 
         <Card className="p-3">
           <Input
-            placeholder="Buscar por e-mail, status ou customer_id..."
+            placeholder="Buscar por e-mail (informado pelo próprio usuário no suporte), status ou customer_id..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md"
@@ -410,7 +429,7 @@ export default function SuperAdmin() {
                     <TableRow key={r.owner_user_id}>
                       {dataCell(
                         <>
-                          <div className="font-medium truncate">{r.email ?? '—'}</div>
+                          <div className="font-medium truncate" title="E-mail mascarado para preservar privacidade">{maskEmail(r.email)}</div>
                           <div className="text-[10px] text-muted-foreground truncate">{r.owner_user_id.slice(0, 8)}…</div>
                         </>,
                         'E-mail e código interno da conta responsável.',
@@ -542,7 +561,7 @@ export default function SuperAdmin() {
                     <TableRow key={r.owner_user_id}>
                       {cell(
                         <div>
-                          <div className="font-medium">{r.email ?? '—'}</div>
+                          <div className="font-medium" title="E-mail mascarado para preservar privacidade">{maskEmail(r.email)}</div>
                           <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
                         </div>,
                         'Conta da clínica. O código abaixo é o identificador interno do usuário.',
@@ -592,7 +611,7 @@ export default function SuperAdmin() {
 
           {target && (
             <div className="text-xs text-muted-foreground mb-2">
-              Conta: <span className="font-medium text-foreground">{target.email}</span>
+              Conta: <span className="font-medium text-foreground">{maskEmail(target.email)}</span>
             </div>
           )}
 
@@ -647,8 +666,8 @@ export default function SuperAdmin() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {grandfatherTarget?.is_grandfathered
-                ? `A conta ${grandfatherTarget?.email ?? ''} voltará ao fluxo normal de cobrança (teste/assinatura).`
-                : `A conta ${grandfatherTarget?.email ?? ''} terá acesso gratuito e ilimitado, sem cobranças.`}
+                ? `A conta ${maskEmail(grandfatherTarget?.email)} voltará ao fluxo normal de cobrança (teste/assinatura).`
+                : `A conta ${maskEmail(grandfatherTarget?.email)} terá acesso gratuito e ilimitado, sem cobranças.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -668,7 +687,7 @@ export default function SuperAdmin() {
           {cancelTarget && (
             <div className="space-y-3">
               <div className="text-xs text-muted-foreground">
-                Conta: <span className="font-medium text-foreground">{cancelTarget.email}</span>
+                Conta: <span className="font-medium text-foreground">{maskEmail(cancelTarget.email)}</span>
               </div>
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-[11px] text-destructive">
                 Esta ação <strong>exclui permanentemente</strong> o usuário do Auth, remove perfil, papéis e dados de cadastro,
@@ -716,7 +735,7 @@ export default function SuperAdmin() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <span className="block">
-                Conta: <span className="font-medium text-foreground">{deleteTarget?.email}</span>
+                Conta: <span className="font-medium text-foreground">{maskEmail(deleteTarget?.email)}</span>
               </span>
               <span className="block">
                 Esta ação <strong>exclui o usuário do Auth, perfil, papéis e cadastros</strong> e

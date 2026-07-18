@@ -106,6 +106,9 @@ export function FinancialDashboard() {
     staleTime: 0,
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
+  });
+
+
 
   // Payment method totals
   const paymentMethodChart = useMemo(() => {

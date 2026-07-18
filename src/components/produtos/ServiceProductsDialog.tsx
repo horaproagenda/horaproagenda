@@ -186,6 +186,15 @@ export function ServiceProductsDialog() {
   const handleAddToService = async () => {
     if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
 
+    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
+      toast.error('Informe uma quantidade por uso maior que zero.');
+      return;
+    }
+    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
+      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+      return;
+    }
+
     const alreadyLinked = selectedServices.filter(serviceId =>
       serviceProducts.some(sp => sp.service_id === serviceId && sp.product_id === selectedProduct)
     );

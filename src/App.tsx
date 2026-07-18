@@ -145,6 +145,7 @@ function HomeRoute() {
 const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
+  useState(() => attachQueryPerfLogging(queryClient));
   useWheelScrollFix();
   useAppUpdater();
   useVersionWatcher();

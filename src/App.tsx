@@ -53,6 +53,7 @@ const Suporte = lazy(lazyWithRetry(() => import("./pages/Suporte")));
 const Assinatura = lazy(lazyWithRetry(() => import("./pages/Assinatura")));
 const AssinaturaSucesso = lazy(lazyWithRetry(() => import("./pages/AssinaturaSucesso")));
 const AssinaturaCancelado = lazy(lazyWithRetry(() => import("./pages/AssinaturaCancelado")));
+const AssinaturaStatus = lazy(lazyWithRetry(() => import("./pages/AssinaturaStatus")));
 const PreencherDocumento = lazy(lazyWithRetry(() => import("./pages/PreencherDocumento")));
 const CadastroCliente = lazy(lazyWithRetry(() => import("./pages/CadastroCliente")));
 const Unsubscribe = lazy(lazyWithRetry(() => import("./pages/Unsubscribe")));
@@ -197,6 +198,7 @@ const App = () => {
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />
                 <Route path="/assinatura" element={<ProtectedRoute><Assinatura /></ProtectedRoute>} />
+                <Route path="/assinatura/status" element={<ProtectedRoute><AssinaturaStatus /></ProtectedRoute>} />
                 <Route path="/assinatura/sucesso" element={<ProtectedRoute><AssinaturaSucesso /></ProtectedRoute>} />
                 <Route path="/assinatura/cancelado" element={<ProtectedRoute><AssinaturaCancelado /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />

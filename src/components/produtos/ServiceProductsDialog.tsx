@@ -997,7 +997,7 @@ export function ServiceProductsDialog() {
                       return (
                         <TableRow key={tp.id}>
                           <TableCell className="py-1.5 text-xs">
-                            <Badge variant="outline" className="bg-accent/80/10 border-accent/30/30 text-accent">
+                            <Badge variant="outline" className="bg-accent/10 border-accent/30 text-accent">
                               <Layers className="h-3 w-3 mr-1" />
                               {tp.template?.name || '-'}
                             </Badge>

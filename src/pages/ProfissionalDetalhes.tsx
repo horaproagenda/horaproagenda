@@ -423,9 +423,9 @@ export default function ProfissionalDetalhes() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      completed: 'bg-primary/80/10 text-primary border-primary/30/20',
-      scheduled: 'bg-accent/80/10 text-accent border-accent/30/20',
-      confirmed: 'bg-accent/80/10 text-accent border-accent/30/20',
+      completed: 'bg-primary/10 text-primary border-primary/20',
+      scheduled: 'bg-accent/10 text-accent border-accent/20',
+      confirmed: 'bg-accent/10 text-accent border-accent/20',
       cancelled: 'bg-red-500/10 text-red-600 border-red-500/20',
       missed: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
     };
@@ -565,7 +565,7 @@ export default function ProfissionalDetalhes() {
                   <User className="h-3.5 w-3.5 hidden sm:block text-accent" />
                   Informações
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+                <TabsTrigger value="performance" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
                   <TrendingUp className="h-3.5 w-3.5 hidden sm:block text-primary" />
                   Desempenho
                 </TabsTrigger>
@@ -573,7 +573,7 @@ export default function ProfissionalDetalhes() {
                   <DollarSign className="h-3.5 w-3.5 hidden sm:block text-primary" />
                   Comissões
                 </TabsTrigger>
-                <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+                <TabsTrigger value="appointments" className="text-xs gap-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
                   <Calendar className="h-3.5 w-3.5 hidden sm:block text-accent" />
                   Histórico
                 </TabsTrigger>
@@ -976,7 +976,7 @@ export default function ProfissionalDetalhes() {
                                     key={perm.key}
                                     className={`flex items-center justify-between p-2 rounded text-sm ${
                                       (permissions as any)[perm.key]
-                                        ? 'bg-primary/80/10 border border-primary/30/20' 
+                                        ? 'bg-primary/10 border border-primary/20' 
                                         : 'bg-muted/30 border border-transparent'
                                     }`}
                                   >

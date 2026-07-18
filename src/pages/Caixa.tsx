@@ -23,7 +23,7 @@ export default function Caixa() {
         <LiveCashTotalsBar />
         <Tabs value={safeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="h-9 bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+            <TabsTrigger value="vendas" className="gap-2 text-xs tracking-wide border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <ShoppingCart className="h-3.5 w-3.5 text-primary" />
               <span className="hidden sm:inline">Nova Venda</span>
             </TabsTrigger>

@@ -34,8 +34,8 @@ export function SalesChart({ salesData, clientsData }: SalesChartProps) {
       <CardContent className="p-3 pt-0">
         <Tabs defaultValue="sales" className="w-full">
           <TabsList className="mb-2 h-7 bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="sales" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">Vendas por Mês</TabsTrigger>
-            <TabsTrigger value="clients" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">Novos Clientes</TabsTrigger>
+            <TabsTrigger value="sales" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">Vendas por Mês</TabsTrigger>
+            <TabsTrigger value="clients" className="text-[11px] h-6 px-2 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novos Clientes</TabsTrigger>
           </TabsList>
 
 

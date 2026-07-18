@@ -230,7 +230,7 @@ export function WhatsappPoolCostPanel() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Card className="p-3 bg-primary/80/5 border-primary/30/20">
+            <Card className="p-3 bg-primary/5 border-primary/20">
               <div className="flex items-center gap-2 text-[11px] uppercase text-muted-foreground mb-1">
                 <Zap className="h-3 w-3" /> Custo mensal cobrado
               </div>
@@ -371,7 +371,7 @@ function StatCard({
 }: { label: string; value: number; hint?: string; variant?: 'default' | 'success' | 'primary' | 'muted' }) {
   const cls = {
     default: 'bg-muted/30',
-    success: 'bg-primary/80/10 border-primary/30/30',
+    success: 'bg-primary/10 border-primary/30',
     primary: 'bg-primary/10 border-primary/30',
     muted: 'bg-muted/40 text-muted-foreground',
   }[variant];

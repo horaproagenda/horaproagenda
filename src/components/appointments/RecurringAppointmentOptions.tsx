@@ -302,7 +302,7 @@ export function RecurringAppointmentOptions({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-6 text-[10px] px-2 bg-primary/80/10 border-primary/30/30 hover:bg-primary/80/20"
+                              className="h-6 text-[10px] px-2 bg-primary/10 border-primary/30 hover:bg-primary/20"
                               onClick={() => updateEditableDate(index, conflictInfo.suggestedDate!)}
                             >
                               <CheckCircle className="h-3 w-3 mr-1 text-primary" />
@@ -320,7 +320,7 @@ export function RecurringAppointmentOptions({
 
           {/* WhatsApp notification toggle */}
           {editableDates.length > 0 && (
-            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
+            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-primary" />
                 <span className="text-xs font-medium">Notificar por WhatsApp</span>

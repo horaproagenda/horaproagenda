@@ -24,7 +24,7 @@ export function SalesOverview({ daily, monthly, yearly, monthlyComparison, today
       <Card className="border-l-4 border-l-emerald-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
           <CardTitle className="text-[11px] font-medium text-primary uppercase tracking-wide">Vendas Hoje</CardTitle>
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/80/10">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
             <DollarSign className="h-3 w-3 text-primary" />
           </div>
         </CardHeader>
@@ -40,7 +40,7 @@ export function SalesOverview({ daily, monthly, yearly, monthlyComparison, today
       <Card className="border-l-4 border-l-sky-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
           <CardTitle className="text-[11px] font-medium text-accent uppercase tracking-wide">Vendas do Mês</CardTitle>
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/80/10">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
             {isPositive ? (
               <TrendingUp className="h-3 w-3 text-accent" />
             ) : (
@@ -60,7 +60,7 @@ export function SalesOverview({ daily, monthly, yearly, monthlyComparison, today
       <Card className="border-l-4 border-l-violet-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
           <CardTitle className="text-[11px] font-medium text-primary uppercase tracking-wide">Vendas do Ano</CardTitle>
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/80/10">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10">
             <BarChart3 className="h-3 w-3 text-primary" />
           </div>
         </CardHeader>

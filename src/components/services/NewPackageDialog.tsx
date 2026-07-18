@@ -309,7 +309,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             <div className={
               packageType === 'sequential'
                 ? 'flex items-start gap-2 rounded-md border border-primary/30 bg-primary/10 p-2.5 text-[11px] leading-relaxed text-primary dark:border-primary/40 dark:bg-primary/15 dark:text-primary-foreground'
-                : 'flex items-start gap-2 rounded-md border border-accent/30 bg-accent/10/60 p-2.5 text-[11px] leading-relaxed text-accent dark:border-accent/30/40 dark:bg-accent/30 dark:text-accent/80'
+                : 'flex items-start gap-2 rounded-md border border-accent/30 bg-accent/60 p-2.5 text-[11px] leading-relaxed text-accent dark:border-accent/40 dark:bg-accent/30 dark:text-accent/80'
             }>
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <p>

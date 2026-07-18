@@ -435,7 +435,7 @@ export function RemindersPanel() {
             Pendentes
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredActiveReminders.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+          <TabsTrigger value="completed" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
             <CheckCircle className="h-3 w-3 text-primary" />
             Concluídos
             <Badge variant="secondary" className="h-4 text-[10px] ml-1">{filteredCompletedReminders.length}</Badge>

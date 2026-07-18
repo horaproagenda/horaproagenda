@@ -55,7 +55,7 @@ export default function Cadastros() {
           <Card className="card-hover border-0 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-primary/80/10">
+                <div className="p-2.5 rounded-lg bg-primary/10">
                   <Wrench className="h-5 w-5 text-primary" />
                 </div>
                 <div>

@@ -12,7 +12,7 @@ import { Check, Users, CreditCard, Loader2, Settings2, Sparkles, MessageCircle }
 
 export function AssinaturaSection() {
   const { user } = useAuth();
-  const { subscription, trialDaysLeft } = useAccountSubscription();
+  const { subscription } = useAccountSubscription();
   const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
   const [billingMonths, setBillingMonths] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);

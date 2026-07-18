@@ -37,9 +37,10 @@ export function useLiveCashTotals(): LiveCashTotals {
   const queryClient = useQueryClient();
   const [tick, setTick] = useState(0);
 
-  // Tick a cada 1 segundo para forçar recomputação dos totais
+  // Tick a cada 5s para atualizar `lastUpdate` — os valores em si já vêm do
+  // cache invalidado pelo Realtime; recomputar a cada 1s só gera re-renders.
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => (t + 1) % 1_000_000), 1000);
+    const id = setInterval(() => setTick((t) => (t + 1) % 1_000_000), 5000);
     return () => clearInterval(id);
   }, []);
 

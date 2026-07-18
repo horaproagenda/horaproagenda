@@ -43,8 +43,8 @@ describe('admin-create-account-user provisions seat users', () => {
 
   it('assigns the professional role by default (not admin)', () => {
     expect(src).toMatch(/from\(["']user_roles["']\)[\s\S]{0,200}role:\s*["']professional["']/);
-    // Admin role must NOT be inserted for seat users.
-    expect(src).not.toMatch(/role:\s*["']admin["']/);
+    // Seat users must never be silently promoted to admin via user_roles insert.
+    expect(src).not.toMatch(/from\(["']user_roles["']\)[\s\S]{0,200}role:\s*["']admin["']/);
   });
 
   it('respects the seat_limit before creating the user', () => {

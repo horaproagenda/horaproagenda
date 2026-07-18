@@ -244,6 +244,15 @@ export function ServiceProductsDialog() {
   const handleAddToTemplate = async () => {
     if (selectedTemplates.length === 0 || !selectedProduct || !selectedProductData) return;
 
+    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
+      toast.error('Informe uma quantidade por uso maior que zero.');
+      return;
+    }
+    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
+      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+      return;
+    }
+
     const alreadyLinked = selectedTemplates.filter(templateId =>
       templateProducts.some(tp => tp.template_id === templateId && tp.product_id === selectedProduct)
     );

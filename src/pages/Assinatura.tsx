@@ -27,19 +27,27 @@ export default function Assinatura() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
       <header className="border-b border-border/60 bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BrandMark className="h-8 w-8" />
-            <span className="font-semibold tracking-tight">Hora Pro</span>
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <BrandMark className="h-8 w-8 shrink-0" />
+            <span className="font-semibold tracking-tight truncate">Hora Pro</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/assinatura/status">
-                <Activity className="h-4 w-4 mr-2" /> Ver status
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="ghost" size="sm" asChild className="px-2 sm:px-3">
+              <Link to="/assinatura/status" aria-label="Ver status da assinatura">
+                <Activity className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Ver status</span>
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4 mr-2" /> Sair
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut()}
+              className="px-2 sm:px-3"
+              aria-label="Sair"
+            >
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sair</span>
             </Button>
           </div>
         </div>

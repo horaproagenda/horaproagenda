@@ -67,6 +67,25 @@ function fmtDate(iso?: string | null) {
   }
 }
 
+/**
+ * Máscara de e-mail para preservar a privacidade dos usuários do aplicativo.
+ * Ex.: "mariaterezacastro2@gmail.com" -> "ma****************@g****.com"
+ * O super-admin nunca deve visualizar dados completos dos cadastros dos profissionais.
+ */
+function maskEmail(email?: string | null): string {
+  if (!email) return '—';
+  const at = email.indexOf('@');
+  if (at < 1) return '***';
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  const tld = dot >= 0 ? domain.slice(dot) : '';
+  const domainHead = dot >= 0 ? domain.slice(0, dot) : domain;
+  const maskedLocal = local.length <= 2 ? local[0] + '*' : local.slice(0, 2) + '*'.repeat(Math.max(1, local.length - 2));
+  const maskedDomain = domainHead.length <= 1 ? domainHead + '****' : domainHead[0] + '****';
+  return `${maskedLocal}@${maskedDomain}${tld}`;
+}
+
 function statusBadge(s: string) {
   const map: Record<string, { label: string; cls: string }> = {
     trial: { label: 'Trial', cls: 'bg-accent/10 text-accent' },

@@ -40,18 +40,18 @@ export function AssinaturaSection() {
   // Ciclo padrão: o de maior economia (anual).
   const [billingMonths, setBillingMonths] = useState<number>(12);
   // Plano padrão: 1 usuário. Fica invariante ao trocar ciclo.
-  const [selectedPriceId, setSelectedPriceId] = useState<string>(PLANS[0].priceId);
+  const [selectedSeats, setSelectedSeats] = useState<number>(PLANS[0].seats);
 
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const currentPriceId = subscription?.stripe_price_id ?? null;
+  const currentSeats = subscription?.seat_limit ?? null;
   const isActive = subscription?.status === "active";
   const isGrandfathered = subscription?.is_grandfathered;
 
   const selectedPlan = useMemo(
-    () => PLANS.find((p) => p.priceId === selectedPriceId) ?? PLANS[0],
-    [selectedPriceId],
+    () => PLANS.find((p) => p.seats === selectedSeats) ?? PLANS[0],
+    [selectedSeats],
   );
 
   // Ciclo com maior desconto → base do destaque "Recomendado".

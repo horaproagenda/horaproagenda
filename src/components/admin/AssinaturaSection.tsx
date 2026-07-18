@@ -365,7 +365,9 @@ interface SubscriptionSummaryProps {
   billingMonths: number;
   isActive: boolean | undefined;
   isLoading: boolean;
+  isPixLoading: boolean;
   onCheckout: () => void;
+  onPixCheckout: () => void;
 }
 
 function SubscriptionSummary({
@@ -373,13 +375,16 @@ function SubscriptionSummary({
   billingMonths,
   isActive,
   isLoading,
+  isPixLoading,
   onCheckout,
+  onPixCheckout,
 }: SubscriptionSummaryProps) {
   const meta = CYCLE_META[billingMonths];
   const planTotal = periodTotal(plan.priceBRL, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
+  const anyLoading = isLoading || isPixLoading;
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-card to-primary/5">
@@ -420,27 +425,53 @@ function SubscriptionSummary({
           </div>
         )}
 
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={onCheckout}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
-            </>
-          ) : (
-            <>
-              <CreditCard className="mr-2 h-4 w-4" />
-              {isActive
-                ? "Trocar de plano"
-                : isMonthly
-                  ? "Assinar agora"
-                  : `Assinar (${meta.short.toLowerCase()})`}
-            </>
-          )}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={onCheckout}
+            disabled={anyLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                {isActive
+                  ? "Trocar de plano (cartão)"
+                  : isMonthly
+                    ? "Assinar com cartão (renovação automática)"
+                    : `Assinar com cartão (${meta.short.toLowerCase()})`}
+              </>
+            )}
+          </Button>
+
+          <Button
+            className="w-full"
+            size="lg"
+            variant="outline"
+            onClick={onPixCheckout}
+            disabled={anyLoading}
+          >
+            {isPixLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando Pix...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Pagar com Pix ({formatBRL(planTotal)})
+              </>
+            )}
+          </Button>
+
+          <p className="text-[11px] text-muted-foreground text-center">
+            Pix: liberação em tempo real após confirmação. Sem renovação automática —
+            você paga novamente ao fim do período.
+          </p>
+        </div>
 
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
           <span className="inline-flex items-center gap-1">

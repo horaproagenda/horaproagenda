@@ -51,6 +51,7 @@ export interface Product {
   unit_price: number;
   total_price: number;
   supplier: string | null;
+  supplier_id?: string | null;
   purchase_date: string | null;
   expiry_date: string | null;
   started_using_at: string | null;

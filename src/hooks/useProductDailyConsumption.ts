@@ -86,15 +86,38 @@ export function useProductDailyConsumption(productId?: string) {
 
   const deleteConsumption = useMutation({
     mutationFn: async (id: string) => {
+      // Busca o registro para devolver a quantidade ao estoque antes de excluir
+      const { data: row, error: fetchErr } = await supabase
+        .from('product_daily_consumption')
+        .select('product_id, quantity_used')
+        .eq('id', id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
       const { error } = await supabase
         .from('product_daily_consumption')
         .delete()
         .eq('id', id);
       if (error) throw error;
+
+      if (row) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('current_stock')
+          .eq('id', row.product_id)
+          .single();
+        if (product) {
+          await supabase
+            .from('products')
+            .update({ current_stock: Number(product.current_stock || 0) + Number(row.quantity_used || 0) })
+            .eq('id', row.product_id);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
-      toast.success('Consumo removido!');
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Consumo removido e estoque restaurado!');
     },
     onError: (error: any) => {
       toast.error('Erro ao remover consumo: ' + error.message);

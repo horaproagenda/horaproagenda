@@ -837,7 +837,7 @@ function AuthInner() {
                   <ScrollArea className="h-56 rounded-md border p-3 text-sm leading-relaxed">
                     <h4 className="font-semibold mb-1">Termos de Serviço</h4>
                     <p className="text-muted-foreground mb-3">
-                      Ao utilizar o Hora Pro você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança após o período de teste gratuito e demais condições descritas integralmente em nossa página oficial.{" "}
+                      Ao utilizar o Hora Pro você concorda com as regras de uso do sistema, responsabilidades sobre dados cadastrados, cobrança da assinatura para liberar o acesso e demais condições descritas integralmente em nossa página oficial.{" "}
                       <Link to="/termos-de-servico" target="_blank" className="text-primary hover:underline">Ler na íntegra</Link>.
                     </p>
 

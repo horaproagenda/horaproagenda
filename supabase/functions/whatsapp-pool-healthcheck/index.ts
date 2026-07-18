@@ -55,9 +55,8 @@ serve(async (req) => {
 
 
     const { data: rows } = await supabase
-      .from('ultramsg_instance_pool')
-      .select('id, instance_id, token, api_url, assigned_professional_id')
-      .eq('status', 'assigned');
+      .rpc('get_ultramsg_pool_assigned');
+
 
     let connected = 0;
     let total = 0;

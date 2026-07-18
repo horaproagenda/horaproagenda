@@ -36,9 +36,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Users, Ban, Trash2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, CalendarPlus, Crown, RefreshCw, Ban, Trash2 } from 'lucide-react';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
-import { Progress } from '@/components/ui/progress';
+
 import { WhatsappPoolCostPanel } from '@/components/super-admin/WhatsappPoolCostPanel';
 import { InterestLeadsPanel } from '@/components/super-admin/InterestLeadsPanel';
 import { WhatsappReleasePanel } from '@/components/super-admin/WhatsappReleasePanel';
@@ -155,53 +155,19 @@ export default function SuperAdmin() {
     staleTime: 15_000,
   });
 
-  // Uso de assentos por conta (atualiza em tempo real)
-  const { data: seatsData, isLoading: seatsLoading } = useQuery({
-    queryKey: ['super-admin-seat-usage'],
-    queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc('list_account_seat_usage_admin');
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        owner_user_id: string;
-        email: string | null;
-        status: string;
-        is_grandfathered: boolean;
-        seat_limit: number;
-        used: number;
-        available: number;
-        current_period_end: string | null;
-        trial_ends_at: string | null;
-      }>;
-    },
-    enabled: !!user && hasRole('super_admin'),
-    staleTime: 10_000,
-  });
-
-  // Realtime: invalida quando profiles ou assinaturas mudam
+  // Realtime: invalida contas quando assinaturas mudam
   useEffect(() => {
     if (!user || !hasRole('super_admin')) return;
     const ch = supabase
-      .channel('super-admin-seat-realtime')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' } as any,
-        () => qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] }))
+      .channel('super-admin-accounts-realtime')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .on('postgres_changes', { event: '*', schema: 'public', table: 'account_subscriptions' } as any,
-        () => {
-          qc.invalidateQueries({ queryKey: ['super-admin-seat-usage'] });
-          qc.invalidateQueries({ queryKey: ['super-admin-accounts'] });
-        })
+        () => qc.invalidateQueries({ queryKey: ['super-admin-accounts'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, hasRole, qc]);
 
-  const seatRows = useMemo(() => {
-    if (!seatsData) return [];
-    const q = search.trim().toLowerCase();
-    if (!q) return seatsData;
-    return seatsData.filter(r => (r.email ?? '').toLowerCase().includes(q));
-  }, [seatsData, search]);
+
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -502,102 +468,6 @@ export default function SuperAdmin() {
           </TooltipProvider>
         </Card>
 
-        <Card className="overflow-x-auto">
-          <div className="flex items-center gap-2 px-3 pt-3">
-            <Users className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">Uso de acessos por conta</h2>
-            <span className="text-[11px] text-muted-foreground">(atualiza em tempo real)</span>
-          </div>
-          <p className="px-3 pb-2 text-[11px] text-muted-foreground">
-            Cada "acesso" corresponde a um profissional cadastrado naquela clínica.
-            O plano contratado define o limite de acessos disponíveis.
-          </p>
-          <TooltipProvider delayDuration={150}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px]">
-                    <HeaderHint label="Conta" hint="E-mail da pessoa responsável pela clínica." />
-                  </TableHead>
-                  <TableHead className="text-[11px]">
-                    <HeaderHint label="Situação" hint="Estado da assinatura: Teste, Ativa, Em atraso, Cancelada ou Vitalícia." />
-                  </TableHead>
-                  <TableHead className="text-[11px]">
-                    <HeaderHint label="Usados" hint="Quantos profissionais já estão cadastrados na conta agora." />
-                  </TableHead>
-                  <TableHead className="text-[11px]">
-                    <HeaderHint label="Limite" hint="Quantos profissionais o plano contratado permite cadastrar no total." />
-                  </TableHead>
-                  <TableHead className="text-[11px]">
-                    <HeaderHint label="Disponíveis" hint="Quantos profissionais ainda podem ser cadastrados antes de atingir o limite do plano." />
-                  </TableHead>
-                  <TableHead className="text-[11px] min-w-[140px]">
-                    <HeaderHint label="Ocupação" hint="Percentual de acessos já utilizados em relação ao limite do plano. Quando chega perto de 100%, a conta precisa contratar mais acessos para continuar cadastrando profissionais." />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {seatsLoading && (
-                  <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Carregando uso de acessos...</TableCell></TableRow>
-                )}
-                {!seatsLoading && seatRows.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhuma conta encontrada</TableCell></TableRow>
-                )}
-                {seatRows.map((r) => {
-                  const pct = r.is_grandfathered ? 0 : (r.seat_limit > 0 ? Math.min(100, Math.round((r.used / r.seat_limit) * 100)) : 0);
-                  const near = !r.is_grandfathered && r.seat_limit > 0 && r.available <= 1 && r.used < r.seat_limit;
-                  const reached = !r.is_grandfathered && r.seat_limit > 0 && r.used >= r.seat_limit;
-                  const cell = (content: React.ReactNode, hint: string, className = '') => (
-                    <TableCell className={`text-xs py-2 ${className}`}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help">{content}</span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-[11px] max-w-[260px]">{hint}</TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  );
-                  return (
-                    <TableRow key={r.owner_user_id}>
-                      {cell(
-                        <div>
-                          <div className="font-medium" title="E-mail mascarado para preservar privacidade">{maskEmail(r.email)}</div>
-                          <div className="text-[10px] text-muted-foreground">{r.owner_user_id.slice(0, 8)}…</div>
-                        </div>,
-                        'Conta da clínica. O código abaixo é o identificador interno do usuário.',
-                      )}
-                      {cell(
-                        <div className="flex items-center gap-1">
-                          {statusBadge(r.status)}
-                          {r.is_grandfathered && <Badge variant="outline" className="text-[10px]"><Crown className="h-3 w-3 mr-1" />Vitalícia</Badge>}
-                        </div>,
-                        'Situação atual da assinatura. "Vitalícia" significa acesso liberado por você, sem cobrança e sem limite.',
-                      )}
-                      {cell(<span className="tabular-nums">{r.used}</span>, 'Profissionais já cadastrados nesta conta no momento.')}
-                      {cell(<span className="tabular-nums">{r.is_grandfathered ? '∞' : r.seat_limit}</span>, 'Limite máximo de profissionais permitido pelo plano contratado. "∞" significa ilimitado.')}
-                      {cell(
-                        <span className="tabular-nums">{r.is_grandfathered ? '∞' : r.available}</span>,
-                        'Acessos restantes antes de atingir o limite do plano.',
-                        reached ? 'text-red-700 font-semibold' : near ? 'text-amber-700 font-semibold' : '',
-                      )}
-                      {cell(
-                        r.is_grandfathered ? (
-                          <span className="text-[11px] text-accent">Ilimitado</span>
-                        ) : r.seat_limit > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <Progress value={pct} className="h-1.5 w-24" />
-                            <span className="text-[10px] tabular-nums w-8 text-right">{pct}%</span>
-                          </div>
-                        ) : <span className="text-[11px] text-muted-foreground">—</span>,
-                        'Quanto do plano já está sendo usado. 100% significa que a conta atingiu o limite e precisa contratar mais acessos para cadastrar novos profissionais.',
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TooltipProvider>
-        </Card>
       </div>
 
 

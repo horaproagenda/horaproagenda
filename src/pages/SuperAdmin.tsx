@@ -666,8 +666,8 @@ export default function SuperAdmin() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {grandfatherTarget?.is_grandfathered
-                ? `A conta ${grandfatherTarget?.email ?? ''} voltará ao fluxo normal de cobrança (teste/assinatura).`
-                : `A conta ${grandfatherTarget?.email ?? ''} terá acesso gratuito e ilimitado, sem cobranças.`}
+                ? `A conta ${maskEmail(grandfatherTarget?.email)} voltará ao fluxo normal de cobrança (teste/assinatura).`
+                : `A conta ${maskEmail(grandfatherTarget?.email)} terá acesso gratuito e ilimitado, sem cobranças.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

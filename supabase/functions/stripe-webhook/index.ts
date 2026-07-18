@@ -120,6 +120,32 @@ serve(async (req) => {
 
   log("Event received", { type: event.type, id: event.id });
 
+  // Idempotência: registra o event.id antes de processar. Se já existir,
+  // o Stripe reenviou o mesmo evento (comum em async_payment_succeeded do Pix)
+  // e devolvemos 200 sem re-executar o handler para evitar dupla liberação.
+  {
+    const { error: dupErr } = await supabase
+      .from('processed_stripe_events')
+      .insert({ event_id: event.id, event_type: event.type });
+    if (dupErr) {
+      // 23505 = unique_violation → já processado
+      // Qualquer outro código: log e prossegue (falha ao registrar não deve travar o webhook,
+      // mas idempotência não fica garantida nesse caso).
+      // deno-lint-ignore no-explicit-any
+      const code = (dupErr as any).code;
+      if (code === '23505') {
+        log('Duplicate event, skipping', { id: event.id, type: event.type });
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      log('Failed to record processed event', { error: dupErr.message, id: event.id });
+    }
+  }
+
+
+
   try {
     switch (event.type) {
       case "customer.subscription.created":

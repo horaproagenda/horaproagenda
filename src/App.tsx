@@ -175,6 +175,7 @@ const App = () => {
                 <Route path="/c/:token" element={<ConfirmarAgendamento />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+                <Route path="/__preview/pricing" element={<PricingPreview />} />
                 <Route path="/conta-inativa" element={<ContaInativa />} />
                 <Route path="/" element={<HomeRoute />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />

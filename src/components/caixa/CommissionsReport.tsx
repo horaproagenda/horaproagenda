@@ -100,19 +100,16 @@ export function CommissionsReport({
       if (error) throw error;
       return data as any[];
     },
-    refetchInterval: 2000,
-    staleTime: 0,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
   });
 
-  // Force commissions to refresh every 1s by invalidating source data
+  // Rede de segurança leve — realtime abaixo já cobre atualizações imediatas.
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['professionals'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
-    }, 1000);
+    }, 30_000);
     return () => clearInterval(id);
   }, [queryClient]);
 

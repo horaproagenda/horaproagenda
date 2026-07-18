@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLANS, PRODUCT_TO_SEATS, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
+import { PLANS, ALLOWED_SEATS, BILLING_PRICE_IDS, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
 
 describe('plans.ts', () => {
   it('exporta exatamente 8 planos com seats crescentes', () => {
@@ -9,19 +9,20 @@ describe('plans.ts', () => {
     expect(seats).toEqual(sorted);
   });
 
-  it('todos os planos têm productId/priceId/preço válidos', () => {
+  it('todos os planos têm seats e preço válidos', () => {
     for (const p of PLANS) {
-      expect(p.productId).toMatch(/^prod_/);
-      expect(p.priceId).toMatch(/^price_/);
       expect(p.priceBRL).toBeGreaterThan(0);
       expect(p.seats).toBeGreaterThan(0);
     }
   });
 
-  it('PRODUCT_TO_SEATS mapeia 1:1 com PLANS', () => {
-    expect(Object.keys(PRODUCT_TO_SEATS)).toHaveLength(PLANS.length);
-    for (const p of PLANS) {
-      expect(PRODUCT_TO_SEATS[p.productId]).toBe(p.seats);
+  it('ALLOWED_SEATS espelha PLANS.seats', () => {
+    expect(ALLOWED_SEATS).toEqual(PLANS.map(p => p.seats));
+  });
+
+  it('BILLING_PRICE_IDS cobre 1, 6 e 12 meses com IDs Stripe válidos', () => {
+    for (const months of [1, 6, 12]) {
+      expect(BILLING_PRICE_IDS[months]).toMatch(/^price_/);
     }
   });
 

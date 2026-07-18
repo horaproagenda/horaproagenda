@@ -157,15 +157,15 @@ export function AssinaturaSection() {
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <Select
-              value={selectedPriceId}
-              onValueChange={(v) => setSelectedPriceId(v)}
+              value={String(selectedSeats)}
+              onValueChange={(v) => setSelectedSeats(Number(v))}
             >
               <SelectTrigger className="w-full sm:w-64">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {PLANS.map((p) => (
-                  <SelectItem key={p.priceId} value={p.priceId}>
+                  <SelectItem key={p.seats} value={String(p.seats)}>
                     <span className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       {p.seats} {p.seats === 1 ? "usuário" : "usuários"}

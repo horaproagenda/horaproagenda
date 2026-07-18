@@ -430,12 +430,15 @@ export default function Produtos() {
 
   const handlePurchaseProductSelect = (productId: string) => {
     const product = products.find(p => p.id === productId);
-    const supplier = activeSuppliers.find(s => s.name === product?.supplier);
+    // Prefere match por supplier_id (estável em renomeações); cai para match por nome.
+    const supplier = product?.supplier_id
+      ? activeSuppliers.find(s => s.id === product.supplier_id)
+      : activeSuppliers.find(s => s.name === product?.supplier);
     setPurchaseForm(prev => ({
       ...prev,
       product_id: productId,
-      supplier: product?.supplier || '',
-      supplier_id: supplier?.id || '',
+      supplier: supplier?.name || product?.supplier || '',
+      supplier_id: supplier?.id || product?.supplier_id || '',
       is_for_sale: product?.is_for_sale || false,
     }));
   };

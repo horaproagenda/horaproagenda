@@ -42,6 +42,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
+import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';

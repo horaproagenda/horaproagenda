@@ -113,22 +113,28 @@ const Configuracoes = () => {
         business_type_label: businessType === 'outro' ? businessTypeLabel : null,
       } as any);
 
+      // Sincroniza nome do profissional na tabela profiles (usado por várias telas).
       if (professionalName && user?.id && professionalName !== profile?.full_name) {
         const { error } = await supabase
           .from('profiles')
           .update({ full_name: professionalName })
           .eq('id', user.id);
-        if (error) throw error;
+        if (error) {
+          toast.error('Configurações salvas, mas houve erro ao sincronizar seu nome: ' + error.message);
+        }
       }
 
-      toast.success('Informações da clínica salvas com sucesso!');
+      // O toast de sucesso já é emitido por useBusinessSettings.updateSettings.onSuccess
+      // — evitamos duplicar aqui. Fechamos a edição e permitimos re-sync do form
+      // com o próximo refetch (setClinicInitialized(false) força re-hidratação).
       setIsEditingClinic(false);
-    } catch (err: any) {
-      if (err?.message && !String(err.message).toLowerCase().includes('configurações')) {
-        toast.error('Erro ao atualizar nome do profissional: ' + err.message);
-      }
+      setClinicInitialized(false);
+    } catch {
+      // Erros já são tratados/toasted pela mutation (onError). Mantemos o modo edição
+      // aberto para o usuário corrigir e tentar novamente.
     }
   };
+
 
   const handleCancelEditClinic = () => {
     // Restaura valores originais do settings

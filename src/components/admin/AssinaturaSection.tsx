@@ -70,7 +70,7 @@ export function AssinaturaSection() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: selectedPriceId, billingMonths },
+        body: { seats: selectedSeats, billingMonths },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");

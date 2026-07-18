@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ForcePasswordChangeGate } from "@/components/auth/ForcePasswordChangeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RequireRole } from "@/components/RequireRole";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
 import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
@@ -190,8 +191,8 @@ const App = () => {
                 <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<Navigate to="/admin" replace />} />
-                <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-                <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><RequireRole role="admin"><AdminPanel /></RequireRole></ProtectedRoute>} />
+                <Route path="/super-admin" element={<ProtectedRoute><RequireRole role="super_admin" requirePlatformOwner><SuperAdmin /></RequireRole></ProtectedRoute>} />
                 <Route path="/usuarios-conta" element={<ProtectedRoute><UsuariosConta /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />

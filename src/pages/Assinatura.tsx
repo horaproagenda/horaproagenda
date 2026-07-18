@@ -53,20 +53,20 @@ export default function Assinatura() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-10 md:py-14 space-y-12">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-8 md:py-14 space-y-10 md:space-y-12">
         {/* Hero */}
         <section className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             Sua clínica, no controle total
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight break-words">
             Escolha o plano ideal e{" "}
             <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               libere seu acesso
             </span>
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             Assinatura por usuário, sem fidelidade. Após a confirmação do pagamento, sua agenda é
             liberada automaticamente e em tempo real.
           </p>

@@ -160,13 +160,13 @@ export function FinancialDashboard() {
   // Compensations in period
   const compensationChart = useMemo(() => {
     if (!data?.finEntries) return [];
-    const received = data.finEntries.filter((e: any) => e.type === 'income' && e.status === 'paid')
+    const received = data.finEntries.filter((e: any) => e.type === 'receivable' && e.status === 'paid')
       .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-    const pendingRec = data.finEntries.filter((e: any) => e.type === 'income' && e.status === 'pending')
+    const pendingRec = data.finEntries.filter((e: any) => e.type === 'receivable' && (e.status === 'pending' || e.status === 'overdue'))
       .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-    const expenses = data.finEntries.filter((e: any) => e.type === 'expense' && e.status === 'paid')
+    const expenses = data.finEntries.filter((e: any) => e.type === 'payable' && e.status === 'paid')
       .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
-    const pendingExp = data.finEntries.filter((e: any) => e.type === 'expense' && e.status === 'pending')
+    const pendingExp = data.finEntries.filter((e: any) => e.type === 'payable' && (e.status === 'pending' || e.status === 'overdue'))
       .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
     return [
       { name: 'Recebido', value: received },

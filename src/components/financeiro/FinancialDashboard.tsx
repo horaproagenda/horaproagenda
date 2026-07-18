@@ -104,9 +104,8 @@ export function FinancialDashboard() {
       return { sales: sales || [], cashTx: cashTx || [], boletos, finEntries };
     },
     staleTime: 0,
-    refetchInterval: 2000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: false,
-  });
 
   // Payment method totals
   const paymentMethodChart = useMemo(() => {

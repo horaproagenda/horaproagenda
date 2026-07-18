@@ -5503,13 +5503,20 @@ export type Database = {
       super_admin_list_pending_whatsapp_releases: {
         Args: never
         Returns: {
+          approved_at: string
           created_at: string
           free_pool_instances: number
+          has_pool_instance: boolean
+          is_approved: boolean
           request_id: string
         }[]
       }
       super_admin_purge_owner_data: {
         Args: { _owner_user_id: string }
+        Returns: Json
+      }
+      super_admin_revoke_whatsapp_release: {
+        Args: { p_request_id: string }
         Returns: Json
       }
       sync_appointments_with_paid_sale: {

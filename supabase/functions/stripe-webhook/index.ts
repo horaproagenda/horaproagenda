@@ -56,7 +56,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
   const item = sub.items.data[0];
   const productId = item?.price?.product as string | undefined;
   const priceId = item?.price?.id ?? null;
-  const seats = productId ? (PRODUCT_TO_SEATS[productId] ?? 0) : 0;
+  const seats = item?.quantity ?? 0;
 
   let status: 'active' | 'past_due' | 'canceled' | 'trial' = 'active';
   if (sub.status === 'active' || sub.status === 'trialing') status = 'active';

@@ -190,8 +190,8 @@ const App = () => {
                 <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<Navigate to="/admin" replace />} />
-                <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-                <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><RequireRole role="admin"><AdminPanel /></RequireRole></ProtectedRoute>} />
+                <Route path="/super-admin" element={<ProtectedRoute><RequireRole role="super_admin" requirePlatformOwner><SuperAdmin /></RequireRole></ProtectedRoute>} />
                 <Route path="/usuarios-conta" element={<ProtectedRoute><UsuariosConta /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />

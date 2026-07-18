@@ -69,7 +69,7 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
 
       const sumInRange = (items: any[] | null, start: Date, end: Date) =>
         (items || []).reduce((sum, it) => {
-          const d = it.paid_at ? parseISO(it.paid_at) : null;
+          const d = it.paid_date ? parseISO(it.paid_date + 'T12:00:00') : null;
           if (!d || d < start || d > end) return sum;
           return sum + Number(it.amount || 0);
         }, 0);

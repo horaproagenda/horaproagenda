@@ -1229,6 +1229,12 @@ export function NewAppointmentDialog({
           let createdCount = 0;
           const failedSessions: number[] = [];
 
+          // Fecha o formulário imediatamente; os agendamentos seguintes são
+          // criados em segundo plano com auto-reagendamento em caso de conflito.
+          onOpenChange(false);
+          toast.info(`Agendando ${editablePreviewDates.length} sessões em segundo plano...`);
+
+
           // Create appointments sequentially to ensure proper conflict detection
           // Each appointment must complete before the next one starts to avoid race conditions
           // Track created appointments in this run to prevent sibling collisions

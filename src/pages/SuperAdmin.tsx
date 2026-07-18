@@ -339,7 +339,7 @@ export default function SuperAdmin() {
 
         <Card className="p-3">
           <Input
-            placeholder="Buscar por e-mail, status ou customer_id..."
+            placeholder="Buscar por e-mail (informado pelo próprio usuário no suporte), status ou customer_id..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md"

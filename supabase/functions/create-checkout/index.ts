@@ -22,9 +22,9 @@ const PLAN_SEATS: Record<string, number> = {
 
 // Stripe price IDs recorrentes por ciclo (produto Hora Pro, valor por 1 usuário).
 const BILLING_PRICE_IDS: Record<number, string> = {
-  1:  'price_1TuHspDgjrAVrKo6SqvNvXCD', // R$ 110,00 / mês
-  6:  'price_1TuHtBDgjrAVrKo6tBrtH47r', // R$ 645,62 / semestre
-  12: 'price_1TuHtUDgjrAVrKo6gUCWH4pH', // R$ 1.276,86 / ano
+  1:  'price_1TuQJ4De4r0IVr2K1NyASpZr', // R$ 110,00 / mês
+  6:  'price_1TuQJKDe4r0IVr2K5i7DjxIv', // R$ 645,62 / semestre
+  12: 'price_1TuQJbDe4r0IVr2KPb15bK80', // R$ 1.276,86 / ano
 };
 
 

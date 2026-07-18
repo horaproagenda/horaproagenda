@@ -117,10 +117,10 @@ export function useDashboardStats(filters: DashboardFilters = {}) {
         let q = supabase
           .from('financial_entries')
           .select('amount')
-          .eq('type', 'income')
+          .eq('type', 'receivable')
           .eq('status', 'paid')
-          .gte('paid_at', start.toISOString())
-          .lte('paid_at', end.toISOString());
+          .gte('paid_date', format(start, 'yyyy-MM-dd'))
+          .lte('paid_date', format(end, 'yyyy-MM-dd'));
         if (professionalId) q = q.eq('professional_id', professionalId);
         const { data: entries } = await q;
 

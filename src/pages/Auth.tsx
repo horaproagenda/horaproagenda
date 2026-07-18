@@ -21,7 +21,7 @@ import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ESTABLISHMENT_TYPES } from '@/lib/establishmentType';
 
-const TERMS_ACCEPT_KEY = 'lume_terms_accepted_v1';
+const TERMS_ACCEPT_KEY = 'horapro_terms_accepted_v1';
 const TERMS_VERSION = 'v1';
 const OTP_RESEND_SECONDS = 60;
 const OTP_MAX_ATTEMPTS = 5;

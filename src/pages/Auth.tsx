@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles, Loader2, Mail, ArrowLeft, KeyRound, CheckCircle2, AlertTriangle, Ban, Clock } from 'lucide-react';
+import { BrandMark } from '@/components/brand/BrandMark';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

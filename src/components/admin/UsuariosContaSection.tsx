@@ -102,7 +102,7 @@ export function UsuariosContaSection() {
                     <div className="flex gap-1 mt-1">
                       {!u.account_owner_id && <Badge variant="secondary" className="text-[10px]">Admin</Badge>}
                       {u.is_active
-                        ? <Badge className="text-[10px] bg-primary/80/20 text-primary dark:text-primary/80">Ativo</Badge>
+                        ? <Badge className="text-[10px] bg-primary/20 text-primary dark:text-primary/80">Ativo</Badge>
                         : <Badge variant="destructive" className="text-[10px]">Inativo</Badge>}
                     </div>
                   </div>

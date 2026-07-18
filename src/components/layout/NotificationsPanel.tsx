@@ -41,7 +41,7 @@ const getSeverityColor = (severity: SystemNotification['severity']) => {
     case 'warning':
       return 'text-amber-600 bg-amber-500/10';
     case 'info':
-      return 'text-accent bg-accent/80/10';
+      return 'text-accent bg-accent/10';
   }
 };
 

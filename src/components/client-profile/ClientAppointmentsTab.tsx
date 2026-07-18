@@ -474,7 +474,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                               if (!s) return null;
                               const tone =
                                 s.tone === 'done'
-                                  ? 'bg-primary/80/10 text-primary border-primary/30/30'
+                                  ? 'bg-primary/10 text-primary border-primary/30'
                                   : s.tone === 'missed'
                                     ? 'bg-red-500/10 text-red-700 border-red-500/30'
                                     : s.tone === 'cancelled'

@@ -394,7 +394,7 @@ export function FormasPagamento() {
           <TabsContent value="boleto" className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button type="button" onClick={() => setBoletoFilter('all')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-blue-500", boletoFilter === 'all' && "bg-muted/50 ring-1 ring-accent/40")}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/80/10">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10">
                   <LayoutList className="h-3.5 w-3.5 text-accent" />
                 </div>
                 <div className="min-w-0">
@@ -423,7 +423,7 @@ export function FormasPagamento() {
                 </div>
               </button>
               <button type="button" onClick={() => setBoletoFilter('paid')} className={cn("flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition hover:bg-muted/50 border-l-2 border-l-emerald-500", boletoFilter === 'paid' && "bg-muted/50 ring-1 ring-primary/40")}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/80/10">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div className="min-w-0">
@@ -475,7 +475,7 @@ export function FormasPagamento() {
             </div>
 
             {/* Info: cancelar vs excluir */}
-            <Alert className="border-accent/30/40 bg-accent/10 dark:bg-accent/20 py-2">
+            <Alert className="border-accent/40 bg-accent/10 dark:bg-accent/20 py-2">
               <Info className="h-3.5 w-3.5 text-accent" />
               <AlertDescription className="text-[11px] text-accent dark:text-accent/80 leading-snug">
                 <strong>Cancelar boleto</strong> <Ban className="inline h-3 w-3 align-text-bottom" />: marca a parcela como <em>cancelada</em>, mantém o registro no histórico de auditoria e <strong>redistribui o valor</strong> entre as parcelas restantes (não apaga). Ideal para boletos que não serão mais cobrados, mas precisam ser rastreáveis.

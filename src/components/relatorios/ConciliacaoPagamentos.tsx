@@ -43,9 +43,9 @@ const KIND_LABEL: Record<DivergenceKind, string> = {
 };
 
 const KIND_BADGE: Record<DivergenceKind, string> = {
-  ok: 'bg-primary/80/15 text-primary border-primary/30/40',
+  ok: 'bg-primary/15 text-primary border-primary/40',
   missing_financial: 'bg-amber-500/15 text-amber-700 border-amber-500/40',
-  missing_cash: 'bg-accent/80/15 text-accent border-accent/30/40',
+  missing_cash: 'bg-accent/15 text-accent border-accent/40',
   missing_appointment_payment: 'bg-red-500/15 text-red-700 border-red-500/40',
   amount_mismatch: 'bg-orange-500/15 text-orange-700 border-orange-500/40',
 };

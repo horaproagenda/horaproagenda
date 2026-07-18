@@ -298,7 +298,7 @@ export function PackageDetailDialog({ pkg, open, onOpenChange, onPackageUpdated,
                 {/* Sessions Management - Only show for client-specific packages */}
                 {pkg.client_id && (
                   <div 
-                    className="rounded-lg bg-accent/80/10 p-4 cursor-pointer hover:bg-accent/80/15 transition-colors"
+                    className="rounded-lg bg-accent/10 p-4 cursor-pointer hover:bg-accent/15 transition-colors"
                     onClick={() => setShowSessionsList(!showSessionsList)}
                   >
                     <div className="flex items-center justify-between">

@@ -356,7 +356,7 @@ const Relatorios = () => {
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10">
-            <AvatarFallback className={`text-xs font-medium ${type === 'professional' ? 'bg-accent/80/10 text-accent' : 'bg-primary/10 text-primary'}`}>
+            <AvatarFallback className={`text-xs font-medium ${type === 'professional' ? 'bg-accent/10 text-accent' : 'bg-primary/10 text-primary'}`}>
               {client.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
             </AvatarFallback>
           </Avatar>
@@ -416,7 +416,7 @@ const Relatorios = () => {
                 <span className="hidden sm:inline">Aniversários</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{aniversariantes.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">
+              <TabsTrigger value="retornos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
                 <RotateCcw className="h-3.5 w-3.5 text-primary" />
                 <span className="hidden sm:inline">Retornos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{retornos.length}</Badge>
@@ -426,7 +426,7 @@ const Relatorios = () => {
                 <span className="hidden sm:inline">Sumidos</span>
                 <Badge variant="secondary" className="ml-1 h-5 text-[10px]">{sumidos.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">
+              <TabsTrigger value="atendimentos" className="gap-1.5 text-xs px-3 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
                 <Users className="h-3.5 w-3.5 text-accent" />
                 <span className="hidden sm:inline">Atendimentos</span>
               </TabsTrigger>

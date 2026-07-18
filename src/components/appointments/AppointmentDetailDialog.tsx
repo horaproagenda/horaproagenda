@@ -1576,7 +1576,7 @@ export function AppointmentDetailDialog({
                     variant="outline"
                     size="sm"
                     onClick={handleSendReminder}
-                    className="h-7 px-2 text-xs gap-1 border-primary/30/40 text-primary hover:bg-primary/10 dark:hover:bg-primary/30"
+                    className="h-7 px-2 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10 dark:hover:bg-primary/30"
                   >
                     <MessageCircle className="h-3.5 w-3.5" />
                     Enviar lembrete no WhatsApp

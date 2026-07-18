@@ -362,7 +362,7 @@ export function AtendimentosPorProfissional() {
             <div className="space-y-4">
               {/* Commission payments history */}
               {selectedProfPaidCommissions.length > 0 && (
-                <Card className="border-primary/30 bg-primary/10/50">
+                <Card className="border-primary/30 bg-primary/50">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm text-primary flex items-center gap-2">
                       <CheckCircle className="h-4 w-4" />

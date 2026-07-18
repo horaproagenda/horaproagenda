@@ -175,7 +175,7 @@ export function MeusCaixas() {
   return (
     <div className="space-y-4">
       {/* Cash Register Status Card */}
-      <Card className={currentOpenRegister ? 'border-primary/30/50 bg-primary/10/50 dark:bg-primary/20' : 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20'}>
+      <Card className={currentOpenRegister ? 'border-primary/50 bg-primary/50 dark:bg-primary/20' : 'border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20'}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

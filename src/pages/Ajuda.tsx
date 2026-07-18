@@ -309,8 +309,8 @@ const Ajuda = () => {
 
               <TabsList className="grid w-full grid-cols-5 h-9 bg-muted/50 p-1 gap-1">
                 <TabsTrigger value="whats-new" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Novidades</TabsTrigger>
-                <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-accent/80/15 data-[state=active]:text-accent data-[state=active]:border-accent/30/40">Módulos</TabsTrigger>
-                <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-primary/80/15 data-[state=active]:text-primary data-[state=active]:border-primary/30/40">Status</TabsTrigger>
+                <TabsTrigger value="modules" className="text-xs border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">Módulos</TabsTrigger>
+                <TabsTrigger value="status" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Status</TabsTrigger>
                 <TabsTrigger value="roles" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Permissões</TabsTrigger>
                 <TabsTrigger value="tips" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">Dicas</TabsTrigger>
               </TabsList>
@@ -340,10 +340,10 @@ const Ajuda = () => {
                     <div className="space-y-1.5 pt-1">
                       {CURRENT_CHANGELOG.changes.map((c, i) => {
                         const styleMap: Record<string, { cls: string; icon: JSX.Element }> = {
-                          'novo':       { cls: 'bg-primary/80/15 text-primary border-primary/30/30', icon: <Sparkles className="h-3 w-3" /> },
-                          'melhoria':   { cls: 'bg-accent/80/15 text-accent border-accent/30/30',             icon: <Wrench className="h-3 w-3" /> },
+                          'novo':       { cls: 'bg-primary/15 text-primary border-primary/30', icon: <Sparkles className="h-3 w-3" /> },
+                          'melhoria':   { cls: 'bg-accent/15 text-accent border-accent/30',             icon: <Wrench className="h-3 w-3" /> },
                           'correção':   { cls: 'bg-amber-500/15 text-amber-700 border-amber-500/30',       icon: <Check className="h-3 w-3" /> },
-                          'segurança':  { cls: 'bg-accent/80/15 text-accent border-accent/30/30',    icon: <ShieldCheck className="h-3 w-3" /> },
+                          'segurança':  { cls: 'bg-accent/15 text-accent border-accent/30',    icon: <ShieldCheck className="h-3 w-3" /> },
                         };
                         const s = styleMap[c.type];
                         return (

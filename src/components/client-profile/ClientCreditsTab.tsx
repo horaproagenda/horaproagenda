@@ -387,7 +387,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-primary/80/5 border-primary/30/20">
+        <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
               <Briefcase className="h-4 w-4 text-primary" />
@@ -573,7 +573,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                       isCancelled ? 'bg-destructive/5 border-destructive/20' :
                       isUsed ? 'bg-muted/30' :
                       isAwaitingSchedule ? 'bg-orange-500/5 border-orange-500/20' :
-                      'bg-primary/80/5 border-primary/30/20'
+                      'bg-primary/5 border-primary/20'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -644,11 +644,11 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
           <div className="space-y-3">
             {/* Mini Stats */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 bg-primary/80/5 rounded-lg text-center">
+              <div className="p-2 bg-primary/5 rounded-lg text-center">
                 <p className="text-lg font-bold text-primary">{completedSessions}</p>
                 <p className="text-[10px] text-muted-foreground">Realizadas</p>
               </div>
-              <div className="p-2 bg-accent/80/5 rounded-lg text-center">
+              <div className="p-2 bg-accent/5 rounded-lg text-center">
                 <p className="text-lg font-bold text-accent">{scheduledSessions}</p>
                 <p className="text-[10px] text-muted-foreground">Agendadas</p>
               </div>
@@ -669,9 +669,9 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
                 const isRestante = session.status === 'pending' && !session.appointment_id;
 
                 const getStatusColor = () => {
-                  if (isCompleted) return 'bg-primary/80/5 border-primary/30/20';
+                  if (isCompleted) return 'bg-primary/5 border-primary/20';
                   if (isCancelled) return 'bg-red-500/5 border-red-500/20';
-                  if (isScheduled) return 'bg-accent/80/5 border-accent/30/20';
+                  if (isScheduled) return 'bg-accent/5 border-accent/20';
                   return 'bg-orange-500/5 border-orange-500/20';
                 };
 

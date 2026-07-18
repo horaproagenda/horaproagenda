@@ -1744,8 +1744,8 @@ Até breve! ✨`;
 
                   {/* Client's paid services - shown first */}
                   {selectedClient && clientPaidServices.length > 0 && (
-                    <div className="border-b border-primary/30/20">
-                      <div className="px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/80/10 flex items-center gap-1">
+                    <div className="border-b border-primary/20">
+                      <div className="px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/10 flex items-center gap-1">
                         <Briefcase className="h-3 w-3" />
                         Serviços Pagos do Cliente
                       </div>
@@ -1764,7 +1764,7 @@ Até breve! ✨`;
                       ).map(({ first: paidService, count, totalPaid }) => (
                           <div
                             key={`client-svc-${paidService.id}`}
-                            className="px-2 py-1.5 hover:bg-primary/80/10 cursor-pointer border-b border-border/50 bg-primary/80/5"
+                            className="px-2 py-1.5 hover:bg-primary/10 cursor-pointer border-b border-border/50 bg-primary/5"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1848,7 +1848,7 @@ Até breve! ✨`;
                               key={`client-pkg-group-${pkg.id}`}
                               className={cn(
                                 "px-2 py-1.5 cursor-pointer border-b border-border/50",
-                                isPaid ? "hover:bg-primary/80/10 bg-primary/80/5" : "hover:bg-primary/5 bg-primary/5"
+                                isPaid ? "hover:bg-primary/10 bg-primary/5" : "hover:bg-primary/5 bg-primary/5"
                               )}
                               onMouseDown={(e) => {
                                 e.preventDefault();
@@ -1946,14 +1946,14 @@ Até breve! ✨`;
                       <>
                         {/* Serviços — AZUL */}
                         {simpleServices.length > 0 && (
-                          <div className="border-b border-accent/30/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
+                          <div className="border-b border-accent/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/10 flex items-center gap-1">
                               <Briefcase className="h-3 w-3" /> Serviços
                             </div>
                             {simpleServices.map(service => (
                               <div
                                 key={`svc-${service.id}`}
-                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-sky-500"
+                                className="px-2 py-1.5 hover:bg-accent/10 cursor-pointer border-b border-border/50 border-l-4 border-l-sky-500"
                                 onMouseDown={pick(service.id, service.name, 'service')}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -1971,14 +1971,14 @@ Até breve! ✨`;
 
                         {/* Kits de Serviços — TEAL */}
                         {kitServices.length > 0 && (
-                          <div className="border-b border-accent/30/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
+                          <div className="border-b border-accent/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/10 flex items-center gap-1">
                               <Package className="h-3 w-3" /> Kits de Serviços
                             </div>
                             {kitServices.map(service => (
                               <div
                                 key={`kit-${service.id}`}
-                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-teal-500"
+                                className="px-2 py-1.5 hover:bg-accent/10 cursor-pointer border-b border-border/50 border-l-4 border-l-teal-500"
                                 onMouseDown={pick(service.id, service.name, 'service')}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -1996,14 +1996,14 @@ Até breve! ✨`;
 
                         {/* Pacotes Comuns — VIOLETA */}
                         {commonPkgs.length > 0 && (
-                          <div className="border-b border-accent/30/20">
-                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/80/10 flex items-center gap-1">
+                          <div className="border-b border-accent/20">
+                            <div className="px-2.5 py-1 text-[11px] font-semibold text-accent bg-accent/10 flex items-center gap-1">
                               <Package className="h-3 w-3" /> Pacotes Comuns
                             </div>
                             {commonPkgs.map(pkg => (
                               <div
                                 key={`pkgc-${pkg.id}`}
-                                className="px-2 py-1.5 hover:bg-accent/80/10 cursor-pointer border-b border-border/50 border-l-4 border-l-violet-500"
+                                className="px-2 py-1.5 hover:bg-accent/10 cursor-pointer border-b border-border/50 border-l-4 border-l-violet-500"
                                 onMouseDown={pick(pkg.id, pkg.name, 'package')}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -2150,7 +2150,7 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/10/40 p-3 dark:border-accent/30/40 dark:bg-accent/20">
+            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/40 p-3 dark:border-accent/40 dark:bg-accent/20">
               <div className="space-y-2">
                 <Label className="text-accent dark:text-accent/80 font-medium">Data *</Label>
                 <DatePickerWithInput
@@ -2274,7 +2274,7 @@ Até breve! ✨`;
                       {repeatServiceEnabled && (
                         <div className="space-y-3 pt-2 border-t">
                           {usingPaidServiceId && paidSiblingCount > 1 && (
-                            <div className="text-[11px] rounded-md bg-primary/80/10 border border-primary/30/30 text-primary px-2 py-1.5">
+                            <div className="text-[11px] rounded-md bg-primary/10 border border-primary/30 text-primary px-2 py-1.5">
                               Este cliente possui <strong>{paidSiblingCount} aplicações pagas</strong> deste serviço. Cada agendamento criado consumirá uma aplicação.
                             </div>
                           )}
@@ -2358,7 +2358,7 @@ Até breve! ✨`;
                           </div>
 
                           {/* WhatsApp notification toggle for recurring services */}
-                          <div className="flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
+                          <div className="flex items-center justify-between p-2 rounded-md bg-primary/10 border border-primary/20">
                             <div className="flex items-center gap-2">
                               <MessageCircle className="h-4 w-4 text-primary" />
                               <div className="flex flex-col">
@@ -2753,7 +2753,7 @@ Até breve! ✨`;
                                               type="button"
                                               variant="outline"
                                               size="sm"
-                                              className="h-6 text-[10px] px-2 bg-primary/80/10 border-primary/30/30 hover:bg-primary/80/20"
+                                              className="h-6 text-[10px] px-2 bg-primary/10 border-primary/30 hover:bg-primary/20"
                                               onClick={() => updateEditableDate(index, conflictInfo.suggestedDate!)}
                                             >
                                               <CheckCircle className="h-3 w-3 mr-1 text-primary" />
@@ -2771,7 +2771,7 @@ Até breve! ✨`;
 
                           {/* WhatsApp notification toggle */}
                           {editablePreviewDates.length > 0 && (
-                            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-primary/80/10 border border-primary/30/20">
+                            <div className="mt-3 flex items-center justify-between p-2 rounded-md bg-primary/10 border border-primary/20">
                               <div className="flex items-center gap-2">
                                 <MessageCircle className="h-4 w-4 text-primary" />
                                 <span className="text-xs font-medium">Notificar por WhatsApp</span>
@@ -2789,7 +2789,7 @@ Até breve! ✨`;
                 </div>
               )}
 
-            <div className="space-y-2 rounded-lg border border-accent/30 bg-accent/10/40 p-3 dark:border-accent/30/40 dark:bg-accent/20">
+            <div className="space-y-2 rounded-lg border border-accent/30 bg-accent/40 p-3 dark:border-accent/40 dark:bg-accent/20">
               <Label className="text-accent dark:text-accent/80 font-medium">Profissional *</Label>
               <SearchableSelect
                 options={activeProfessionals.map(p => ({

@@ -700,7 +700,7 @@ export function PrecificacaoServicos() {
                 {/* Current Price Analysis */}
                 <Card className={cn(
                   "border",
-                  isProfitable ? "border-primary/30/30 bg-primary/10/50 dark:bg-primary/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
+                  isProfitable ? "border-primary/30 bg-primary/50 dark:bg-primary/20" : "border-red-500/30 bg-red-50/50 dark:bg-red-950/20"
                 )}>
                   <CardHeader className="pb-2">
                     <CardTitle className={cn(
@@ -752,7 +752,7 @@ export function PrecificacaoServicos() {
               </div>
 
               {/* Goal Suggestion Panel - How many appointments needed */}
-              <Card className="border-accent/30/30 bg-accent/10/50 dark:bg-accent/20">
+              <Card className="border-accent/30 bg-accent/50 dark:bg-accent/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 text-accent">
                     <BarChart3 className="h-4 w-4" />

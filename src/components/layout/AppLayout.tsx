@@ -46,7 +46,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-background">
+    <div
+      className="overflow-hidden bg-background"
+      style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}
+    >
+
       <Sidebar 
         onNewAppointment={() => {
           setIsNewAppointmentOpen(true);

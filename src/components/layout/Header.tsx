@@ -101,22 +101,16 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Arquivo inválido', description: 'Envie uma imagem.', variant: 'destructive' });
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Imagem muito grande', description: 'Limite de 5MB.', variant: 'destructive' });
+    const validation = validatePhotoFile(file);
+    if (!validation.ok) {
+      toast({ title: 'Arquivo inválido', description: validation.reason, variant: 'destructive' });
       return;
     }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const ext = getSafeExtension(file);
       const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
+      await uploadOriginalPhoto({ bucket: 'avatars', path, file, upsert: true });
 
       const { error: updErr } = await supabase
         .from('profiles')

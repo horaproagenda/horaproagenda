@@ -113,27 +113,19 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
       return;
     }
 
-    // Basic validations to avoid silent failures on mobile
-    if (!file.type.startsWith('image/')) {
-      toast.error('Selecione um arquivo de imagem (JPG, PNG, HEIC ou WebP).');
-      return;
-    }
-    const maxBytes = 15 * 1024 * 1024; // 15MB
-    if (file.size > maxBytes) {
-      toast.error('A foto é muito grande. Use uma imagem de até 15 MB.');
+    // Preserve original resolution/quality — no client-side resize.
+    const validation = validatePhotoFile(file);
+    if (!validation.ok) {
+      toast.error(validation.reason);
       return;
     }
 
     setUploading(true);
     try {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const ext = getSafeExtension(file);
       const path = `${client.id}/avatar-${Date.now()}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('client-photos')
-        .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' });
-
-      if (uploadError) throw uploadError;
+      await uploadOriginalPhoto({ bucket: 'client-photos', path, file, upsert: true });
 
       const parsed = safeParseInfo(client.complementary_info);
       const nextInfo = { ...parsed, avatar_path: path };

@@ -70,7 +70,7 @@ export function WhatsappPoolCostPanel() {
     queryFn: async (): Promise<PoolRow[]> => {
       const { data, error } = await (supabase as any)
         .from('ultramsg_instance_pool')
-        .select('id, instance_id, token, api_url, status, assigned_professional_id, monthly_cost_usd, assigned_at, activated_at, notes')
+        .select('id, instance_id, api_url, status, assigned_professional_id, monthly_cost_usd, assigned_at, activated_at, notes')
         .order('status', { ascending: true });
       if (error) throw error;
       return (data ?? []) as PoolRow[];

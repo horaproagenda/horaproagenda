@@ -62,7 +62,8 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
       <div className={cn(
-        "h-[100dvh] flex flex-col transition-all duration-300 ease-in-out",
+        "h-full flex flex-col transition-all duration-300 ease-in-out",
+
         // Mobile: sem padding (sidebar é drawer). Desktop: respeita largura da sidebar.
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"

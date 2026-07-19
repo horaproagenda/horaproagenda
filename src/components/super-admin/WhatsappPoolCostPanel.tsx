@@ -16,7 +16,10 @@ import {
 interface PoolRow {
   id: string;
   instance_id: string;
-  token: string;
+  // NOTE: `token` (UltraMsg API secret) is intentionally NOT loaded into the
+  // browser. It stays server-side and is only ever handled by SECURITY DEFINER
+  // RPCs / edge functions. Writing a new instance still sends the token up
+  // through Supabase RLS-protected insert, but we never read it back.
   api_url: string | null;
   status: 'free' | 'assigned' | 'disabled';
   assigned_professional_id: string | null;

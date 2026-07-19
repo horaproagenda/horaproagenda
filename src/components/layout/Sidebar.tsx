@@ -64,6 +64,40 @@ interface SidebarProps {
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile, hasRole, user, roles, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
+  const asideRef = useRef<HTMLElement | null>(null);
+  const firstNavItemRef = useRef<HTMLAnchorElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  // Focus management + body scroll lock + Escape-to-close for mobile drawer.
+  useEffect(() => {
+    if (!isMobile) return;
+    if (mobileOpen) {
+      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      // Block background scroll so taps on menu items don't scroll the page.
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      // Move focus into the drawer so screen-readers announce it and the
+      // first tap always lands on a real menu item (not a stale focus target
+      // outside the drawer, which caused taps to be swallowed).
+      requestAnimationFrame(() => {
+        firstNavItemRef.current?.focus({ preventScroll: true });
+      });
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onMobileClose?.();
+        }
+      };
+      document.addEventListener('keydown', onKeyDown);
+      return () => {
+        document.removeEventListener('keydown', onKeyDown);
+        document.body.style.overflow = prevOverflow;
+        // Restore focus to whatever opened the drawer (the header menu button).
+        previouslyFocusedRef.current?.focus?.({ preventScroll: true });
+      };
+    }
+  }, [isMobile, mobileOpen, onMobileClose]);
+
   // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
   // evitando que o primeiro toque abra tooltip em vez de navegar.
   const effectiveCollapsed = isCollapsed && !isMobile;

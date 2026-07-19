@@ -99,20 +99,26 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   const navRef = useRef<HTMLElement | null>(null);
   const SCROLL_KEY = 'sidebar-nav-scroll';
 
-  // Restore scroll synchronously before paint to avoid any visible jump
+  // Restore scroll synchronously before paint to avoid any visible jump.
+  // No mobile o drawer é reaberto do zero — restaurar scroll antigo faz o
+  // usuário tocar em "Agenda/Clientes" achando que está em "Dashboard"
+  // (o item ficou fora da tela). Sempre inicia no topo em mobile.
   useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
+    if (isMobile) {
+      el.scrollTop = 0;
+      return;
+    }
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (saved) {
       const target = parseInt(saved, 10) || 0;
       el.scrollTop = target;
-      // Re-apply on next frame in case nav children mount with delay
       requestAnimationFrame(() => {
         if (el.scrollTop !== target) el.scrollTop = target;
       });
     }
-  }, [location.pathname]);
+  }, [location.pathname, isMobile, mobileOpen]);
 
   const handleNavScroll = () => {
     if (navRef.current) {

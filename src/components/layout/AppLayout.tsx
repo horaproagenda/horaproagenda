@@ -63,7 +63,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <div className="pt-safe flex-shrink-0">
+        <div className="flex-shrink-0">
           <TrialBanner />
           <Header 
             title={title} 

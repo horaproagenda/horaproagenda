@@ -23,21 +23,24 @@ export function useSeatThresholdNotifier() {
     if (!usage.seat_limit || usage.seat_limit <= 0) return;
 
     const { used, seat_limit, available } = usage;
-    const reached = used >= seat_limit;
-    const near = !reached && available <= 1;
+    // Só notifica quando o uso *ultrapassa* o limite (downgrade ou remoção de assentos
+    // pelo Stripe deixou colaboradores acima do plano). Estar exatamente no limite
+    // com o próprio dono (ex.: plano de 1 usuário) é o estado normal e não deve
+    // gerar toast de "faça upgrade".
+    const over = used > seat_limit;
+    // "Quase no limite" só faz sentido para planos com mais de 1 assento.
+    const near = !over && seat_limit > 1 && available === 0;
 
     const fire = (key: string, fn: () => void, sendEmailKind?: 'seats_near_limit' | 'seats_blocked') => {
       const dedupeKey = `${user.id}-${seat_limit}-${used}-${key}`;
       if (firedRef.current.has(dedupeKey)) return;
       firedRef.current.add(dedupeKey);
       fn();
-      // expira em 5min — se mudou e voltou, notifica de novo
       setTimeout(() => firedRef.current.delete(dedupeKey), 300_000);
 
       if (sendEmailKind) {
         const emailKey = `${sendEmailKind}-${user.id}-${seat_limit}-${used}`;
         const last = lastEmailedRef.current[emailKey] ?? 0;
-        // no máximo 1 e-mail do mesmo tipo a cada 24h
         if (Date.now() - last < 24 * 60 * 60 * 1000) return;
         lastEmailedRef.current[emailKey] = Date.now();
         supabase.functions.invoke('send-transactional-email', {
@@ -56,18 +59,18 @@ export function useSeatThresholdNotifier() {
       }
     };
 
-    if (reached) {
-      fire('reached', () =>
-        toast.warning('Limite de usuários atingido', {
-          description: `Você está usando ${used} de ${seat_limit} assentos. Faça upgrade para adicionar mais colaboradores.`,
+    if (over) {
+      fire('over', () =>
+        toast.warning('Assentos acima do plano', {
+          description: `Você tem ${used} usuários ativos, mas seu plano cobre ${seat_limit}. Faça upgrade ou inative colaboradores.`,
           duration: 12000,
         }),
         'seats_near_limit',
       );
     } else if (near) {
       fire('near', () =>
-        toast.info('Quase no limite de usuários', {
-          description: `Restam ${available} assento(s) no seu plano (${used}/${seat_limit}).`,
+        toast.info('Sem assentos disponíveis', {
+          description: `Você usou ${used}/${seat_limit}. Faça upgrade para adicionar mais colaboradores.`,
           duration: 10000,
         }),
         'seats_near_limit',

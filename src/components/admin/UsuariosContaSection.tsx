@@ -151,7 +151,7 @@ export function UsuariosContaSection() {
   );
 }
 
-function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
+export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
   const navigate = useNavigate();
   const usage = useSeatUsage();
   const [email, setEmail] = useState('');

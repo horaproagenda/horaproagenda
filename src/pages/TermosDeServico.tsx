@@ -85,50 +85,50 @@ export default function TermosDeServico() {
                 4. Planos e Pagamentos
               </h2>
               <p>
-                O Hora Pro oferece planos pagos com periodicidade mensal. Os valores e condições estão descritos no momento da contratação. Oferecemos um período de teste gratuito de 7 (sete) dias, durante o qual você pode avaliar o sistema sem custos. Após o término do período de teste, caso não haja cancelamento, será efetuada a cobrança recorrente do plano escolhido.
+                O Hora Pro oferece planos pagos com periodicidade mensal ou pré-pagamentos por períodos maiores (3, 6 ou 12 meses). Os valores e condições estão descritos no momento da contratação. <strong>Não há período de teste gratuito</strong>: o acesso ao aplicativo é liberado exclusivamente após a confirmação do pagamento.
+              </p>
+              <p className="mt-2">
+                Formas de pagamento aceitas: cartão de crédito, cartão de débito, Pix e boleto bancário. Para pagamentos recorrentes (cartão), a renovação é feita automaticamente na data de vencimento. Para Pix e boleto, o acesso é liberado apenas após a compensação e permanece ativo somente pelo período efetivamente pago.
               </p>
             </section>
 
             <section>
               <h2 className="text-base font-semibold text-foreground mb-2">
-                5. Uso Adequado
+                5. Política de Reembolso e Estornos
               </h2>
               <p>
-                O usuário se compromete a utilizar o sistema de forma ética, legal e em conformidade com a legislação brasileira, incluindo a LGPD (Lei Geral de Proteção de Dados). É expressamente proibido:
+                <strong>Não realizamos reembolsos, devoluções ou estornos de valores pagos, sob nenhuma hipótese</strong>, independentemente da forma de pagamento utilizada (cartão de crédito, cartão de débito, Pix, boleto bancário ou qualquer outra). Ao efetuar o pagamento, o usuário declara ciência e concordância com esta política de não devolução.
               </p>
+              <p className="mt-2">Isso inclui:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Utilizar o sistema para atividades ilícitas ou fraudulentas;</li>
-                <li>Tentar acessar dados de outros usuários sem autorização;</li>
-                <li>Enviar spam ou mensagens não solicitadas em massa;</li>
-                <li>Reproduzir, distribuir ou criar trabalhos derivados do sistema sem autorização;</li>
-                <li>Interferir na segurança ou desempenho da plataforma.</li>
+                <li>Cancelamentos no meio do ciclo — não há devolução proporcional;</li>
+                <li>Não utilização do sistema durante o período pago;</li>
+                <li>Pré-pagamentos por múltiplos meses (3, 6 ou 12) — o valor não é devolvido em cancelamento antecipado;</li>
+                <li>Insatisfação com funcionalidades após a contratação.</li>
               </ul>
-            </section>
-
-            <section>
-              <h2 className="text-base font-semibold text-foreground mb-2">
-                6. Disponibilidade e Suporte
-              </h2>
-              <p>
-                Nos esforçamos para manter o sistema disponível 24 horas por dia, 7 dias por semana, mas não garantimos acessibilidade ininterrupta. Manutenções programadas ou emergenciais poderão ocorrer, sendo comunicadas previamente sempre que possível. O suporte técnico é disponibilizado por e-mail ({email}) e chat interno, em horário comercial.
+              <p className="mt-2">
+                A Hora Pro <strong>não inicia, não aceita nem processa</strong> pedidos de estorno por meio da plataforma ou de qualquer canal de atendimento.
               </p>
             </section>
 
             <section>
               <h2 className="text-base font-semibold text-foreground mb-2">
-                7. Propriedade Intelectual
+                6. Chargebacks e Contestações
               </h2>
               <p>
-                Todo o conteúdo, design, marca, código e funcionalidades do Hora Pro são de propriedade exclusiva da Hora Pro ou de seus licenciadores. A contratação do serviço não confere ao usuário qualquer direito sobre a propriedade intelectual do sistema.
+                Caso o usuário abra uma contestação de pagamento (chargeback) junto à operadora do cartão, banco ou provedor Pix/boleto, <strong>o acesso à conta será cancelado automaticamente e em tempo real</strong> assim que a Hora Pro for notificada da abertura da disputa pelo provedor de pagamentos (Stripe).
+              </p>
+              <p className="mt-2">
+                A Hora Pro executa também verificações automáticas periódicas para identificar inconsistências entre pagamentos e acessos ativos. Sempre que for detectada devolução, estorno, chargeback ou pagamento não confirmado, o acesso da conta é imediatamente suspenso, sem aviso prévio. Os dados permanecem armazenados conforme a Política de Privacidade.
               </p>
             </section>
 
             <section>
               <h2 className="text-base font-semibold text-foreground mb-2">
-                8. Cancelamento
+                7. Cancelamento
               </h2>
               <p>
-                O usuário pode cancelar sua assinatura a qualquer momento através da tela de configurações ou solicitando o cancelamento via e-mail. O cancelamento entrará em vigor ao final do período de faturamento em curso. Não realizamos reembolsos proporcionais para cancelamentos no meio do ciclo de faturamento.
+                O usuário pode cancelar sua assinatura a qualquer momento pelas configurações ou por e-mail. O cancelamento interrompe renovações futuras e o acesso permanece ativo até o fim do período já pago. Conforme a seção 5, <strong>não há reembolso proporcional</strong>.
               </p>
             </section>
 

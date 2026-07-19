@@ -237,8 +237,25 @@ serve(async (req) => {
         break;
       }
 
+      // ─────────────────────────────────────────────────────────────
+      // Chargebacks / disputas / estornos → cancelamento AUTOMÁTICO
+      // Política Hora Pro: não emitimos nem aceitamos estornos.
+      // Qualquer sinal de disputa ou refund revoga o acesso em tempo real.
+      // ─────────────────────────────────────────────────────────────
+      case "charge.dispute.created":
+      case "charge.dispute.funds_withdrawn":
+      case "charge.dispute.closed":
+      case "charge.refunded":
+      case "charge.refund.updated":
+      case "refund.created":
+      case "refund.updated": {
+        await revokeAccessForPaymentEvent(event);
+        break;
+      }
+
       default:
         log("Unhandled event", { type: event.type });
+
     }
 
     return new Response(JSON.stringify({ received: true }), {
@@ -360,3 +377,77 @@ async function handlePrepaySession(session: Stripe.Checkout.Session) {
   );
 }
 
+
+/**
+ * Revoga acesso do dono da conta associada a um pagamento contestado/estornado.
+ * Aciona em eventos: charge.dispute.*, charge.refunded, refund.*.
+ * Marca account_subscriptions.status = 'canceled' em tempo real e notifica o dono.
+ */
+async function revokeAccessForPaymentEvent(event: Stripe.Event) {
+  try {
+    // deno-lint-ignore no-explicit-any
+    const obj = event.data.object as any;
+    let customerId: string | null = null;
+    let reason = event.type;
+
+    if (obj?.customer) {
+      customerId = typeof obj.customer === 'string' ? obj.customer : obj.customer?.id ?? null;
+    }
+    // refund → tem charge, precisa buscar
+    if (!customerId && obj?.charge) {
+      const chargeId = typeof obj.charge === 'string' ? obj.charge : obj.charge?.id;
+      if (chargeId) {
+        const ch = await stripe.charges.retrieve(chargeId);
+        customerId = typeof ch.customer === 'string' ? ch.customer : ch.customer?.id ?? null;
+      }
+    }
+    // dispute → payment_intent
+    if (!customerId && obj?.payment_intent) {
+      const piId = typeof obj.payment_intent === 'string' ? obj.payment_intent : obj.payment_intent?.id;
+      if (piId) {
+        const pi = await stripe.paymentIntents.retrieve(piId);
+        customerId = typeof pi.customer === 'string' ? pi.customer : pi.customer?.id ?? null;
+      }
+    }
+
+    if (!customerId) {
+      log('revokeAccess: customer not found', { type: event.type, id: event.id });
+      return;
+    }
+    const ownerId = await findOwnerByCustomer(customerId);
+    if (!ownerId) {
+      log('revokeAccess: owner not found', { customerId });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('account_subscriptions')
+      .update({
+        status: 'canceled',
+        current_period_end: new Date().toISOString(),
+      })
+      .eq('owner_user_id', ownerId);
+
+    if (error) {
+      log('revokeAccess update failed', { error: error.message, ownerId });
+      return;
+    }
+    log('Access revoked (chargeback/refund)', { ownerId, reason, eventId: event.id });
+
+    await supabase.from('audit_log').insert({
+      action: 'access_revoked_payment_dispute',
+      table_name: 'account_subscriptions',
+      record_id: ownerId,
+      new_data: { reason, stripe_event_id: event.id, customer_id: customerId },
+    }).then(({ error: e }) => { if (e) log('audit insert failed', { e: e.message }); });
+
+    await sendAccountEmail(
+      ownerId,
+      'payment_failed',
+      { reason: 'Contestação/estorno detectado. Acesso suspenso conforme Termos de Serviço (seções 5 e 6).' },
+      `stripe-revoke-${event.id}`,
+    );
+  } catch (e) {
+    log('revokeAccess threw', { e: e instanceof Error ? e.message : String(e) });
+  }
+}

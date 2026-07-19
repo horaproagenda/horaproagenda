@@ -298,10 +298,28 @@ export default function SuperAdmin() {
             <ShieldCheck className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">Super Admin · Plataforma</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const t = (await import('sonner')).toast;
+                const id = t.loading('Varrendo pagamentos no Stripe...');
+                const { data, error } = await supabase.functions.invoke('payment-integrity-scan', { body: {} });
+                if (error) t.error(`Falha na varredura: ${error.message}`, { id });
+                else t.success(`Varredura: ${data?.scanned ?? 0} contas · ${data?.revoked ?? 0} revogadas`, { id });
+              }}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" /> Varrer pagamentos
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Atualizar
+            </Button>
+          </div>
         </div>
+
+
+
 
         <Card className="p-3">
           <Input

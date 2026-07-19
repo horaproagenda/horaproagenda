@@ -85,7 +85,7 @@ describe('Sidebar route mapping (mobile)', () => {
     }
   });
 
-  it.each(EXPECTED_ROUTES)('mobile tap navigates to %s', (href) => {
+  it.each(EXPECTED_ROUTES)('mobile tap navigates to %s', async (href) => {
     let currentPath = '/agenda';
     const capture = (p: string) => { currentPath = p; };
     const onClose = vi.fn();
@@ -94,9 +94,11 @@ describe('Sidebar route mapping (mobile)', () => {
     const link = screen.getByTestId(`sidebar-link-${href}`);
     fireEvent.click(link);
     expect(currentPath).toBe(href);
-    // Drawer must close after navigation on mobile.
+    // handleNavClick schedules onMobileClose via setTimeout(0).
+    await new Promise((r) => setTimeout(r, 0));
     expect(onClose).toHaveBeenCalled();
   });
+
 
   it('renders as aria-modal dialog when mobile drawer is open', () => {
     renderSidebar('/', vi.fn());

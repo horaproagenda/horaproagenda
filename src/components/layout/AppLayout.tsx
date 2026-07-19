@@ -45,6 +45,24 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     setIsMobileSidebarOpen(false);
   }, [location.pathname]);
 
+  // Recalcula alturas dinâmicas em rotação (iOS Safari nem sempre dispara resize).
+  useEffect(() => {
+    const onOrient = () => {
+      // Força reflow: lê layout depois de um tick para dvh/env() reavaliar.
+      requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--app-vh', `${window.innerHeight}px`);
+      });
+    };
+    onOrient();
+    window.addEventListener('orientationchange', onOrient);
+    window.addEventListener('resize', onOrient);
+    return () => {
+      window.removeEventListener('orientationchange', onOrient);
+      window.removeEventListener('resize', onOrient);
+    };
+  }, []);
+
+
   return (
     <div
       className="overflow-hidden bg-background"

@@ -9,7 +9,7 @@ import { test, expect, devices } from '@playwright/test';
  * sidebar only renders behind ProtectedRoute.
  */
 const MOBILE_ROUTES = [
-  '/', '/agenda', '/clientes', '/servicos', '/cadastros', '/caixa',
+  '/dashboard', '/agenda', '/clientes', '/servicos', '/cadastros', '/caixa',
   '/financeiro', '/produtos', '/lembretes', '/documentos', '/relatorios',
   '/configuracoes', '/ajuda', '/suporte',
 ];
@@ -47,7 +47,7 @@ for (const deviceName of ['iPhone 14 Pro', 'Pixel 7']) {
         const link = page.getByTestId(`sidebar-link-${href}`);
         await expect(link).toBeVisible();
         await link.tap();
-        await page.waitForURL(`**${href === '/' ? '/' : href}`);
+        await page.waitForURL(`**${href}`);
         // Drawer should close and body scroll should be unlocked.
         await expect(page.locator('aside[role="dialog"]')).toHaveAttribute('aria-hidden', 'true');
       });

@@ -11,11 +11,11 @@ import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
-import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
+import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance, getDateOnly, isDateOnlyWithinRange } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Input } from '@/components/ui/input';
@@ -78,9 +78,9 @@ export function RelatorioConsolidado() {
         return { start: startOfQuarter(today), end: endOfQuarter(today) };
       case 'custom':
         const customParsed = parseISO(customDate);
-        return { start: customParsed, end: customParsed };
+        return { start: startOfDay(customParsed), end: endOfDay(customParsed) };
       default: // today
-        return { start: today, end: today };
+        return { start: startOfDay(today), end: endOfDay(today) };
     }
   }, [periodFilter, customDate]);
 
@@ -98,7 +98,7 @@ export function RelatorioConsolidado() {
     const cashAppointmentIds = new Set<string>();
     const cashSaleIds = new Set<string>();
     const makeKey = (date: string, amount: number, method: string | null | undefined) => {
-      const day = (date || '').slice(0, 10);
+      const day = getDateOnly(date) || '';
       const amt = Math.round(Number(amount || 0) * 100);
       const m = (method || '').toLowerCase().trim();
       return `${day}|${amt}|${m}`;
@@ -115,7 +115,7 @@ export function RelatorioConsolidado() {
       }
       result.push({
         id: `cash-${tx.id}`,
-        date: tx.created_at.split('T')[0],
+        date: tx.created_at,
         description: tx.description || tx.category,
         type: tx.type as 'income' | 'expense',
         amount: Number(tx.amount),
@@ -166,7 +166,7 @@ export function RelatorioConsolidado() {
     creditTransactions.forEach((tx: any) => {
       result.push({
         id: `credit-${tx.id}`,
-        date: tx.created_at.split('T')[0],
+        date: tx.created_at,
         description: tx.description || 'Crédito ao cliente',
         type: 'non_cash' as const,
         amount: Number(tx.amount || 0),
@@ -181,8 +181,7 @@ export function RelatorioConsolidado() {
 
   // Apply filters
   const filteredData = useMemo(() => consolidatedData.filter((entry) => {
-    const entryDate = parseISO(entry.date);
-    const inRange = isWithinInterval(entryDate, { start: dateRange.start, end: dateRange.end });
+    const inRange = isDateOnlyWithinRange(entry.date, dateRange.start, dateRange.end);
     if (!inRange) return false;
     if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
     if (typeFilter !== 'all' && entry.type !== typeFilter) return false;
@@ -212,7 +211,7 @@ export function RelatorioConsolidado() {
   };
 
   const reportExportRows = filteredData.map(entry => [
-    format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
+    format(new Date(`${getDateOnly(entry.date) || entry.date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR }),
     entry.description,
     entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro',
     entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída',
@@ -469,7 +468,7 @@ export function RelatorioConsolidado() {
                   filteredData.slice(0, 50).map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="py-1.5 text-xs whitespace-nowrap">
-                        {format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(new Date(`${getDateOnly(entry.date) || entry.date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
                       <TableCell className="py-1.5 text-xs max-w-[260px] truncate">
                         {entry.description}

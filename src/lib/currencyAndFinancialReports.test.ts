@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatCurrency, parseBrazilianCurrencyToCents } from './utils';
-import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from './financialReports';
+import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance, getDateOnly, isDateOnlyWithinRange } from './financialReports';
 
 describe('BRL currency normalization and financial balances', () => {
   it('converte máscara BRL 1.234,56 para centavos antes de salvar', () => {
@@ -33,5 +33,18 @@ describe('BRL currency normalization and financial balances', () => {
       { status: 'closed', opening_balance: '999', total_received: '999' },
       { status: 'open', opening_balance: 10, total_received: 5.5 },
     ])).toBeCloseTo(366.5);
+  });
+
+  it('filtra movimentações do dia pelo calendário, sem perder datas em ISO ou date-only', () => {
+    const start = new Date('2026-06-30T00:00:00');
+    const end = new Date('2026-06-30T23:59:59');
+
+    expect(getDateOnly('2026-06-30')).toBe('2026-06-30');
+    expect(getDateOnly('2026-06-30T23:30:00.000Z')).toBe('2026-06-30');
+    expect(getDateOnly('2026-07-01T00:30:00.000Z')).toBe('2026-06-30');
+    expect(isDateOnlyWithinRange('2026-06-30', start, end)).toBe(true);
+    expect(isDateOnlyWithinRange('2026-06-30T23:30:00.000Z', start, end)).toBe(true);
+    expect(isDateOnlyWithinRange('2026-07-01T00:30:00.000Z', start, end)).toBe(true);
+    expect(isDateOnlyWithinRange('2026-07-01T03:30:00.000Z', start, end)).toBe(false);
   });
 });

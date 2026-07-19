@@ -17,7 +17,17 @@ export function DoubleScroll({ children }: PropsWithChildren) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [innerWidth, setInnerWidth] = useState(0);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const syncing = useRef<'top' | 'bottom' | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia?.('(pointer: coarse)');
+    if (!media) return;
+    const updatePointer = () => setIsCoarsePointer(media.matches);
+    updatePointer();
+    media.addEventListener('change', updatePointer);
+    return () => media.removeEventListener('change', updatePointer);
+  }, []);
 
   // Atualiza a largura da barra superior conforme o conteúdo
   useEffect(() => {
@@ -47,19 +57,21 @@ export function DoubleScroll({ children }: PropsWithChildren) {
   return (
     <div className="relative">
       {/* Barra de rolagem superior (espelha a inferior) */}
-      <div
-        ref={topRef}
-        onScroll={onScroll('top')}
-        className="overflow-x-auto overflow-y-hidden h-3 mb-1"
-        aria-hidden="true"
-      >
-        <div style={{ width: innerWidth, height: 1 }} />
-      </div>
+      {!isCoarsePointer && (
+        <div
+          ref={topRef}
+          onScroll={onScroll('top')}
+          className="overflow-x-auto overflow-y-hidden h-3 mb-1"
+          aria-hidden="true"
+        >
+          <div style={{ width: innerWidth, height: 1 }} />
+        </div>
+      )}
 
       {/* Conteúdo real com scroll inferior */}
       <div
         ref={bottomRef}
-        onScroll={onScroll('bottom')}
+        onScroll={isCoarsePointer ? undefined : onScroll('bottom')}
         className="overflow-x-auto"
       >
         <div ref={innerRef} className="inline-block min-w-full align-top">

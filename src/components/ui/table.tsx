@@ -9,9 +9,19 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
     const tableRef = React.useRef<HTMLTableElement>(null);
     const [scrollWidth, setScrollWidth] = React.useState(0);
     const [hasOverflow, setHasOverflow] = React.useState(false);
+    const [isCoarsePointer, setIsCoarsePointer] = React.useState(false);
     const syncing = React.useRef<"top" | "bottom" | null>(null);
 
     React.useImperativeHandle(ref, () => tableRef.current as HTMLTableElement);
+
+    React.useEffect(() => {
+      const media = window.matchMedia?.("(pointer: coarse)");
+      if (!media) return;
+      const updatePointer = () => setIsCoarsePointer(media.matches);
+      updatePointer();
+      media.addEventListener("change", updatePointer);
+      return () => media.removeEventListener("change", updatePointer);
+    }, []);
 
     React.useEffect(() => {
       const table = tableRef.current;
@@ -44,10 +54,11 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
 
     return (
       <div className="relative w-full">
-        {hasOverflow && (
+        {hasOverflow && !isCoarsePointer && (
           <div
             ref={topScrollRef}
             onScroll={onScroll("top")}
+            data-testid="table-top-scroll"
             className="overflow-x-auto overflow-y-hidden h-2.5 mb-1 scrollbar-visible"
             aria-hidden="true"
           >
@@ -56,7 +67,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         )}
         <div
           ref={bottomScrollRef}
-          onScroll={onScroll("bottom")}
+          onScroll={isCoarsePointer ? undefined : onScroll("bottom")}
           className="relative w-full overflow-auto scrollbar-visible"
           style={{ touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
         >

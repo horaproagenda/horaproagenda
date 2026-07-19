@@ -34,7 +34,7 @@ import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agenda', href: '/agenda', icon: Calendar },
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Serviços', href: '/servicos', icon: Sparkles },
@@ -100,7 +100,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
 
   // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
   // evitando que o primeiro toque abra tooltip em vez de navegar.
-  const effectiveCollapsed = isCollapsed && !isMobile;
+  const effectiveCollapsed = isCollapsed && !isMobile && !mobileOpen;
   const isPlatformOwner = isSuperAdminEmail(user?.email);
   const visibleNavigation = navigation.filter(item => {
     // Aguarda o carregamento das roles para evitar esconder itens de admin
@@ -140,8 +140,11 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   useLayoutEffect(() => {
     const el = navRef.current;
     if (!el) return;
-    if (isMobile) {
+    if (isMobile || mobileOpen) {
       el.scrollTop = 0;
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = 0;
+      });
       return;
     }
     const saved = sessionStorage.getItem(SCROLL_KEY);
@@ -155,7 +158,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   }, [location.pathname, isMobile, mobileOpen]);
 
   const handleNavScroll = () => {
-    if (navRef.current) {
+    if (navRef.current && !isMobile && !mobileOpen) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
   };
@@ -288,7 +291,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   <TooltipTrigger asChild>
                     <NavLink
                       to={item.href}
-                      end={item.href === '/'}
+                      end
                       onClick={handleNavClick}
                       {...prefetchHandlers(item.href)}
                       className={({ isActive }) =>
@@ -311,7 +314,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 <NavLink
                   key={item.name}
                   to={item.href}
-                  end={item.href === '/'}
+                  end
                   onClick={handleNavClick}
                   ref={index === 0 ? firstNavItemRef : undefined}
                   data-testid={`sidebar-link-${item.href}`}

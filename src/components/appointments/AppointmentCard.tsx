@@ -30,6 +30,7 @@ import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/app
 import { getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { formatTimeInTimeZone } from '@/lib/timezone';
+import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -108,7 +109,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-xs font-medium text-foreground/80">{timeStr}</p>
-          <p className="text-[10px] text-muted-foreground/60">{appointment.service?.duration}min</p>
+          <p className="text-[10px] text-muted-foreground/60">{getAppointmentDisplayDurationMinutes(appointment as any)}min</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -220,7 +221,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             <span className="font-medium">{timeStr}</span>
-            <span className="text-[10px]">({appointment.service?.duration}min)</span>
+            <span className="text-[10px]">({getAppointmentDisplayDurationMinutes(appointment as any)}min)</span>
           </div>
           {professional && (
             <div className="flex items-center gap-1">

@@ -74,7 +74,7 @@ import {
 import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDurationClock, addMinutesToClock } from '@/lib/duration';
+import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -864,10 +864,21 @@ export function AppointmentDetailDialog({
 
   const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;
 
-  const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
-    if (!editDate || !startValue || serviceDuration <= 0) return;
-    // Usa aritmética de relógio de parede (HH:mm) para evitar deslocamento por fuso horário.
-    const nextEnd = addMinutesToClock(startValue, serviceDuration);
+  const recalculateEndTime = (startValue: string, serviceDuration?: number) => {
+    if (!editDate || !startValue) return;
+    // Sanitiza a duração: quando o serviço tem duração "agregada" (ex.: 760min
+    // do pacote inteiro salva no serviço-kit), cai para a duração de um
+    // componente real; assim o término não pula para 19:40 ao editar 07:00.
+    const rawDuration = typeof serviceDuration === 'number' && serviceDuration > 0
+      ? serviceDuration
+      : Number(selectedEditService?.duration) || 0;
+    const safeDuration = getSchedulingDurationMinutes(
+      selectedEditService as any,
+      activeServices as any,
+      rawDuration > 0 ? rawDuration : 60,
+    );
+    if (safeDuration <= 0) return;
+    const nextEnd = addMinutesToClock(startValue, safeDuration);
     if (nextEnd) setEditEndTime(nextEnd);
   };
 
@@ -1777,16 +1788,22 @@ export function AppointmentDetailDialog({
                     || (isPackageAppointment ? 'Sessão de Pacote' : 'Serviço');
                   const displayCategory = appointment.service?.category
                     || (isPackageAppointment ? 'Pacote' : '');
-                  // Duração: prioriza service.duration; se ausente/zero, calcula a partir
-                  // de start/end (verdadeira fonte da verdade do horário do atendimento).
+                  // Duração: SEMPRE prioriza (end - start) — fonte da verdade
+                  // do horário reservado. `service.duration` pode ser um valor
+                  // agregado errado (ex.: 760 min do pacote inteiro salvo no
+                  // serviço-kit), o que renderizaria "(12:40)" ao lado do
+                  // intervalo real "07:00 - 08:00" e confundiria o usuário.
                   const startMs = new Date(appointment.start_time).getTime();
                   const endMs = new Date(appointment.end_time).getTime();
                   const computedMinutes = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
                     ? Math.round((endMs - startMs) / 60000)
                     : 0;
-                  const durationMinutes = Number(appointment.service?.duration) > 0
-                    ? Number(appointment.service?.duration)
-                    : computedMinutes;
+                  const rawServiceDuration = Number(appointment.service?.duration);
+                  const durationMinutes = computedMinutes > 0
+                    ? computedMinutes
+                    : (Number.isFinite(rawServiceDuration) && rawServiceDuration > 0 && rawServiceDuration <= 8 * 60
+                      ? rawServiceDuration
+                      : 0);
                   return (
                     <>
                       <div className="flex items-center gap-3">

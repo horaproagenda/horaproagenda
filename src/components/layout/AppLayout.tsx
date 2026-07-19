@@ -45,10 +45,33 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     setIsMobileSidebarOpen(false);
   }, [location.pathname]);
 
+  // Recalcula alturas dinâmicas em rotação (iOS Safari nem sempre dispara resize).
+  useEffect(() => {
+    const onOrient = () => {
+      // Força reflow: lê layout depois de um tick para dvh/env() reavaliar.
+      requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--app-vh', `${window.innerHeight}px`);
+      });
+    };
+    onOrient();
+    window.addEventListener('orientationchange', onOrient);
+    window.addEventListener('resize', onOrient);
+    return () => {
+      window.removeEventListener('orientationchange', onOrient);
+      window.removeEventListener('resize', onOrient);
+    };
+  }, []);
+
+
   return (
     <div
       className="overflow-hidden bg-background"
-      style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}
+      style={{
+        // svh evita "salto" quando a barra de URL do Safari mobile aparece/some;
+        // dvh atualiza em tempo real. env() protege da status bar / notch.
+        height: 'calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+        maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+      }}
     >
 
       <Sidebar 
@@ -76,7 +99,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             onMenuClick={() => setIsMobileSidebarOpen(true)}
           />
         </div>
-        <main data-testid="app-main-scroll" className="flex-1 min-h-0 px-4 py-3 sm:p-4 md:p-6 pb-4 md:pb-6 pb-safe pl-safe pr-safe overflow-y-auto overflow-x-hidden">
+        <main data-testid="app-main-scroll" className="flex-1 min-h-0 px-4 py-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

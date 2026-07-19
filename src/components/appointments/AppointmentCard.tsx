@@ -108,7 +108,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-xs font-medium text-foreground/80">{timeStr}</p>
-          <p className="text-[10px] text-muted-foreground/60">{appointment.service?.duration}min</p>
+          <p className="text-[10px] text-muted-foreground/60">{getAppointmentDisplayDurationMinutes(appointment as any)}min</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

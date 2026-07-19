@@ -206,7 +206,15 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           aria-hidden
         />
       )}
-      <aside 
+      <aside
+        ref={asideRef}
+        role={isMobile ? 'dialog' : undefined}
+        aria-modal={isMobile && mobileOpen ? true : undefined}
+        aria-label={isMobile ? 'Menu principal' : undefined}
+        aria-hidden={isMobile && !mobileOpen ? true : undefined}
+        // Bloqueia interação/tab-focus quando fechado no mobile — evita que um
+        // toque logo após o fechamento caia num item invisível fora da tela.
+        {...(isMobile && !mobileOpen ? { inert: '' as unknown as boolean } : {})}
         className={cn(
           // Safe-area: respeita notch/status bar/home indicator (iOS) e display cutout (Android).
           // Sem isto, em PWA o menu mobile cobre o relógio/bateria do sistema.
@@ -217,6 +225,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
+
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className={cn(

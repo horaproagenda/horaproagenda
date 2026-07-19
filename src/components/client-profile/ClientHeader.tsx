@@ -116,7 +116,7 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
 
     // Preserve original resolution/quality — no client-side resize.
     const validation = validatePhotoFile(file);
-    if (!validation.ok) {
+    if (validation.ok === false) {
       toast.error(validation.reason);
       return;
     }

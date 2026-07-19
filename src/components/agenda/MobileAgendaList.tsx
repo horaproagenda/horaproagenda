@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MobileViewType } from './MobileAgendaHeader';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
+import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];

@@ -247,8 +247,10 @@ export function AssinaturaSection() {
         isActive={isActive}
         isLoading={isLoading}
         isPixLoading={isPixLoading}
+        isBoletoLoading={isBoletoLoading}
         onCheckout={handleCheckout}
         onPixCheckout={handlePixCheckout}
+        onBoletoCheckout={handleBoletoCheckout}
       />
     </div>
   );

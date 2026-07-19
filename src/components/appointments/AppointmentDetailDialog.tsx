@@ -864,10 +864,21 @@ export function AppointmentDetailDialog({
 
   const selectedEditService = activeServices.find((service) => service.id === editServiceId) || appointment.service;
 
-  const recalculateEndTime = (startValue: string, serviceDuration = selectedEditService?.duration || 0) => {
-    if (!editDate || !startValue || serviceDuration <= 0) return;
-    // Usa aritmética de relógio de parede (HH:mm) para evitar deslocamento por fuso horário.
-    const nextEnd = addMinutesToClock(startValue, serviceDuration);
+  const recalculateEndTime = (startValue: string, serviceDuration?: number) => {
+    if (!editDate || !startValue) return;
+    // Sanitiza a duração: quando o serviço tem duração "agregada" (ex.: 760min
+    // do pacote inteiro salva no serviço-kit), cai para a duração de um
+    // componente real; assim o término não pula para 19:40 ao editar 07:00.
+    const rawDuration = typeof serviceDuration === 'number' && serviceDuration > 0
+      ? serviceDuration
+      : Number(selectedEditService?.duration) || 0;
+    const safeDuration = getSchedulingDurationMinutes(
+      selectedEditService as any,
+      activeServices as any,
+      rawDuration > 0 ? rawDuration : 60,
+    );
+    if (safeDuration <= 0) return;
+    const nextEnd = addMinutesToClock(startValue, safeDuration);
     if (nextEnd) setEditEndTime(nextEnd);
   };
 

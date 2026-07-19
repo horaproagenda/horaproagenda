@@ -11,7 +11,7 @@ import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -78,9 +78,9 @@ export function RelatorioConsolidado() {
         return { start: startOfQuarter(today), end: endOfQuarter(today) };
       case 'custom':
         const customParsed = parseISO(customDate);
-        return { start: customParsed, end: customParsed };
+        return { start: startOfDay(customParsed), end: endOfDay(customParsed) };
       default: // today
-        return { start: today, end: today };
+        return { start: startOfDay(today), end: endOfDay(today) };
     }
   }, [periodFilter, customDate]);
 
@@ -98,7 +98,7 @@ export function RelatorioConsolidado() {
     const cashAppointmentIds = new Set<string>();
     const cashSaleIds = new Set<string>();
     const makeKey = (date: string, amount: number, method: string | null | undefined) => {
-      const day = (date || '').slice(0, 10);
+      const day = (date || '').includes('T') ? format(parseISO(date), 'yyyy-MM-dd') : (date || '').slice(0, 10);
       const amt = Math.round(Number(amount || 0) * 100);
       const m = (method || '').toLowerCase().trim();
       return `${day}|${amt}|${m}`;
@@ -115,7 +115,7 @@ export function RelatorioConsolidado() {
       }
       result.push({
         id: `cash-${tx.id}`,
-        date: tx.created_at.split('T')[0],
+        date: tx.created_at,
         description: tx.description || tx.category,
         type: tx.type as 'income' | 'expense',
         amount: Number(tx.amount),
@@ -166,7 +166,7 @@ export function RelatorioConsolidado() {
     creditTransactions.forEach((tx: any) => {
       result.push({
         id: `credit-${tx.id}`,
-        date: tx.created_at.split('T')[0],
+        date: tx.created_at,
         description: tx.description || 'Crédito ao cliente',
         type: 'non_cash' as const,
         amount: Number(tx.amount || 0),

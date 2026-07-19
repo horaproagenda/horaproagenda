@@ -374,8 +374,10 @@ interface SubscriptionSummaryProps {
   isActive: boolean | undefined;
   isLoading: boolean;
   isPixLoading: boolean;
+  isBoletoLoading: boolean;
   onCheckout: () => void;
   onPixCheckout: () => void;
+  onBoletoCheckout: () => void;
 }
 
 function SubscriptionSummary({
@@ -384,15 +386,17 @@ function SubscriptionSummary({
   isActive,
   isLoading,
   isPixLoading,
+  isBoletoLoading,
   onCheckout,
   onPixCheckout,
+  onBoletoCheckout,
 }: SubscriptionSummaryProps) {
   const meta = CYCLE_META[billingMonths];
   const planTotal = periodTotal(plan.priceBRL, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
-  const anyLoading = isLoading || isPixLoading;
+  const anyLoading = isLoading || isPixLoading || isBoletoLoading;
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-card to-primary/5">

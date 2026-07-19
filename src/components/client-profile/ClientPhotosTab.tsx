@@ -204,12 +204,14 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     if (selectedFiles.length === 0) return;
 
     const validFiles = selectedFiles.filter(f => {
-      if (!f.type.startsWith('image/')) {
+      const isImg = f.type.startsWith('image/');
+      const extOk = /\.(jpe?g|png|webp|heic|heif|avif|gif|tiff|bmp)$/i.test(f.name);
+      if (!isImg && !extOk) {
         toast.error(`"${f.name}" não é uma imagem válida e foi ignorada.`);
         return false;
       }
-      if (f.size > 15 * 1024 * 1024) {
-        toast.error(`"${f.name}" passa de 15 MB e foi ignorada.`);
+      if (f.size > 25 * 1024 * 1024) {
+        toast.error(`"${f.name}" passa de 25 MB e foi ignorada.`);
         return false;
       }
       return true;

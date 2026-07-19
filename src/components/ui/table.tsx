@@ -58,6 +58,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
           <div
             ref={topScrollRef}
             onScroll={onScroll("top")}
+            data-testid="table-top-scroll"
             className="overflow-x-auto overflow-y-hidden h-2.5 mb-1 scrollbar-visible"
             aria-hidden="true"
           >

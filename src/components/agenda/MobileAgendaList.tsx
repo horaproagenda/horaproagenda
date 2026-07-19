@@ -468,7 +468,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
     >
       <div className="flex-shrink-0 w-11 text-center">
         <span className="text-xs font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
-        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{apt.service?.duration || 30}min</p>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{getAppointmentDisplayDurationMinutes(apt as any, 30)}min</p>
       </div>
 
       <div className="flex-1 min-w-0">

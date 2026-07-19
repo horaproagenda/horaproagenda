@@ -131,7 +131,9 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   };
 
   const handleNavClick = () => {
-    if (navRef.current) {
+    // Em mobile não persistimos a posição de scroll do menu — cada abertura
+    // do drawer deve começar do topo para o "Dashboard" estar sempre visível.
+    if (!isMobile && navRef.current) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
     // Mobile: fecha o drawer após a navegação.

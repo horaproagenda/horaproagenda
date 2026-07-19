@@ -30,6 +30,7 @@ import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/app
 import { getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { formatTimeInTimeZone } from '@/lib/timezone';
+import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
 
 interface AppointmentCardProps {
   appointment: Appointment;

@@ -64,6 +64,40 @@ interface SidebarProps {
 export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { signOut, profile, hasRole, user, roles, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
+  const asideRef = useRef<HTMLElement | null>(null);
+  const firstNavItemRef = useRef<HTMLAnchorElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  // Focus management + body scroll lock + Escape-to-close for mobile drawer.
+  useEffect(() => {
+    if (!isMobile) return;
+    if (mobileOpen) {
+      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      // Block background scroll so taps on menu items don't scroll the page.
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      // Move focus into the drawer so screen-readers announce it and the
+      // first tap always lands on a real menu item (not a stale focus target
+      // outside the drawer, which caused taps to be swallowed).
+      requestAnimationFrame(() => {
+        firstNavItemRef.current?.focus({ preventScroll: true });
+      });
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onMobileClose?.();
+        }
+      };
+      document.addEventListener('keydown', onKeyDown);
+      return () => {
+        document.removeEventListener('keydown', onKeyDown);
+        document.body.style.overflow = prevOverflow;
+        // Restore focus to whatever opened the drawer (the header menu button).
+        previouslyFocusedRef.current?.focus?.({ preventScroll: true });
+      };
+    }
+  }, [isMobile, mobileOpen, onMobileClose]);
+
   // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
   // evitando que o primeiro toque abra tooltip em vez de navegar.
   const effectiveCollapsed = isCollapsed && !isMobile;
@@ -172,7 +206,15 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           aria-hidden
         />
       )}
-      <aside 
+      <aside
+        ref={asideRef}
+        role={isMobile ? 'dialog' : undefined}
+        aria-modal={isMobile && mobileOpen ? true : undefined}
+        aria-label={isMobile ? 'Menu principal' : undefined}
+        aria-hidden={isMobile && !mobileOpen ? true : undefined}
+        // Bloqueia interação/tab-focus quando fechado no mobile — evita que um
+        // toque logo após o fechamento caia num item invisível fora da tela.
+        {...(isMobile && !mobileOpen ? { inert: '' as unknown as boolean } : {})}
         className={cn(
           // Safe-area: respeita notch/status bar/home indicator (iOS) e display cutout (Android).
           // Sem isto, em PWA o menu mobile cobre o relógio/bateria do sistema.
@@ -183,6 +225,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
+
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className={cn(
@@ -239,7 +282,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
 
           {/* Navigation */}
           <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 space-y-1 px-2 py-2 overflow-y-auto overscroll-contain">
-            {visibleNavigation.map((item) => (
+            {visibleNavigation.map((item, index) => (
               effectiveCollapsed ? (
                 <Tooltip key={item.name}>
                   <TooltipTrigger asChild>
@@ -270,7 +313,10 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   to={item.href}
                   end={item.href === '/'}
                   onClick={handleNavClick}
+                  ref={index === 0 ? firstNavItemRef : undefined}
+                  data-testid={`sidebar-link-${item.href}`}
                   {...prefetchHandlers(item.href)}
+
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 touch-manipulation select-none active:scale-[0.98]',

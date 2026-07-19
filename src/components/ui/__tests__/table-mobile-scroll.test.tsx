@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const originalMatchMedia = window.matchMedia;
 const originalResizeObserver = window.ResizeObserver;
+const originalTableScrollWidth = Object.getOwnPropertyDescriptor(HTMLTableElement.prototype, 'scrollWidth');
+const originalDivClientWidth = Object.getOwnPropertyDescriptor(HTMLDivElement.prototype, 'clientWidth');
 
 function mockPointer(coarse: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -60,6 +62,16 @@ describe('Table mobile horizontal scroll', () => {
   afterEach(() => {
     window.matchMedia = originalMatchMedia;
     window.ResizeObserver = originalResizeObserver;
+    if (originalTableScrollWidth) {
+      Object.defineProperty(HTMLTableElement.prototype, 'scrollWidth', originalTableScrollWidth);
+    } else {
+      delete (HTMLTableElement.prototype as { scrollWidth?: number }).scrollWidth;
+    }
+    if (originalDivClientWidth) {
+      Object.defineProperty(HTMLDivElement.prototype, 'clientWidth', originalDivClientWidth);
+    } else {
+      delete (HTMLDivElement.prototype as { clientWidth?: number }).clientWidth;
+    }
     vi.restoreAllMocks();
   });
 

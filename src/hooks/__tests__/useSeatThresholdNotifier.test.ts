@@ -1,21 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-// Mocks devem ser declarados antes de importar o hook.
-const toastWarning = vi.fn();
-const toastInfo = vi.fn();
+const h = vi.hoisted(() => ({
+  toastWarning: vi.fn(),
+  toastInfo: vi.fn(),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
+  usage: { current: null as unknown },
+}));
+
 vi.mock('sonner', () => ({
-  toast: { warning: toastWarning, info: toastInfo, error: vi.fn(), success: vi.fn() },
+  toast: { warning: h.toastWarning, info: h.toastInfo, error: h.toastError, success: h.toastSuccess },
 }));
 
-const invokeMock = vi.fn().mockResolvedValue({ data: null, error: null });
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { functions: { invoke: invokeMock } },
+  supabase: { functions: { invoke: h.invoke } },
 }));
 
-const usageRef: { current: unknown } = { current: null };
 vi.mock('@/hooks/useSeatUsage', () => ({
-  useSeatUsage: () => usageRef.current,
+  useSeatUsage: () => h.usage.current,
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -26,37 +30,37 @@ import { useSeatThresholdNotifier } from '../useSeatThresholdNotifier';
 
 describe('useSeatThresholdNotifier', () => {
   beforeEach(() => {
-    toastWarning.mockClear();
-    toastInfo.mockClear();
-    invokeMock.mockClear();
+    h.toastWarning.mockClear();
+    h.toastInfo.mockClear();
+    h.invoke.mockClear();
   });
 
   it('does NOT toast when paid user is exactly at seat_limit (1/1)', () => {
-    usageRef.current = { used: 1, seat_limit: 1, available: 0, is_grandfathered: false };
+    h.usage.current = { used: 1, seat_limit: 1, available: 0, is_grandfathered: false };
     renderHook(() => useSeatThresholdNotifier());
-    expect(toastWarning).not.toHaveBeenCalled();
-    expect(toastInfo).not.toHaveBeenCalled();
-    expect(invokeMock).not.toHaveBeenCalled();
+    expect(h.toastWarning).not.toHaveBeenCalled();
+    expect(h.toastInfo).not.toHaveBeenCalled();
+    expect(h.invoke).not.toHaveBeenCalled();
   });
 
   it('does NOT toast at full capacity on multi-seat plan (3/3)', () => {
-    usageRef.current = { used: 3, seat_limit: 3, available: 0, is_grandfathered: false };
+    h.usage.current = { used: 3, seat_limit: 3, available: 0, is_grandfathered: false };
     renderHook(() => useSeatThresholdNotifier());
-    expect(toastWarning).not.toHaveBeenCalled();
-    expect(toastInfo).not.toHaveBeenCalled();
+    expect(h.toastWarning).not.toHaveBeenCalled();
+    expect(h.toastInfo).not.toHaveBeenCalled();
   });
 
   it('does NOT toast for grandfathered accounts', () => {
-    usageRef.current = { used: 999, seat_limit: 1, available: 0, is_grandfathered: true };
+    h.usage.current = { used: 999, seat_limit: 1, available: 0, is_grandfathered: true };
     renderHook(() => useSeatThresholdNotifier());
-    expect(toastWarning).not.toHaveBeenCalled();
+    expect(h.toastWarning).not.toHaveBeenCalled();
   });
 
   it('warns "acima do plano" when used > seat_limit (downgrade)', () => {
-    usageRef.current = { used: 5, seat_limit: 3, available: 0, is_grandfathered: false };
+    h.usage.current = { used: 5, seat_limit: 3, available: 0, is_grandfathered: false };
     renderHook(() => useSeatThresholdNotifier());
-    expect(toastWarning).toHaveBeenCalledTimes(1);
-    const [title, opts] = toastWarning.mock.calls[0];
+    expect(h.toastWarning).toHaveBeenCalledTimes(1);
+    const [title, opts] = h.toastWarning.mock.calls[0];
     expect(title).toMatch(/acima do plano/i);
     expect(String(opts.description)).toContain('5');
     expect(String(opts.description)).toContain('3');

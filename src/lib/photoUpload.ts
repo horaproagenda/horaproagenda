@@ -36,9 +36,7 @@ export function getSafeContentType(file: File): string {
   return entry?.[0] || 'image/jpeg';
 }
 
-export type PhotoValidationResult =
-  | { ok: true }
-  | { ok: false; reason: string };
+export type PhotoValidationResult = { ok: boolean; reason?: string };
 
 export function validatePhotoFile(file: File): PhotoValidationResult {
   if (!file.type.startsWith('image/') && !MIME_TO_EXT[file.type?.toLowerCase()]) {

@@ -152,6 +152,8 @@ export function UsuariosContaSection() {
 }
 
 function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
+  const navigate = useNavigate();
+  const usage = useSeatUsage();
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
@@ -163,7 +165,22 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; on
     setEmail(''); setFullName(''); setPassword(''); setMustChange(true); setPerms(emptyPermissions());
   };
 
+  const noSeats = !!usage && !usage.is_grandfathered && (usage.available ?? 0) <= 0;
+
+  const goToPlans = () => {
+    onOpenChange(false);
+    navigate('/assinatura');
+  };
+
   const submit = async () => {
+    if (noSeats) {
+      toast.error('Sem assentos disponíveis no seu plano.', {
+        description: `Você usou ${usage?.used}/${usage?.seat_limit} usuários. Faça upgrade para adicionar mais.`,
+        action: { label: 'Mudar de plano', onClick: goToPlans },
+        duration: 12000,
+      });
+      return;
+    }
     if (!email || !fullName || password.length < 8) {
       toast.error('Preencha nome, email e senha (mínimo 8 caracteres).');
       return;
@@ -174,7 +191,18 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; on
         body: { email, password, full_name: fullName, permissions: perms, must_change_password: mustChange },
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        // Trigger de banco pode devolver a mensagem de limite → sugerir upgrade.
+        if (/seat|assento|limite/i.test(String(data.error))) {
+          toast.error('Limite do plano atingido.', {
+            description: String(data.error),
+            action: { label: 'Mudar de plano', onClick: goToPlans },
+            duration: 12000,
+          });
+          return;
+        }
+        throw new Error(data.error);
+      }
       toast.success('Usuário criado com sucesso.');
       reset();
       onOpenChange(false);
@@ -193,21 +221,35 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; on
           <DialogTitle>Adicionar usuário</DialogTitle>
           <DialogDescription>Defina dados de acesso e permissões iniciais.</DialogDescription>
         </DialogHeader>
+
+        {noSeats && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-3">
+            <Crown className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Seu plano atual não permite mais usuários</p>
+              <p className="text-xs text-muted-foreground">
+                Você já usa {usage?.used}/{usage?.seat_limit} assentos. Faça upgrade para cadastrar novos colaboradores.
+              </p>
+            </div>
+            <Button size="sm" onClick={goToPlans}>Mudar de plano</Button>
+          </div>
+        )}
+
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <Label>Nome completo</Label>
-            <Input value={fullName} onChange={e => setFullName(e.target.value)} />
+            <Input value={fullName} onChange={e => setFullName(e.target.value)} disabled={noSeats} />
           </div>
           <div>
             <Label>E-mail</Label>
-            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={noSeats} />
           </div>
           <div>
             <Label>Senha inicial</Label>
-            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
+            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" disabled={noSeats} />
           </div>
           <div className="flex items-center gap-2 mt-6">
-            <Switch checked={mustChange} onCheckedChange={setMustChange} id="must-change" />
+            <Switch checked={mustChange} onCheckedChange={setMustChange} id="must-change" disabled={noSeats} />
             <Label htmlFor="must-change" className="text-sm">Forçar troca no 1º login</Label>
           </div>
         </div>
@@ -216,9 +258,15 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; on
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={loading}>
-            {loading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Criar usuário
-          </Button>
+          {noSeats ? (
+            <Button onClick={goToPlans}>
+              <Crown className="h-4 w-4 mr-1" /> Mudar de plano
+            </Button>
+          ) : (
+            <Button onClick={submit} disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Criar usuário
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

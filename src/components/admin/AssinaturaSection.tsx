@@ -63,6 +63,7 @@ export function AssinaturaSection() {
   );
 
   const [isPixLoading, setIsPixLoading] = useState(false);
+  const [isBoletoLoading, setIsBoletoLoading] = useState(false);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -84,25 +85,30 @@ export function AssinaturaSection() {
     }
   };
 
-  const handlePixCheckout = async () => {
+  const handlePrepayCheckout = async (methods: ("pix" | "boleto")[]) => {
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
     }
-    setIsPixLoading(true);
+    const isBoleto = methods[0] === "boleto";
+    const setLoading = isBoleto ? setIsBoletoLoading : setIsPixLoading;
+    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-pix-checkout", {
-        body: { seats: selectedSeats, billingMonths },
+        body: { seats: selectedSeats, billingMonths, methods },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento Pix";
+      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento";
       toast.error(msg);
     } finally {
-      setIsPixLoading(false);
+      setLoading(false);
     }
   };
+
+  const handlePixCheckout = () => handlePrepayCheckout(["pix"]);
+  const handleBoletoCheckout = () => handlePrepayCheckout(["boleto"]);
 
   const handlePortal = async () => {
     setPortalLoading(true);

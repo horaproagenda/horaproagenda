@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
+import { uploadOriginalPhoto, validatePhotoFile, getSafeExtension } from '@/lib/photoUpload';
 
 interface HeaderProps {
   title: string;

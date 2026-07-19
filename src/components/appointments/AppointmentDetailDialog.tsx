@@ -1777,16 +1777,22 @@ export function AppointmentDetailDialog({
                     || (isPackageAppointment ? 'Sessão de Pacote' : 'Serviço');
                   const displayCategory = appointment.service?.category
                     || (isPackageAppointment ? 'Pacote' : '');
-                  // Duração: prioriza service.duration; se ausente/zero, calcula a partir
-                  // de start/end (verdadeira fonte da verdade do horário do atendimento).
+                  // Duração: SEMPRE prioriza (end - start) — fonte da verdade
+                  // do horário reservado. `service.duration` pode ser um valor
+                  // agregado errado (ex.: 760 min do pacote inteiro salvo no
+                  // serviço-kit), o que renderizaria "(12:40)" ao lado do
+                  // intervalo real "07:00 - 08:00" e confundiria o usuário.
                   const startMs = new Date(appointment.start_time).getTime();
                   const endMs = new Date(appointment.end_time).getTime();
                   const computedMinutes = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
                     ? Math.round((endMs - startMs) / 60000)
                     : 0;
-                  const durationMinutes = Number(appointment.service?.duration) > 0
-                    ? Number(appointment.service?.duration)
-                    : computedMinutes;
+                  const rawServiceDuration = Number(appointment.service?.duration);
+                  const durationMinutes = computedMinutes > 0
+                    ? computedMinutes
+                    : (Number.isFinite(rawServiceDuration) && rawServiceDuration > 0 && rawServiceDuration <= 8 * 60
+                      ? rawServiceDuration
+                      : 0);
                   return (
                     <>
                       <div className="flex items-center gap-3">

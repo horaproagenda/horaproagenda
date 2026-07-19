@@ -237,8 +237,25 @@ serve(async (req) => {
         break;
       }
 
+      // ─────────────────────────────────────────────────────────────
+      // Chargebacks / disputas / estornos → cancelamento AUTOMÁTICO
+      // Política Hora Pro: não emitimos nem aceitamos estornos.
+      // Qualquer sinal de disputa ou refund revoga o acesso em tempo real.
+      // ─────────────────────────────────────────────────────────────
+      case "charge.dispute.created":
+      case "charge.dispute.funds_withdrawn":
+      case "charge.dispute.closed":
+      case "charge.refunded":
+      case "charge.refund.updated":
+      case "refund.created":
+      case "refund.updated": {
+        await revokeAccessForPaymentEvent(event);
+        break;
+      }
+
       default:
         log("Unhandled event", { type: event.type });
+
     }
 
     return new Response(JSON.stringify({ received: true }), {

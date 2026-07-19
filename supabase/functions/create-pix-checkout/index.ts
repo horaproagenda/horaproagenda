@@ -42,6 +42,14 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const seats = Number(body?.seats ?? 0);
     const billingMonths = Number(body?.billingMonths ?? 0);
+    const requestedMethods = Array.isArray(body?.methods) && body.methods.length > 0
+      ? body.methods
+      : ["pix"];
+    const ALLOWED_METHODS = new Set(["pix", "boleto"]);
+    const methods = requestedMethods
+      .map((m: unknown) => String(m).toLowerCase())
+      .filter((m: string) => ALLOWED_METHODS.has(m));
+    if (methods.length === 0) throw new Error("methods inválido (aceito: pix, boleto)");
     if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
     if (![1, 6, 12].includes(billingMonths)) throw new Error("billingMonths inválido");
 
@@ -60,12 +68,17 @@ serve(async (req) => {
     const cycleLabel =
       billingMonths === 1 ? "mês" : billingMonths === 6 ? "6 meses" : "12 meses";
     const productName = `Hora Pro — ${seats} usuário${seats > 1 ? "s" : ""} · ${cycleLabel}`;
+    const methodLabel = methods.includes("boleto") && methods.includes("pix")
+      ? "Pix ou Boleto"
+      : methods.includes("boleto")
+        ? "Boleto"
+        : "Pix";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       mode: "payment",
-      payment_method_types: ["pix"],
+      payment_method_types: methods as ("pix" | "boleto")[],
       line_items: [{
         quantity: 1,
         price_data: {
@@ -73,11 +86,11 @@ serve(async (req) => {
           unit_amount: amount,
           product_data: {
             name: productName,
-            description: `Acesso liberado por ${cycleLabel} após confirmação do Pix.`,
+            description: `Acesso liberado por ${cycleLabel} após confirmação (${methodLabel}).`,
           },
         },
       }],
-      // Pix expira em 24h. Damos folga de 23h55.
+      // Sessão de checkout expira em ~24h; boleto gerado tem seu próprio prazo (~3 dias úteis).
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23 + 55 * 60,
       success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/assinatura/cancelado`,
@@ -86,7 +99,7 @@ serve(async (req) => {
         billing_months: String(billingMonths),
         seats: String(seats),
         kind: "prepay",
-        method: "pix",
+        method: methods.join(","),
       },
       payment_intent_data: {
         metadata: {
@@ -94,7 +107,7 @@ serve(async (req) => {
           billing_months: String(billingMonths),
           seats: String(seats),
           kind: "prepay",
-          method: "pix",
+          method: methods.join(","),
         },
       },
     });

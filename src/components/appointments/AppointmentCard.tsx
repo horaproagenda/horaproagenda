@@ -221,7 +221,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
             <span className="font-medium">{timeStr}</span>
-            <span className="text-[10px]">({appointment.service?.duration}min)</span>
+            <span className="text-[10px]">({getAppointmentDisplayDurationMinutes(appointment as any)}min)</span>
           </div>
           {professional && (
             <div className="flex items-center gap-1">

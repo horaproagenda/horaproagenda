@@ -891,15 +891,33 @@ export function useUploadFile() {
   const uploadFile = async (file: File, path: string) => {
     // Use client-photos bucket for photos (private bucket with signed URLs)
     const bucketName = path.includes('/photos/') ? 'client-photos' : 'client-documents';
-    
+    const isPhoto = bucketName === 'client-photos';
+
+    // For photos, use the fidelity-preserving helper (original bytes, MIME, cache).
+    if (isPhoto) {
+      const { uploadOriginalPhoto } = await import('@/lib/photoUpload');
+      const { path: uploadedPath } = await uploadOriginalPhoto({
+        bucket: bucketName,
+        path,
+        file,
+        upsert: false,
+      });
+      const { data: urlData, error: urlError } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(uploadedPath, 1800);
+      if (urlError) throw urlError;
+      return { path: uploadedPath, url: urlData.signedUrl };
+    }
+
     const { data, error } = await supabase.storage
       .from(bucketName)
-      .upload(path, file);
+      .upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        cacheControl: '31536000',
+      });
 
     if (error) throw error;
 
-    // For private buckets, use signed URLs instead of public URLs
-    // Signed URL valid for 30 minutes (1800 seconds)
     const { data: urlData, error: urlError } = await supabase.storage
       .from(bucketName)
       .createSignedUrl(data.path, 1800);

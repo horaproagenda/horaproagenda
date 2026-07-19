@@ -32,8 +32,8 @@ describe('photoUpload — regression guard for original-fidelity uploads', () =>
     expect(getSafeExtension(makeFile('a.jpeg', 'image/jpeg'))).toBe('jpeg');
   });
 
-  it('falls back to extension from MIME when filename lacks one', () => {
-    expect(getSafeExtension(makeFile('noext', 'image/png'))).toBe('png');
+  it('falls back to extension from MIME when filename lacks a usable one', () => {
+    expect(getSafeExtension(makeFile('camera_photo_capture', 'image/png'))).toBe('png');
   });
 
   it('returns real MIME when provided', () => {

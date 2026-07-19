@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,10 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Users, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Loader2, Plus, Users, ShieldCheck, ShieldOff, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { APP_MODULES, type AppModuleKey } from '@/lib/plans';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
+import { useSeatUsage } from '@/hooks/useSeatUsage';
 
 type PermRow = { module: AppModuleKey; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean };
 

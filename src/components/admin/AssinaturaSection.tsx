@@ -479,9 +479,28 @@ function SubscriptionSummary({
             )}
           </Button>
 
+          <Button
+            className="w-full"
+            size="lg"
+            variant="outline"
+            onClick={onBoletoCheckout}
+            disabled={anyLoading}
+          >
+            {isBoletoLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando boleto...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pagar com Boleto ({formatBRL(planTotal)})
+              </>
+            )}
+          </Button>
+
           <p className="text-[11px] text-muted-foreground text-center">
-            Pix: liberação em tempo real após confirmação. Sem renovação automática —
-            você paga novamente ao fim do período.
+            Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
+            compensação. Sem renovação automática — você paga novamente ao fim do período.
           </p>
         </div>
 

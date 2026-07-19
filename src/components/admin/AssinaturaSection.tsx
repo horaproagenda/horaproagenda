@@ -63,6 +63,7 @@ export function AssinaturaSection() {
   );
 
   const [isPixLoading, setIsPixLoading] = useState(false);
+  const [isBoletoLoading, setIsBoletoLoading] = useState(false);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -84,25 +85,30 @@ export function AssinaturaSection() {
     }
   };
 
-  const handlePixCheckout = async () => {
+  const handlePrepayCheckout = async (methods: ("pix" | "boleto")[]) => {
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
     }
-    setIsPixLoading(true);
+    const isBoleto = methods[0] === "boleto";
+    const setLoading = isBoleto ? setIsBoletoLoading : setIsPixLoading;
+    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-pix-checkout", {
-        body: { seats: selectedSeats, billingMonths },
+        body: { seats: selectedSeats, billingMonths, methods },
       });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento Pix";
+      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento";
       toast.error(msg);
     } finally {
-      setIsPixLoading(false);
+      setLoading(false);
     }
   };
+
+  const handlePixCheckout = () => handlePrepayCheckout(["pix"]);
+  const handleBoletoCheckout = () => handlePrepayCheckout(["boleto"]);
 
   const handlePortal = async () => {
     setPortalLoading(true);
@@ -241,8 +247,10 @@ export function AssinaturaSection() {
         isActive={isActive}
         isLoading={isLoading}
         isPixLoading={isPixLoading}
+        isBoletoLoading={isBoletoLoading}
         onCheckout={handleCheckout}
         onPixCheckout={handlePixCheckout}
+        onBoletoCheckout={handleBoletoCheckout}
       />
     </div>
   );
@@ -366,8 +374,10 @@ interface SubscriptionSummaryProps {
   isActive: boolean | undefined;
   isLoading: boolean;
   isPixLoading: boolean;
+  isBoletoLoading: boolean;
   onCheckout: () => void;
   onPixCheckout: () => void;
+  onBoletoCheckout: () => void;
 }
 
 function SubscriptionSummary({
@@ -376,15 +386,17 @@ function SubscriptionSummary({
   isActive,
   isLoading,
   isPixLoading,
+  isBoletoLoading,
   onCheckout,
   onPixCheckout,
+  onBoletoCheckout,
 }: SubscriptionSummaryProps) {
   const meta = CYCLE_META[billingMonths];
   const planTotal = periodTotal(plan.priceBRL, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
-  const anyLoading = isLoading || isPixLoading;
+  const anyLoading = isLoading || isPixLoading || isBoletoLoading;
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-card to-primary/5">
@@ -467,9 +479,28 @@ function SubscriptionSummary({
             )}
           </Button>
 
+          <Button
+            className="w-full"
+            size="lg"
+            variant="outline"
+            onClick={onBoletoCheckout}
+            disabled={anyLoading}
+          >
+            {isBoletoLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando boleto...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pagar com Boleto ({formatBRL(planTotal)})
+              </>
+            )}
+          </Button>
+
           <p className="text-[11px] text-muted-foreground text-center">
-            Pix: liberação em tempo real após confirmação. Sem renovação automática —
-            você paga novamente ao fim do período.
+            Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
+            compensação. Sem renovação automática — você paga novamente ao fim do período.
           </p>
         </div>
 

@@ -41,8 +41,10 @@ describe('BRL currency normalization and financial balances', () => {
 
     expect(getDateOnly('2026-06-30')).toBe('2026-06-30');
     expect(getDateOnly('2026-06-30T23:30:00.000Z')).toBe('2026-06-30');
+    expect(getDateOnly('2026-07-01T00:30:00.000Z')).toBe('2026-06-30');
     expect(isDateOnlyWithinRange('2026-06-30', start, end)).toBe(true);
     expect(isDateOnlyWithinRange('2026-06-30T23:30:00.000Z', start, end)).toBe(true);
-    expect(isDateOnlyWithinRange('2026-07-01T00:00:00.000Z', start, end)).toBe(false);
+    expect(isDateOnlyWithinRange('2026-07-01T00:30:00.000Z', start, end)).toBe(true);
+    expect(isDateOnlyWithinRange('2026-07-01T03:30:00.000Z', start, end)).toBe(false);
   });
 });

@@ -1,3 +1,5 @@
+import { formatDateInTimeZone } from '@/lib/timezone';
+
 export type ConsolidatedEntryType = 'income' | 'expense' | 'non_cash';
 
 export interface ConsolidatedReportEntry {
@@ -11,14 +13,11 @@ export interface CashRegisterBalanceInput {
   total_received?: number | string | null;
 }
 
-export function getDateOnly(value: string | Date | null | undefined): string | null {
+export function getDateOnly(value: string | Date | null | undefined, timeZone = 'America/Sao_Paulo'): string | null {
   if (!value) return null;
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) return null;
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatDateInTimeZone(value, timeZone);
   }
 
   const trimmed = value.trim();
@@ -27,15 +26,15 @@ export function getDateOnly(value: string | Date | null | undefined): string | n
   const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/);
   if (dateOnly) return dateOnly[1];
 
-  const isoDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
-  if (isoDate) return isoDate[1];
+  const isoDateTime = trimmed.match(/^\d{4}-\d{2}-\d{2}[T\s]/);
+  if (isoDateTime) {
+    const parsedIso = new Date(trimmed);
+    if (!Number.isNaN(parsedIso.getTime())) return formatDateInTimeZone(parsedIso, timeZone);
+  }
 
   const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) return null;
-  const year = parsed.getFullYear();
-  const month = String(parsed.getMonth() + 1).padStart(2, '0');
-  const day = String(parsed.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return formatDateInTimeZone(parsed, timeZone);
 }
 
 export function isDateOnlyWithinRange(value: string | Date | null | undefined, start: Date, end: Date) {

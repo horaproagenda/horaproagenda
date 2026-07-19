@@ -11,7 +11,7 @@ import { useCashTransactions } from '@/hooks/useCashTransactions';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -211,7 +211,7 @@ export function RelatorioConsolidado() {
   };
 
   const reportExportRows = filteredData.map(entry => [
-    format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }),
+    format(new Date(`${getDateOnly(entry.date) || entry.date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR }),
     entry.description,
     entry.source === 'caixa' ? 'Caixa' : entry.source === 'credito_cliente' ? CLIENT_CREDIT_SOURCE_LABEL : 'Financeiro',
     entry.type === 'income' ? 'Entrada' : entry.type === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Saída',
@@ -468,7 +468,7 @@ export function RelatorioConsolidado() {
                   filteredData.slice(0, 50).map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="py-1.5 text-xs whitespace-nowrap">
-                        {format(new Date(entry.date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(new Date(`${getDateOnly(entry.date) || entry.date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })}
                       </TableCell>
                       <TableCell className="py-1.5 text-xs max-w-[260px] truncate">
                         {entry.description}

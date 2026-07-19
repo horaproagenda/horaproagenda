@@ -1,6 +1,7 @@
-// Checkout Pix (pagamento antecipado / prepay) — mode: 'payment'.
-// Cria uma sessão do Stripe com Pix como meio, valor = seats × mensal × meses × (1-desconto).
-// Quando o Pix é confirmado, o stripe-webhook (checkout.session.async_payment_succeeded)
+// Checkout de pagamento antecipado (prepay) — mode: 'payment'.
+// Suporta Pix (default) e Boleto via body.methods = ['pix'] | ['boleto'] | ['pix','boleto'].
+// Valor = seats × mensal × meses × (1-desconto).
+// Quando o pagamento é confirmado (async_payment_succeeded), o stripe-webhook
 // lê metadata.kind='prepay' e estende current_period_end pelo número de meses pagos.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";

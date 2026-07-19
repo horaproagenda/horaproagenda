@@ -9,10 +9,18 @@ const config: CapacitorConfig = {
     cleartext: true,
   },
   ios: {
-    contentInset: 'always',
+    // 'never' evita que o WKWebView adicione um inset automático no topo
+    // (que somava ao `pt-safe` do AppLayout e criava a faixa branca alta
+    // vista em Agenda/Configurações no iPhone). O safe-area passa a ser
+    // controlado exclusivamente por CSS (env(safe-area-inset-*)).
+    contentInset: 'never',
+    scrollEnabled: true,
+    limitsNavigationsToAppBoundDomains: false,
+    backgroundColor: '#F5F1EA',
   },
   android: {
     allowMixedContent: true,
+    backgroundColor: '#F5F1EA',
   },
 };
 

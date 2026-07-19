@@ -46,7 +46,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   }, [location.pathname]);
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-background">
+    <div
+      className="overflow-hidden bg-background"
+      style={{ height: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}
+    >
+
       <Sidebar 
         onNewAppointment={() => {
           setIsNewAppointmentOpen(true);
@@ -58,12 +62,13 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
       <div className={cn(
-        "h-[100dvh] flex flex-col transition-all duration-300 ease-in-out",
+        "h-full flex flex-col transition-all duration-300 ease-in-out",
+
         // Mobile: sem padding (sidebar é drawer). Desktop: respeita largura da sidebar.
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <div className="pt-safe flex-shrink-0">
+        <div className="flex-shrink-0">
           <TrialBanner />
           <Header 
             title={title} 

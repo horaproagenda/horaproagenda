@@ -30,7 +30,7 @@ vi.mock('@/assets/horapro-icon.png', () => ({ default: 'icon.png' }));
 import { Sidebar } from '@/components/layout/Sidebar';
 
 const EXPECTED_ROUTES = [
-  '/', '/agenda', '/clientes', '/servicos', '/cadastros', '/caixa',
+  '/dashboard', '/agenda', '/clientes', '/servicos', '/cadastros', '/caixa',
   '/financeiro', '/produtos', '/lembretes', '/documentos', '/relatorios',
   '/super-admin', '/admin', '/configuracoes', '/ajuda', '/suporte',
 ];

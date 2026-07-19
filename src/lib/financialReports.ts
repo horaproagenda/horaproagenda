@@ -11,6 +11,41 @@ export interface CashRegisterBalanceInput {
   total_received?: number | string | null;
 }
 
+export function getDateOnly(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const dateOnly = trimmed.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (dateOnly) return dateOnly[1];
+
+  const isoDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (isoDate) return isoDate[1];
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function isDateOnlyWithinRange(value: string | Date | null | undefined, start: Date, end: Date) {
+  const valueDay = getDateOnly(value);
+  const startDay = getDateOnly(start);
+  const endDay = getDateOnly(end);
+  if (!valueDay || !startDay || !endDay) return false;
+  return valueDay >= startDay && valueDay <= endDay;
+}
+
 export function calculateConsolidatedReportTotals(entries: ConsolidatedReportEntry[]) {
   const totalIncome = entries
     .filter((entry) => entry.type === 'income')

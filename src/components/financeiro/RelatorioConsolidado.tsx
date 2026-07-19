@@ -15,7 +15,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarte
 import { ptBR } from 'date-fns/locale';
 import { Calendar, DollarSign, Download, FileText, Trash2, Loader2 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
-import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance } from '@/lib/financialReports';
+import { calculateConsolidatedReportTotals, calculateOpenCashRegistersBalance, getDateOnly, isDateOnlyWithinRange } from '@/lib/financialReports';
 import { useState, useMemo } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Input } from '@/components/ui/input';
@@ -98,7 +98,7 @@ export function RelatorioConsolidado() {
     const cashAppointmentIds = new Set<string>();
     const cashSaleIds = new Set<string>();
     const makeKey = (date: string, amount: number, method: string | null | undefined) => {
-      const day = (date || '').includes('T') ? format(parseISO(date), 'yyyy-MM-dd') : (date || '').slice(0, 10);
+      const day = getDateOnly(date) || '';
       const amt = Math.round(Number(amount || 0) * 100);
       const m = (method || '').toLowerCase().trim();
       return `${day}|${amt}|${m}`;
@@ -181,8 +181,7 @@ export function RelatorioConsolidado() {
 
   // Apply filters
   const filteredData = useMemo(() => consolidatedData.filter((entry) => {
-    const entryDate = parseISO(entry.date);
-    const inRange = isWithinInterval(entryDate, { start: dateRange.start, end: dateRange.end });
+    const inRange = isDateOnlyWithinRange(entry.date, dateRange.start, dateRange.end);
     if (!inRange) return false;
     if (sourceFilter !== 'all' && entry.source !== sourceFilter) return false;
     if (typeFilter !== 'all' && entry.type !== typeFilter) return false;

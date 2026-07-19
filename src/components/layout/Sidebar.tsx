@@ -34,7 +34,7 @@ import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agenda', href: '/agenda', icon: Calendar },
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Serviços', href: '/servicos', icon: Sparkles },
@@ -288,7 +288,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   <TooltipTrigger asChild>
                     <NavLink
                       to={item.href}
-                      end={item.href === '/'}
+                      end
                       onClick={handleNavClick}
                       {...prefetchHandlers(item.href)}
                       className={({ isActive }) =>
@@ -311,7 +311,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                 <NavLink
                   key={item.name}
                   to={item.href}
-                  end={item.href === '/'}
+                  end
                   onClick={handleNavClick}
                   ref={index === 0 ? firstNavItemRef : undefined}
                   data-testid={`sidebar-link-${item.href}`}

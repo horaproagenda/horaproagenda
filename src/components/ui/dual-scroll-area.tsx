@@ -25,6 +25,16 @@ export function DualScrollArea({
   const bottomRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentWidth, setContentWidth] = useState(0);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia?.('(pointer: coarse)');
+    if (!media) return;
+    const updatePointer = () => setIsCoarsePointer(media.matches);
+    updatePointer();
+    media.addEventListener('change', updatePointer);
+    return () => media.removeEventListener('change', updatePointer);
+  }, []);
 
   // Sync content width to top scrollbar spacer
   useEffect(() => {
@@ -57,18 +67,20 @@ export function DualScrollArea({
   return (
     <div className={cn('w-full', className)}>
       {/* Top horizontal scrollbar */}
-      <div
-        ref={topRef}
-        onScroll={onTopScroll}
-        className="overflow-x-auto overflow-y-hidden"
-        style={{ height: 12 }}
-      >
-        <div style={{ width: contentWidth, height: 1 }} />
-      </div>
+      {!isCoarsePointer && (
+        <div
+          ref={topRef}
+          onScroll={onTopScroll}
+          className="overflow-x-auto overflow-y-hidden"
+          style={{ height: 12 }}
+        >
+          <div style={{ width: contentWidth, height: 1 }} />
+        </div>
+      )}
       {/* Main scroll area */}
       <div
         ref={bottomRef}
-        onScroll={onBottomScroll}
+        onScroll={isCoarsePointer ? undefined : onBottomScroll}
         className="overflow-auto"
         style={{ maxHeight }}
       >

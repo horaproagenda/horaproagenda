@@ -116,6 +116,12 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const { uploadFile } = useUploadFile();
   const { templates, refetch: refetchTemplates } = useDocumentTemplates();
 
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       toast.error('Título é obrigatório');

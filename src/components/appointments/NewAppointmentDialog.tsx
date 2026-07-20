@@ -1291,7 +1291,7 @@ export function NewAppointmentDialog({
                 service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
-                notes: `${resolveSessionServiceLabel({ index: nextPackageStepIndex + i, steps: packageSequenceSteps, services, pkg: packageData || selectedPackageData })} — ${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`,
+                notes: `${resolveSessionServiceLabel({ index: nextPackageStepIndex + i, steps: packageSequenceSteps, services, pkg: packageData || selectedPackageData || null })} — ${packageData?.name || selectedPackageData?.name || 'Pacote'}${notes ? ' - ' + notes : ''}`,
                 professional_id: selectedProfessional || packageData?.professional_id || undefined,
                 room_id: selectedRoom || packageData?.room_id || undefined,
                 payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -1329,7 +1329,7 @@ export function NewAppointmentDialog({
                 index: nextPackageStepIndex + i,
                 steps: packageSequenceSteps,
                 services,
-                pkg: packageData || selectedPackageData,
+                pkg: packageData || selectedPackageData || null,
               });
               return `📅 Sessão ${i + 1} — ${svcName}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
             }).join('\n');

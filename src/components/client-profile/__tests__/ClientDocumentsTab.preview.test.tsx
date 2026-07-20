@@ -35,14 +35,20 @@ describe('ClientDocumentsTab file preview', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   });
 
-  const renderTab = () =>
-    render(
-      <ClientDocumentsTab
-        documents={[]}
-        clientId="client-1"
-        onAddDocument={vi.fn().mockResolvedValue(undefined)}
-      />,
+  const renderTab = () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <ClientDocumentsTab
+            documents={[]}
+            clientId="client-1"
+            onAddDocument={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
+  };
 
   it('renders an image preview when the selected file is an image', async () => {
     renderTab();

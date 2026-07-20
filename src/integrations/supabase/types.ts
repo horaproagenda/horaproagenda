@@ -3289,7 +3289,7 @@ export type Database = {
           last_checked_at: string | null
           last_connected_at: string | null
           professional_id: string
-          token: string
+          token: string | null
           token_encrypted: string | null
           updated_at: string
         }
@@ -3303,7 +3303,7 @@ export type Database = {
           last_checked_at?: string | null
           last_connected_at?: string | null
           professional_id: string
-          token: string
+          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }
@@ -3317,7 +3317,7 @@ export type Database = {
           last_checked_at?: string | null
           last_connected_at?: string | null
           professional_id?: string
-          token?: string
+          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }

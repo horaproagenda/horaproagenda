@@ -236,7 +236,12 @@ export function useClientPackages(clientId: string | null) {
           interval_days: data.templateData.interval_days || 7,
           total_price: data.templateData.total_price,
           package_type: data.templateData.package_type || 'standard',
-          service_id: data.templateData.service_id || null,
+          // Pacote sequencial não pode ter service_id fixo — cada etapa tem o seu.
+          // Manter service_id fixo aqui faz resolve_service_id_for_package retornar
+          // sempre o mesmo serviço em todas as etapas.
+          service_id: data.templateData.package_type === 'sequential'
+            ? null
+            : (data.templateData.service_id || null),
           professional_id: data.templateData.professional_id,
           room_id: data.templateData.room_id,
           equipment: data.templateData.equipment || [],

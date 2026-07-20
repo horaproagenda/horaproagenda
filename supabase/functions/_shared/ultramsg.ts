@@ -138,6 +138,7 @@ async function normalizeQrCodeImage(qr: string | null | undefined): Promise<stri
 
   // UltraMsg can return the WhatsApp QR payload text instead of an image.
   // Render it to a PNG data URL so the browser always receives a real image.
+  const { default: QRCode } = await import('npm:qrcode@1.5.4');
   return await QRCode.toDataURL(value, {
     errorCorrectionLevel: 'M',
     margin: 2,

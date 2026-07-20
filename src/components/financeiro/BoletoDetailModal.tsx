@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2,
+  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2, PackageX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

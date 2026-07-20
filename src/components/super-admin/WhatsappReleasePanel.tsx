@@ -5,8 +5,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, RefreshCw, MessageSquare, ShieldCheck, Undo2 } from 'lucide-react';
+import { CheckCircle2, RefreshCw, MessageSquare, ShieldCheck, Undo2, Loader2 } from 'lucide-react';
+
 
 /**
  * Painel do Super Admin para liberar/revogar o WhatsApp de usuários
@@ -84,39 +89,76 @@ export function WhatsappReleasePanel() {
     };
   }, [qc]);
 
-  const approve = async (row: ReleaseRow) => {
-    if (busyId) return;
-    setBusyId(row.request_id);
+  const [releaseTarget, setReleaseTarget] = useState<ReleaseRow | null>(null);
+  const [form, setForm] = useState({ instance_id: '', token: '', api_url: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const openReleaseDialog = (row: ReleaseRow) => {
+    setReleaseTarget(row);
+    setForm({ instance_id: '', token: '', api_url: '', notes: '' });
+  };
+
+  const closeReleaseDialog = () => {
+    if (submitting) return;
+    setReleaseTarget(null);
+  };
+
+  const approveRequest = async (requestId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc(
+      'super_admin_approve_whatsapp_release',
+      { p_request_id: requestId },
+    );
+    if (error) throw error;
+    return (data ?? {}) as { approved?: boolean; already_approved?: boolean; free_pool_instances?: number };
+  };
+
+  const submitRelease = async () => {
+    if (!releaseTarget) return;
+    const instance = form.instance_id.trim();
+    const token = form.token.trim();
+    if (!instance || !token) {
+      toast.error('Informe o instance_id e o token da UltraMsg.');
+      return;
+    }
+    setSubmitting(true);
+    setBusyId(releaseTarget.request_id);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
-        'super_admin_approve_whatsapp_release',
-        { p_request_id: row.request_id },
-      );
-      if (error) throw error;
-      const res = (data ?? {}) as {
-        approved?: boolean;
-        already_approved?: boolean;
-        free_pool_instances?: number;
-      };
-      if (res.approved) {
+      const { data: addData, error: addError } = await supabase.functions.invoke('whatsapp-pool-add-instance', {
+        body: {
+          instance_id: instance,
+          token,
+          api_url: form.api_url.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+        },
+      });
+      if (addError) throw new Error(addError.message || 'Falha ao adicionar instância no pool.');
+      const addResult = (addData ?? {}) as { success?: boolean; error?: string };
+      if (!addResult.success) {
+        throw new Error(addResult.error || 'Não foi possível cadastrar a instância no pool.');
+      }
+
+      const approveResult = await approveRequest(releaseTarget.request_id);
+      if (approveResult.approved) {
         toast.success(
-          `Liberação ${shortCode(row.request_id)} aprovada. ${
-            typeof res.free_pool_instances === 'number'
-              ? `${res.free_pool_instances} instância(s) livre(s) no pool.`
-              : ''
-          }`.trim(),
+          `Instância cadastrada e liberação ${shortCode(releaseTarget.request_id)} aprovada. O usuário já pode gerar o QR Code em Configurações → WhatsApp.`,
         );
       } else {
-        toast.info(`Pedido ${shortCode(row.request_id)} já estava liberado.`);
+        toast.info(
+          `Instância cadastrada. Pedido ${shortCode(releaseTarget.request_id)} já estava liberado — o usuário pode gerar o QR Code em Configurações → WhatsApp.`,
+        );
       }
+      setReleaseTarget(null);
       qc.invalidateQueries({ queryKey: ['super-admin-whatsapp-releases-anon'] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao aprovar');
+      toast.error(e instanceof Error ? e.message : 'Falha ao liberar instância.');
     } finally {
+      setSubmitting(false);
       setBusyId(null);
     }
   };
+
+
 
   const revoke = async (row: ReleaseRow) => {
     if (busyId) return;
@@ -255,15 +297,12 @@ export function WhatsappReleasePanel() {
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => approve(r)}
-                        disabled={busy || freePool === 0}
-                        title={
-                          freePool === 0 ? 'Adicione instâncias ao pool antes de liberar' : ''
-                        }
+                        onClick={() => openReleaseDialog(r)}
+                        disabled={busy}
                         className="bg-primary hover:bg-primary"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                        {busy ? 'Aprovando...' : 'Liberar'}
+                        {busy ? 'Liberando...' : 'Liberar Instância'}
                       </Button>
                     )}
                   </TableCell>
@@ -273,6 +312,83 @@ export function WhatsappReleasePanel() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!releaseTarget} onOpenChange={(open) => { if (!open) closeReleaseDialog(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Liberar instância UltraMsg</DialogTitle>
+            <DialogDescription className="text-xs">
+              Preencha os dados da instância UltraMsg comprada para o pedido{' '}
+              <span className="font-mono">{releaseTarget ? shortCode(releaseTarget.request_id) : ''}</span>
+              {releaseTarget?.email_hint ? ` (${releaseTarget.email_hint})` : ''}. A instância será
+              validada, adicionada ao pool e vinculada ao usuário automaticamente. O QR Code é
+              gerado dentro do app do próprio usuário em Configurações → WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="wa-instance" className="text-xs">Instance ID *</Label>
+              <Input
+                id="wa-instance"
+                placeholder="instance12345"
+                value={form.instance_id}
+                onChange={(e) => setForm((f) => ({ ...f, instance_id: e.target.value }))}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-token" className="text-xs">Token *</Label>
+              <Input
+                id="wa-token"
+                placeholder="Token da instância UltraMsg"
+                value={form.token}
+                onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
+                disabled={submitting}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-api" className="text-xs">URL da API (opcional)</Label>
+              <Input
+                id="wa-api"
+                placeholder="https://api.ultramsg.com"
+                value={form.api_url}
+                onChange={(e) => setForm((f) => ({ ...f, api_url: e.target.value }))}
+                disabled={submitting}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Deixe em branco para usar o endpoint padrão.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-notes" className="text-xs">Observações (opcional)</Label>
+              <Textarea
+                id="wa-notes"
+                rows={2}
+                placeholder="Ex.: plano, data da compra, referência interna..."
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeReleaseDialog} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button onClick={submitRelease} disabled={submitting || !form.instance_id.trim() || !form.token.trim()}>
+              {submitting ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Liberando...</>
+              ) : (
+                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Validar e liberar</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
+
 }

@@ -8,11 +8,16 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "playwright test e2e/regression-utils.spec.ts",
     "test:unit": "vitest run",
+    "test:visual": "playwright test e2e/agenda-layout-visual.spec.ts",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "test:pipeline": "tsc --noEmit && playwright test e2e/regression-utils.spec.ts && vitest run",
+    "test:regression": "bun run lint && bun run typecheck && bun run test:unit && bun run build && bun run test",
     "preview": "vite preview"
   },
+
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/mcp-js": "^0.20.0",

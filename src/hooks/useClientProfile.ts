@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
+import { formatAppointmentServiceWithPackageContext, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 // Interface for payment history items from multiple sources
 interface PaymentHistoryItem {
@@ -811,8 +812,8 @@ export function useClientProfile(clientId: string) {
           .filter(Boolean)
           .join(', ');
         const displayName = isLikelyPackageSession
-          ? (pkg?.name || packageNameSnapshot || notesPackageMatch?.[1]?.trim() || 'Pacote')
-          : (a.service?.name || (a as any).service_name_snapshot || 'Atendimento');
+          ? formatAppointmentServiceWithPackageContext(a as any)
+          : resolveAppointmentStepServiceName(a as any, 'Atendimento');
 
 
         items.push({

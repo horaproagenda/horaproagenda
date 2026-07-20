@@ -42,10 +42,10 @@ describe('resolveSessionServiceLabel — Visualização das Sessões', () => {
     expect(label).toBe('Axila + Virilha');
   });
 
-  it('não repete "Sessão N" nem o nome do pacote quando nada está disponível', () => {
+  it('mostra aviso claro quando a etapa está sem serviço válido', () => {
     const steps: { service_id: string | null }[] = [];
     const pkg = { name: 'Pacote Z', service_id: null };
-    expect(resolveSessionServiceLabel({ index: 0, steps, services: [], pkg })).toBe('');
-    expect(resolveSessionServiceLabel({ index: 2, steps, services: [], pkg })).toBe('');
+    expect(resolveSessionServiceLabel({ index: 0, steps, services: [], pkg })).toBe('Serviço da etapa não encontrado');
+    expect(resolveSessionServiceLabel({ index: 2, steps, services: [], pkg })).toBe('Serviço da etapa não encontrado');
   });
 });

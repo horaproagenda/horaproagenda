@@ -22,6 +22,7 @@ import {
   getPackageApplicationStatusLabel,
   extractApplicationLabelFromNotes,
 } from '@/lib/packageSequence';
+import { formatAppointmentServiceWithPackageContext, resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
@@ -176,13 +177,9 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
     doc.text(`Data de emissao:  ${emissionDate}`, 14, 48);
     
     // Table data with proper spacing and clean text.
-    // Para preservar o nome correto, sempre que houver vínculo com pacote priorizamos
-    // o nome do pacote — evita itens cancelados aparecerem genericamente como "Serviço".
+    // Para pacotes sequenciais, o nome principal é sempre o serviço da etapa.
     const tableData = appointmentsToExport.map(apt => {
-      const isPkg = !!apt.package_appointment;
-      const rawName = isPkg
-        ? (apt.package_appointment?.package?.name || apt.service?.name || 'Pacote')
-        : (apt.service?.name || 'Servico');
+      const rawName = resolveAppointmentStepServiceName(apt, 'Servico');
       const serviceName = removeAccents(rawName);
       const status = removeAccents(getAppointmentStatusConfig(apt.status).label);
       const date = format(new Date(apt.start_time), 'dd/MM/yyyy');
@@ -265,14 +262,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
       return;
     }
     const linhas = appointmentsToSend.map(apt => {
-      const isPkg = !!apt.package_appointment;
-      const serviceName = apt.service?.name || null;
-      const packageName = apt.package_appointment?.package?.name || null;
-      // Sempre priorizar o nome do serviço (ex.: "Avaliação", "Axila + Virilha").
-      // Para pacotes, complementar com o nome do pacote entre parênteses.
-      const nome = isPkg
-        ? (serviceName ? `${serviceName}${packageName ? ` (${packageName})` : ''}` : (packageName || 'Pacote'))
-        : (serviceName || 'Serviço');
+      const nome = formatAppointmentServiceWithPackageContext(apt);
       const data = format(new Date(apt.start_time), 'dd/MM/yyyy');
       const hora = `${format(new Date(apt.start_time), 'HH:mm')} - ${format(new Date(apt.end_time), 'HH:mm')}`;
       const status = getAppointmentStatusConfig(apt.status).label;
@@ -418,14 +408,9 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const notesApplicationHint = extractApplicationLabelFromNotes(appointment.notes);
                 const showAsPackageBadge = isPackage || !!notesApplicationHint;
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
-                // Sempre que houver pacote vinculado, o nome do pacote é a fonte da verdade
-                // (mesmo em itens cancelados/reagendados — evita "Serviço" genérico).
-                const displayName = isPackage
-                  ? (packageData?.name || appointment.service?.name || 'Pacote')
-                  : (appointment.service?.name || 'Serviço');
-                const serviceLine = isPackage && appointment.service?.name && appointment.service.name !== packageData?.name
-                  ? appointment.service.name
-                  : null;
+                const displayName = resolveAppointmentStepServiceName(appointment);
+                const packageName = isPackage ? resolveAppointmentPackageName(appointment) : null;
+                const serviceLine = packageName ? `Pacote: ${packageName}` : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
 

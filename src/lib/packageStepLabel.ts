@@ -27,6 +27,13 @@ export interface ResolveArgs {
   fallbackService?: ServiceLike | null;
 }
 
+export const MISSING_STEP_SERVICE_LABEL = 'Serviço da etapa não encontrado';
+
+const cleanLabel = (value?: string | null) => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+};
+
 export function resolveSessionServiceLabel({
   index,
   steps,
@@ -46,8 +53,64 @@ export function resolveSessionServiceLabel({
   if (nextStepService?.name) return nextStepService.name;
   if (fallbackService?.name) return fallbackService.name;
 
-  // Não repetir "Sessão N" nem prefixar com o nome do pacote — a linha já traz
-  // o índice em badge e a data. Se realmente não houver serviço, retornar
-  // string vazia para deixar apenas a data no rótulo.
-  return '';
+  return MISSING_STEP_SERVICE_LABEL;
 }
+
+export type AppointmentServiceLabelSource = {
+  service?: { name?: string | null } | null;
+  service_name_snapshot?: string | null;
+  package_name_snapshot?: string | null;
+  notes?: string | null;
+  package_appointment?: {
+    package?: { name?: string | null } | null;
+  } | null;
+};
+
+const extractPackageNameFromNotes = (notes?: string | null) => (
+  notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i)?.[1]?.trim() || null
+);
+
+export const isPackageAppointmentLike = (appointment?: AppointmentServiceLabelSource | null) => {
+  if (!appointment) return false;
+  return Boolean(
+    appointment.package_appointment ||
+    cleanLabel(appointment.package_name_snapshot) ||
+    cleanLabel(extractPackageNameFromNotes(appointment.notes)),
+  );
+};
+
+export const resolveAppointmentStepServiceName = (
+  appointment?: AppointmentServiceLabelSource | null,
+  fallback = 'Serviço',
+) => {
+  if (!appointment) return fallback;
+  const isPackage = isPackageAppointmentLike(appointment);
+  const snapshotName = cleanLabel(appointment.service_name_snapshot);
+  const currentServiceName = cleanLabel(appointment.service?.name);
+
+  if (isPackage) {
+    return snapshotName || currentServiceName || MISSING_STEP_SERVICE_LABEL;
+  }
+
+  return currentServiceName || snapshotName || fallback;
+};
+
+export const resolveAppointmentPackageName = (
+  appointment?: AppointmentServiceLabelSource | null,
+  fallback = 'Pacote',
+) => {
+  if (!appointment) return fallback;
+  return cleanLabel(appointment.package_appointment?.package?.name)
+    || cleanLabel(appointment.package_name_snapshot)
+    || cleanLabel(extractPackageNameFromNotes(appointment.notes))
+    || fallback;
+};
+
+export const formatAppointmentServiceWithPackageContext = (
+  appointment?: AppointmentServiceLabelSource | null,
+) => {
+  const serviceName = resolveAppointmentStepServiceName(appointment);
+  if (!isPackageAppointmentLike(appointment)) return serviceName;
+  const packageName = resolveAppointmentPackageName(appointment, '');
+  return packageName ? `${serviceName} (${packageName})` : serviceName;
+};

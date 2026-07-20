@@ -31,6 +31,7 @@ import { getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { formatTimeInTimeZone } from '@/lib/timezone';
 import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
+import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -63,9 +64,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const hexColor = professionalColor || categoryColor?.hex || '#a1a1aa';
   const statusStyle = getAppointmentStatusStyle(appointment.status);
   const isPackageAppointment = Boolean(appointment.package_appointment?.package);
-  const displayServiceName = isPackageAppointment
-    ? appointment.package_appointment?.package?.name || appointment.service?.name
-    : appointment.service?.name;
+  const displayServiceName = resolveAppointmentStepServiceName(appointment);
   const applicationLabel = isPackageAppointment ? getAppointmentPackageApplicationLabel(appointment) : null;
   
   // Create softer version of the color for backgrounds

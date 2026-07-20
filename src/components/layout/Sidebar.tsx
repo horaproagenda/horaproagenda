@@ -65,7 +65,6 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   const { signOut, profile, hasRole, user, roles, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
   const asideRef = useRef<HTMLElement | null>(null);
-  const firstNavItemRef = useRef<HTMLAnchorElement | null>(null);
   const navigate = useNavigate();
 
   // Mobile drawer: body scroll lock + Escape-to-close. NÃO movemos foco
@@ -314,7 +313,6 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   to={item.href}
                   end
                   onClick={(e) => handleNavClick(e, item.href)}
-                  ref={index === 0 ? firstNavItemRef : undefined}
                   data-testid={`sidebar-link-${item.href}`}
                   {...prefetchHandlers(item.href)}
 

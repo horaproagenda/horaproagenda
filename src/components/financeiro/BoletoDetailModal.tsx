@@ -319,7 +319,7 @@ export function BoletoDetailModal({
                       variant="destructive"
                       className="gap-1"
                       disabled={batchDeleting || batchPaying}
-                      onClick={() => setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
+                      onClick={() => packageSaleId ? requestPackageCancel() : setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Excluir {selectedIds.length}

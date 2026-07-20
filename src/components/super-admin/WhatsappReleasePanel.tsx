@@ -297,15 +297,12 @@ export function WhatsappReleasePanel() {
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => approve(r)}
-                        disabled={busy || freePool === 0}
-                        title={
-                          freePool === 0 ? 'Adicione instâncias ao pool antes de liberar' : ''
-                        }
+                        onClick={() => openReleaseDialog(r)}
+                        disabled={busy}
                         className="bg-primary hover:bg-primary"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                        {busy ? 'Aprovando...' : 'Liberar'}
+                        {busy ? 'Liberando...' : 'Liberar Instância'}
                       </Button>
                     )}
                   </TableCell>
@@ -315,6 +312,83 @@ export function WhatsappReleasePanel() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!releaseTarget} onOpenChange={(open) => { if (!open) closeReleaseDialog(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Liberar instância UltraMsg</DialogTitle>
+            <DialogDescription className="text-xs">
+              Preencha os dados da instância UltraMsg comprada para o pedido{' '}
+              <span className="font-mono">{releaseTarget ? shortCode(releaseTarget.request_id) : ''}</span>
+              {releaseTarget?.email_hint ? ` (${releaseTarget.email_hint})` : ''}. A instância será
+              validada, adicionada ao pool e vinculada ao usuário automaticamente. O QR Code é
+              gerado dentro do app do próprio usuário em Configurações → WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="wa-instance" className="text-xs">Instance ID *</Label>
+              <Input
+                id="wa-instance"
+                placeholder="instance12345"
+                value={form.instance_id}
+                onChange={(e) => setForm((f) => ({ ...f, instance_id: e.target.value }))}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-token" className="text-xs">Token *</Label>
+              <Input
+                id="wa-token"
+                placeholder="Token da instância UltraMsg"
+                value={form.token}
+                onChange={(e) => setForm((f) => ({ ...f, token: e.target.value }))}
+                disabled={submitting}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-api" className="text-xs">URL da API (opcional)</Label>
+              <Input
+                id="wa-api"
+                placeholder="https://api.ultramsg.com"
+                value={form.api_url}
+                onChange={(e) => setForm((f) => ({ ...f, api_url: e.target.value }))}
+                disabled={submitting}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Deixe em branco para usar o endpoint padrão.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-notes" className="text-xs">Observações (opcional)</Label>
+              <Textarea
+                id="wa-notes"
+                rows={2}
+                placeholder="Ex.: plano, data da compra, referência interna..."
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeReleaseDialog} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button onClick={submitRelease} disabled={submitting || !form.instance_id.trim() || !form.token.trim()}>
+              {submitting ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Liberando...</>
+              ) : (
+                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Validar e liberar</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
+
 }

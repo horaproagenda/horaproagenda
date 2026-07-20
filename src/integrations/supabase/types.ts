@@ -4949,6 +4949,7 @@ export type Database = {
         }
         Returns: string
       }
+      assert_not_super_admin_reading_tenant: { Args: never; Returns: boolean }
       attach_document_trigger: { Args: { table_name: string }; Returns: string }
       attach_document_trigger_2: {
         Args: { schema_name: string; table_name: string }

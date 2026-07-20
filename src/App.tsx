@@ -72,26 +72,54 @@ function RouteFallback() {
   );
 }
 
-// Configuração otimizada do QueryClient - criado uma única vez
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      // staleTime curto: garante que ao trocar de tela/aba/dispositivo
-      // os dados sejam revalidados rapidamente. Aumentado para 60s para
-      // reduzir refetch agressivo em navegações rápidas entre rotas.
-      staleTime: 1000 * 60, // 60s
-      gcTime: 1000 * 60 * 10, // 10 minutos - mantém cache p/ navegação rápida
-      // placeholderData global: zero flicker entre navegações que reutilizam
-      // o mesmo queryKey (listas, filtros, paginação).
-      placeholderData: keepPreviousData,
-      // Revalida ao focar a janela e ao voltar online -> sincroniza
-      // automaticamente celular/tablet/desktop quando o usuário volta a usar.
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: 'always',
-      retry: 1,
+// Detecta mobile / conexão lenta para adaptar comportamento do cache.
+// No celular, refetch-on-focus e staleTime curto multiplicam requisições
+// e travam a UI (main thread ocupado com parse + re-render).
+const isMobileDevice = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+};
+
+const isSlowConnection = () => {
+  if (typeof navigator === 'undefined') return false;
+  const conn = (navigator as unknown as { connection?: { effectiveType?: string; saveData?: boolean } }).connection;
+  if (!conn) return false;
+  if (conn.saveData) return true;
+  return conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g' || conn.effectiveType === '3g';
+};
+
+// Configuração otimizada do QueryClient - criado uma única vez.
+// Em mobile / rede lenta: cache mais "grudento" reduz round-trips e o
+// Realtime já invalida o que muda de fato — resultado: qualquer ação
+// (agendar, editar, salvar) sente-se instantânea.
+const createQueryClient = () => {
+  const mobile = isMobileDevice();
+  const slow = isSlowConnection();
+  const staleTime = mobile || slow ? 1000 * 60 * 5 : 1000 * 60; // 5min mobile · 60s desktop
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime,
+        gcTime: 1000 * 60 * 15,
+        placeholderData: keepPreviousData,
+        // Em mobile, focus/reconnect disparam refetch em cascata e
+        // congelam a interface. O Realtime já mantém tudo sincronizado.
+        refetchOnWindowFocus: !mobile,
+        refetchOnReconnect: mobile ? true : 'always',
+        refetchOnMount: false,
+        retry: mobile ? 2 : 1,
+        structuralSharing: true,
+        networkMode: mobile ? 'offlineFirst' : 'online',
+      },
+      mutations: {
+        // Mutations partem do cache local; se offline, ficam em pausa e
+        // retomam ao voltar — evita travar a UI aguardando rede fraca.
+        networkMode: 'offlineFirst',
+        retry: 1,
+      },
     },
-  },
-});
+  });
+};
 
 /**
  * Instrumenta o QueryCache para registrar duração de cada fetch no

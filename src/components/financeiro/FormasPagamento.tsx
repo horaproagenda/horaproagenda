@@ -765,6 +765,19 @@ export function FormasPagamento() {
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
         onDelete={async (id) => { await deleteInstallment.mutateAsync(id); }}
+        onRequestCancelPackage={(saleId) => {
+          setDetailClientKey(null);
+          setCancelPackageSaleId(saleId);
+        }}
+      />
+      <CancelPackageDialog
+        open={!!cancelPackageSaleId}
+        onOpenChange={(o) => { if (!o) setCancelPackageSaleId(null); }}
+        saleId={cancelPackageSaleId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+          setCancelPackageSaleId(null);
+        }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />

@@ -89,39 +89,76 @@ export function WhatsappReleasePanel() {
     };
   }, [qc]);
 
-  const approve = async (row: ReleaseRow) => {
-    if (busyId) return;
-    setBusyId(row.request_id);
+  const [releaseTarget, setReleaseTarget] = useState<ReleaseRow | null>(null);
+  const [form, setForm] = useState({ instance_id: '', token: '', api_url: '', notes: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const openReleaseDialog = (row: ReleaseRow) => {
+    setReleaseTarget(row);
+    setForm({ instance_id: '', token: '', api_url: '', notes: '' });
+  };
+
+  const closeReleaseDialog = () => {
+    if (submitting) return;
+    setReleaseTarget(null);
+  };
+
+  const approveRequest = async (requestId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc(
+      'super_admin_approve_whatsapp_release',
+      { p_request_id: requestId },
+    );
+    if (error) throw error;
+    return (data ?? {}) as { approved?: boolean; already_approved?: boolean; free_pool_instances?: number };
+  };
+
+  const submitRelease = async () => {
+    if (!releaseTarget) return;
+    const instance = form.instance_id.trim();
+    const token = form.token.trim();
+    if (!instance || !token) {
+      toast.error('Informe o instance_id e o token da UltraMsg.');
+      return;
+    }
+    setSubmitting(true);
+    setBusyId(releaseTarget.request_id);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
-        'super_admin_approve_whatsapp_release',
-        { p_request_id: row.request_id },
-      );
-      if (error) throw error;
-      const res = (data ?? {}) as {
-        approved?: boolean;
-        already_approved?: boolean;
-        free_pool_instances?: number;
-      };
-      if (res.approved) {
+      const { data: addData, error: addError } = await supabase.functions.invoke('whatsapp-pool-add-instance', {
+        body: {
+          instance_id: instance,
+          token,
+          api_url: form.api_url.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+        },
+      });
+      if (addError) throw new Error(addError.message || 'Falha ao adicionar instância no pool.');
+      const addResult = (addData ?? {}) as { success?: boolean; error?: string };
+      if (!addResult.success) {
+        throw new Error(addResult.error || 'Não foi possível cadastrar a instância no pool.');
+      }
+
+      const approveResult = await approveRequest(releaseTarget.request_id);
+      if (approveResult.approved) {
         toast.success(
-          `Liberação ${shortCode(row.request_id)} aprovada. ${
-            typeof res.free_pool_instances === 'number'
-              ? `${res.free_pool_instances} instância(s) livre(s) no pool.`
-              : ''
-          }`.trim(),
+          `Instância cadastrada e liberação ${shortCode(releaseTarget.request_id)} aprovada. O usuário já pode gerar o QR Code em Configurações → WhatsApp.`,
         );
       } else {
-        toast.info(`Pedido ${shortCode(row.request_id)} já estava liberado.`);
+        toast.info(
+          `Instância cadastrada. Pedido ${shortCode(releaseTarget.request_id)} já estava liberado — o usuário pode gerar o QR Code em Configurações → WhatsApp.`,
+        );
       }
+      setReleaseTarget(null);
       qc.invalidateQueries({ queryKey: ['super-admin-whatsapp-releases-anon'] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao aprovar');
+      toast.error(e instanceof Error ? e.message : 'Falha ao liberar instância.');
     } finally {
+      setSubmitting(false);
       setBusyId(null);
     }
   };
+
+
 
   const revoke = async (row: ReleaseRow) => {
     if (busyId) return;

@@ -327,25 +327,15 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   };
 
   const handleFileSelected = (nextFile: File | null) => {
-    setFile((prev) => {
-      // no-op guard: same file
-      return nextFile;
-    });
+    setFile(nextFile);
     setFilePreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
-    setFilePreviewKind(null);
-    if (nextFile) {
-      const isImage = nextFile.type.startsWith('image/');
-      const isPdf = nextFile.type === 'application/pdf' || /\.pdf$/i.test(nextFile.name);
-      if (isImage || isPdf) {
-        const url = URL.createObjectURL(nextFile);
-        setFilePreviewUrl(url);
-        setFilePreviewKind(isImage ? 'image' : 'pdf');
-      } else {
-        setFilePreviewKind('other');
-      }
+    const kind = detectFilePreviewKind(nextFile);
+    setFilePreviewKind(kind);
+    if (nextFile && (kind === 'image' || kind === 'pdf')) {
+      setFilePreviewUrl(URL.createObjectURL(nextFile));
     }
   };
 

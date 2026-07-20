@@ -26,6 +26,7 @@ interface ReleaseRow {
   is_approved: boolean;
   has_pool_instance: boolean;
   free_pool_instances: number;
+  email_hint: string | null;
 }
 
 function fmt(iso?: string | null) {

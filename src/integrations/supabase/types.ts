@@ -5557,6 +5557,7 @@ export type Database = {
         Returns: {
           approved_at: string
           created_at: string
+          email_hint: string
           free_pool_instances: number
           has_pool_instance: boolean
           is_approved: boolean

@@ -582,14 +582,25 @@ export function NewAppointmentDialog({
   }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount, packageSequenceSteps, nextPackageStepIndex, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
 
   // Update preview dates when calculation changes
+  // Guard against infinite loops by comparing serialized timestamps before setState
+  const previewDatesSignature = useMemo(
+    () => calculatePreviewDates.map((d) => d.getTime()).join(','),
+    [calculatePreviewDates]
+  );
   useEffect(() => {
-    setPreviewDates(calculatePreviewDates);
-    setEditablePreviewDates(calculatePreviewDates);
-    setEditingDateIndex(null);
+    setPreviewDates((prev) => {
+      const prevSig = prev.map((d) => d.getTime()).join(',');
+      return prevSig === previewDatesSignature ? prev : calculatePreviewDates;
+    });
+    setEditablePreviewDates((prev) => {
+      const prevSig = prev.map((d) => d.getTime()).join(',');
+      return prevSig === previewDatesSignature ? prev : calculatePreviewDates;
+    });
     if (calculatePreviewDates.length > 0) {
-      setShowPreview(true);
+      setShowPreview((prev) => (prev ? prev : true));
     }
-  }, [calculatePreviewDates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewDatesSignature]);
 
   // Calculate preview dates for recurring service appointments
   // Memoize the interval to prevent recalculation loops

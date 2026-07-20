@@ -22,7 +22,7 @@ import {
   getPackageApplicationStatusLabel,
   extractApplicationLabelFromNotes,
 } from '@/lib/packageSequence';
-import { formatAppointmentServiceWithPackageContext, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { formatAppointmentServiceWithPackageContext, resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 interface ClientAppointmentsTabProps {
   appointments: Appointment[];
@@ -408,14 +408,9 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const notesApplicationHint = extractApplicationLabelFromNotes(appointment.notes);
                 const showAsPackageBadge = isPackage || !!notesApplicationHint;
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
-                // Sempre que houver pacote vinculado, o nome do pacote é a fonte da verdade
-                // (mesmo em itens cancelados/reagendados — evita "Serviço" genérico).
-                const displayName = isPackage
-                  ? (packageData?.name || appointment.service?.name || 'Pacote')
-                  : (appointment.service?.name || 'Serviço');
-                const serviceLine = isPackage && appointment.service?.name && appointment.service.name !== packageData?.name
-                  ? appointment.service.name
-                  : null;
+                const displayName = resolveAppointmentStepServiceName(appointment);
+                const packageName = isPackage ? resolveAppointmentPackageName(appointment) : null;
+                const serviceLine = packageName ? `Pacote: ${packageName}` : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
 

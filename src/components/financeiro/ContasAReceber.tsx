@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { isDiscountEntry } from '@/lib/discountPatterns';
 import { cn } from '@/lib/utils';
+import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 export function ContasAReceber() {
   const { receivables, updateEntry, deleteEntry } = useFinancialEntries();
@@ -146,8 +147,8 @@ export function ContasAReceber() {
           id: apt.id,
           type: 'appointment' as const,
           date: apt.start_time.split('T')[0],
-          description: isPackageAppointment 
-            ? (packageData?.name || 'Pacote') 
+          description: isPackageAppointment
+            ? resolveAppointmentStepServiceName(apt)
             : (apt.service?.name || 'Agendamento'),
           clientName: apt.client?.name || '-',
           amount: remainingAmount,

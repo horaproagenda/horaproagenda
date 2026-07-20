@@ -1291,7 +1291,7 @@ export function NewAppointmentDialog({
                 service_id: futureServiceId,
                 start_time: futureDate.toISOString(),
                 end_time: futureEnd.toISOString(),
-                notes: `${futureService?.name ? futureService.name + ' — ' : ''}${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`,
+                notes: `${resolveSessionServiceLabel({ index: nextPackageStepIndex + i, steps: packageSequenceSteps, services, pkg: packageData || selectedPackageData })} — ${packageData?.name || selectedPackageData?.name}${notes ? ' - ' + notes : ''}`,
                 professional_id: selectedProfessional || packageData?.professional_id || undefined,
                 room_id: selectedRoom || packageData?.room_id || undefined,
                 payment_status: isPackagePaid ? 'paid' : 'pending',
@@ -1325,7 +1325,12 @@ export function NewAppointmentDialog({
             const sessionsList = editablePreviewDates.map((d, i) => {
               const stepSvcId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
               const stepSvc = services.find((s) => s.id === stepSvcId);
-              const svcName = stepSvc?.name || packageData?.name || 'Serviço';
+              const svcName = stepSvc?.name || resolveSessionServiceLabel({
+                index: nextPackageStepIndex + i,
+                steps: packageSequenceSteps,
+                services,
+                pkg: packageData || selectedPackageData,
+              });
               return `📅 Sessão ${i + 1} — ${svcName}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
             }).join('\n');
 

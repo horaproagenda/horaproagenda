@@ -91,7 +91,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 pt-safe pl-safe pr-safe">
           <TrialBanner />
           <Header 
             title={title} 
@@ -99,9 +99,10 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             onMenuClick={() => setIsMobileSidebarOpen(true)}
           />
         </div>
-        <main data-testid="app-main-scroll" className="flex-1 min-h-0 px-4 py-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden">
+        <main data-testid="app-main-scroll" className="flex-1 min-h-0 px-4 py-3 sm:p-4 md:p-6 overflow-y-auto overflow-x-hidden pl-safe pr-safe pb-safe">
           {children}
         </main>
+
       </div>
       <NewAppointmentDialog 
         open={isNewAppointmentOpen} 

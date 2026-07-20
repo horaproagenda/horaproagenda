@@ -319,10 +319,33 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
   };
 
+  const handleFileSelected = (nextFile: File | null) => {
+    setFile((prev) => {
+      // no-op guard: same file
+      return nextFile;
+    });
+    setFilePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setFilePreviewKind(null);
+    if (nextFile) {
+      const isImage = nextFile.type.startsWith('image/');
+      const isPdf = nextFile.type === 'application/pdf' || /\.pdf$/i.test(nextFile.name);
+      if (isImage || isPdf) {
+        const url = URL.createObjectURL(nextFile);
+        setFilePreviewUrl(url);
+        setFilePreviewKind(isImage ? 'image' : 'pdf');
+      } else {
+        setFilePreviewKind('other');
+      }
+    }
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setFile(null);
+    handleFileSelected(null);
     setType('anamnese');
     setSelectedTemplate(null);
     setFilledContent('');

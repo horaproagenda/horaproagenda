@@ -61,6 +61,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';
+import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
@@ -199,7 +200,7 @@ export function CashRegisterPanel() {
       id: apt.id,
       appointment_id: apt.id,
       type: 'appointment' as const,
-      description: `Agendamento: ${apt.service?.name || apt.package_appointment?.package?.name || 'Serviço'}`,
+      description: `Agendamento: ${resolveAppointmentStepServiceName(apt)}`,
       client: apt.client,
       due_date: apt.start_time.split('T')[0],
       amount: apt.service?.price || apt.package_appointment?.package?.total_price || 0,

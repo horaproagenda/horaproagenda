@@ -99,6 +99,7 @@ import {
   resolveAuthorName,
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
+import { resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 const UUID_RE_GLOBAL = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 function sanitizeDisplayText(text: string): string {
@@ -1028,13 +1029,12 @@ export function AppointmentDetailDialog({
   // Detect package linkage robustly: even when package_appointment_id was lost,
   // the notes/snapshot fields preserve the original package identification.
   const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
-  const serviceNameSnapshot = (appointment as any).service_name_snapshot as string | null | undefined;
   const notesPackageMatch = appointment.notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
   const notesPackageName = notesPackageMatch?.[1]?.trim() || null;
   const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot || !!notesPackageName;
   const packageData = appointment.package_appointment?.package;
-  const resolvedPackageName = packageData?.name || packageNameSnapshot || notesPackageName || 'Sessão de Pacote';
-  const resolvedServiceName = appointment.service?.name || serviceNameSnapshot || 'Serviço';
+  const resolvedPackageName = resolveAppointmentPackageName(appointment as any, notesPackageName || 'Pacote');
+  const resolvedServiceName = resolveAppointmentStepServiceName(appointment as any, 'Serviço');
 
   
   // Package payment must reflect the synchronized amount on appointments, not only the existence of a payment method.
@@ -1121,7 +1121,7 @@ export function AppointmentDetailDialog({
 
   const receiptRows = [
     {
-      item: appointment.service?.name || appointment.package_appointment?.package?.name || 'Serviço',
+      item: resolvedServiceName,
       type: isPackageAppointment ? 'Pacote' : 'Serviço',
       quantity: 1,
       unitPrice: totalPrice,
@@ -1545,7 +1545,7 @@ export function AppointmentDetailDialog({
               ) : (
                 <Sparkles className="h-5 w-5" style={{ color: dialogProfColor }} />
               )}
-              {isPackageAppointment ? resolvedPackageName : resolvedServiceName}
+              {resolvedServiceName}
             </DialogTitle>
           </DialogHeader>
 
@@ -1780,12 +1780,8 @@ export function AppointmentDetailDialog({
               /* Service Info - View Mode */
               <div className="space-y-3">
                 {(() => {
-                  // Fallbacks defensivos: quando o agendamento é de pacote (ou o serviço
-                  // foi removido/renomeado), exibimos o nome do pacote para o ícone
-                  // de estrela nunca aparecer vazio.
-                  const displayName = appointment.service?.name
-                    || packageData?.name
-                    || (isPackageAppointment ? 'Sessão de Pacote' : 'Serviço');
+                  // Fallback defensivo: em pacote sequencial mostramos sempre o serviço da etapa.
+                  const displayName = resolvedServiceName;
                   const displayCategory = appointment.service?.category
                     || (isPackageAppointment ? 'Pacote' : '');
                   // Duração: SEMPRE prioriza (end - start) — fonte da verdade

@@ -383,23 +383,25 @@ serve(async (req) => {
       );
     }
 
-    // 4. Verify client exists
+    // 4. Verify client exists in caller's tenant
     const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('id, name')
       .eq('id', body.client_id)
+      .eq('account_owner_id', callerOwner)
       .single();
 
     if (clientError || !client) {
       errors.push({ field: 'client_id', message: 'Client not found' });
     }
 
-    // 5. Verify service exists if provided
+    // 5. Verify service exists if provided (tenant-scoped)
     if (body.service_id) {
       const { data: service, error: serviceError } = await supabase
         .from('services')
         .select('id, name, is_active')
         .eq('id', body.service_id)
+        .eq('account_owner_id', callerOwner)
         .single();
 
       if (serviceError || !service) {
@@ -409,12 +411,13 @@ serve(async (req) => {
       }
     }
 
-    // 6. Verify professional exists and is active if provided
+    // 6. Verify professional exists and is active if provided (tenant-scoped)
     if (body.professional_id) {
       const { data: professional, error: profError } = await supabase
         .from('professionals')
         .select('id, name, is_active')
         .eq('id', body.professional_id)
+        .eq('account_owner_id', callerOwner)
         .single();
 
       if (profError || !professional) {
@@ -424,12 +427,13 @@ serve(async (req) => {
       }
     }
 
-    // 7. Verify room exists and is active if provided
+    // 7. Verify room exists and is active if provided (tenant-scoped)
     if (body.room_id) {
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .select('id, name, is_active')
         .eq('id', body.room_id)
+        .eq('account_owner_id', callerOwner)
         .single();
 
       if (roomError || !room) {
@@ -438,6 +442,7 @@ serve(async (req) => {
         errors.push({ field: 'room_id', message: 'Room is not active' });
       }
     }
+
 
     if (errors.length > 0) {
       return new Response(

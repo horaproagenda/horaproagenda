@@ -293,6 +293,7 @@ serve(async (req) => {
         .from('cash_registers')
         .select('id, status')
         .eq('id', body.cash_register_id)
+        .eq('account_owner_id', callerOwner)
         .single();
 
       if (cashError || !cashRegister) {
@@ -309,12 +310,13 @@ serve(async (req) => {
       }
     }
 
-    // 4. Verify payment methods exist
+    // 4. Verify payment methods exist in caller's tenant
     for (const pmId of body.payment_methods) {
       const { data: pm, error: pmError } = await supabase
         .from('payment_methods')
         .select('id, is_active')
         .eq('id', pmId)
+        .eq('account_owner_id', callerOwner)
         .single();
 
       if (pmError || !pm) {
@@ -323,6 +325,7 @@ serve(async (req) => {
         errors.push({ field: 'payment_methods', message: `Payment method ${pmId} is not active` });
       }
     }
+
 
     if (errors.length > 0) {
       return new Response(

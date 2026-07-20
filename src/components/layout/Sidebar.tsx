@@ -290,7 +290,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                     <NavLink
                       to={item.href}
                       end
-                      onClick={handleNavClick}
+                      onClick={(e) => handleNavClick(e, item.href)}
                       {...prefetchHandlers(item.href)}
                       className={({ isActive }) =>
                         cn(
@@ -313,7 +313,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   key={item.name}
                   to={item.href}
                   end
-                  onClick={handleNavClick}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   ref={index === 0 ? firstNavItemRef : undefined}
                   data-testid={`sidebar-link-${item.href}`}
                   {...prefetchHandlers(item.href)}

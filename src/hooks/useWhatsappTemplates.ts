@@ -37,7 +37,7 @@ export function useWhatsappTemplates() {
   const createTemplate = useMutation({
     mutationFn: async (template: Omit<WhatsappTemplate, 'id' | 'created_at' | 'updated_at'>) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { data, error } = await supabase
         .from('whatsapp_templates')
         .insert({
@@ -48,13 +48,30 @@ export function useWhatsappTemplates() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as WhatsappTemplate;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
+    onMutate: async (template) => {
+      await queryClient.cancelQueries({ queryKey: ['whatsapp_templates'] });
+      const previous = queryClient.getQueryData<WhatsappTemplate[]>(['whatsapp_templates']) ?? [];
+      const optimistic: WhatsappTemplate = {
+        ...(template as any),
+        id: `optimistic-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      queryClient.setQueryData<WhatsappTemplate[]>(['whatsapp_templates'], [...previous, optimistic]);
+      return { previous, optimisticId: optimistic.id };
+    },
+    onSuccess: (data, _vars, ctx) => {
+      // Substitui a linha otimista pela real, sem refetch (evita esperar 20s+ de refresh global).
+      queryClient.setQueryData<WhatsappTemplate[]>(['whatsapp_templates'], (old = []) => {
+        const filtered = old.filter((t) => t.id !== ctx?.optimisticId);
+        return [...filtered, data];
+      });
       toast.success('Template criado com sucesso!');
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['whatsapp_templates'], ctx.previous);
       toast.error('Erro ao criar template: ' + error.message);
     },
   });
@@ -62,7 +79,7 @@ export function useWhatsappTemplates() {
   const updateTemplate = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<WhatsappTemplate> & { id: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { data, error } = await supabase
         .from('whatsapp_templates')
         .update({
@@ -74,13 +91,24 @@ export function useWhatsappTemplates() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as WhatsappTemplate;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: ['whatsapp_templates'] });
+      const previous = queryClient.getQueryData<WhatsappTemplate[]>(['whatsapp_templates']) ?? [];
+      queryClient.setQueryData<WhatsappTemplate[]>(['whatsapp_templates'], (old = []) =>
+        old.map((t) => (t.id === id ? { ...t, ...(updates as any), updated_at: new Date().toISOString() } : t))
+      );
+      return { previous };
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<WhatsappTemplate[]>(['whatsapp_templates'], (old = []) =>
+        old.map((t) => (t.id === data.id ? data : t))
+      );
       toast.success('Template atualizado com sucesso!');
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['whatsapp_templates'], ctx.previous);
       toast.error('Erro ao atualizar template: ' + error.message);
     },
   });

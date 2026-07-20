@@ -18,18 +18,21 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: { functions: { invoke: vi.fn() } },
 }));
 
+const openUploadTab = () => {
+  fireEvent.click(screen.getByRole('button', { name: /adicionar/i }));
+  fireEvent.click(screen.getByRole('tab', { name: /upload manual/i }));
+};
+
 describe('ClientDocumentsTab file preview', () => {
   beforeEach(() => {
-    // jsdom polyfill
-    if (!('createObjectURL' in URL)) {
-      // @ts-expect-error jsdom
-      URL.createObjectURL = vi.fn(() => 'blob:mock');
-      // @ts-expect-error jsdom
-      URL.revokeObjectURL = vi.fn();
-    } else {
-      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    if (typeof URL.createObjectURL !== 'function') {
+      // @ts-expect-error jsdom polyfill
+      URL.createObjectURL = () => 'blob:mock';
+      // @ts-expect-error jsdom polyfill
+      URL.revokeObjectURL = () => {};
     }
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   });
 
   const renderTab = () =>
@@ -41,14 +44,9 @@ describe('ClientDocumentsTab file preview', () => {
       />,
     );
 
-  it('shows an image preview when the selected file is an image', async () => {
+  it('renders an image preview when the selected file is an image', async () => {
     renderTab();
-    fireEvent.click(screen.getByRole('button', { name: /novo documento|adicionar|documento/i }).closest('button')!);
-
-    // Open dialog
-    const addButtons = screen.getAllByRole('button');
-    const openBtn = addButtons.find((b) => /adicionar|novo/i.test(b.textContent || ''));
-    if (openBtn) fireEvent.click(openBtn);
+    openUploadTab();
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
@@ -58,17 +56,15 @@ describe('ClientDocumentsTab file preview', () => {
     fireEvent.change(fileInput);
 
     await waitFor(() => {
-      const preview = document.querySelector('img[alt^="Prévia de"]');
+      const preview = document.querySelector('img[alt^="Prévia de"]') as HTMLImageElement | null;
       expect(preview).toBeTruthy();
       expect(preview?.getAttribute('src')).toBe('blob:mock');
     });
   });
 
-  it('shows a PDF preview when the selected file is a PDF', async () => {
+  it('renders a PDF preview when the selected file is a PDF', async () => {
     renderTab();
-    const addButtons = screen.getAllByRole('button');
-    const openBtn = addButtons.find((b) => /adicionar|novo/i.test(b.textContent || ''));
-    if (openBtn) fireEvent.click(openBtn);
+    openUploadTab();
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     const pdfFile = new File([new Uint8Array([1, 2, 3])], 'doc.pdf', { type: 'application/pdf' });

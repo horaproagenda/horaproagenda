@@ -121,12 +121,21 @@ export function useWhatsappTemplates() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['whatsapp_templates'] });
+      const previous = queryClient.getQueryData<WhatsappTemplate[]>(['whatsapp_templates']) ?? [];
+      queryClient.setQueryData<WhatsappTemplate[]>(['whatsapp_templates'], (old = []) =>
+        old.filter((t) => t.id !== id)
+      );
+      return { previous };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp_templates'] });
       toast.success('Template excluído com sucesso!');
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['whatsapp_templates'], ctx.previous);
       toast.error('Erro ao excluir template: ' + error.message);
     },
   });

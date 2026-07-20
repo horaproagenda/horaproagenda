@@ -33,6 +33,7 @@ import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 import { BoletoDetailModal } from './BoletoDetailModal';
 import { BoletoAuditLogDialog } from './BoletoAuditLogDialog';
 import { CreateBoletoParceladoDialog } from './CreateBoletoParceladoDialog';
+import { CancelPackageDialog } from './CancelPackageDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';

@@ -309,7 +309,15 @@ export function WhatsappSettings() {
       }
       toast.success('QR Code gerado. Escaneie no seu celular.');
     } catch (e: any) {
-      const raw = (e?.context?.error || e?.message || '').toString();
+      let raw = (e?.context?.error || e?.message || '').toString();
+      if (/non-2xx/i.test(raw) && e?.context?.json) {
+        try {
+          const body = await e.context.json();
+          raw = (body?.error || body?.message || raw).toString();
+        } catch {
+          // mantém a mensagem original se o corpo não for JSON
+        }
+      }
       const isForbidden = /403|Forbidden|só pode|vinculado ao usuário logado/i.test(raw);
       if (isForbidden) {
         setPermissionError(raw || 'Sem permissão para acessar o WhatsApp de outro profissional.');

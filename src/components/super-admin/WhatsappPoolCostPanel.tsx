@@ -154,7 +154,19 @@ export function WhatsappPoolCostPanel() {
       },
     });
     setAdding(false);
-    if (error) return toast.error('Erro ao adicionar: ' + error.message);
+    if (error) {
+      let message = error.message;
+      const context = (error as any)?.context;
+      if (/non-2xx/i.test(message) && context?.json) {
+        try {
+          const body = await context.json();
+          message = body?.error || body?.message || message;
+        } catch {
+          // mantém a mensagem original se o corpo não for JSON
+        }
+      }
+      return toast.error('Erro ao adicionar: ' + message);
+    }
     if (!data?.success) return toast.error('Erro ao adicionar: ' + (data?.error || 'falha desconhecida'));
     toast.success(data.connected
       ? 'Instância validada e adicionada ao pool. WhatsApp já está conectado.'

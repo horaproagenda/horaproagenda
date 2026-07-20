@@ -14,7 +14,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized - Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -27,7 +27,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -38,13 +38,13 @@ serve(async (req) => {
     const professional_id = prof?.id ?? null;
     if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
       return new Response(JSON.stringify({ success: false, error: 'O QR Code só pode ser gerado para o profissional vinculado ao usuário logado.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
     if (source !== 'professional') {
       return new Response(JSON.stringify({ success: false, error: 'QR Code indisponível: conecte uma instância própria para o profissional vinculado ao seu login.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (!creds) {
       return new Response(JSON.stringify({ success: false, error: 'UltraMsg não configurado para este profissional nem globalmente.' }),
@@ -74,6 +74,6 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('WhatsApp QR code error:', error);
     return new Response(JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

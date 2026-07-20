@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return json({ success: false, error: 'Unauthorized' }, 401);
+      return json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,7 +28,7 @@ serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: claims, error: cErr } = await supabaseUser.auth.getClaims(token);
-    if (cErr || !claims?.claims) return json({ success: false, error: 'Invalid token' }, 401);
+    if (cErr || !claims?.claims) return json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
     const userId = claims.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
@@ -38,10 +38,10 @@ serve(async (req) => {
       .from('professionals').select('id, account_owner_id').eq('user_id', userId).maybeSingle();
 
     const professional_id = ownProf?.id;
-    if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
+    if (!professional_id) return json({ success: false, error: 'Seu login não está vinculado a um profissional.' });
 
     if (requested_professional_id && requested_professional_id !== professional_id) {
-      return json({ success: false, error: 'Sem permissão para reivindicar instância para outro profissional.' }, 403);
+      return json({ success: false, error: 'Sem permissão para reivindicar instância para outro profissional.' });
     }
 
     // Tenant isolation: ensure target professional belongs to caller's account.
@@ -51,7 +51,7 @@ serve(async (req) => {
     const { data: targetProf } = await supabaseService
       .from('professionals').select('account_owner_id').eq('id', professional_id).maybeSingle();
     if (!targetProf || targetProf.account_owner_id !== callerOwner) {
-      return json({ success: false, error: 'Profissional não pertence à sua conta.' }, 403);
+      return json({ success: false, error: 'Profissional não pertence à sua conta.' });
     }
 
 
@@ -73,7 +73,7 @@ serve(async (req) => {
         return json({
           success: false,
           error: 'Este profissional já possui credenciais próprias configuradas. Remova-as antes de usar uma instância do pool.',
-        }, 409);
+        });
       }
     }
 
@@ -83,7 +83,7 @@ serve(async (req) => {
 
     if (claimErr) {
       console.error('claim_ultramsg_pool_instance error', claimErr);
-      return json({ success: false, error: claimErr.message }, 500);
+      return json({ success: false, error: claimErr.message });
     }
     const row = Array.isArray(claimed) ? claimed[0] : claimed;
     if (!row) {
@@ -91,7 +91,7 @@ serve(async (req) => {
         success: false,
         error: 'Nenhuma instância disponível no pool. O administrador precisa adicionar mais instâncias UltraMsg.',
         pool_empty: true,
-      }, 409);
+      });
     }
 
     // Upsert into professional_whatsapp_credentials so the rest of the app
@@ -108,7 +108,7 @@ serve(async (req) => {
 
     if (upErr) {
       console.error('upsert credentials error', upErr);
-      return json({ success: false, error: upErr.message }, 500);
+      return json({ success: false, error: upErr.message });
     }
 
     return json({
@@ -121,7 +121,7 @@ serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('whatsapp-claim-pool-instance error', err);
-    return json({ success: false, error: msg }, 500);
+    return json({ success: false, error: msg });
   }
 });
 

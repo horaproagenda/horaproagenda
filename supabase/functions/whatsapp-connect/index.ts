@@ -26,7 +26,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return json({ success: false, error: 'Unauthorized' }, 401);
+      return json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -37,7 +37,7 @@ serve(async (req) => {
     const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) return json({ success: false, error: 'Unauthorized' }, 401);
+    if (authError || !user) return json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
 
     const body = await req.json().catch(() => ({}));
     const requested_professional_id: string | undefined = body?.professional_id;
@@ -46,9 +46,9 @@ serve(async (req) => {
       .from('professionals').select('id, whatsapp_release_approved').eq('user_id', user.id).maybeSingle();
 
     const professional_id = ownProf?.id;
-    if (!professional_id) return json({ success: false, error: 'professional_id é obrigatório.' }, 400);
+    if (!professional_id) return json({ success: false, error: 'Seu login não está vinculado a um profissional.' });
     if (requested_professional_id && requested_professional_id !== professional_id) {
-      return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' }, 403);
+      return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' });
     }
     if (!ownProf?.whatsapp_release_approved) {
       return json({
@@ -68,7 +68,10 @@ serve(async (req) => {
     if (!existing?.is_active || !existing?.instance_id) {
       const { data: claimed, error: claimErr } = await supabaseService
         .rpc('claim_ultramsg_pool_instance', { p_professional_id: professional_id });
-      if (claimErr) return json({ success: false, error: claimErr.message }, 500);
+      if (claimErr) {
+        console.error('claim_ultramsg_pool_instance error', claimErr);
+        return json({ success: false, error: claimErr.message });
+      }
       const row = Array.isArray(claimed) ? claimed[0] : claimed;
       if (!row) {
         return json({
@@ -86,13 +89,16 @@ serve(async (req) => {
           token: row.token,
           is_active: true,
         }, { onConflict: 'professional_id' });
-      if (upErr) return json({ success: false, error: upErr.message }, 500);
+      if (upErr) {
+        console.error('professional_whatsapp_credentials upsert error', upErr);
+        return json({ success: false, error: upErr.message });
+      }
     }
 
     // 2) Gera QR Code (sem expor instance_id no retorno)
     const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
     if (source !== 'professional') {
-      return json({ success: false, error: 'Conecte uma instância própria para o profissional vinculado ao seu login.' }, 403);
+      return json({ success: false, error: 'Conecte uma instância própria para o profissional vinculado ao seu login.' });
     }
     if (!creds) return json({ success: false, error: 'Conexão indisponível.' }, 500);
 
@@ -114,6 +120,6 @@ serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('whatsapp-connect error', err);
-    return json({ success: false, error: msg }, 500);
+    return json({ success: false, error: msg });
   }
 });

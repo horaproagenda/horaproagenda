@@ -47,7 +47,19 @@ export function BoletoDetailModal({
   onUpdate,
   onCancel,
   onDelete,
+  onRequestCancelPackage,
 }: BoletoDetailModalProps) {
+  const packageSaleId: string | null = sale?.package_id ? (sale.id || null) : null;
+  const packageName: string | null = sale?.package?.name || null;
+
+  const requestPackageCancel = () => {
+    if (packageSaleId && onRequestCancelPackage) {
+      onRequestCancelPackage(packageSaleId);
+    } else {
+      toast.error('Este boleto pertence a um pacote. Use o cancelamento de pacote no módulo Pacotes.');
+    }
+  };
+
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);

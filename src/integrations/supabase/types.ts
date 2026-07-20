@@ -4395,7 +4395,7 @@ export type Database = {
           monthly_cost_usd: number
           notes: string | null
           status: string
-          token: string
+          token: string | null
           token_encrypted: string | null
           updated_at: string
         }
@@ -4410,7 +4410,7 @@ export type Database = {
           monthly_cost_usd?: number
           notes?: string | null
           status?: string
-          token: string
+          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }
@@ -4425,7 +4425,7 @@ export type Database = {
           monthly_cost_usd?: number
           notes?: string | null
           status?: string
-          token?: string
+          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }

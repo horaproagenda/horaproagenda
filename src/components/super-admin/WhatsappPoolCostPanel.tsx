@@ -17,9 +17,8 @@ interface PoolRow {
   id: string;
   instance_id: string;
   // NOTE: `token` (UltraMsg API secret) is intentionally NOT loaded into the
-  // browser. It stays server-side and is only ever handled by SECURITY DEFINER
-  // RPCs / edge functions. Writing a new instance still sends the token up
-  // through Supabase RLS-protected insert, but we never read it back.
+  // browser. It is sent once to a protected Edge Function, validated against
+  // UltraMsg, encrypted in Postgres, and never selected back to the client.
   api_url: string | null;
   status: 'free' | 'assigned' | 'disabled';
   assigned_professional_id: string | null;
@@ -146,16 +145,20 @@ export function WhatsappPoolCostPanel() {
       return;
     }
     setAdding(true);
-    const { error } = await (supabase as any).from('ultramsg_instance_pool').insert({
-      instance_id: newPool.instance_id.trim(),
-      token: newPool.token.trim(),
-      api_url: newPool.api_url.trim() || null,
-      notes: newPool.notes.trim() || null,
-      status: 'free',
+    const { data, error } = await supabase.functions.invoke('whatsapp-pool-add-instance', {
+      body: {
+        instance_id: newPool.instance_id.trim(),
+        token: newPool.token.trim(),
+        api_url: newPool.api_url.trim() || null,
+        notes: newPool.notes.trim() || null,
+      },
     });
     setAdding(false);
     if (error) return toast.error('Erro ao adicionar: ' + error.message);
-    toast.success('Instância adicionada ao pool (sem custo até ser vinculada).');
+    if (!data?.success) return toast.error('Erro ao adicionar: ' + (data?.error || 'falha desconhecida'));
+    toast.success(data.connected
+      ? 'Instância validada e adicionada ao pool. WhatsApp já está conectado.'
+      : 'Instância validada e adicionada ao pool. O QR Code será lido pelo usuário no app.');
     setNewPool({ instance_id: '', token: '', api_url: '', notes: '' });
     void refetch();
   };
@@ -293,13 +296,13 @@ export function WhatsappPoolCostPanel() {
             <p className="text-xs font-medium">Adicionar nova instância ao pool</p>
             <p className="text-[11px] text-muted-foreground">
               Compre em <code>user.ultramsg.com</code> com a sua conta master e cole abaixo.
-              Enquanto a instância estiver livre, ela não gera custo no app.
+              O app valida a conexão UltraMsg antes de salvar; o QR Code será exibido ao usuário em Configurações → WhatsApp.
             </p>
-            <div className="grid gap-2 sm:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-5">
               <Input
                 value={newPool.instance_id}
                 onChange={(e) => setNewPool(p => ({ ...p, instance_id: e.target.value }))}
-                placeholder="instanceXXXXX"
+                placeholder="instanceXXXXX ou URL"
                 className="h-8 text-xs"
               />
               <Input
@@ -310,6 +313,12 @@ export function WhatsappPoolCostPanel() {
                 type="password"
               />
               <Input
+                value={newPool.api_url}
+                onChange={(e) => setNewPool(p => ({ ...p, api_url: e.target.value }))}
+                placeholder="https://api.ultramsg.com"
+                className="h-8 text-xs"
+              />
+              <Input
                 value={newPool.notes}
                 onChange={(e) => setNewPool(p => ({ ...p, notes: e.target.value }))}
                 placeholder="anotação (opcional)"
@@ -317,7 +326,7 @@ export function WhatsappPoolCostPanel() {
               />
               <Button size="sm" onClick={handleAdd} disabled={adding} className="h-8">
                 {adding ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
-                Adicionar
+                Validar e adicionar
               </Button>
             </div>
           </div>

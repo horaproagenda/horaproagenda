@@ -1,7 +1,8 @@
 // Shared UltraMsg client used by all WhatsApp edge functions.
 // Docs: https://docs.ultramsg.com/
-
-import QRCode from 'npm:qrcode@1.5.4';
+// NOTE: `qrcode` is imported lazily inside normalizeQrCodeImage so functions
+// that don't render QR codes (e.g. whatsapp-check-connection) don't pay the
+// npm boot cost and don't risk BOOT_ERROR when the npm registry is slow.
 
 const DEFAULT_BASE = 'https://api.ultramsg.com';
 
@@ -137,6 +138,7 @@ async function normalizeQrCodeImage(qr: string | null | undefined): Promise<stri
 
   // UltraMsg can return the WhatsApp QR payload text instead of an image.
   // Render it to a PNG data URL so the browser always receives a real image.
+  const { default: QRCode } = await import('npm:qrcode@1.5.4');
   return await QRCode.toDataURL(value, {
     errorCorrectionLevel: 'M',
     margin: 2,

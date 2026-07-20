@@ -247,8 +247,32 @@ export function BoletoDetailModal({
 
             <Separator />
 
+            {/* Package-linked sale notice + cancel button */}
+            {packageSaleId && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="text-xs">
+                  <p className="font-medium text-destructive flex items-center gap-1">
+                    <PackageX className="h-3.5 w-3.5" /> Boleto vinculado a um pacote
+                  </p>
+                  <p className="text-muted-foreground">
+                    {packageName ? `Pacote: ${packageName}. ` : ''}
+                    Para excluir este boleto, cancele o pacote (aplica devolução ao cliente e remove venda, agendamentos e lançamentos em cascata).
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 text-[11px] gap-1 whitespace-nowrap"
+                  onClick={requestPackageCancel}
+                >
+                  <PackageX className="h-3.5 w-3.5" />
+                  Cancelar Pacote
+                </Button>
+              </div>
+            )}
+
             {/* Delete-all row (acima da seleção) */}
-            {onDelete && sorted.length > 0 && (
+            {onDelete && sorted.length > 0 && !packageSaleId && (
               <div className="flex justify-end">
                 <Button
                   size="sm"

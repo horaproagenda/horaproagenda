@@ -127,6 +127,21 @@ serve(async (req) => {
       if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CNPJ já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Resolve tenant owner: prefer link.account_owner_id; fallback to professional's owner.
+    let ownerId: string | null = (link as any).account_owner_id ?? null;
+    if (!ownerId && link.professional_id) {
+      const { data: prof } = await admin
+        .from('professionals')
+        .select('account_owner_id, user_id')
+        .eq('id', link.professional_id)
+        .maybeSingle();
+      ownerId = (prof as any)?.account_owner_id ?? (prof as any)?.user_id ?? null;
+    }
+    if (!ownerId) {
+      console.error('submit-client-registration: cannot resolve account_owner_id for link', link.id);
+      return new Response(JSON.stringify({ success: false, error: 'Link inválido: proprietário não identificado.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Create client
     const { data: client, error: insErr } = await admin.from('clients').insert({
       name: body.name.trim(),
@@ -139,6 +154,7 @@ serve(async (req) => {
       notes: body.notes?.trim() || null,
       referral_source: body.referral_source?.trim() || null,
       assigned_professional_id: link.professional_id,
+      account_owner_id: ownerId,
       cep: body.cep ? body.cep.replace(/\D/g, '') : null,
       address_street: body.address_street?.trim() || null,
       address_number: body.address_number?.trim() || null,

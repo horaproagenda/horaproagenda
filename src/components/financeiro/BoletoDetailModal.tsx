@@ -442,7 +442,7 @@ export function BoletoDetailModal({
                                   size="icon"
                                   className="h-7 w-7"
                                   title="Excluir parcela permanentemente"
-                                  onClick={() => setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                  onClick={() => packageSaleId ? requestPackageCancel() : setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                 </Button>

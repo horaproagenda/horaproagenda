@@ -5,8 +5,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, RefreshCw, MessageSquare, ShieldCheck, Undo2 } from 'lucide-react';
+import { CheckCircle2, RefreshCw, MessageSquare, ShieldCheck, Undo2, Loader2 } from 'lucide-react';
+
 
 /**
  * Painel do Super Admin para liberar/revogar o WhatsApp de usuários

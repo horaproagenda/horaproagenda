@@ -26,10 +26,8 @@ const openUploadTab = () => {
 describe('ClientDocumentsTab file preview', () => {
   beforeEach(() => {
     if (typeof URL.createObjectURL !== 'function') {
-      // @ts-expect-error jsdom polyfill
-      URL.createObjectURL = () => 'blob:mock';
-      // @ts-expect-error jsdom polyfill
-      URL.revokeObjectURL = () => {};
+      (URL as unknown as { createObjectURL: () => string }).createObjectURL = () => 'blob:mock';
+      (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = () => {};
     }
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

@@ -32,6 +32,8 @@ interface BoletoDetailModalProps {
   onUpdate: (params: { id: string; amount?: number; due_date?: string; notes?: string }) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  /** Called when destructive actions target a package-linked sale — parent should open CancelPackageDialog. */
+  onRequestCancelPackage?: (saleId: string) => void;
 }
 
 

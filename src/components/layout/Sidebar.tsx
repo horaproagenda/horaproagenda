@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
@@ -65,23 +65,18 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   const { signOut, profile, hasRole, user, roles, loading: authLoading } = useAuth();
   const isMobile = useIsMobile();
   const asideRef = useRef<HTMLElement | null>(null);
-  const firstNavItemRef = useRef<HTMLAnchorElement | null>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const navigate = useNavigate();
 
-  // Focus management + body scroll lock + Escape-to-close for mobile drawer.
+  // Mobile drawer: body scroll lock + Escape-to-close. NÃO movemos foco
+  // automaticamente para o primeiro item — no iOS Safari isso engole o
+  // primeiro tap (focus muda durante o touchstart→touchend e o click nunca
+  // dispara no item que o usuário tocou, mandando ele para Dashboard/Agenda
+  // errado). O drawer permanece acessível via teclado sem esse focus dance.
   useEffect(() => {
     if (!isMobile) return;
     if (mobileOpen) {
-      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-      // Block background scroll so taps on menu items don't scroll the page.
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      // Move focus into the drawer so screen-readers announce it and the
-      // first tap always lands on a real menu item (not a stale focus target
-      // outside the drawer, which caused taps to be swallowed).
-      requestAnimationFrame(() => {
-        firstNavItemRef.current?.focus({ preventScroll: true });
-      });
       const onKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           e.preventDefault();
@@ -92,8 +87,6 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
       return () => {
         document.removeEventListener('keydown', onKeyDown);
         document.body.style.overflow = prevOverflow;
-        // Restore focus to whatever opened the drawer (the header menu button).
-        previouslyFocusedRef.current?.focus?.({ preventScroll: true });
       };
     }
   }, [isMobile, mobileOpen, onMobileClose]);
@@ -167,19 +160,23 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     await signOut();
   };
 
-  const handleNavClick = () => {
-    // Em mobile não persistimos a posição de scroll do menu — cada abertura
-    // do drawer deve começar do topo para o "Dashboard" estar sempre visível.
+  // Navegação imperativa: garante que o destino do tap é SEMPRE o href do
+  // item tocado. NavLink com onClick + fechamento do drawer via setTimeout
+  // gerava, em iOS Safari, uma janela onde o `click` sintético podia chegar
+  // depois do unmount/re-render e ir para o item errado (Dashboard→Agenda).
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isMobile && navRef.current) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
-    // Mobile: fecha o drawer após a navegação.
-    if (onMobileClose) {
-      setTimeout(() => onMobileClose(), 0);
+    if (isMobile) {
+      onMobileClose?.();
+    } else if (!isCollapsed) {
+      onToggleCollapse();
     }
-    // Desktop: recolhe a barra lateral automaticamente para liberar a visão da página.
-    if (!isMobile && !isCollapsed) {
-      setTimeout(() => onToggleCollapse(), 0);
+    if (location.pathname !== href) {
+      navigate(href);
     }
   };
 
@@ -292,7 +289,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                     <NavLink
                       to={item.href}
                       end
-                      onClick={handleNavClick}
+                      onClick={(e) => handleNavClick(e, item.href)}
                       {...prefetchHandlers(item.href)}
                       className={({ isActive }) =>
                         cn(
@@ -315,8 +312,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
                   key={item.name}
                   to={item.href}
                   end
-                  onClick={handleNavClick}
-                  ref={index === 0 ? firstNavItemRef : undefined}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   data-testid={`sidebar-link-${item.href}`}
                   {...prefetchHandlers(item.href)}
 

@@ -60,16 +60,22 @@ export type AppointmentServiceLabelSource = {
   service?: { name?: string | null } | null;
   service_name_snapshot?: string | null;
   package_name_snapshot?: string | null;
+  notes?: string | null;
   package_appointment?: {
     package?: { name?: string | null } | null;
   } | null;
 };
 
+const extractPackageNameFromNotes = (notes?: string | null) => (
+  notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i)?.[1]?.trim() || null
+);
+
 export const isPackageAppointmentLike = (appointment?: AppointmentServiceLabelSource | null) => {
   if (!appointment) return false;
   return Boolean(
     appointment.package_appointment ||
-    cleanLabel(appointment.package_name_snapshot),
+    cleanLabel(appointment.package_name_snapshot) ||
+    cleanLabel(extractPackageNameFromNotes(appointment.notes)),
   );
 };
 
@@ -96,6 +102,7 @@ export const resolveAppointmentPackageName = (
   if (!appointment) return fallback;
   return cleanLabel(appointment.package_appointment?.package?.name)
     || cleanLabel(appointment.package_name_snapshot)
+    || cleanLabel(extractPackageNameFromNotes(appointment.notes))
     || fallback;
 };
 

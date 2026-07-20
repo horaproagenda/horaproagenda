@@ -100,10 +100,10 @@ serve(async (req) => {
       }
     }
 
-    // Cria usuário
+    // Cria usuário (marca como usuário de assento para evitar criar conta própria)
     const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({
       email, password, email_confirm: true,
-      user_metadata: { full_name },
+      user_metadata: { full_name, is_seat_user: true, account_owner_id: callerId },
     });
     if (createErr || !created.user) {
       const msg = createErr?.message ?? "Erro ao criar usuário.";

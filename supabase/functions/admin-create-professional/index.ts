@@ -50,11 +50,16 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 1. Create or update auth user
+    // Resolve caller's owner up-front so we can tag the new auth user as seat user
+    const { data: callerProfilePre } = await supaAdmin
+      .from('profiles').select('account_owner_id').eq('id', callerId).maybeSingle();
+    const callerOwnerIdPre = (callerProfilePre as any)?.account_owner_id ?? callerId;
+
+    // 1. Create or update auth user (seat-user metadata prevents self-account creation)
     let userId: string | null = null;
     const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({
       email, password, email_confirm: true,
-      user_metadata: { full_name: full_name || email },
+      user_metadata: { full_name: full_name || email, is_seat_user: true, account_owner_id: callerOwnerIdPre },
     });
     if (createErr) {
       const msg = (createErr as any).message || '';

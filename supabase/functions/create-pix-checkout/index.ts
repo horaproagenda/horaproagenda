@@ -128,6 +128,11 @@ serve(async (req) => {
           },
         },
       }],
+      // Se boleto está entre os métodos, coleta o CPF/CNPJ no próprio checkout
+      // (Stripe valida o dígito verificador — se o cliente digitar errado,
+      // aparece "ID fiscal inválido"). Já pré-anexamos no Customer acima quando
+      // temos o CPF do cadastro.
+      tax_id_collection: methods.includes("boleto") ? { enabled: true } : undefined,
       // Sessão de checkout expira em ~24h; boleto gerado tem seu próprio prazo (~3 dias úteis).
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23 + 55 * 60,
       success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,

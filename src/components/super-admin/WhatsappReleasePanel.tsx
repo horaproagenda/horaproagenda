@@ -26,6 +26,7 @@ interface ReleaseRow {
   is_approved: boolean;
   has_pool_instance: boolean;
   free_pool_instances: number;
+  email_hint: string | null;
 }
 
 function fmt(iso?: string | null) {
@@ -194,6 +195,7 @@ export function WhatsappReleasePanel() {
           <TableHeader>
             <TableRow>
               <TableHead className="text-[11px]">Código</TableHead>
+              <TableHead className="text-[11px]">E-mail (parcial)</TableHead>
               <TableHead className="text-[11px]">Solicitado em</TableHead>
               <TableHead className="text-[11px]">Status</TableHead>
               <TableHead className="text-[11px] text-right">Ação</TableHead>
@@ -202,14 +204,14 @@ export function WhatsappReleasePanel() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-xs py-6 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-xs py-6 text-center text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-xs py-6 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-xs py-6 text-center text-muted-foreground">
                   Nenhum pedido ativo
                 </TableCell>
               </TableRow>
@@ -219,6 +221,9 @@ export function WhatsappReleasePanel() {
               return (
                 <TableRow key={r.request_id}>
                   <TableCell className="text-xs font-mono">{shortCode(r.request_id)}</TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">
+                    {r.email_hint ?? '—'}
+                  </TableCell>
                   <TableCell className="text-xs">{fmt(r.created_at)}</TableCell>
                   <TableCell className="text-xs">
                     {r.is_approved ? (

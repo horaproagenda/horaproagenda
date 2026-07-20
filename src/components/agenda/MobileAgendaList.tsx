@@ -16,6 +16,7 @@ import { MobileViewType } from './MobileAgendaHeader';
 import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
+import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];
@@ -453,7 +454,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
   const packageData = apt.package_appointment?.package;
-  const displayName = packageData?.name || apt.service?.name || 'Serviço';
+  const displayName = resolveAppointmentStepServiceName(apt);
   const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;
 
   return (

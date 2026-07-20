@@ -33,6 +33,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.whatsapp-pool-healthcheck]
     verify_jwt = false
+  [functions.whatsapp-pool-add-instance]
+    verify_jwt = true
   [functions.whatsapp-claim-pool-instance]
     verify_jwt = true
   [functions.whatsapp-connect]

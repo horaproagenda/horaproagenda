@@ -89,6 +89,7 @@ export function FormasPagamento() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
+  const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
 
   // Normaliza nome para comparação case/acento-insensível
   const normalize = (s: string) =>

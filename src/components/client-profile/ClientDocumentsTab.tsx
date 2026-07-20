@@ -461,7 +461,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    onChange={(e) => handleFileSelected(e.target.files?.[0] || null)}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
                   <div className="flex gap-2">
@@ -475,12 +475,45 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                       {file ? file.name : 'Escolher arquivo'}
                     </Button>
                     {file && (
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFile(null)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleFileSelected(null)}>
                         ×
                       </Button>
                     )}
                   </div>
+                  {file && (
+                    <div className="mt-2 rounded-md border bg-muted/30 p-2">
+                      {filePreviewKind === 'image' && filePreviewUrl && (
+                        <img
+                          src={filePreviewUrl}
+                          alt={`Prévia de ${file.name}`}
+                          className="mx-auto max-h-56 w-auto rounded-sm object-contain"
+                        />
+                      )}
+                      {filePreviewKind === 'pdf' && filePreviewUrl && (
+                        <object
+                          data={filePreviewUrl}
+                          type="application/pdf"
+                          className="h-56 w-full rounded-sm border-0"
+                          aria-label={`Prévia de ${file.name}`}
+                        >
+                          <p className="text-center text-xs text-muted-foreground">
+                            Prévia do PDF indisponível neste navegador.
+                          </p>
+                        </object>
+                      )}
+                      {filePreviewKind === 'other' && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span>Prévia indisponível para este tipo de arquivo ({file.type || 'desconhecido'}).</span>
+                        </div>
+                      )}
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  )}
                 </div>
+
 
                 <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading}>
                   {loading ? 'Salvando...' : 'Salvar'}

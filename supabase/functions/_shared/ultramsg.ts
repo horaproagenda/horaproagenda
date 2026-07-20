@@ -1,6 +1,8 @@
 // Shared UltraMsg client used by all WhatsApp edge functions.
 // Docs: https://docs.ultramsg.com/
 
+import QRCode from 'npm:qrcode@1.5.4';
+
 const DEFAULT_BASE = 'https://api.ultramsg.com';
 
 export interface UltramsgCreds {
@@ -111,6 +113,41 @@ export async function ultramsgStatus(override?: UltramsgCreds | null) {
   };
 }
 
+function looksLikeImageBase64(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized || normalized.length < 100) return false;
+
+  try {
+    const prefix = atob(normalized.slice(0, 48));
+    return prefix.startsWith('\x89PNG') || prefix.startsWith('\xff\xd8\xff') || prefix.startsWith('GIF8') || prefix.startsWith('RIFF');
+  } catch {
+    return false;
+  }
+}
+
+async function normalizeQrCodeImage(qr: string | null | undefined): Promise<string | null> {
+  if (!qr || typeof qr !== 'string') return null;
+  const value = qr.trim();
+  if (!value) return null;
+  if (value.startsWith('data:image/')) return value;
+
+  if (looksLikeImageBase64(value)) {
+    return `data:image/png;base64,${value}`;
+  }
+
+  // UltraMsg can return the WhatsApp QR payload text instead of an image.
+  // Render it to a PNG data URL so the browser always receives a real image.
+  return await QRCode.toDataURL(value, {
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    scale: 8,
+    color: {
+      dark: '#000000',
+      light: '#ffffff',
+    },
+  });
+}
+
 export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
   const { base, instance, instanceSegment, token, configured } = getUltramsgConfig(override);
   if (!configured) throw new Error('UltraMsg não configurado.');
@@ -124,16 +161,14 @@ export async function ultramsgGetQrCode(override?: UltramsgCreds | null) {
     const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrCode?token=${encodeURIComponent(token)}`);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data?.error || `UltraMsg HTTP ${r.status} ao obter QR Code`);
-    let q: string | null = data?.qrCode || data?.qrcode || null;
-    if (q && typeof q === 'string' && !q.startsWith('data:image')) {
-      q = `data:image/png;base64,${q}`;
-    }
-    return q;
+    return await normalizeQrCodeImage(data?.qrCode || data?.qrcode || data?.qr || null);
   };
 
   const tryImage = async () => {
     const r = await fetch(`${base}/${encodeURIComponent(instanceSegment)}/instance/qrImage?token=${encodeURIComponent(token)}`);
     if (!r.ok) return null;
+    const contentType = r.headers.get('content-type') || '';
+    if (!contentType.includes('image/')) return null;
     const buf = new Uint8Array(await r.arrayBuffer());
     if (buf.byteLength < 100) return null;
     let bin = '';

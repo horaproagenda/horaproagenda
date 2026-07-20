@@ -102,6 +102,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [filePreviewKind, setFilePreviewKind] = useState<'image' | 'pdf' | 'other' | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [filledContent, setFilledContent] = useState('');
   const [fillDialogOpen, setFillDialogOpen] = useState(false);

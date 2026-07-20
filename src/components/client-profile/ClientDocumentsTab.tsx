@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ClientDocument, DocumentType, Client, DocumentTemplate } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 import { buildClientStoragePath, assertClientStoragePath } from '@/lib/clientUploadPath';
 import { isDocumentFilled, isDocumentSigned } from '@/lib/documentStatus';
+import { detectFilePreviewKind } from '@/lib/filePreview';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 interface ClientDocumentsTabProps {
@@ -102,6 +103,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [filePreviewKind, setFilePreviewKind] = useState<'image' | 'pdf' | 'other' | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [filledContent, setFilledContent] = useState('');
   const [fillDialogOpen, setFillDialogOpen] = useState(false);
@@ -113,6 +116,12 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUploadFile();
   const { templates, refetch: refetchTemplates } = useDocumentTemplates();
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -317,10 +326,23 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
   };
 
+  const handleFileSelected = (nextFile: File | null) => {
+    setFile(nextFile);
+    setFilePreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    const kind = detectFilePreviewKind(nextFile);
+    setFilePreviewKind(kind);
+    if (nextFile && (kind === 'image' || kind === 'pdf')) {
+      setFilePreviewUrl(URL.createObjectURL(nextFile));
+    }
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setFile(null);
+    handleFileSelected(null);
     setType('anamnese');
     setSelectedTemplate(null);
     setFilledContent('');
@@ -436,7 +458,7 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    onChange={(e) => handleFileSelected(e.target.files?.[0] || null)}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
                   <div className="flex gap-2">
@@ -450,12 +472,45 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                       {file ? file.name : 'Escolher arquivo'}
                     </Button>
                     {file && (
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFile(null)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleFileSelected(null)}>
                         ×
                       </Button>
                     )}
                   </div>
+                  {file && (
+                    <div className="mt-2 rounded-md border bg-muted/30 p-2">
+                      {filePreviewKind === 'image' && filePreviewUrl && (
+                        <img
+                          src={filePreviewUrl}
+                          alt={`Prévia de ${file.name}`}
+                          className="mx-auto max-h-56 w-auto rounded-sm object-contain"
+                        />
+                      )}
+                      {filePreviewKind === 'pdf' && filePreviewUrl && (
+                        <object
+                          data={filePreviewUrl}
+                          type="application/pdf"
+                          className="h-56 w-full rounded-sm border-0"
+                          aria-label={`Prévia de ${file.name}`}
+                        >
+                          <p className="text-center text-xs text-muted-foreground">
+                            Prévia do PDF indisponível neste navegador.
+                          </p>
+                        </object>
+                      )}
+                      {filePreviewKind === 'other' && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <FileText className="h-4 w-4" />
+                          <span>Prévia indisponível para este tipo de arquivo ({file.type || 'desconhecido'}).</span>
+                        </div>
+                      )}
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  )}
                 </div>
+
 
                 <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading}>
                   {loading ? 'Salvando...' : 'Salvar'}

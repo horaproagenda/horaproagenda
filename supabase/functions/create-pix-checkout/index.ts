@@ -61,7 +61,45 @@ serve(async (req) => {
     });
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    const customerId = customers.data[0]?.id;
+    let customerId = customers.data[0]?.id;
+
+    // Se Boleto está entre os métodos, pré-anexa o CPF do usuário como tax_id
+    // no Customer do Stripe — evita que o cliente redigite (e erre) o CPF
+    // no checkout. Se não houver Customer ainda, cria um.
+    if (methods.includes("boleto")) {
+      try {
+        const { data: reg } = await supabase
+          .from("trial_registrations")
+          .select("cpf, cnpj, full_name")
+          .eq("email", user.email)
+          .maybeSingle();
+        const cpfDigits = (reg?.cpf ?? "").replace(/\D/g, "");
+        const cnpjDigits = (reg?.cnpj ?? "").replace(/\D/g, "");
+
+        if (!customerId) {
+          const created = await stripe.customers.create({
+            email: user.email,
+            name: reg?.full_name || undefined,
+            metadata: { user_id: user.id },
+          });
+          customerId = created.id;
+        }
+
+        if (customerId && (cpfDigits.length === 11 || cnpjDigits.length === 14)) {
+          const existingTaxIds = await stripe.customers.listTaxIds(customerId, { limit: 20 });
+          const type = cnpjDigits.length === 14 ? "br_cnpj" : "br_cpf";
+          const value = cnpjDigits.length === 14 ? cnpjDigits : cpfDigits;
+          const already = existingTaxIds.data.some((t) => t.type === type && t.value === value);
+          if (!already) {
+            await stripe.customers.createTaxId(customerId, { type, value }).catch((e) => {
+              console.warn("[create-pix-checkout] tax_id attach failed:", e?.message || e);
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[create-pix-checkout] pre-fill CPF skipped:", e);
+      }
+    }
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
@@ -90,6 +128,11 @@ serve(async (req) => {
           },
         },
       }],
+      // Se boleto está entre os métodos, coleta o CPF/CNPJ no próprio checkout
+      // (Stripe valida o dígito verificador — se o cliente digitar errado,
+      // aparece "ID fiscal inválido"). Já pré-anexamos no Customer acima quando
+      // temos o CPF do cadastro.
+      tax_id_collection: methods.includes("boleto") ? { enabled: true } : undefined,
       // Sessão de checkout expira em ~24h; boleto gerado tem seu próprio prazo (~3 dias úteis).
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23 + 55 * 60,
       success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,

@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 import { buildClientStoragePath, assertClientStoragePath } from '@/lib/clientUploadPath';
 import { isDocumentFilled, isDocumentSigned } from '@/lib/documentStatus';
+import { detectFilePreviewKind } from '@/lib/filePreview';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 interface ClientDocumentsTabProps {

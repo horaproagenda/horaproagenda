@@ -210,8 +210,9 @@ export function useAllBoletoInstallments() {
         .select(`
           *,
           sale:single_sales(
-            id, description, client_id, original_amount, final_amount, paid_at,
-            client:clients(id, name, phone)
+            id, description, client_id, original_amount, final_amount, paid_at, package_id,
+            client:clients(id, name, phone),
+            package:service_packages(id, name)
           )
         `)
         .order('due_date', { ascending: true });

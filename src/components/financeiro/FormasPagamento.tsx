@@ -33,6 +33,7 @@ import { ManageBanksDialog } from '@/components/caixa/ManageBanksDialog';
 import { BoletoDetailModal } from './BoletoDetailModal';
 import { BoletoAuditLogDialog } from './BoletoAuditLogDialog';
 import { CreateBoletoParceladoDialog } from './CreateBoletoParceladoDialog';
+import { CancelPackageDialog } from './CancelPackageDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -88,6 +89,7 @@ export function FormasPagamento() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
+  const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
 
   // Normaliza nome para comparação case/acento-insensível
   const normalize = (s: string) =>
@@ -219,16 +221,24 @@ export function FormasPagamento() {
     }
     setBulkDeleting(true);
     try {
-      const saleIds = Array.from(new Set((allBoletoInstallments as any[]).map(b => b.sale_id).filter(Boolean)));
+      // Split package-linked vs standalone boletos — package sales MUST be cancelled via CancelPackageDialog
+      const all = allBoletoInstallments as any[];
+      const packageInstallments = all.filter(b => b.sale?.package_id);
+      const standaloneInstallments = all.filter(b => !b.sale?.package_id);
+      const standaloneIds = standaloneInstallments.map(b => b.id);
+      const saleIds = Array.from(new Set(standaloneInstallments.map(b => b.sale_id).filter(Boolean)));
+      const skippedPackageCount = new Set(packageInstallments.map(b => b.sale_id)).size;
 
-      // 1) Apaga todas as parcelas (RLS limita ao usuário atual)
-      const { error: delInstError } = await supabase
-        .from('boleto_installments')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      if (delInstError) throw delInstError;
+      // 1) Apaga apenas as parcelas standalone
+      if (standaloneIds.length > 0) {
+        const { error: delInstError } = await supabase
+          .from('boleto_installments')
+          .delete()
+          .in('id', standaloneIds);
+        if (delInstError) throw delInstError;
+      }
 
-      // 2) Apaga as vendas (single_sales) que originaram os boletos e registros vinculados
+      // 2) Apaga as vendas standalone (single_sales) e registros vinculados
       if (saleIds.length > 0) {
         const sb: any = supabase;
         await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
@@ -238,7 +248,11 @@ export function FormasPagamento() {
 
       // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)
       queryClient.invalidateQueries();
-      toast.success('Todos os boletos foram excluídos.');
+      if (skippedPackageCount > 0) {
+        toast.success(`Boletos avulsos excluídos. ${skippedPackageCount} pacote(s) preservado(s) — cancele-os individualmente para gerar devolução.`);
+      } else {
+        toast.success('Todos os boletos foram excluídos.');
+      }
       setBulkDeleteOpen(false);
       setBulkDeleteConfirm('');
       setSelectedBoletoIds([]);
@@ -763,6 +777,19 @@ export function FormasPagamento() {
         onUpdate={async (p) => { await updateInstallment.mutateAsync(p); }}
         onCancel={async (id) => { await cancelInstallment.mutateAsync(id); }}
         onDelete={async (id) => { await deleteInstallment.mutateAsync(id); }}
+        onRequestCancelPackage={(saleId) => {
+          setDetailClientKey(null);
+          setCancelPackageSaleId(saleId);
+        }}
+      />
+      <CancelPackageDialog
+        open={!!cancelPackageSaleId}
+        onOpenChange={(o) => { if (!o) setCancelPackageSaleId(null); }}
+        saleId={cancelPackageSaleId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+          setCancelPackageSaleId(null);
+        }}
       />
       <BoletoAuditLogDialog open={showAuditLog} onOpenChange={setShowAuditLog} />
       <CreateBoletoParceladoDialog open={createBoletoOpen} onOpenChange={setCreateBoletoOpen} />

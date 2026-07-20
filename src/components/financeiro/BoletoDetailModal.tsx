@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2,
+  Check, X, Pencil, Calendar, DollarSign, FileText, User, RefreshCw, Trash2, PackageX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,6 +32,8 @@ interface BoletoDetailModalProps {
   onUpdate: (params: { id: string; amount?: number; due_date?: string; notes?: string }) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  /** Called when destructive actions target a package-linked sale — parent should open CancelPackageDialog. */
+  onRequestCancelPackage?: (saleId: string) => void;
 }
 
 
@@ -45,7 +47,19 @@ export function BoletoDetailModal({
   onUpdate,
   onCancel,
   onDelete,
+  onRequestCancelPackage,
 }: BoletoDetailModalProps) {
+  const packageSaleId: string | null = sale?.package_id ? (sale.id || null) : null;
+  const packageName: string | null = sale?.package?.name || null;
+
+  const requestPackageCancel = () => {
+    if (packageSaleId && onRequestCancelPackage) {
+      onRequestCancelPackage(packageSaleId);
+    } else {
+      toast.error('Este boleto pertence a um pacote. Use o cancelamento de pacote no módulo Pacotes.');
+    }
+  };
+
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -233,8 +247,32 @@ export function BoletoDetailModal({
 
             <Separator />
 
+            {/* Package-linked sale notice + cancel button */}
+            {packageSaleId && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="text-xs">
+                  <p className="font-medium text-destructive flex items-center gap-1">
+                    <PackageX className="h-3.5 w-3.5" /> Boleto vinculado a um pacote
+                  </p>
+                  <p className="text-muted-foreground">
+                    {packageName ? `Pacote: ${packageName}. ` : ''}
+                    Para excluir este boleto, cancele o pacote (aplica devolução ao cliente e remove venda, agendamentos e lançamentos em cascata).
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 text-[11px] gap-1 whitespace-nowrap"
+                  onClick={requestPackageCancel}
+                >
+                  <PackageX className="h-3.5 w-3.5" />
+                  Cancelar Pacote
+                </Button>
+              </div>
+            )}
+
             {/* Delete-all row (acima da seleção) */}
-            {onDelete && sorted.length > 0 && (
+            {onDelete && sorted.length > 0 && !packageSaleId && (
               <div className="flex justify-end">
                 <Button
                   size="sm"
@@ -281,7 +319,7 @@ export function BoletoDetailModal({
                       variant="destructive"
                       className="gap-1"
                       disabled={batchDeleting || batchPaying}
-                      onClick={() => setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
+                      onClick={() => packageSaleId ? requestPackageCancel() : setConfirmAction({ kind: 'batchDelete', ids: [...selectedIds] })}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                       Excluir {selectedIds.length}
@@ -404,7 +442,7 @@ export function BoletoDetailModal({
                                   size="icon"
                                   className="h-7 w-7"
                                   title="Excluir parcela permanentemente"
-                                  onClick={() => setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                  onClick={() => packageSaleId ? requestPackageCancel() : setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                 </Button>

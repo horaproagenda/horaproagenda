@@ -161,19 +161,23 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     await signOut();
   };
 
-  const handleNavClick = () => {
-    // Em mobile não persistimos a posição de scroll do menu — cada abertura
-    // do drawer deve começar do topo para o "Dashboard" estar sempre visível.
+  // Navegação imperativa: garante que o destino do tap é SEMPRE o href do
+  // item tocado. NavLink com onClick + fechamento do drawer via setTimeout
+  // gerava, em iOS Safari, uma janela onde o `click` sintético podia chegar
+  // depois do unmount/re-render e ir para o item errado (Dashboard→Agenda).
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isMobile && navRef.current) {
       sessionStorage.setItem(SCROLL_KEY, String(navRef.current.scrollTop));
     }
-    // Mobile: fecha o drawer após a navegação.
-    if (onMobileClose) {
-      setTimeout(() => onMobileClose(), 0);
+    if (isMobile) {
+      onMobileClose?.();
+    } else if (!isCollapsed) {
+      onToggleCollapse();
     }
-    // Desktop: recolhe a barra lateral automaticamente para liberar a visão da página.
-    if (!isMobile && !isCollapsed) {
-      setTimeout(() => onToggleCollapse(), 0);
+    if (location.pathname !== href) {
+      navigate(href);
     }
   };
 

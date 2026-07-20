@@ -440,6 +440,59 @@ serve(async (req) => {
       console.warn("complete-signup first professional insert failed:", e);
     }
 
+    // Cria/atualiza cliente no Stripe (best-effort — não bloqueia signup se falhar)
+    try {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeKey) {
+        const searchParams = new URLSearchParams({
+          query: `email:"${normalizedEmail}"`,
+          limit: "1",
+        });
+        const searchRes = await fetch(
+          `https://api.stripe.com/v1/customers/search?${searchParams.toString()}`,
+          { headers: { Authorization: `Bearer ${stripeKey}` } },
+        );
+        const searchJson = await searchRes.json().catch(() => ({}));
+        let stripeCustomerId: string | null = searchJson?.data?.[0]?.id ?? null;
+
+        if (!stripeCustomerId) {
+          const body = new URLSearchParams();
+          body.set("email", normalizedEmail);
+          if (fullName?.trim()) body.set("name", fullName.trim());
+          if (phoneE164) body.set("phone", phoneE164);
+          body.set("metadata[user_id]", userId);
+          if (cpfDigits) body.set("metadata[cpf]", cpfDigits);
+          if (cnpj) body.set("metadata[cnpj]", cnpj);
+          if (clinicName?.trim() || companyName?.trim()) {
+            body.set("metadata[clinic_name]", (clinicName || companyName || "").trim());
+          }
+          const createRes = await fetch("https://api.stripe.com/v1/customers", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${stripeKey}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body,
+          });
+          const createJson = await createRes.json();
+          if (createRes.ok) {
+            stripeCustomerId = createJson.id;
+          } else {
+            console.warn("complete-signup stripe customer create failed:", createJson);
+          }
+        }
+
+        if (stripeCustomerId) {
+          await supabaseAdmin.from("account_subscriptions").upsert(
+            { owner_user_id: userId, stripe_customer_id: stripeCustomerId },
+            { onConflict: "owner_user_id" },
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("complete-signup stripe customer sync failed:", e);
+    }
+
     return jsonResponse({ success: true, user_id: userId });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);

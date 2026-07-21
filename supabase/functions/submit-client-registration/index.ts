@@ -127,7 +127,9 @@ serve(async (req) => {
       if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CNPJ já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Create client
+    // Create client — explicitly set account_owner_id from the link's tenant
+    // (service-role insert bypasses RLS, but the autofill trigger cannot infer
+    // the tenant without auth.uid(), so we must provide it here).
     const { data: client, error: insErr } = await admin.from('clients').insert({
       name: body.name.trim(),
       phone: cleanPhone,
@@ -139,6 +141,7 @@ serve(async (req) => {
       notes: body.notes?.trim() || null,
       referral_source: body.referral_source?.trim() || null,
       assigned_professional_id: link.professional_id,
+      account_owner_id: tenantOwner ?? null,
       cep: body.cep ? body.cep.replace(/\D/g, '') : null,
       address_street: body.address_street?.trim() || null,
       address_number: body.address_number?.trim() || null,

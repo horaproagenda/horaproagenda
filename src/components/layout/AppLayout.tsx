@@ -10,6 +10,7 @@ import { useSubscriptionNotifier } from '@/hooks/useSubscriptionNotifier';
 import { useSeatThresholdNotifier } from '@/hooks/useSeatThresholdNotifier';
 import { useLocation } from 'react-router-dom';
 import { hydrateDismissalsFromDb } from '@/lib/notificationDismissal';
+import { useLayoutWatchdog } from '@/hooks/useLayoutWatchdog';
 
 interface AppLayoutProps {
   children: ReactNode;

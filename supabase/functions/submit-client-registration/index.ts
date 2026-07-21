@@ -178,6 +178,7 @@ serve(async (req) => {
             filled_variables: doc.variables || {},
             signed_at: new Date().toISOString(),
             signed_by: doc.signed_by || body.name,
+            account_owner_id: tenantOwner ?? null,
           });
         } catch (e) {
           console.error('Doc insert error', e);

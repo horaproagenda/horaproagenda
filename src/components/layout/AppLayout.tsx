@@ -31,6 +31,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   useReminderNotifications();
   useSubscriptionNotifier();
   useSeatThresholdNotifier();
+  useLayoutWatchdog();
 
   // Pull saved notification dismissals from the database on app start
   useEffect(() => {

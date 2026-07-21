@@ -69,12 +69,15 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     <div
       className="overflow-hidden bg-background"
       style={{
-        // svh evita "salto" quando a barra de URL do Safari mobile aparece/some;
-        // dvh atualiza em tempo real. env() protege da status bar / notch.
-        height: 'calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
-        maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))',
+        // 100dvh acompanha barra de URL do Safari mobile em tempo real.
+        // Safe-area é reservada dentro do layout via .pt-safe/.pb-safe nos
+        // filhos, para NÃO subtrair da altura total (isso deixava faixa em
+        // branco no rodapé em notebooks/desktop).
+        height: '100dvh',
+        maxHeight: '100dvh',
       }}
     >
+
 
       <Sidebar 
         onNewAppointment={() => {

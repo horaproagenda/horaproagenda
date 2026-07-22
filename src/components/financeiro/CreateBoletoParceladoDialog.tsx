@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Building2, User, Receipt, Calendar, AlertCircle, Loader2, ChevronRight } from 'lucide-react';
+import { Building2, User, Receipt, Calendar, AlertCircle, Loader2, ChevronRight, ChevronDown, Repeat, CalendarDays } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClients } from '@/hooks/useClients';

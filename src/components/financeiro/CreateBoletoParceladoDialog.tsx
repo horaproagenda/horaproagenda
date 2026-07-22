@@ -707,23 +707,33 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label>Tipo *</Label>
-                  <select className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                    value={itemType}
-                    onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); setPackageDiscount(0); }}>
-                    <option value="service">Serviço</option>
-                    <option value="package">Pacote</option>
-                    <option value="custom">Personalizado</option>
-                  </select>
+                  <div className="relative">
+                    <select className="w-full h-10 rounded-md border bg-background pl-3 pr-8 text-sm appearance-none"
+                      value={itemType}
+                      onChange={e => { setItemType(e.target.value as any); setItemId(''); setTotalAmount(0); setApplicationsCount(1); setApplicationsDiscount(0); setPackageDiscount(0); }}>
+                      <option value="service">Serviço</option>
+                      <option value="kit">Kit de Serviços</option>
+                      <option value="package_standard">Pacote Comum</option>
+                      <option value="package_sequential">Pacote Sequencial</option>
+                      <option value="custom">Personalizado</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none opacity-60" />
+                  </div>
                 </div>
                 {itemType !== 'custom' && (
                   <div className="col-span-2">
-                    <Label>{itemType === 'service' ? 'Serviço' : 'Pacote'} *</Label>
+                    <Label>
+                      {itemType === 'service' ? 'Serviço'
+                        : itemType === 'kit' ? 'Kit de Serviços'
+                        : itemType === 'package_standard' ? 'Pacote Comum'
+                        : 'Pacote Sequencial'} *
+                    </Label>
                     <ItemPicker
-                      items={itemType === 'service' ? serviceOptions : packageOptions}
+                      items={currentOptions}
                       value={itemId}
                       onChange={setItemId}
-                      placeholder={itemType === 'service' ? 'Buscar serviço...' : 'Buscar pacote...'}
-                      kind={itemType}
+                      placeholder="Buscar..."
+                      kind={isPackageLike ? 'package' : 'service'}
                     />
                   </div>
                 )}
@@ -731,7 +741,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               </div>
 
               {isServiceLike && itemId && (() => {
-                const s = serviceOptions.find(x => x.id === itemId);
+                const s = currentOptions.find(x => x.id === itemId);
                 const unit = Number(s?.price || 0);
                 const subtotal = unit * Math.max(1, applicationsCount || 1);
                 return (

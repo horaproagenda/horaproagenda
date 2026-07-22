@@ -24,20 +24,34 @@ function isChunkLoadError(err: unknown): boolean {
   );
 }
 
+async function hardReload(reason: string) {
+  console.warn('[chunk-recovery] Recarregando para corrigir chunk obsoleto:', reason);
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch { /* noop */ }
+  // Cache-bust: força o navegador a rebaixar o index.html do servidor
+  const url = new URL(window.location.href);
+  url.searchParams.set('__r', Date.now().toString(36));
+  window.location.replace(url.toString());
+}
+
 function reloadOnce(reason: string) {
   try {
-    if (sessionStorage.getItem(RELOADED_KEY) === '1') return;
-    sessionStorage.setItem(RELOADED_KEY, '1');
-    console.warn('[chunk-recovery] Recarregando para corrigir chunk obsoleto:', reason);
-    // Limpa caches do SW para a próxima carga vir 100% da rede
-    if ('caches' in window) {
-      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+    const count = Number(sessionStorage.getItem(RELOADED_KEY) || '0');
+    if (count >= 2) {
+      console.error('[chunk-recovery] Recarregamento já tentado 2x, abortando para evitar loop.');
+      return;
     }
-    // Pequeno delay para liberar microtasks
-    setTimeout(() => window.location.reload(), 50);
-  } catch {
-    window.location.reload();
-  }
+    sessionStorage.setItem(RELOADED_KEY, String(count + 1));
+  } catch { /* noop */ }
+  void hardReload(reason);
 }
 
 export function installChunkErrorRecovery() {

@@ -251,23 +251,52 @@ export function RelatorioConsolidado() {
   const [deleting, setDeleting] = useState(false);
   const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
 
-  // When user clicks delete: if the entry is linked to a PACKAGE sale, route
-  // through the "Cancelar Pacote" form (refund + reason) instead of a raw purge.
+  // When user clicks delete: if the entry is linked (directly or indirectly) to a
+  // PACKAGE sale, route through the "Cancelar Pacote" form (refund + reason)
+  // instead of a raw purge, so refund/cash/client-profile/agenda all stay in sync.
   const handleDeleteClick = async (entry: ConsolidatedEntry) => {
-    if (entry.saleId) {
-      try {
+    try {
+      let saleId: string | null = entry.saleId || null;
+
+      // Resolve sale via the underlying financial_entry when the consolidated
+      // row didn't carry a direct sale link (legacy rows, mirror entries, etc.).
+      if (!saleId && entry.financialEntryId) {
+        const { data: fe } = await supabase
+          .from('financial_entries')
+          .select('sale_id, description')
+          .eq('id', entry.financialEntryId)
+          .maybeSingle();
+        saleId = (fe as any)?.sale_id || null;
+        if (!saleId) {
+          const m = ((fe as any)?.description || '').match(/\[sale:([a-f0-9-]+)\]/i);
+          if (m) saleId = m[1];
+        }
+      }
+
+      // Fallback: use the cash_transaction reference when we only have the cash row.
+      if (!saleId && entry.cashTxId) {
+        const { data: tx } = await supabase
+          .from('cash_transactions')
+          .select('reference_type, reference_id')
+          .eq('id', entry.cashTxId)
+          .maybeSingle();
+        const rt = (tx as any)?.reference_type;
+        if (rt === 'single_sale' || rt === 'sale') saleId = (tx as any).reference_id || null;
+      }
+
+      if (saleId) {
         const { data: sale } = await supabase
           .from('single_sales')
           .select('id, item_type, package_id')
-          .eq('id', entry.saleId)
+          .eq('id', saleId)
           .maybeSingle();
-        if (sale && (sale.item_type === 'package' || sale.package_id)) {
-          setCancelPackageSaleId(entry.saleId);
+        if (sale && ((sale as any).item_type === 'package' || (sale as any).package_id)) {
+          setCancelPackageSaleId(saleId);
           return;
         }
-      } catch (err) {
-        console.error('[RelatorioConsolidado] sale lookup failed', err);
       }
+    } catch (err) {
+      console.error('[RelatorioConsolidado] package sale detection failed', err);
     }
     setDeleteTarget(entry);
   };

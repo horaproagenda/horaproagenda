@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseBrazilianCurrency } from '@/lib/utils';
+import { formatDurationClock, parseDurationClock } from '@/lib/duration';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';

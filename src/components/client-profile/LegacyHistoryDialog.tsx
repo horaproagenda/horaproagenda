@@ -915,10 +915,20 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
       const anyPerSession = filledSessions.some((r) => parseBrazilianCurrency(r.amount_paid) > 0);
       if (totalPrice > 0 && !anyPerSession) {
+        const pkgPayDate = pkgPaymentDate || filledSessions[0].date;
         await createFinancialEntry({
           amount: totalPrice,
-          payment_date: pkgPaymentDate || filledSessions[0].date,
+          payment_date: pkgPayDate,
           description: `Pacote ${derivedPkgName} — ${clientName} (Histórico)`,
+        });
+        // Registra a venda do pacote em single_sales para aparecer em
+        // "Vendas" no perfil do cliente com data e forma de pagamento.
+        await createLegacySingleSale({
+          amount: totalPrice,
+          payment_date: pkgPayDate,
+          description: `Pacote ${derivedPkgName} (Histórico)`,
+          item_type: 'package',
+          package_id: createdPkgId,
         });
       }
 

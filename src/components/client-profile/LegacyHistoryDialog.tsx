@@ -715,7 +715,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             ? services.find((s: any) => s.id === tplStep.service_id)
             : null;
           const stepDefaultDur = tplStepService?.duration ?? pkgDuration;
-          const dur = parseInt(row.duration) || stepDefaultDur;
+          const dur = parseDurationClock(row.duration) ?? stepDefaultDur;
           const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
           // service_id: PA existente > template step > serviço base do pacote
           const stepServiceId = (pending as any).resolvedServiceId || pending.service_id || tplStep?.service_id || pkgServiceId;

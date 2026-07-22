@@ -56,7 +56,7 @@ const newSessionRow = (preset?: Partial<SessionRow>): SessionRow => ({
   id: crypto.randomUUID(),
   date: '',
   time: '09:00',
-  duration: '60',
+  duration: '01:00',
   amount_paid: '',
   payment_date: '',
   ...preset,

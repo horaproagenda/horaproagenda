@@ -321,13 +321,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       let originalGross = totalAmount;
       let discountTotal = 0;
       if (isServiceLike && itemId) {
-        const s = serviceOptions.find(x => x.id === itemId);
+        const s = currentOptions.find(x => x.id === itemId);
         const unit = Number(s?.price || 0);
         const qty = Math.max(1, applicationsCount || 1);
         originalGross = Number((unit * qty).toFixed(2));
         discountTotal = Math.max(0, applicationsDiscount || 0);
       } else if (isPackageLike && itemId) {
-        const p = packageOptions.find(x => x.id === itemId);
+        const p = currentOptions.find(x => x.id === itemId);
         originalGross = Number(p?.price || totalAmount);
         discountTotal = Math.max(0, packageDiscount || 0);
       }
@@ -412,7 +412,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         }));
         provisioningPromise = Promise.resolve(supabase.from('client_services').insert(rows));
       } else if (isPackageLike && itemId) {
-        const template = packageOptions.find(t => t.id === itemId);
+        const template = currentOptions.find(t => t.id === itemId);
         if (template) {
           provisioningPromise = (async () => {
             const { data: clientPackage, error: pkgError } = await supabase
@@ -859,7 +859,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
               )}
 
               {isPackageLike && itemId && (() => {
-                const p = packageOptions.find(x => x.id === itemId);
+                const p = currentOptions.find(x => x.id === itemId);
                 const base = Number(p?.price || 0);
                 const finalVal = Math.max(0, base - (packageDiscount || 0));
                 return (

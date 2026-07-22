@@ -465,6 +465,48 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     }
   };
 
+  // Cria uma linha em single_sales para que a venda retroativa apareça
+  // corretamente em "Vendas" no perfil do cliente com data e forma de
+  // pagamento — sem isso a venda só existe como financial_entry e não
+  // aparece na aba de vendas/consolidado do cliente.
+  const createLegacySingleSale = async (params: {
+    amount: number;
+    payment_date: string; // yyyy-mm-dd
+    description: string;
+    item_type: 'service' | 'package';
+    service_id?: string | null;
+    package_id?: string | null;
+  }) => {
+    if (!params.amount || !params.payment_date || !paymentMethodId) return null;
+    const { data: { user } } = await supabase.auth.getUser();
+    const paidAtIso = buildLocalISO(params.payment_date, '12:00') || new Date(params.payment_date).toISOString();
+    const insertRow: any = {
+      client_id: clientId,
+      original_amount: params.amount,
+      discount_amount: 0,
+      final_amount: params.amount,
+      card_fee_amount: 0,
+      installments: 1,
+      payment_method_id: paymentMethodId,
+      sale_date: params.payment_date,
+      item_type: params.item_type,
+      description: params.description,
+      notes: 'Venda retroativa (histórico antigo)',
+      paid_at: paidAtIso,
+      paid_by: user?.id,
+      created_by: user?.id,
+    };
+    if (params.item_type === 'service' && params.service_id) insertRow.service_id = params.service_id;
+    if (params.item_type === 'package' && params.package_id) insertRow.package_id = params.package_id;
+    const { data, error } = await supabase.from('single_sales').insert(insertRow).select().single();
+    if (error) {
+      console.error('[LegacyHistory] single_sales insert error', error);
+      throw error;
+    }
+    return data;
+  };
+
+
 
   const invalidateAll = async () => {
     // Base — agendamentos e pacotes

@@ -137,6 +137,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
   // Sale info
   const [itemType, setItemType] = useState<'service' | 'kit' | 'package_standard' | 'package_sequential' | 'custom'>('service');
+  const isServiceLike = itemType === 'service' || itemType === 'kit';
+  const isPackageLike = itemType === 'package_standard' || itemType === 'package_sequential';
+  const currentOptions = itemType === 'service' ? serviceOptions
+    : itemType === 'kit' ? kitOptions
+    : itemType === 'package_standard' ? standardPackageOptions
+    : itemType === 'package_sequential' ? sequentialPackageOptions
+    : [];
   const [itemId, setItemId] = useState<string>('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [totalAmount, setTotalAmount] = useState<number>(0);

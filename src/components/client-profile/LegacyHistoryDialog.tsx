@@ -1363,8 +1363,15 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                   <Input type="time" value={singleTime} onChange={(e) => setSingleTime(e.target.value)} className="h-9" />
                 </div>
                 <div>
-                  <Label className="text-xs">Duração (min)</Label>
-                  <Input type="number" value={singleDuration} onChange={(e) => setSingleDuration(e.target.value)} className="h-9" />
+                  <Label className="text-xs">Duração (HH:mm)</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="00:40"
+                    value={singleDuration}
+                    onChange={(e) => setSingleDuration(e.target.value)}
+                    className="h-9"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Valor pago (R$)</Label>

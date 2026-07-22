@@ -554,10 +554,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   // ============ SINGLE ============
   const handleSubmitSingle = async () => {
+    if (!serviceId) { toast.error('Selecione o serviço'); return; }
     if (!singleDate || !singleTime) { toast.error('Informe data e horário'); return; }
     const start = buildLocalISO(singleDate, singleTime);
     if (!start) { toast.error('Data/horário inválidos'); return; }
-    const dur = parseInt(singleDuration) || (selectedService?.duration ?? 60);
+    const parsedDur = parseDurationClock(singleDuration);
+    const dur = parsedDur ?? (selectedService?.duration ?? 60);
     const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
 
     // Validate payment fields cohesively — avoids silent losses where the user

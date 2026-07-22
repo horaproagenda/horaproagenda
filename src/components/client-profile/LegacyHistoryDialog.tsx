@@ -830,7 +830,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       //    fantasma "1/N realizada" quando a edge function falha.
       const paRows = filledSessions.map((row, i) => {
         const start = buildLocalISO(row.date, row.time);
-        const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
+        const dur = parseDurationClock(row.duration) ?? (selectedService?.duration ?? 60);
         const end = start ? new Date(new Date(start).getTime() + dur * 60_000).toISOString() : null;
         const paInsert: any = {
           package_id: pkg.id,

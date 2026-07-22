@@ -636,7 +636,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const updateSession = (id: string, patch: Partial<SessionRow>) => {
     setPkgSessions((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
-  const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: String(selectedService?.duration ?? 60) })]);
+  const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: formatDurationClock(selectedService?.duration ?? 60) })]);
   const removeSession = (id: string) => setPkgSessions((rows) => rows.filter((r) => r.id !== id));
 
   // ============ VINCULAR SESSÕES REALIZADAS A PACOTE EXISTENTE ============

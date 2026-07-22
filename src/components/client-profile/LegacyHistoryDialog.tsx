@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseBrazilianCurrency } from '@/lib/utils';
+import { formatDurationClock, parseDurationClock } from '@/lib/duration';
 import { useServices } from '@/hooks/useServices';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -55,7 +56,7 @@ const newSessionRow = (preset?: Partial<SessionRow>): SessionRow => ({
   id: crypto.randomUUID(),
   date: '',
   time: '09:00',
-  duration: '60',
+  duration: '01:00',
   amount_paid: '',
   payment_date: '',
   ...preset,
@@ -92,7 +93,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   // Single
   const [singleDate, setSingleDate] = useState('');
   const [singleTime, setSingleTime] = useState('09:00');
-  const [singleDuration, setSingleDuration] = useState('60');
+  const [singleDuration, setSingleDuration] = useState('01:00');
   const [singleAmount, setSingleAmount] = useState('');
   const [singlePaymentDate, setSinglePaymentDate] = useState('');
   const [singleNotes, setSingleNotes] = useState('');
@@ -553,10 +554,12 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
   // ============ SINGLE ============
   const handleSubmitSingle = async () => {
+    if (!serviceId) { toast.error('Selecione o serviço'); return; }
     if (!singleDate || !singleTime) { toast.error('Informe data e horário'); return; }
     const start = buildLocalISO(singleDate, singleTime);
     if (!start) { toast.error('Data/horário inválidos'); return; }
-    const dur = parseInt(singleDuration) || (selectedService?.duration ?? 60);
+    const parsedDur = parseDurationClock(singleDuration);
+    const dur = parsedDur ?? (selectedService?.duration ?? 60);
     const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
 
     // Validate payment fields cohesively — avoids silent losses where the user
@@ -625,7 +628,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   };
 
   const resetSingle = () => {
-    setSingleDate(''); setSingleTime('09:00'); setSingleDuration('60');
+    setSingleDate(''); setSingleTime('09:00'); setSingleDuration('01:00');
     setSingleAmount(''); setSinglePaymentDate(''); setSingleNotes('');
   };
 
@@ -633,7 +636,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   const updateSession = (id: string, patch: Partial<SessionRow>) => {
     setPkgSessions((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
-  const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: String(selectedService?.duration ?? 60) })]);
+  const addSession = () => setPkgSessions((rows) => [...rows, newSessionRow({ duration: formatDurationClock(selectedService?.duration ?? 60) })]);
   const removeSession = (id: string) => setPkgSessions((rows) => rows.filter((r) => r.id !== id));
 
   // ============ VINCULAR SESSÕES REALIZADAS A PACOTE EXISTENTE ============
@@ -712,7 +715,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
             ? services.find((s: any) => s.id === tplStep.service_id)
             : null;
           const stepDefaultDur = tplStepService?.duration ?? pkgDuration;
-          const dur = parseInt(row.duration) || stepDefaultDur;
+          const dur = parseDurationClock(row.duration) ?? stepDefaultDur;
           const end = new Date(new Date(start).getTime() + dur * 60_000).toISOString();
           // service_id: PA existente > template step > serviço base do pacote
           const stepServiceId = (pending as any).resolvedServiceId || pending.service_id || tplStep?.service_id || pkgServiceId;
@@ -827,7 +830,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       //    fantasma "1/N realizada" quando a edge function falha.
       const paRows = filledSessions.map((row, i) => {
         const start = buildLocalISO(row.date, row.time);
-        const dur = parseInt(row.duration) || (selectedService?.duration ?? 60);
+        const dur = parseDurationClock(row.duration) ?? (selectedService?.duration ?? 60);
         const end = start ? new Date(new Date(start).getTime() + dur * 60_000).toISOString() : null;
         const paInsert: any = {
           package_id: pkg.id,
@@ -875,19 +878,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         )
       );
 
-      // Lançamentos financeiros por sessão (opcional)
-      for (const { row, apt, index } of results) {
-        const amt = parseBrazilianCurrency(row.amount_paid);
-        if (amt > 0) {
-          await createFinancialEntry({
-            amount: amt,
-            payment_date: row.payment_date || row.date,
-            description: `Sessão ${index + 1}/${total} — ${derivedPkgName} (Histórico)`,
-            appointment_id: apt.id,
-          });
-        }
-      }
-
       // 2b. Cria placeholders 'pending' para as sessões restantes do pacote
       // (ex.: pacote de 10 com apenas 5 realizadas → 5 ficam disponíveis para agendamento futuro)
       if (remainingSessions > 0) {
@@ -912,9 +902,11 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         if (placeholderErr) throw placeholderErr;
       }
 
-      // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
-      const anyPerSession = filledSessions.some((r) => parseBrazilianCurrency(r.amount_paid) > 0);
-      if (totalPrice > 0 && !anyPerSession) {
+      // 3. Single financial entry for the total package payment. Per-session
+      //    amounts are intentionally NOT collected in pacotes (comum/sequencial)
+      //    para evitar dupla contabilização — só o valor total do pacote e a
+      //    data de pagamento são considerados.
+      if (totalPrice > 0) {
         const pkgPayDate = pkgPaymentDate || filledSessions[0].date;
         await createFinancialEntry({
           amount: totalPrice,
@@ -1306,7 +1298,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
                   {showService && (
                     <div>
-                      <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
+                      <Label className="text-[10px]">Serviço {tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
                       <SearchableSelect
                         options={serviceOptions}
                         value={serviceId}
@@ -1371,8 +1363,15 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                   <Input type="time" value={singleTime} onChange={(e) => setSingleTime(e.target.value)} className="h-9" />
                 </div>
                 <div>
-                  <Label className="text-xs">Duração (min)</Label>
-                  <Input type="number" value={singleDuration} onChange={(e) => setSingleDuration(e.target.value)} className="h-9" />
+                  <Label className="text-xs">Duração (HH:mm)</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="00:40"
+                    value={singleDuration}
+                    onChange={(e) => setSingleDuration(e.target.value)}
+                    className="h-9"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Valor pago (R$)</Label>
@@ -1763,26 +1762,14 @@ function PackageForm(props: PackageFormProps) {
                 )}
               </div>
             )}
-            <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>
+            <div className="col-span-6">
               <Label className="text-[10px]">Data</Label>
               <Input type="date" value={row.date} onChange={(e) => updateSession(row.id, { date: e.target.value })} className="h-8 text-xs" />
             </div>
-            <div className={linkExistingPackage ? 'col-span-4' : 'col-span-2'}>
+            <div className="col-span-4">
               <Label className="text-[10px]">Hora</Label>
               <Input type="time" value={row.time} onChange={(e) => updateSession(row.id, { time: e.target.value })} className="h-8 text-xs" />
             </div>
-            {!linkExistingPackage && (
-              <>
-                <div className="col-span-2">
-                  <Label className="text-[10px]">Valor (R$)</Label>
-                  <Input type="text" value={row.amount_paid} onChange={(e) => updateSession(row.id, { amount_paid: e.target.value })} placeholder="opcional" className="h-8 text-xs" />
-                </div>
-                <div className="col-span-3">
-                  <Label className="text-[10px]">Pagamento em</Label>
-                  <Input type="date" value={row.payment_date} onChange={(e) => updateSession(row.id, { payment_date: e.target.value })} className="h-8 text-xs" />
-                </div>
-              </>
-            )}
             <div className="col-span-1 flex items-end justify-center">
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSession(row.id)} disabled={pkgSessions.length <= 1}>
                 <Trash2 className="h-3 w-3" />
@@ -1794,9 +1781,10 @@ function PackageForm(props: PackageFormProps) {
 
         {!linkExistingPackage && (
           <p className="text-[10px] text-muted-foreground">
-            Dica: deixe "Valor (R$)" em branco nas sessões se você pagou o pacote inteiro de uma vez (use o "Valor total pago" acima).
+            Considere apenas o "Valor total pago" e a "Data do pagamento (total)" acima — pagamentos por sessão não são registrados no histórico antigo.
           </p>
         )}
+
 
       </div>
     </div>

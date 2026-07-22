@@ -819,15 +819,22 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                   <Input type="date" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label>Recorrência</Label>
-                  <select
-                    className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                    value={intervalMode}
-                    onChange={e => setIntervalMode(e.target.value as 'days' | 'monthly')}
-                  >
-                    <option value="days">A cada N dias</option>
-                    <option value="monthly">Mesmo dia do mês</option>
-                  </select>
+                  <Label className="flex items-center gap-1">
+                    {intervalMode === 'days' ? <Repeat className="h-3.5 w-3.5 text-primary" /> : <CalendarDays className="h-3.5 w-3.5 text-primary" />}
+                    Recorrência
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-10 rounded-md border bg-background pl-3 pr-8 text-sm appearance-none"
+                      value={intervalMode}
+                      onChange={e => setIntervalMode(e.target.value as 'days' | 'monthly')}
+                    >
+                      <option value="days">↻ A cada N dias</option>
+                      <option value="monthly">📅 Data fixa (mesmo dia do mês)</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none opacity-60" />
+                  </div>
                 </div>
                 <div>
                   <Label>{intervalMode === 'days' ? 'Intervalo (dias)' : 'Dia fixo'}</Label>

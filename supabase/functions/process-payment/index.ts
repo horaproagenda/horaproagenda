@@ -234,12 +234,39 @@ serve(async (req) => {
       }
     }
 
+    // Tenant-scope check for any service/product referenced in additional items
+    for (const [index, item] of additionalItems.entries()) {
+      if (item.item_type === 'service' && item.service_id) {
+        const { data: svc } = await supabase
+          .from('services')
+          .select('id')
+          .eq('id', item.service_id)
+          .eq('account_owner_id', callerOwner)
+          .maybeSingle();
+        if (!svc) {
+          errors.push({ field: `additional_items.${index}.service_id`, message: 'Service not found in this account' });
+        }
+      }
+      if (item.item_type === 'product' && item.product_id) {
+        const { data: prod } = await supabase
+          .from('products')
+          .select('id')
+          .eq('id', item.product_id)
+          .eq('account_owner_id', callerOwner)
+          .maybeSingle();
+        if (!prod) {
+          errors.push({ field: `additional_items.${index}.product_id`, message: 'Product not found in this account' });
+        }
+      }
+    }
+
     if (errors.length > 0) {
       return new Response(
         JSON.stringify({ success: false, errors }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
 
     const newAdditionalItemsTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
 

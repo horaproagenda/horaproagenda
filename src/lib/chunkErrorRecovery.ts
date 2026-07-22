@@ -9,7 +9,8 @@
  * que o navegador baixe o index.html novo (com os hashes corretos).
  * Usa sessionStorage para evitar loop de reload caso o erro persista.
  */
-const RELOADED_KEY = '__chunk_reload_done__';
+const RELOADED_KEY = '__chunk_reload_ts__';
+const RELOAD_COOLDOWN_MS = 30_000;
 
 function isChunkLoadError(err: unknown): boolean {
   if (!err) return false;
@@ -36,7 +37,6 @@ async function hardReload(reason: string) {
       await Promise.all(regs.map((r) => r.unregister()));
     }
   } catch { /* noop */ }
-  // Cache-bust: força o navegador a rebaixar o index.html do servidor
   const url = new URL(window.location.href);
   url.searchParams.set('__r', Date.now().toString(36));
   window.location.replace(url.toString());
@@ -44,22 +44,23 @@ async function hardReload(reason: string) {
 
 function reloadOnce(reason: string) {
   try {
-    const count = Number(sessionStorage.getItem(RELOADED_KEY) || '0');
-    if (count >= 2) {
-      console.error('[chunk-recovery] Recarregamento já tentado 2x, abortando para evitar loop.');
+    const last = Number(sessionStorage.getItem(RELOADED_KEY) || '0');
+    const now = Date.now();
+    if (last && now - last < RELOAD_COOLDOWN_MS) {
+      console.error('[chunk-recovery] Reload em cooldown, abortando para evitar loop.');
       return;
     }
-    sessionStorage.setItem(RELOADED_KEY, String(count + 1));
+    sessionStorage.setItem(RELOADED_KEY, String(now));
   } catch { /* noop */ }
   void hardReload(reason);
 }
 
 export function installChunkErrorRecovery() {
-  // Reset do flag em navegação bem-sucedida
+  // Reset flag após navegação bem-sucedida
   window.addEventListener('load', () => {
     setTimeout(() => {
       try { sessionStorage.removeItem(RELOADED_KEY); } catch { /* noop */ }
-    }, 5000);
+    }, 10_000);
   });
 
   window.addEventListener('error', (event) => {

@@ -878,19 +878,6 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         )
       );
 
-      // Lançamentos financeiros por sessão (opcional)
-      for (const { row, apt, index } of results) {
-        const amt = parseBrazilianCurrency(row.amount_paid);
-        if (amt > 0) {
-          await createFinancialEntry({
-            amount: amt,
-            payment_date: row.payment_date || row.date,
-            description: `Sessão ${index + 1}/${total} — ${derivedPkgName} (Histórico)`,
-            appointment_id: apt.id,
-          });
-        }
-      }
-
       // 2b. Cria placeholders 'pending' para as sessões restantes do pacote
       // (ex.: pacote de 10 com apenas 5 realizadas → 5 ficam disponíveis para agendamento futuro)
       if (remainingSessions > 0) {
@@ -915,9 +902,11 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         if (placeholderErr) throw placeholderErr;
       }
 
-      // 3. Single financial entry for total package payment (if no per-session amounts and total > 0)
-      const anyPerSession = filledSessions.some((r) => parseBrazilianCurrency(r.amount_paid) > 0);
-      if (totalPrice > 0 && !anyPerSession) {
+      // 3. Single financial entry for the total package payment. Per-session
+      //    amounts are intentionally NOT collected in pacotes (comum/sequencial)
+      //    para evitar dupla contabilização — só o valor total do pacote e a
+      //    data de pagamento são considerados.
+      if (totalPrice > 0) {
         const pkgPayDate = pkgPaymentDate || filledSessions[0].date;
         await createFinancialEntry({
           amount: totalPrice,

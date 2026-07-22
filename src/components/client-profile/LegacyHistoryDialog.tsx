@@ -1298,7 +1298,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
                   {showService && (
                     <div>
-                      <Label className="text-[10px]">Serviço {tab !== 'single' && tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
+                      <Label className="text-[10px]">Serviço {tab !== 'csv' ? '(obrigatório)' : '(opcional)'}</Label>
                       <SearchableSelect
                         options={serviceOptions}
                         value={serviceId}

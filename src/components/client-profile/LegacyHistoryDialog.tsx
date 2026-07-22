@@ -628,7 +628,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   };
 
   const resetSingle = () => {
-    setSingleDate(''); setSingleTime('09:00'); setSingleDuration('60');
+    setSingleDate(''); setSingleTime('09:00'); setSingleDuration('01:00');
     setSingleAmount(''); setSinglePaymentDate(''); setSingleNotes('');
   };
 

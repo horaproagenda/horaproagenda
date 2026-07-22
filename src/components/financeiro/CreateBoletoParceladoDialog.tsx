@@ -71,24 +71,55 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [tab, setTab] = useState('beneficiario');
   const [submitting, setSubmitting] = useState(false);
 
+  // Kits são serviços com component_service_ids preenchido
+  const isKit = (s: any) => Array.isArray(s?.component_service_ids) && s.component_service_ids.length > 0;
+
   // Deduplicate by name to avoid duplicates in the select
   const serviceOptions = useMemo(() => {
     const seen = new Map<string, any>();
     for (const s of activeServices) {
+      if (isKit(s)) continue;
       const key = `${(s.name || '').trim().toLowerCase()}|${s.price}`;
       if (!seen.has(key)) seen.set(key, s);
     }
     return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [activeServices]);
 
-  const packageOptions = useMemo(() => {
+  const kitOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const s of activeServices) {
+      if (!isKit(s)) continue;
+      const key = `${(s.name || '').trim().toLowerCase()}|${s.price}`;
+      if (!seen.has(key)) seen.set(key, s);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [activeServices]);
+
+  const standardPackageOptions = useMemo(() => {
     const seen = new Map<string, any>();
     for (const p of packageTemplates) {
+      if ((p.package_type || 'standard') !== 'standard') continue;
       const key = `${(p.name || '').trim().toLowerCase()}|${p.price}`;
       if (!seen.has(key)) seen.set(key, p);
     }
     return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [packageTemplates]);
+
+  const sequentialPackageOptions = useMemo(() => {
+    const seen = new Map<string, any>();
+    for (const p of packageTemplates) {
+      if (p.package_type !== 'sequential') continue;
+      const key = `${(p.name || '').trim().toLowerCase()}|${p.price}`;
+      if (!seen.has(key)) seen.set(key, p);
+    }
+    return Array.from(seen.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [packageTemplates]);
+
+  // Legado
+  const packageOptions = useMemo(
+    () => [...standardPackageOptions, ...sequentialPackageOptions],
+    [standardPackageOptions, sequentialPackageOptions]
+  );
 
 
   // Beneficiary (auto-fill from logged professional)

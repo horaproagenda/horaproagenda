@@ -238,7 +238,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
   // Auto-fill when service/package picked. For services and packages, total = unitPrice * qty - discount.
   useEffect(() => {
-    if (itemType === 'service' && itemId) {
+    if (isServiceLike && itemId) {
       const s = serviceOptions.find(x => x.id === itemId);
       if (s) {
         const unit = Number(s.price) || 0;
@@ -248,7 +248,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         setServiceDescription(qty > 1 ? `${qty}x ${s.name}` : s.name);
         setTotalAmount(Number(total.toFixed(2)));
       }
-    } else if (itemType === 'package' && itemId) {
+    } else if (isPackageLike && itemId) {
       const p = packageOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
@@ -320,13 +320,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       // Compute original (gross) and discount based on item type.
       let originalGross = totalAmount;
       let discountTotal = 0;
-      if (itemType === 'service' && itemId) {
+      if (isServiceLike && itemId) {
         const s = serviceOptions.find(x => x.id === itemId);
         const unit = Number(s?.price || 0);
         const qty = Math.max(1, applicationsCount || 1);
         originalGross = Number((unit * qty).toFixed(2));
         discountTotal = Math.max(0, applicationsDiscount || 0);
-      } else if (itemType === 'package' && itemId) {
+      } else if (isPackageLike && itemId) {
         const p = packageOptions.find(x => x.id === itemId);
         originalGross = Number(p?.price || totalAmount);
         discountTotal = Math.max(0, packageDiscount || 0);
@@ -340,12 +340,12 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         final_amount: totalAmount,
         payment_method_id: boletoPaymentMethod.id,
         sale_date: today(),
-        item_type: itemType === 'package' ? 'package' : 'service',
+        item_type: isPackageLike ? 'package' : 'service',
         installments: installments,
         notes: notes || null,
         created_by: user?.id || null,
       };
-      if (itemType === 'service' && itemId) saleInsert.service_id = itemId;
+      if (isServiceLike && itemId) saleInsert.service_id = itemId;
       // IMPORTANT: do NOT set package_id to the template id — single_sales.package_id
       // references service_packages (per-client purchases), not package_templates.
       // For packages we create the service_packages clone after, then patch the sale.
@@ -396,7 +396,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       // 4) Provisioning rows
       let provisioningPromise: Promise<any> = Promise.resolve();
 
-      if (itemType === 'service' && itemId) {
+      if (isServiceLike && itemId) {
         const qty = Math.max(1, applicationsCount || 1);
         const perAppPaid = Number((totalAmount / qty).toFixed(2));
         const rows = Array.from({ length: qty }, (_, i) => ({
@@ -411,7 +411,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
           created_by: user?.id || null,
         }));
         provisioningPromise = Promise.resolve(supabase.from('client_services').insert(rows));
-      } else if (itemType === 'package' && itemId) {
+      } else if (isPackageLike && itemId) {
         const template = packageOptions.find(t => t.id === itemId);
         if (template) {
           provisioningPromise = (async () => {
@@ -483,7 +483,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
       if (instErr) throw instErr;
 
       // Se algum boleto já nasceu pago (retroativo), liberar o pacote conforme a regra
-      if (itemType === 'package' && records.some(r => r.status === 'paid')) {
+      if (isPackageLike && records.some(r => r.status === 'paid')) {
         try {
           await syncBoletoPackageAvailability(sale.id);
         } catch (syncErr) {
@@ -730,7 +730,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
               </div>
 
-              {itemType === 'service' && itemId && (() => {
+              {isServiceLike && itemId && (() => {
                 const s = serviceOptions.find(x => x.id === itemId);
                 const unit = Number(s?.price || 0);
                 const subtotal = unit * Math.max(1, applicationsCount || 1);
@@ -848,7 +848,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 </p>
               )}
 
-              {itemType === 'package' && itemId && (() => {
+              {isPackageLike && itemId && (() => {
                 const p = packageOptions.find(x => x.id === itemId);
                 const base = Number(p?.price || 0);
                 const finalVal = Math.max(0, base - (packageDiscount || 0));
@@ -881,7 +881,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 );
               })()}
 
-              {itemType === 'package' && (
+              {isPackageLike && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                   <Label>Disponibilizar pacote para agendamento</Label>
                   <RadioGroup

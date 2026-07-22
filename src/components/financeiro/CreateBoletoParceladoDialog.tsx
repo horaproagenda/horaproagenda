@@ -239,7 +239,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   // Auto-fill when service/package picked. For services and packages, total = unitPrice * qty - discount.
   useEffect(() => {
     if (isServiceLike && itemId) {
-      const s = serviceOptions.find(x => x.id === itemId);
+      const s = currentOptions.find(x => x.id === itemId);
       if (s) {
         const unit = Number(s.price) || 0;
         const qty = Math.max(1, applicationsCount || 1);

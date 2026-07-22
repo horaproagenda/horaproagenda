@@ -592,11 +592,21 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         payment_methods: amount > 0 && methodName ? [methodName] : undefined,
       });
       if (amount > 0) {
+        const payDate = singlePaymentDate || singleDate;
         await createFinancialEntry({
           amount,
-          payment_date: singlePaymentDate || singleDate,
+          payment_date: payDate,
           description: `${selectedService?.name || 'Atendimento'} — ${clientName} (Histórico)`,
           appointment_id: apt?.id || null,
+        });
+        // Registra a venda em single_sales para aparecer na aba "Vendas"
+        // do perfil do cliente com a data e a forma de pagamento corretas.
+        await createLegacySingleSale({
+          amount,
+          payment_date: payDate,
+          description: `${selectedService?.name || 'Atendimento'} (Histórico)`,
+          item_type: 'service',
+          service_id: serviceId || null,
         });
       }
       await invalidateAll();

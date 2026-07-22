@@ -1762,26 +1762,14 @@ function PackageForm(props: PackageFormProps) {
                 )}
               </div>
             )}
-            <div className={linkExistingPackage ? 'col-span-6' : 'col-span-3'}>
+            <div className="col-span-6">
               <Label className="text-[10px]">Data</Label>
               <Input type="date" value={row.date} onChange={(e) => updateSession(row.id, { date: e.target.value })} className="h-8 text-xs" />
             </div>
-            <div className={linkExistingPackage ? 'col-span-4' : 'col-span-2'}>
+            <div className="col-span-4">
               <Label className="text-[10px]">Hora</Label>
               <Input type="time" value={row.time} onChange={(e) => updateSession(row.id, { time: e.target.value })} className="h-8 text-xs" />
             </div>
-            {!linkExistingPackage && (
-              <>
-                <div className="col-span-2">
-                  <Label className="text-[10px]">Valor (R$)</Label>
-                  <Input type="text" value={row.amount_paid} onChange={(e) => updateSession(row.id, { amount_paid: e.target.value })} placeholder="opcional" className="h-8 text-xs" />
-                </div>
-                <div className="col-span-3">
-                  <Label className="text-[10px]">Pagamento em</Label>
-                  <Input type="date" value={row.payment_date} onChange={(e) => updateSession(row.id, { payment_date: e.target.value })} className="h-8 text-xs" />
-                </div>
-              </>
-            )}
             <div className="col-span-1 flex items-end justify-center">
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSession(row.id)} disabled={pkgSessions.length <= 1}>
                 <Trash2 className="h-3 w-3" />
@@ -1793,9 +1781,10 @@ function PackageForm(props: PackageFormProps) {
 
         {!linkExistingPackage && (
           <p className="text-[10px] text-muted-foreground">
-            Dica: deixe "Valor (R$)" em branco nas sessões se você pagou o pacote inteiro de uma vez (use o "Valor total pago" acima).
+            Considere apenas o "Valor total pago" e a "Data do pagamento (total)" acima — pagamentos por sessão não são registrados no histórico antigo.
           </p>
         )}
+
 
       </div>
     </div>

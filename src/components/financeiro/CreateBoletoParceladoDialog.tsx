@@ -249,7 +249,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         setTotalAmount(Number(total.toFixed(2)));
       }
     } else if (isPackageLike && itemId) {
-      const p = packageOptions.find(x => x.id === itemId);
+      const p = currentOptions.find(x => x.id === itemId);
       if (p) {
         setServiceDescription(p.name);
         const base = Number(p.price) || 0;

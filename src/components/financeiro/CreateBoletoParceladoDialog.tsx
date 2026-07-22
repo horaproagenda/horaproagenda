@@ -136,7 +136,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
 
   // Sale info
-  const [itemType, setItemType] = useState<'service' | 'package' | 'custom'>('service');
+  const [itemType, setItemType] = useState<'service' | 'kit' | 'package_standard' | 'package_sequential' | 'custom'>('service');
   const [itemId, setItemId] = useState<string>('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [totalAmount, setTotalAmount] = useState<number>(0);

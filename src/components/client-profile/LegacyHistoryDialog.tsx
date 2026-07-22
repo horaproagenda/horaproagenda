@@ -93,7 +93,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
   // Single
   const [singleDate, setSingleDate] = useState('');
   const [singleTime, setSingleTime] = useState('09:00');
-  const [singleDuration, setSingleDuration] = useState('60');
+  const [singleDuration, setSingleDuration] = useState('01:00');
   const [singleAmount, setSingleAmount] = useState('');
   const [singlePaymentDate, setSinglePaymentDate] = useState('');
   const [singleNotes, setSingleNotes] = useState('');

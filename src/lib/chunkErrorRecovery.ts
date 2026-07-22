@@ -56,11 +56,11 @@ function reloadOnce(reason: string) {
 }
 
 export function installChunkErrorRecovery() {
-  // Reset do flag em navegação bem-sucedida
+  // Reset flag após navegação bem-sucedida
   window.addEventListener('load', () => {
     setTimeout(() => {
       try { sessionStorage.removeItem(RELOADED_KEY); } catch { /* noop */ }
-    }, 5000);
+    }, 10_000);
   });
 
   window.addEventListener('error', (event) => {

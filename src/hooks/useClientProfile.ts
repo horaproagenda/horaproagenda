@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
 import { formatAppointmentServiceWithPackageContext, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { buildLegacySaleKeySet, hasMatchingLegacySale, isLegacyRetroactiveAppointment } from '@/lib/legacyPaymentDedup';
 
 // Interface for payment history items from multiple sources
 interface PaymentHistoryItem {

@@ -863,6 +863,15 @@ export function NewAppointmentDialog({
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
 
+  // Sessões cujo intervalo em relação à anterior ficou menor que o configurado
+  // (ex.: 29/08 seguido de 30/08 com intervalo de 30 dias).
+  const previewIntervalViolations = useMemo(
+    () => (autoScheduleEnabled ? findChainViolations(editablePreviewDates, autoScheduleIntervals) : []),
+    [autoScheduleEnabled, editablePreviewDates, autoScheduleIntervals],
+  );
+  const hasIntervalViolations = previewIntervalViolations.length > 0;
+
+
   // Check conflicts for recurring service dates and suggest alternatives
   const servicePreviewConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
     if (!repeatServiceEnabled || editableServiceDates.length === 0 || serviceType !== 'service') return [];

@@ -669,12 +669,41 @@ export function NewAppointmentDialog({
     return dates;
   }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, isBusinessDay, getHolidayForDate, settings?.timezone]);
 
-  // Update service preview dates when calculation changes
+  // Intervalos e opções de encadeamento da série de serviços repetidos.
+  const serviceChainIntervals = useMemo(
+    () => Array.from({ length: Math.max(0, repeatCount - 1) }, () => Math.max(1, effectiveIntervalDays || 7)),
+    [repeatCount, effectiveIntervalDays],
+  );
+
+  const serviceChainOptions = useMemo(() => ({
+    intervals: serviceChainIntervals,
+    preferredDayOfWeek: servicePreferredDayOfWeek,
+    isAllowedDay: (d: Date) =>
+      servicePreferredDayOfWeek !== null
+        ? getHolidayForDate(d)?.type !== 'national'
+        : isBusinessDay(d),
+    applyTime: preferredTime
+      ? (d: Date) => createDateTimeInTimeZone(d, preferredTime, settings?.timezone)
+      : undefined,
+  }), [serviceChainIntervals, servicePreferredDayOfWeek, preferredTime, settings?.timezone, isBusinessDay, getHolidayForDate]);
+
+  // Update service preview dates when calculation changes.
+  // Compara a assinatura para não descartar edições manuais em re-renders.
+  const servicePreviewSignature = useMemo(
+    () => calculateServicePreviewDates.map((d) => d.getTime()).join(','),
+    [calculateServicePreviewDates],
+  );
   useEffect(() => {
-    setServicePreviewDates(calculateServicePreviewDates);
-    setEditableServiceDates(calculateServicePreviewDates);
+    setServicePreviewDates((prev) =>
+      prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
+    );
+    setEditableServiceDates((prev) =>
+      prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
+    );
     setEditingServiceDateIndex(null);
-  }, [calculateServicePreviewDates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicePreviewSignature]);
+
 
   // When service is selected, update interval from service's return_days
   // Using selectedServiceData?.id to avoid loop when object reference changes

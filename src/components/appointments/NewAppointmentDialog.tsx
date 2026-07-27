@@ -686,13 +686,11 @@ export function NewAppointmentDialog({
     }
   }, [selectedServiceId, selectedServiceReturnDays]);
 
-  // Update a specific date in the editable preview
+  // Update a specific date in the editable preview.
+  // Ao alterar qualquer data, TODAS as sessões seguintes são reencadeadas para
+  // manter o intervalo de dias configurado (evita gaps de 1 dia).
   const updateEditableDate = (index: number, newDate: Date) => {
-    setEditablePreviewDates(prev => {
-      const updated = [...prev];
-      updated[index] = newDate;
-      return updated;
-    });
+    setEditablePreviewDates(prev => rebuildChainFromIndex(prev, index, newDate, autoScheduleChainOptions));
     // Ao editar a primeira etapa, sincroniza com os campos principais
     // (data/horário) para evitar confusão de informações.
     if (index === 0) {
@@ -704,6 +702,7 @@ export function NewAppointmentDialog({
       setTime(`${hh}:${mm}`);
     }
   };
+
 
   // Update a specific date in the editable service dates
   const updateEditableServiceDate = (index: number, newDate: Date) => {

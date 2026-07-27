@@ -2476,6 +2476,32 @@ Até breve! ✨`;
                                   </AlertDescription>
                                 </Alert>
                               )}
+
+                              {hasServiceIntervalViolations && (
+                                <Alert variant="destructive" className="mb-2 py-2">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>
+                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        setEditableServiceDates((prev) => enforceChainMinimums(prev, serviceChainOptions));
+                                        toast.success('Intervalos corrigidos.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Corrigir intervalos
+                                    </Button>
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
+
                               
                               <div className="space-y-1.5">
                                 {editableServiceDates.map((previewDate, index) => {

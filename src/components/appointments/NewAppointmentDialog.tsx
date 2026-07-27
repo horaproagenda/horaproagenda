@@ -1271,6 +1271,15 @@ export function NewAppointmentDialog({
             let futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
 
+            // Guarda de intervalo: a sessão nunca pode ficar mais perto da
+            // anterior do que o intervalo configurado (bug "29/08 → 30/08").
+            const previousStart = createdRanges[createdRanges.length - 1]?.start;
+            const requiredGap = autoScheduleIntervals[i - 1];
+            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
+              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
+              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
+            }
+
             // Fresh snapshot including sessions just created in this loop so we
             // don't rely on stale WebSocket state for real-time conflict checks.
             const liveAppointments = ((queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[])
@@ -1302,6 +1311,13 @@ export function NewAppointmentDialog({
             } catch (slotErr) {
               console.warn(`Auto-slot falhou na sessão ${i + 1}:`, slotErr);
             }
+
+            // Reconfirma o intervalo após o ajuste de slot livre.
+            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
+              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
+              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
+            }
+
 
             try {
               const futureAppointment = await createAppointment.mutateAsync({

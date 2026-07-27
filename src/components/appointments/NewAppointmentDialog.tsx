@@ -2674,6 +2674,30 @@ Até breve! ✨`;
                                   </AlertDescription>
                                 </Alert>
                               )}
+                              {hasIntervalViolations && (
+                                <Alert variant="destructive" className="mb-2 py-2">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>
+                                      {`Sessões ${previewIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        setEditablePreviewDates((prev) => enforceChainMinimums(prev, autoScheduleChainOptions));
+                                        toast.success('Intervalos corrigidos conforme o pacote.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Corrigir intervalos
+                                    </Button>
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
                               <div className="space-y-2">
                                 {editablePreviewDates.map((previewDate, index) => {
                                   const conflictInfo = previewDateConflicts.find(pc => pc.index === index);

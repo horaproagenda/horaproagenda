@@ -679,6 +679,13 @@ export function useClientProfile(clientId: string) {
     }
   });
 
+  // Retroactive ("Histórico antigo") payments are persisted both as a paid
+  // appointment and as a sale. The sale is the source of truth — keep the
+  // appointment row out of the history whenever a matching sale exists.
+  const legacySaleKeys = buildLegacySaleKeySet(clientSales as any);
+
+
+
 
   const paymentHistory: PaymentHistoryItem[] = [
     ...clientSales.flatMap(sale => {

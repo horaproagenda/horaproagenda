@@ -525,69 +525,60 @@ export function NewAppointmentDialog({
 
   // Calculate preview dates for auto-scheduling
 
-  const calculatePreviewDates = useMemo(() => {
-    if (!appointmentTimes || !autoScheduleEnabled) return [];
-    
+  const autoScheduleTotalSessions = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;
-    const totalSessions = serviceType === 'package'
+    return serviceType === 'package'
       ? Math.max(1, autoScheduleSessionCount || 1)
       : packageData?.total_sessions || 1;
-    if (totalSessions <= 1) return [];
+  }, [existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount]);
 
-    const workSundays = settings?.work_sundays ?? false;
-    const workSaturdays = settings?.work_saturdays ?? true;
+  // Intervalo (em dias) entre cada sessão da série. `interval_after_days` da
+  // etapa ANTERIOR manda; valores 0/nulos caem para o intervalo do pacote —
+  // nunca para 1 dia (causa do bug "29/08 → 30/08").
+  const autoScheduleIntervals = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    const manualOverride = parseInt(customIntervalDays, 10);
+    const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
+    const packageInterval = hasManualOverride && packageSequenceSteps.length === 0
+      ? manualOverride
+      : Number(packageData?.interval_days || 0);
+
+    const intervals: number[] = [];
+    for (let i = 1; i < autoScheduleTotalSessions; i++) {
+      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
+      intervals.push(
+        packageSequenceSteps.length > 0
+          ? resolveStepInterval(previousStep?.interval_after_days, packageInterval)
+          : resolveStepInterval(packageInterval, packageInterval),
+      );
+    }
+    return intervals;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, nextPackageStepIndex, customIntervalDays, autoScheduleTotalSessions]);
+
+  const autoScheduleChainOptions = useMemo(() => ({
+    intervals: autoScheduleIntervals,
+    preferredDayOfWeek,
+    isAllowedDay: (d: Date) =>
+      preferredDayOfWeek !== null
+        ? getHolidayForDate(d)?.type !== 'national'
+        : isBusinessDay(d),
+    applyTime: preferredTime
+      ? (d: Date) => createDateTimeInTimeZone(d, preferredTime, settings?.timezone)
+      : undefined,
+  }), [autoScheduleIntervals, preferredDayOfWeek, preferredTime, settings?.timezone, isBusinessDay, getHolidayForDate]);
+
+  const calculatePreviewDates = useMemo(() => {
+    if (!appointmentTimes || !autoScheduleEnabled) return [];
+    if (autoScheduleTotalSessions <= 1) return [];
 
     const dates: Date[] = [appointmentTimes.startTime];
-    let currentDate = appointmentTimes.startTime;
-
-    for (let i = 1; i < totalSessions; i++) {
-      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
-      // Para pacotes sequenciais, o intervalo ENTRE a etapa i-1 e a etapa i é
-      // sempre `previousStep.interval_after_days` (semântica "dias APÓS esta
-      // etapa"). Bug anterior usava o intervalo da própria etapa i, o que
-      // ignorava o gap real cadastrado (ex.: 3 dias entre avaliação e axila
-      // virava 21 dias porque pegava o intervalo da axila para a próxima).
-      const manualOverride = parseInt(customIntervalDays, 10);
-      const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-      const rawInterval = packageSequenceSteps.length > 0
-        ? Number(previousStep?.interval_after_days ?? packageData?.interval_days ?? 7)
-        : hasManualOverride
-          ? manualOverride
-          : Number(packageData?.interval_days || 7);
-      const intervalDays = Number.isFinite(rawInterval) ? rawInterval : 7;
-      // Ensure minimum 1 day interval to prevent overlapping sessions
-      const safeInterval = Math.max(intervalDays, 1);
-      const futureDate = addDays(currentDate, safeInterval);
-      
-      // Adjust to preferred day of week if set
-      if (preferredDayOfWeek !== null) {
-        while (futureDate.getDay() !== preferredDayOfWeek) {
-          futureDate.setDate(futureDate.getDate() + 1);
-        }
-        // Skip holidays even when a specific weekday is chosen (jump 7 days
-        // to keep the same weekday)
-        while (getHolidayForDate(futureDate)?.type === 'national') {
-          futureDate.setDate(futureDate.getDate() + 7);
-        }
-      } else {
-        // "Qualquer dia útil": strictly Mon-Fri and no national holidays
-        while (!isBusinessDay(futureDate)) {
-          futureDate.setDate(futureDate.getDate() + 1);
-        }
-      }
-
-      // Apply preferred time if set
-      if (preferredTime) {
-        const zonedFutureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
-        futureDate.setTime(zonedFutureDate.getTime());
-      }
-
-      dates.push(new Date(futureDate));
-      currentDate = futureDate;
+    for (let i = 1; i < autoScheduleTotalSessions; i++) {
+      dates.push(nextChainDate(dates[i - 1], autoScheduleIntervals[i - 1], autoScheduleChainOptions));
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount, packageSequenceSteps, nextPackageStepIndex, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
+  }, [appointmentTimes, autoScheduleEnabled, autoScheduleTotalSessions, autoScheduleIntervals, autoScheduleChainOptions]);
+
 
   // Update preview dates when calculation changes
   // Guard against infinite loops by comparing serialized timestamps before setState

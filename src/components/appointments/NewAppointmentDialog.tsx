@@ -43,6 +43,14 @@ import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
+import {
+  calendarDayDiff,
+  enforceChainMinimums,
+  findChainViolations,
+  nextChainDate,
+  rebuildChainFromIndex,
+  resolveStepInterval,
+} from '@/lib/autoScheduleChain';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';
@@ -517,69 +525,60 @@ export function NewAppointmentDialog({
 
   // Calculate preview dates for auto-scheduling
 
-  const calculatePreviewDates = useMemo(() => {
-    if (!appointmentTimes || !autoScheduleEnabled) return [];
-    
+  const autoScheduleTotalSessions = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;
-    const totalSessions = serviceType === 'package'
+    return serviceType === 'package'
       ? Math.max(1, autoScheduleSessionCount || 1)
       : packageData?.total_sessions || 1;
-    if (totalSessions <= 1) return [];
+  }, [existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount]);
 
-    const workSundays = settings?.work_sundays ?? false;
-    const workSaturdays = settings?.work_saturdays ?? true;
+  // Intervalo (em dias) entre cada sessão da série. `interval_after_days` da
+  // etapa ANTERIOR manda; valores 0/nulos caem para o intervalo do pacote —
+  // nunca para 1 dia (causa do bug "29/08 → 30/08").
+  const autoScheduleIntervals = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    const manualOverride = parseInt(customIntervalDays, 10);
+    const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
+    const packageInterval = hasManualOverride && packageSequenceSteps.length === 0
+      ? manualOverride
+      : Number(packageData?.interval_days || 0);
+
+    const intervals: number[] = [];
+    for (let i = 1; i < autoScheduleTotalSessions; i++) {
+      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
+      intervals.push(
+        packageSequenceSteps.length > 0
+          ? resolveStepInterval(previousStep?.interval_after_days, packageInterval)
+          : resolveStepInterval(packageInterval, packageInterval),
+      );
+    }
+    return intervals;
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, nextPackageStepIndex, customIntervalDays, autoScheduleTotalSessions]);
+
+  const autoScheduleChainOptions = useMemo(() => ({
+    intervals: autoScheduleIntervals,
+    preferredDayOfWeek,
+    isAllowedDay: (d: Date) =>
+      preferredDayOfWeek !== null
+        ? getHolidayForDate(d)?.type !== 'national'
+        : isBusinessDay(d),
+    applyTime: preferredTime
+      ? (d: Date) => createDateTimeInTimeZone(d, preferredTime, settings?.timezone)
+      : undefined,
+  }), [autoScheduleIntervals, preferredDayOfWeek, preferredTime, settings?.timezone, isBusinessDay, getHolidayForDate]);
+
+  const calculatePreviewDates = useMemo(() => {
+    if (!appointmentTimes || !autoScheduleEnabled) return [];
+    if (autoScheduleTotalSessions <= 1) return [];
 
     const dates: Date[] = [appointmentTimes.startTime];
-    let currentDate = appointmentTimes.startTime;
-
-    for (let i = 1; i < totalSessions; i++) {
-      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
-      // Para pacotes sequenciais, o intervalo ENTRE a etapa i-1 e a etapa i é
-      // sempre `previousStep.interval_after_days` (semântica "dias APÓS esta
-      // etapa"). Bug anterior usava o intervalo da própria etapa i, o que
-      // ignorava o gap real cadastrado (ex.: 3 dias entre avaliação e axila
-      // virava 21 dias porque pegava o intervalo da axila para a próxima).
-      const manualOverride = parseInt(customIntervalDays, 10);
-      const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-      const rawInterval = packageSequenceSteps.length > 0
-        ? Number(previousStep?.interval_after_days ?? packageData?.interval_days ?? 7)
-        : hasManualOverride
-          ? manualOverride
-          : Number(packageData?.interval_days || 7);
-      const intervalDays = Number.isFinite(rawInterval) ? rawInterval : 7;
-      // Ensure minimum 1 day interval to prevent overlapping sessions
-      const safeInterval = Math.max(intervalDays, 1);
-      const futureDate = addDays(currentDate, safeInterval);
-      
-      // Adjust to preferred day of week if set
-      if (preferredDayOfWeek !== null) {
-        while (futureDate.getDay() !== preferredDayOfWeek) {
-          futureDate.setDate(futureDate.getDate() + 1);
-        }
-        // Skip holidays even when a specific weekday is chosen (jump 7 days
-        // to keep the same weekday)
-        while (getHolidayForDate(futureDate)?.type === 'national') {
-          futureDate.setDate(futureDate.getDate() + 7);
-        }
-      } else {
-        // "Qualquer dia útil": strictly Mon-Fri and no national holidays
-        while (!isBusinessDay(futureDate)) {
-          futureDate.setDate(futureDate.getDate() + 1);
-        }
-      }
-
-      // Apply preferred time if set
-      if (preferredTime) {
-        const zonedFutureDate = createDateTimeInTimeZone(futureDate, preferredTime, settings?.timezone);
-        futureDate.setTime(zonedFutureDate.getTime());
-      }
-
-      dates.push(new Date(futureDate));
-      currentDate = futureDate;
+    for (let i = 1; i < autoScheduleTotalSessions; i++) {
+      dates.push(nextChainDate(dates[i - 1], autoScheduleIntervals[i - 1], autoScheduleChainOptions));
     }
 
     return dates;
-  }, [appointmentTimes, autoScheduleEnabled, existingClientPackage, selectedPackageData, serviceType, autoScheduleSessionCount, packageSequenceSteps, nextPackageStepIndex, preferredDayOfWeek, preferredTime, customIntervalDays, settings?.timezone, settings?.work_sundays, settings?.work_saturdays, isBusinessDay, getHolidayForDate]);
+  }, [appointmentTimes, autoScheduleEnabled, autoScheduleTotalSessions, autoScheduleIntervals, autoScheduleChainOptions]);
+
 
   // Update preview dates when calculation changes
   // Guard against infinite loops by comparing serialized timestamps before setState
@@ -687,13 +686,11 @@ export function NewAppointmentDialog({
     }
   }, [selectedServiceId, selectedServiceReturnDays]);
 
-  // Update a specific date in the editable preview
+  // Update a specific date in the editable preview.
+  // Ao alterar qualquer data, TODAS as sessões seguintes são reencadeadas para
+  // manter o intervalo de dias configurado (evita gaps de 1 dia).
   const updateEditableDate = (index: number, newDate: Date) => {
-    setEditablePreviewDates(prev => {
-      const updated = [...prev];
-      updated[index] = newDate;
-      return updated;
-    });
+    setEditablePreviewDates(prev => rebuildChainFromIndex(prev, index, newDate, autoScheduleChainOptions));
     // Ao editar a primeira etapa, sincroniza com os campos principais
     // (data/horário) para evitar confusão de informações.
     if (index === 0) {
@@ -705,6 +702,7 @@ export function NewAppointmentDialog({
       setTime(`${hh}:${mm}`);
     }
   };
+
 
   // Update a specific date in the editable service dates
   const updateEditableServiceDate = (index: number, newDate: Date) => {
@@ -864,6 +862,15 @@ export function NewAppointmentDialog({
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
+
+  // Sessões cujo intervalo em relação à anterior ficou menor que o configurado
+  // (ex.: 29/08 seguido de 30/08 com intervalo de 30 dias).
+  const previewIntervalViolations = useMemo(
+    () => (autoScheduleEnabled ? findChainViolations(editablePreviewDates, autoScheduleIntervals) : []),
+    [autoScheduleEnabled, editablePreviewDates, autoScheduleIntervals],
+  );
+  const hasIntervalViolations = previewIntervalViolations.length > 0;
+
 
   // Check conflicts for recurring service dates and suggest alternatives
   const servicePreviewConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
@@ -1264,6 +1271,15 @@ export function NewAppointmentDialog({
             let futureEnd = new Date(futureDate);
             futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
 
+            // Guarda de intervalo: a sessão nunca pode ficar mais perto da
+            // anterior do que o intervalo configurado (bug "29/08 → 30/08").
+            const previousStart = createdRanges[createdRanges.length - 1]?.start;
+            const requiredGap = autoScheduleIntervals[i - 1];
+            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
+              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
+              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
+            }
+
             // Fresh snapshot including sessions just created in this loop so we
             // don't rely on stale WebSocket state for real-time conflict checks.
             const liveAppointments = ((queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[])
@@ -1295,6 +1311,13 @@ export function NewAppointmentDialog({
             } catch (slotErr) {
               console.warn(`Auto-slot falhou na sessão ${i + 1}:`, slotErr);
             }
+
+            // Reconfirma o intervalo após o ajuste de slot livre.
+            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
+              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
+              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
+            }
+
 
             try {
               const futureAppointment = await createAppointment.mutateAsync({
@@ -2653,8 +2676,11 @@ Até breve! ✨`;
                                               next[pc.index] = pc.suggestedDate;
                                             }
                                           });
-                                          return next;
+                                          // Após mover datas, reforça o intervalo mínimo
+                                          // configurado entre as sessões.
+                                          return enforceChainMinimums(next, autoScheduleChainOptions);
                                         });
+
                                         toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
                                       }}
                                     >
@@ -2664,6 +2690,30 @@ Até breve! ✨`;
                                   </AlertDescription>
                                 </Alert>
                               )}
+                              {hasIntervalViolations && (
+                                <Alert variant="destructive" className="mb-2 py-2">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>
+                                      {`Sessões ${previewIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        setEditablePreviewDates((prev) => enforceChainMinimums(prev, autoScheduleChainOptions));
+                                        toast.success('Intervalos corrigidos conforme o pacote.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Corrigir intervalos
+                                    </Button>
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
                               <div className="space-y-2">
                                 {editablePreviewDates.map((previewDate, index) => {
                                   const conflictInfo = previewDateConflicts.find(pc => pc.index === index);
@@ -2921,9 +2971,9 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : hasIntervalViolations ? 'Corrija os intervalos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
               </Button>
             </div>
           </form>

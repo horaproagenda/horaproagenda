@@ -906,6 +906,15 @@ export function NewAppointmentDialog({
   );
   const hasIntervalViolations = previewIntervalViolations.length > 0;
 
+  // Mesma verificação para a série de serviços repetidos.
+  const serviceIntervalViolations = useMemo(
+    () => (repeatServiceEnabled ? findChainViolations(editableServiceDates, serviceChainIntervals) : []),
+    [repeatServiceEnabled, editableServiceDates, serviceChainIntervals],
+  );
+  const hasServiceIntervalViolations = serviceIntervalViolations.length > 0;
+
+
+
 
   // Check conflicts for recurring service dates and suggest alternatives
   const servicePreviewConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {

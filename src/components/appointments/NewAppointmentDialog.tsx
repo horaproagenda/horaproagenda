@@ -43,6 +43,14 @@ import { cn } from '@/lib/utils';
 import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
+import {
+  calendarDayDiff,
+  enforceChainMinimums,
+  findChainViolations,
+  nextChainDate,
+  rebuildChainFromIndex,
+  resolveStepInterval,
+} from '@/lib/autoScheduleChain';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { useServicePackages } from '@/hooks/useServicePackages';

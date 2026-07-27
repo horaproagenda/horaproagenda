@@ -1,31 +1,42 @@
-## Diagnóstico (confirmado nos dados)
+## Problema
 
-Ao cadastrar um serviço no "Histórico antigo" com pagamento, o app grava **três registros** para o mesmo pagamento:
+No agendamento automático de pacotes, sessões podem terminar com 1 dia de intervalo (ex.: 29/08 → 30/08) mesmo com intervalo configurado de 30 dias.
 
-Exemplo real do cliente Arthur (18/02, R$ 110), gravados no mesmo segundo:
-- `appointments` → `amount_paid = 110`, notas `[Histórico] Cadastro retroativo`
-- `financial_entries` → recebível pago de R$ 110
-- `single_sales` → venda de R$ 110 com `paid_at` preenchido
+Ao ler o código de `src/components/appointments/NewAppointmentDialog.tsx` (cálculo da prévia, resolução de conflitos e criação em lote) e `src/lib/packageScheduling.ts`, encontrei três pontos que quebram o intervalo:
 
-No perfil do cliente, o "Histórico de Pagamentos" (`useClientProfile`) monta a lista a partir de **duas fontes**: as vendas (`single_sales`) e os agendamentos pagos. Normalmente um agendamento é "escondido" quando existe uma venda paga do mesmo serviço, mas há um bypass explícito para lançamentos retroativos (`notes` começando com `[Histórico]`). Como o próprio diálogo passou a criar também a venda, o bypass deixou de fazer sentido: o mesmo pagamento aparece uma vez como venda e outra como agendamento → **linha duplicada**.
+1. **Intervalo zero vira 1 dia** — na montagem da prévia, o intervalo usado é `Math.max(intervalDays, 1)`. Etapas com `interval_after_days = 0` (existem no banco, ex.: última etapa dos pacotes "Axila + Virilha Completa" e "Buço + axila + virilha completa") geram gap de exatamente 1 dia em vez de cair no intervalo padrão do pacote.
+2. **Resolver conflito quebra a corrente** — quando uma data tem conflito, a sugestão automática ("Usar: ..." / "Auto-resolver todos") pula para o próximo horário livre ou simplesmente `+1 dia`, e as sessões seguintes **não são recalculadas**. Assim uma sessão empurrada para 29/08 fica colada na seguinte, que continua em 30/08.
+3. **Edição manual de uma data intermediária** também não propaga para as datas seguintes: só a data editada muda, o restante mantém as datas antigas.
 
-Como o valor aparece duas vezes no histórico, o abatimento do crédito também aparece dobrado na leitura do cliente (o débito real em `client_credit_transactions` é único por cadastro — confirmado: 1100 → 990 → 880 para dois cadastros de R$ 110).
+(Não há, hoje, séries salvas no banco com gap de 1 dia menor que o intervalo — a quebra aparece na prévia/no momento da criação.)
 
-## Correção
+## O que será feito
 
-1. **`src/hooks/useClientProfile.ts`**
-   - Ajustar o bypass `isRetroactiveLegacy`: um agendamento retroativo só entra no histórico quando **não existir** venda retroativa correspondente (mesmo cliente, mesmo `service_id`/pacote, mesma data de pagamento e mesmo valor). A venda passa a ser a fonte única da verdade.
-   - Manter o bypass apenas para registros antigos (legado) que não possuem venda associada, para não sumir com pagamentos já cadastrados antes desta correção.
+**1. Intervalo efetivo confiável (`NewAppointmentDialog.tsx`)**
+- Criar helper para resolver o intervalo entre a etapa i-1 e a etapa i: usar `interval_after_days` da etapa anterior somente quando for um número > 0; caso contrário, cair para o intervalo do pacote (`interval_days`) e, por fim, para o padrão.
+- Remover o `Math.max(intervalDays, 1)` como piso — o piso passa a ser o intervalo configurado do pacote.
 
-2. **`src/components/client-profile/LegacyHistoryDialog.tsx`**
-   - Vincular a venda retroativa ao agendamento criado (gravar `appointment_id`/referência quando a coluna existir) para que a deduplicação seja determinística e não dependa de heurística de data/valor.
-   - Garantir que o débito de crédito ao cliente aconteça **uma única vez** por cadastro (guarda contra duplo submit: desabilitar o botão enquanto `submitting` e checar transação já existente para o mesmo `appointment_id` antes de inserir em `client_credit_transactions`).
+**2. Recalcular a corrente sempre que uma data muda**
+- Extrair a lógica de encadeamento (intervalo + dia útil/feriado + horário preferido) para um utilitário puro novo, `src/lib/autoScheduleChain.ts`, com função `rebuildChainFromIndex(dates, index, newDate, intervals, options)`.
+- `updateEditableDate(index, newDate)` passa a recalcular todas as datas posteriores a partir da data editada, respeitando os intervalos de cada etapa. Datas anteriores ficam intocadas.
+- O mesmo vale para aplicar uma sugestão de conflito e para "Auto-resolver todos".
 
-3. **Teste de regressão**
-   - Novo teste unitário para a função de montagem de `paymentHistory`, cobrindo: (a) cadastro retroativo com venda → 1 linha; (b) cadastro retroativo legado sem venda → 1 linha; (c) venda normal com agendamento pago → 1 linha; (d) boleto parcelado → uma linha por parcela paga.
+**3. Sugestão de conflito respeita o intervalo mínimo**
+- Ao procurar alternativa: primeiro tentar outros horários **no mesmo dia**; se não houver, avançar por dias úteis a partir do dia original — e, ao aplicar, reencadear as sessões seguintes (item 2), garantindo que nenhuma sessão fique a menos que o intervalo configurado da anterior.
+
+**4. Guarda na criação em lote**
+- No loop de criação, antes de `findNextAvailablePackageSlot`, garantir que `futureDate` seja pelo menos `dataAnterior + intervalo` (o `findNextAvailablePackageSlot` só desloca minutos, então mantém a data). Se o slot livre encontrado violar o intervalo, empurrar para o próximo dia útil válido.
+- Adicionar validação de bloqueio no submit: se alguma sessão da prévia estiver com gap menor que o intervalo configurado, mostrar aviso com botão de correção automática.
+
+## Testes / anti-regressão
+
+- Novo arquivo `src/lib/__tests__/autoScheduleChain.test.ts` cobrindo:
+  - intervalo de 30 dias mantido ao longo de N sessões;
+  - `interval_after_days = 0/null` cai no intervalo do pacote (nunca 1 dia);
+  - editar uma data intermediária reencadeia as posteriores mantendo o intervalo;
+  - ajuste de dia útil/feriado nunca reduz o gap abaixo do intervalo.
+- Rodar `bunx vitest run` e o typecheck.
 
 ## Detalhes técnicos
 
-- Dedup key proposta: `sale.appointment_id` quando disponível; fallback `${service_id||package_id}|${data_pagamento}|${valor}`.
-- Nenhuma migração de dados é necessária — a duplicação é apenas de exibição; os registros existentes (`financial_entries` + `single_sales`) permanecem íntegros para o Financeiro e o Caixa.
-- Se a tabela `single_sales` não tiver coluna de vínculo com agendamento, será adicionada por migração (`appointment_id uuid`, nullable, com índice), mantendo os GRANTs e políticas atuais.
+Arquivos afetados: `src/components/appointments/NewAppointmentDialog.tsx` (prévia, `updateEditableDate`, `previewDateConflicts`, auto-resolver, loop de criação), novo `src/lib/autoScheduleChain.ts`, novo teste. Nenhuma migração de banco necessária — a correção é de lógica de agendamento no cliente; dados já salvos não são alterados.

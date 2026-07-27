@@ -2651,8 +2651,11 @@ Até breve! ✨`;
                                               next[pc.index] = pc.suggestedDate;
                                             }
                                           });
-                                          return next;
+                                          // Após mover datas, reforça o intervalo mínimo
+                                          // configurado entre as sessões.
+                                          return enforceChainMinimums(next, autoScheduleChainOptions);
                                         });
+
                                         toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
                                       }}
                                     >

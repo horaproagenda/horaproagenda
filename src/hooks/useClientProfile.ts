@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
 import { formatAppointmentServiceWithPackageContext, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { buildLegacySaleKeySet, hasMatchingLegacySale, isLegacyRetroactiveAppointment } from '@/lib/legacyPaymentDedup';
 
 // Interface for payment history items from multiple sources
 interface PaymentHistoryItem {
@@ -678,6 +679,13 @@ export function useClientProfile(clientId: string) {
     }
   });
 
+  // Retroactive ("Histórico antigo") payments are persisted both as a paid
+  // appointment and as a sale. The sale is the source of truth — keep the
+  // appointment row out of the history whenever a matching sale exists.
+  const legacySaleKeys = buildLegacySaleKeySet(clientSales as any);
+
+
+
 
   const paymentHistory: PaymentHistoryItem[] = [
     ...clientSales.flatMap(sale => {
@@ -763,13 +771,29 @@ export function useClientProfile(clientId: string) {
         // bypass sale-vs-appointment dedup and duplicate every paid sale in
         // the history.
         const notesStr = String((a as any).notes || '');
-        const isRetroactiveLegacy = notesStr.startsWith('[Histórico]');
+        const isRetroactiveLegacy = isLegacyRetroactiveAppointment(notesStr);
 
         if (!isRetroactiveLegacy && a.service_id && saleLinkedServiceIds.has(a.service_id)) continue;
         if ((a.amount_paid || 0) <= 0) continue;
 
         const pkg = a.package_appointment?.package;
         let packageId = pkg?.id as string | undefined;
+
+        // A retroactive appointment that already has its own retroactive sale
+        // would otherwise be listed twice (once as "sale", once as
+        // "appointment") — and make the client-credit debit look doubled.
+        if (
+          isRetroactiveLegacy &&
+          hasMatchingLegacySale(legacySaleKeys, {
+            serviceId: a.service_id,
+            packageId,
+            date: (a as any).payment_date || a.start_time,
+            amount: a.amount_paid,
+          })
+        ) {
+          continue;
+        }
+
 
         // Robust package detection: even when the link was lost (e.g. the
         // session was rescheduled and re-linked to another appointment),

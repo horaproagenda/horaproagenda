@@ -1,72 +1,31 @@
-## Objetivo
+## Diagnóstico (confirmado nos dados)
 
-Aproveitar tudo que o profissional digita no **cadastro** (Auth → signup) dentro de **Configurações → Informações da Clínica**, sem precisar redigitar. Endereço sempre puxado por CEP. Trocar e-mail/celular exige código de verificação enviado para o **e-mail atual**.
+Ao cadastrar um serviço no "Histórico antigo" com pagamento, o app grava **três registros** para o mesmo pagamento:
 
-## 1. Banco (migration)
+Exemplo real do cliente Arthur (18/02, R$ 110), gravados no mesmo segundo:
+- `appointments` → `amount_paid = 110`, notas `[Histórico] Cadastro retroativo`
+- `financial_entries` → recebível pago de R$ 110
+- `single_sales` → venda de R$ 110 com `paid_at` preenchido
 
-Adicionar colunas em `public.business_settings` (todas opcionais, texto):
-- `clinic_cep`, `clinic_street`, `clinic_number`, `clinic_complement`, `clinic_neighborhood`, `clinic_city`, `clinic_state`
-- `professional_name` (nome do profissional principal, separado do nome da clínica)
+No perfil do cliente, o "Histórico de Pagamentos" (`useClientProfile`) monta a lista a partir de **duas fontes**: as vendas (`single_sales`) e os agendamentos pagos. Normalmente um agendamento é "escondido" quando existe uma venda paga do mesmo serviço, mas há um bypass explícito para lançamentos retroativos (`notes` começando com `[Histórico]`). Como o próprio diálogo passou a criar também a venda, o bypass deixou de fazer sentido: o mesmo pagamento aparece uma vez como venda e outra como agendamento → **linha duplicada**.
 
-Manter `clinic_address` por compatibilidade (preencher automaticamente como string concatenada via trigger ou no save).
+Como o valor aparece duas vezes no histórico, o abatimento do crédito também aparece dobrado na leitura do cliente (o débito real em `client_credit_transactions` é único por cadastro — confirmado: 1100 → 990 → 880 para dois cadastros de R$ 110).
 
-Em `public.professionals`: adicionar `cep`, `street`, `number`, `complement`, `neighborhood`, `city`, `state` (opcionais — endereço próprio se o profissional atende fora da clínica).
+## Correção
 
-Tabela nova `public.contact_change_verifications` (RLS por `auth.uid()`): guarda código de 6 dígitos, tipo (`email` | `phone`), valor novo proposto, `expires_at` (10 min), `used_at`, `attempts`. GRANTs para `authenticated` e `service_role`.
+1. **`src/hooks/useClientProfile.ts`**
+   - Ajustar o bypass `isRetroactiveLegacy`: um agendamento retroativo só entra no histórico quando **não existir** venda retroativa correspondente (mesmo cliente, mesmo `service_id`/pacote, mesma data de pagamento e mesmo valor). A venda passa a ser a fonte única da verdade.
+   - Manter o bypass apenas para registros antigos (legado) que não possuem venda associada, para não sumir com pagamentos já cadastrados antes desta correção.
 
-## 2. Edge Functions
+2. **`src/components/client-profile/LegacyHistoryDialog.tsx`**
+   - Vincular a venda retroativa ao agendamento criado (gravar `appointment_id`/referência quando a coluna existir) para que a deduplicação seja determinística e não dependa de heurística de data/valor.
+   - Garantir que o débito de crédito ao cliente aconteça **uma única vez** por cadastro (guarda contra duplo submit: desabilitar o botão enquanto `submitting` e checar transação já existente para o mesmo `appointment_id` antes de inserir em `client_credit_transactions`).
 
-- **`send-contact-change-code`** (nova): recebe `{ type: 'email' | 'phone', newValue }`, gera código 6 dígitos, grava em `contact_change_verifications`, envia template `contact-change-code` para o e-mail **atual** do usuário autenticado. Rate-limit por usuário (60s cooldown, 5/h).
-- **`verify-contact-change`** (nova): recebe `{ type, newValue, code }`, valida (não expirado, não usado, tentativas < 5). Em sucesso: atualiza `auth.users.email` (via admin) ou `profiles.phone` / `business_settings.clinic_phone`, marca `used_at`.
-- Template React Email novo `_shared/transactional-email-templates/contact-change-code.tsx` (assunto: "Confirme a alteração da sua conta — Hora Pro").
-
-## 3. Formulário de cadastro (`src/pages/Auth.tsx`)
-
-Etapa `form` passa a coletar **tudo de uma vez** (todos obrigatórios, conforme escolha do usuário):
-
-```text
-Dados pessoais       Cadastro da clínica            Endereço
-─────────────        ──────────────────             ────────
-Nome completo*       Nome da clínica*               CEP* (busca ViaCEP)
-CPF*                 Telefone da clínica*           Rua (auto)
-E-mail (login)*      E-mail da clínica* (default    Número*
-Senha*               = mesmo do login, editável)    Bairro (auto)
-Confirmar senha*     CNPJ (opcional)                Cidade (auto)
-                                                    Estado (auto)
-                                                    Complemento (opcional)
-```
-
-CEP usa o helper existente `src/lib/viacep.ts` (`fetchAddressByCep`, `formatCep`). Ao perder foco/8 dígitos: preenche rua/bairro/cidade/UF e foca o campo "Número".
-
-No envio (após verificação do código de e-mail), `signUp` passa todos esses campos via `userMetadata`. A edge `complete-signup` grava em `profiles` (nome/cpf/cnpj/telefone), cria a primeira linha de `business_settings` com os campos da clínica + endereço, e cria o primeiro `professionals` linkado ao `user_id` com o nome/telefone/e-mail.
-
-## 4. Onboarding (`OnboardingWizard.tsx`)
-
-Como o signup agora cobre tudo, o wizard só aparece para contas legadas sem `clinic_name`. Quando aparecer, vem **pré-preenchido** do `profile` / `business_settings` e do `auth.users.email`, mais o campo CEP com busca automática. Não duplicar perguntas que o signup já fez.
-
-## 5. Configurações → Informações da Clínica (`src/pages/Configuracoes.tsx`)
-
-Substituir o card atual por um layout com os mesmos campos do signup, na mesma ordem (dados, contato, endereço). Tudo carregado de `business_settings` + `profiles` (nome do profissional vem de `profile.full_name`).
-
-Comportamento:
-- Campos comuns (nome, clínica, CNPJ, endereço): editáveis e salvam direto.
-- **E-mail** e **telefone do profissional**: campo com botão "Alterar". Ao clicar, abre um `Dialog` que pede o novo valor → dispara `send-contact-change-code` → mostra input de 6 dígitos → `verify-contact-change` confirma e atualiza. Toast e UI refletem imediatamente.
-- CEP usa `fetchAddressByCep` e preenche rua/bairro/cidade/UF automaticamente, igual ao signup.
-
-## 6. Cadastro de profissional (`admin-create-professional` + UI em Cadastros)
-
-Adicionar opcionalmente os mesmos campos de endereço (CEP, rua, número, bairro, cidade, UF, complemento). Default = endereço da clínica (botão "Usar endereço da clínica" pré-preenche). Salva nas novas colunas de `professionals`.
+3. **Teste de regressão**
+   - Novo teste unitário para a função de montagem de `paymentHistory`, cobrindo: (a) cadastro retroativo com venda → 1 linha; (b) cadastro retroativo legado sem venda → 1 linha; (c) venda normal com agendamento pago → 1 linha; (d) boleto parcelado → uma linha por parcela paga.
 
 ## Detalhes técnicos
 
-- ViaCEP já existe em `src/lib/viacep.ts` — reutilizar, sem nova dependência.
-- Verificação reutiliza tabela e padrões existentes de `verification_codes` (mesmo formato 6 dígitos, mesmo TTL 10min). Tabela separada porque o destinatário muda (e-mail atual, não o novo).
-- Hook novo `useContactChangeVerification` encapsula `send` + `verify` para reuso em Configurações e (futuramente) outras telas.
-- `useBusinessSettings.ts` `select` é estendido com as novas colunas.
-- Componente reutilizável `<AddressFieldsCep />` para evitar duplicar a lógica CEP entre signup, onboarding, configurações e cadastro de profissional.
-
-## Fora do escopo
-
-- SMS no celular (usuário escolheu código no e-mail para ambos).
-- Geocoding/mapa.
-- Múltiplas unidades da clínica.
+- Dedup key proposta: `sale.appointment_id` quando disponível; fallback `${service_id||package_id}|${data_pagamento}|${valor}`.
+- Nenhuma migração de dados é necessária — a duplicação é apenas de exibição; os registros existentes (`financial_entries` + `single_sales`) permanecem íntegros para o Financeiro e o Caixa.
+- Se a tabela `single_sales` não tiver coluna de vínculo com agendamento, será adicionada por migração (`appointment_id uuid`, nullable, com índice), mantendo os GRANTs e políticas atuais.

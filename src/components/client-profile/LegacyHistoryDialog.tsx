@@ -434,6 +434,19 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
     //    balance and register a credit_used transaction so the profile stays
     //    consistent — mirrors the behavior of Caixa/SaleForm.
     if (isCreditPayment) {
+      // Guard against a double debit (double submit / retry): if a credit_used
+      // transaction already exists for this appointment, do nothing.
+      if (params.appointment_id) {
+        const { data: existingTx } = await (supabase as any)
+          .from('client_credit_transactions')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('appointment_id', params.appointment_id)
+          .eq('transaction_type', 'credit_used')
+          .limit(1);
+        if (existingTx && existingTx.length > 0) return;
+      }
+
       const { data: cli, error: cliErr } = await supabase
         .from('clients')
         .select('credit_balance')
@@ -441,6 +454,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         .maybeSingle();
       if (cliErr) throw cliErr;
       const currentBalance = Number(cli?.credit_balance || 0);
+
       const newBalance = Math.max(0, currentBalance - params.amount);
 
       const { error: updErr } = await supabase

@@ -669,12 +669,41 @@ export function NewAppointmentDialog({
     return dates;
   }, [appointmentTimes, repeatServiceEnabled, repeatCount, effectiveIntervalDays, serviceType, preferredTime, servicePreferredDayOfWeek, selectedServiceData?.duration, isWorkDay, isBusinessDay, getHolidayForDate, settings?.timezone]);
 
-  // Update service preview dates when calculation changes
+  // Intervalos e opções de encadeamento da série de serviços repetidos.
+  const serviceChainIntervals = useMemo(
+    () => Array.from({ length: Math.max(0, repeatCount - 1) }, () => Math.max(1, effectiveIntervalDays || 7)),
+    [repeatCount, effectiveIntervalDays],
+  );
+
+  const serviceChainOptions = useMemo(() => ({
+    intervals: serviceChainIntervals,
+    preferredDayOfWeek: servicePreferredDayOfWeek,
+    isAllowedDay: (d: Date) =>
+      servicePreferredDayOfWeek !== null
+        ? getHolidayForDate(d)?.type !== 'national'
+        : isBusinessDay(d),
+    applyTime: preferredTime
+      ? (d: Date) => createDateTimeInTimeZone(d, preferredTime, settings?.timezone)
+      : undefined,
+  }), [serviceChainIntervals, servicePreferredDayOfWeek, preferredTime, settings?.timezone, isBusinessDay, getHolidayForDate]);
+
+  // Update service preview dates when calculation changes.
+  // Compara a assinatura para não descartar edições manuais em re-renders.
+  const servicePreviewSignature = useMemo(
+    () => calculateServicePreviewDates.map((d) => d.getTime()).join(','),
+    [calculateServicePreviewDates],
+  );
   useEffect(() => {
-    setServicePreviewDates(calculateServicePreviewDates);
-    setEditableServiceDates(calculateServicePreviewDates);
+    setServicePreviewDates((prev) =>
+      prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
+    );
+    setEditableServiceDates((prev) =>
+      prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
+    );
     setEditingServiceDateIndex(null);
-  }, [calculateServicePreviewDates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicePreviewSignature]);
+
 
   // When service is selected, update interval from service's return_days
   // Using selectedServiceData?.id to avoid loop when object reference changes
@@ -704,14 +733,20 @@ export function NewAppointmentDialog({
   };
 
 
-  // Update a specific date in the editable service dates
+  // Update a specific date in the editable service dates.
+  // Reencadeia todas as repetições seguintes respeitando o intervalo de dias.
   const updateEditableServiceDate = (index: number, newDate: Date) => {
-    setEditableServiceDates(prev => {
-      const updated = [...prev];
-      updated[index] = newDate;
-      return updated;
-    });
+    setEditableServiceDates(prev => rebuildChainFromIndex(prev, index, newDate, serviceChainOptions));
+    if (index === 0) {
+      const synced = new Date(newDate);
+      synced.setHours(0, 0, 0, 0);
+      setDate(synced);
+      const hh = String(newDate.getHours()).padStart(2, '0');
+      const mm = String(newDate.getMinutes()).padStart(2, '0');
+      setTime(`${hh}:${mm}`);
+    }
   };
+
 
   // Helper function to check conflicts for a specific date/time
   const checkConflictsForDateTime = (checkStart: Date, checkEnd: Date): ConflictInfo[] => {
@@ -870,6 +905,15 @@ export function NewAppointmentDialog({
     [autoScheduleEnabled, editablePreviewDates, autoScheduleIntervals],
   );
   const hasIntervalViolations = previewIntervalViolations.length > 0;
+
+  // Mesma verificação para a série de serviços repetidos.
+  const serviceIntervalViolations = useMemo(
+    () => (repeatServiceEnabled ? findChainViolations(editableServiceDates, serviceChainIntervals) : []),
+    [repeatServiceEnabled, editableServiceDates, serviceChainIntervals],
+  );
+  const hasServiceIntervalViolations = serviceIntervalViolations.length > 0;
+
+
 
 
   // Check conflicts for recurring service dates and suggest alternatives
@@ -2432,6 +2476,32 @@ Até breve! ✨`;
                                   </AlertDescription>
                                 </Alert>
                               )}
+
+                              {hasServiceIntervalViolations && (
+                                <Alert variant="destructive" className="mb-2 py-2">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
+                                    <span>
+                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 text-[10px] px-2"
+                                      onClick={() => {
+                                        setEditableServiceDates((prev) => enforceChainMinimums(prev, serviceChainOptions));
+                                        toast.success('Intervalos corrigidos.');
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Corrigir intervalos
+                                    </Button>
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
+
                               
                               <div className="space-y-1.5">
                                 {editableServiceDates.map((previewDate, index) => {
@@ -2971,9 +3041,10 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || hasServiceIntervalViolations || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : hasIntervalViolations ? 'Corrija os intervalos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (hasIntervalViolations || hasServiceIntervalViolations) ? 'Corrija os intervalos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+
               </Button>
             </div>
           </form>

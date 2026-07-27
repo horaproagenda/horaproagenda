@@ -1,42 +1,34 @@
-## Problema
+## Diagnóstico (verificado no código)
 
-No agendamento automático de pacotes, sessões podem terminar com 1 dia de intervalo (ex.: 29/08 → 30/08) mesmo com intervalo configurado de 30 dias.
+Em `src/components/appointments/NewAppointmentDialog.tsx`:
 
-Ao ler o código de `src/components/appointments/NewAppointmentDialog.tsx` (cálculo da prévia, resolução de conflitos e criação em lote) e `src/lib/packageScheduling.ts`, encontrei três pontos que quebram o intervalo:
-
-1. **Intervalo zero vira 1 dia** — na montagem da prévia, o intervalo usado é `Math.max(intervalDays, 1)`. Etapas com `interval_after_days = 0` (existem no banco, ex.: última etapa dos pacotes "Axila + Virilha Completa" e "Buço + axila + virilha completa") geram gap de exatamente 1 dia em vez de cair no intervalo padrão do pacote.
-2. **Resolver conflito quebra a corrente** — quando uma data tem conflito, a sugestão automática ("Usar: ..." / "Auto-resolver todos") pula para o próximo horário livre ou simplesmente `+1 dia`, e as sessões seguintes **não são recalculadas**. Assim uma sessão empurrada para 29/08 fica colada na seguinte, que continua em 30/08.
-3. **Edição manual de uma data intermediária** também não propaga para as datas seguintes: só a data editada muda, o restante mantém as datas antigas.
-
-(Não há, hoje, séries salvas no banco com gap de 1 dia menor que o intervalo — a quebra aparece na prévia/no momento da criação.)
+- Série de **pacotes** (auto-agendamento): `updateEditableDate` (linha 692) já usa `rebuildChainFromIndex`, então alterar uma data reencadeia as seguintes.
+- Série de **serviços repetidos** ("Repetir serviço"): `updateEditableServiceDate` (linha ~710) apenas troca a data no índice editado — **as datas seguintes não são recalculadas**. É aqui que o usuário precisa corrigir cada data manualmente.
+- Além disso, o efeito que sincroniza `editableServiceDates` com `calculateServicePreviewDates` reseta as edições sempre que qualquer dependência muda, e a série de serviços não passa por `enforceChainMinimums` (nenhuma verificação de intervalo mínimo/violação, ao contrário da série de pacotes).
 
 ## O que será feito
 
-**1. Intervalo efetivo confiável (`NewAppointmentDialog.tsx`)**
-- Criar helper para resolver o intervalo entre a etapa i-1 e a etapa i: usar `interval_after_days` da etapa anterior somente quando for um número > 0; caso contrário, cair para o intervalo do pacote (`interval_days`) e, por fim, para o padrão.
-- Remover o `Math.max(intervalDays, 1)` como piso — o piso passa a ser o intervalo configurado do pacote.
+1. **Intervalos da série de serviços**
+   - Criar `serviceChainIntervals` (array com `effectiveIntervalDays` repetido por `repeatCount - 1`) e `serviceChainOptions` (`intervals`, `isAllowedDay` = dia útil/sem feriado nacional ou dia da semana preferido, `preferredDayOfWeek: servicePreferredDayOfWeek`, `applyTime` com `preferredTime`), reutilizando `src/lib/autoScheduleChain.ts`.
 
-**2. Recalcular a corrente sempre que uma data muda**
-- Extrair a lógica de encadeamento (intervalo + dia útil/feriado + horário preferido) para um utilitário puro novo, `src/lib/autoScheduleChain.ts`, com função `rebuildChainFromIndex(dates, index, newDate, intervals, options)`.
-- `updateEditableDate(index, newDate)` passa a recalcular todas as datas posteriores a partir da data editada, respeitando os intervalos de cada etapa. Datas anteriores ficam intocadas.
-- O mesmo vale para aplicar uma sugestão de conflito e para "Auto-resolver todos".
+2. **Propagação ao editar uma data de serviço**
+   - `updateEditableServiceDate` passa a usar `rebuildChainFromIndex(prev, index, newDate, serviceChainOptions)`, recalculando todas as datas posteriores e mantendo as anteriores intactas.
+   - Ao editar o índice 0, sincronizar `date`/`time` principais (mesmo comportamento já usado na série de pacotes).
 
-**3. Sugestão de conflito respeita o intervalo mínimo**
-- Ao procurar alternativa: primeiro tentar outros horários **no mesmo dia**; se não houver, avançar por dias úteis a partir do dia original — e, ao aplicar, reencadear as sessões seguintes (item 2), garantindo que nenhuma sessão fique a menos que o intervalo configurado da anterior.
+3. **Aviso e correção de intervalo na série de serviços**
+   - Calcular `serviceIntervalViolations` com `findChainViolations` e exibir o mesmo aviso "Corrigir intervalos" já existente na prévia de pacotes, aplicando `enforceChainMinimums`.
 
-**4. Guarda na criação em lote**
-- No loop de criação, antes de `findNextAvailablePackageSlot`, garantir que `futureDate` seja pelo menos `dataAnterior + intervalo` (o `findNextAvailablePackageSlot` só desloca minutos, então mantém a data). Se o slot livre encontrado violar o intervalo, empurrar para o próximo dia útil válido.
-- Adicionar validação de bloqueio no submit: se alguma sessão da prévia estiver com gap menor que o intervalo configurado, mostrar aviso com botão de correção automática.
+4. **Preservar as edições manuais**
+   - No efeito que sincroniza `editableServiceDates`, comparar assinatura (timestamps concatenados) antes de sobrescrever — mesmo padrão já usado na prévia de pacotes — para que o reencadeamento não seja descartado por re-render.
 
-## Testes / anti-regressão
+5. **Criação em lote**
+   - No loop de criação dos serviços repetidos, usar as datas de `editableServiceDates` já reencadeadas e garantir gap mínimo com `nextChainDate` antes de procurar slot livre, igual à série de pacotes.
 
-- Novo arquivo `src/lib/__tests__/autoScheduleChain.test.ts` cobrindo:
-  - intervalo de 30 dias mantido ao longo de N sessões;
-  - `interval_after_days = 0/null` cai no intervalo do pacote (nunca 1 dia);
-  - editar uma data intermediária reencadeia as posteriores mantendo o intervalo;
-  - ajuste de dia útil/feriado nunca reduz o gap abaixo do intervalo.
+## Testes
+
+- Estender `src/lib/__tests__/autoScheduleChain.test.ts` com casos da série de serviços: editar a 2ª de 5 datas reencadeia as demais mantendo o intervalo; dia da semana preferido é respeitado; ajuste por feriado/dia útil nunca reduz o gap.
 - Rodar `bunx vitest run` e o typecheck.
 
 ## Detalhes técnicos
 
-Arquivos afetados: `src/components/appointments/NewAppointmentDialog.tsx` (prévia, `updateEditableDate`, `previewDateConflicts`, auto-resolver, loop de criação), novo `src/lib/autoScheduleChain.ts`, novo teste. Nenhuma migração de banco necessária — a correção é de lógica de agendamento no cliente; dados já salvos não são alterados.
+Arquivos afetados: `src/components/appointments/NewAppointmentDialog.tsx` (novos memos de opções da série de serviços, `updateEditableServiceDate`, efeito de sincronização, aviso de violação, loop de criação) e `src/lib/__tests__/autoScheduleChain.test.ts`. Nenhuma alteração de banco de dados.

@@ -733,14 +733,20 @@ export function NewAppointmentDialog({
   };
 
 
-  // Update a specific date in the editable service dates
+  // Update a specific date in the editable service dates.
+  // Reencadeia todas as repetições seguintes respeitando o intervalo de dias.
   const updateEditableServiceDate = (index: number, newDate: Date) => {
-    setEditableServiceDates(prev => {
-      const updated = [...prev];
-      updated[index] = newDate;
-      return updated;
-    });
+    setEditableServiceDates(prev => rebuildChainFromIndex(prev, index, newDate, serviceChainOptions));
+    if (index === 0) {
+      const synced = new Date(newDate);
+      synced.setHours(0, 0, 0, 0);
+      setDate(synced);
+      const hh = String(newDate.getHours()).padStart(2, '0');
+      const mm = String(newDate.getMinutes()).padStart(2, '0');
+      setTime(`${hh}:${mm}`);
+    }
   };
+
 
   // Helper function to check conflicts for a specific date/time
   const checkConflictsForDateTime = (checkStart: Date, checkEnd: Date): ConflictInfo[] => {

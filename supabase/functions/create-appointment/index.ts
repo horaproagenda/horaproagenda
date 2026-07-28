@@ -400,7 +400,7 @@ serve(async (req) => {
     if (body.service_id) {
       const { data: service, error: serviceError } = await supabase
         .from('services')
-        .select('id, name, is_active')
+        .select('id, name, is_active, price')
         .eq('id', body.service_id)
         .eq('account_owner_id', callerOwner)
         .single();
@@ -409,6 +409,8 @@ serve(async (req) => {
         errors.push({ field: 'service_id', message: 'Service not found' });
       } else if (!service.is_active) {
         errors.push({ field: 'service_id', message: 'Service is not active' });
+      } else {
+        servicePrice = Number((service as { price?: number }).price || 0);
       }
     }
 

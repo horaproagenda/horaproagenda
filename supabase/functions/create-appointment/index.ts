@@ -30,6 +30,7 @@ interface AppointmentRequest {
   payment_status?: 'pending' | 'partial' | 'paid';
   payment_date?: string | null;
   payment_methods?: string[];
+  discount_amount?: number;
 }
 
 interface ValidationError {

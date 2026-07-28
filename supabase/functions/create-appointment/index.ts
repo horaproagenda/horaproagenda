@@ -600,9 +600,21 @@ serve(async (req) => {
 
     if (hasPaymentFields) {
       const amount = Number(body.amount_paid || 0);
+      const discount = Number(body.discount_amount || 0);
+      // Valor devido = preço do serviço menos o desconto aplicado.
+      const amountDue = Math.max(0, servicePrice - discount);
+      // Nunca inferir "paid" apenas porque houve algum valor: só é pago
+      // quando o recebido cobre o valor devido (ou quando o chamador informa
+      // explicitamente o status, ex.: consumo de aplicação já paga).
+      const derivedStatus =
+        amount <= 0
+          ? 'pending'
+          : amountDue > 0 && amount + 0.001 < amountDue
+            ? 'partial'
+            : 'paid';
       insertPayload.amount_paid = amount;
-      insertPayload.payment_status =
-        body.payment_status || (amount > 0 ? 'paid' : 'pending');
+      insertPayload.payment_status = body.payment_status || derivedStatus;
+      if (discount > 0) insertPayload.discount_amount = discount;
       if (body.payment_date) insertPayload.payment_date = body.payment_date;
       insertPayload.payment_methods = Array.isArray(body.payment_methods)
         ? body.payment_methods

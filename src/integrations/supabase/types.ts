@@ -4977,6 +4977,10 @@ export type Database = {
         Args: { p_cpf: string; p_token: string }
         Returns: Json
       }
+      backfill_reset_unbacked_paid_appointments: {
+        Args: never
+        Returns: number
+      }
       can_access_appointment: {
         Args: { _appointment_id: string }
         Returns: boolean

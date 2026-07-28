@@ -168,6 +168,7 @@ serve(async (req) => {
     // Parse request body
     const body = await req.json() as AppointmentRequest;
     const errors: ValidationError[] = [];
+    let servicePrice = 0;
 
     // SECURITY: Scope check for professional-only callers (admins/receptionists are unrestricted).
     const isAdminOrReceptionist = roles.includes('admin') || roles.includes('receptionist');

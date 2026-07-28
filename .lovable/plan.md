@@ -1,34 +1,34 @@
-## Diagnóstico (verificado no código)
+## Diagnóstico (confirmado no banco)
 
-Em `src/components/appointments/NewAppointmentDialog.tsx`:
+Os agendamentos novos nascem corretamente como `pending` (default da coluna `payment_status` é `'pending'`), mas são marcados como pagos logo depois por rotinas automáticas:
 
-- Série de **pacotes** (auto-agendamento): `updateEditableDate` (linha 692) já usa `rebuildChainFromIndex`, então alterar uma data reencadeia as seguintes.
-- Série de **serviços repetidos** ("Repetir serviço"): `updateEditableServiceDate` (linha ~710) apenas troca a data no índice editado — **as datas seguintes não são recalculadas**. É aqui que o usuário precisa corrigir cada data manualmente.
-- Além disso, o efeito que sincroniza `editableServiceDates` com `calculateServicePreviewDates` reseta as edições sempre que qualquer dependência muda, e a série de serviços não passa por `enforceChainMinimums` (nenhuma verificação de intervalo mínimo/violação, ao contrário da série de pacotes).
+1. **`sync_appointments_with_paid_sale`** (função no banco): no ramo `item_type = 'service'` ela faz um UPDATE em massa marcando `payment_status = 'paid'` em **todos** os agendamentos do cliente com aquele serviço, sem limite de quantidade, a partir de `sale_date - 1 dia`. Uma venda de 1 aplicação marca a série inteira como paga.
+   - Evidência: 9 agendamentos "Sessão 1..9 de 9" criados hoje ficaram `paid` com `amount_paid = 140` e `payment_methods` vazio — criados pelo fluxo de recorrência, que não envia nenhum dado de pagamento.
+2. **`trg_single_sales_sync_payment`** dispara essa função a cada venda paga, e **`repair_payment_integrity`** roda a mesma função para *todas* as vendas pagas históricas — e ela é chamada automaticamente pelo app em `src/hooks/usePaymentIntegrityAutoCheck.ts` ao abrir o sistema. Ou seja, mesmo agendamentos futuros novos são "consertados" para pago.
+3. **`supabase/functions/create-appointment/index.ts`** (linha ~600): quando qualquer campo de pagamento é enviado, assume `payment_status = amount > 0 ? 'paid' : 'pending'`, sem considerar desconto, valor parcial ou crédito do cliente.
+4. **`src/hooks/useClientServices.ts` (`markServiceAsUsed`)** grava `payment_status: 'paid'` com `payment_methods` vazio, apagando a rastreabilidade da forma de pagamento original da venda.
 
-## O que será feito
+## Correções propostas
 
-1. **Intervalos da série de serviços**
-   - Criar `serviceChainIntervals` (array com `effectiveIntervalDays` repetido por `repeatCount - 1`) e `serviceChainOptions` (`intervals`, `isAllowedDay` = dia útil/sem feriado nacional ou dia da semana preferido, `preferredDayOfWeek: servicePreferredDayOfWeek`, `applyTime` com `preferredTime`), reutilizando `src/lib/autoScheduleChain.ts`.
+### Banco de dados (migração)
+- Reescrever `sync_appointments_with_paid_sale`:
+  - Ramo **serviço**: só marcar como pago o agendamento efetivamente vinculado à venda (via `client_services.appointment_id` / `sale_id`), respeitando a quantidade vendida. Sem vínculo, não altera nada.
+  - Ramo **pacote**: manter apenas as sessões do pacote da venda, mas calcular status de forma correta (`paid` só se o valor recebido cobrir o total; senão `partial`), em vez de forçar `paid`.
+  - Propagar `payment_methods` da venda para o agendamento, para manter forma de pagamento, desconto e crédito rastreáveis.
+- Ajustar `repair_payment_integrity` para nunca criar pagamento onde não existe evidência (venda vinculada, `client_services` consumido, parcela de boleto quitada ou lançamento financeiro pago).
+- Adicionar função `backfill_reset_unbacked_paid_appointments()` que devolve para `pending` os agendamentos hoje marcados como pagos **sem nenhuma evidência de pagamento** (sem `payment_methods`, sem venda vinculada, sem `client_services` consumido, sem lançamento financeiro), preservando os legítimos. Executada uma vez na migração, com relatório de quantas linhas foram corrigidas.
 
-2. **Propagação ao editar uma data de serviço**
-   - `updateEditableServiceDate` passa a usar `rebuildChainFromIndex(prev, index, newDate, serviceChainOptions)`, recalculando todas as datas posteriores e mantendo as anteriores intactas.
-   - Ao editar o índice 0, sincronizar `date`/`time` principais (mesmo comportamento já usado na série de pacotes).
+### Edge function `create-appointment`
+- Derivar o status a partir do valor efetivamente recebido versus o valor devido (preço − desconto): `paid` só quando cobre o total, `partial` quando parcial, `pending` quando zero. Nunca inferir `paid` só porque `amount_paid > 0`.
 
-3. **Aviso e correção de intervalo na série de serviços**
-   - Calcular `serviceIntervalViolations` com `findChainViolations` e exibir o mesmo aviso "Corrigir intervalos" já existente na prévia de pacotes, aplicando `enforceChainMinimums`.
+### Frontend
+- `src/hooks/usePaymentIntegrityAutoCheck.ts`: parar de rodar o reparo global automaticamente; manter apenas a auditoria (leitura) e disparar o reparo somente para inconsistências reais com evidência de pagamento.
+- `src/hooks/useClientServices.ts`: ao consumir uma aplicação paga, copiar `payment_methods`, desconto e data de pagamento da venda de origem em vez de gravar `paid` "seco".
+- `src/components/appointments/NewAppointmentDialog.tsx`: manter `paid` apenas quando há consumo comprovado de pacote/serviço já pago; nos demais caminhos enviar `pending`.
 
-4. **Preservar as edições manuais**
-   - No efeito que sincroniza `editableServiceDates`, comparar assinatura (timestamps concatenados) antes de sobrescrever — mesmo padrão já usado na prévia de pacotes — para que o reencadeamento não seja descartado por re-render.
+### Testes
+- Testes unitários para a regra de derivação de status (pago/parcial/pendente com desconto e crédito do cliente).
+- Verificação por consulta no banco após a migração: nenhuma série recorrente nova deve ficar `paid` sem venda vinculada.
 
-5. **Criação em lote**
-   - No loop de criação dos serviços repetidos, usar as datas de `editableServiceDates` já reencadeadas e garantir gap mínimo com `nextChainDate` antes de procurar slot livre, igual à série de pacotes.
-
-## Testes
-
-- Estender `src/lib/__tests__/autoScheduleChain.test.ts` com casos da série de serviços: editar a 2ª de 5 datas reencadeia as demais mantendo o intervalo; dia da semana preferido é respeitado; ajuste por feriado/dia útil nunca reduz o gap.
-- Rodar `bunx vitest run` e o typecheck.
-
-## Detalhes técnicos
-
-Arquivos afetados: `src/components/appointments/NewAppointmentDialog.tsx` (novos memos de opções da série de serviços, `updateEditableServiceDate`, efeito de sincronização, aviso de violação, loop de criação) e `src/lib/__tests__/autoScheduleChain.test.ts`. Nenhuma alteração de banco de dados.
+## Observação
+O backfill altera dados existentes. Ele só reverte registros sem qualquer evidência de pagamento; se preferir revisar a lista antes de aplicar, posso rodar primeiro em modo relatório.

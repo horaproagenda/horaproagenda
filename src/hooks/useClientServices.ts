@@ -113,14 +113,34 @@ export function useClientServices(clientId: string | null) {
 
       if (error) throw error;
 
+      // Recupera a forma de pagamento e a data do pagamento da venda de
+      // origem, para que o agendamento fique rastreável (e não apenas
+      // "pago" sem evidência).
+      let paymentMethods: string[] = [];
+      let paymentDate: string | null = null;
+      if (clientService.sale_id) {
+        const { data: sale } = await supabase
+          .from('single_sales')
+          .select('paid_at, sale_date, payment_method:payment_methods(name)')
+          .eq('id', clientService.sale_id)
+          .maybeSingle();
+        const methodName = (sale as any)?.payment_method?.name as string | undefined;
+        if (methodName) paymentMethods = [methodName];
+        paymentDate = ((sale as any)?.paid_at || (sale as any)?.sale_date || null) as string | null;
+      }
+
       // Update the appointment to reflect the paid status and amount
       const amountPaid = clientService.amount_paid || clientService.service?.price || 0;
+      const updatePayload: Record<string, unknown> = {
+        amount_paid: amountPaid,
+        payment_status: 'paid',
+      };
+      if (paymentMethods.length > 0) updatePayload.payment_methods = paymentMethods;
+      if (paymentDate) updatePayload.payment_date = paymentDate;
+
       const { error: aptError } = await supabase
         .from('appointments')
-        .update({
-          amount_paid: amountPaid,
-          payment_status: 'paid',
-        })
+        .update(updatePayload)
         .eq('id', appointmentId);
 
       if (aptError) {

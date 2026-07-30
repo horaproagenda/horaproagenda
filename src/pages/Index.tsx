@@ -16,7 +16,6 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';

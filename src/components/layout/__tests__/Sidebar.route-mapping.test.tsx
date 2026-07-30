@@ -32,7 +32,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 const EXPECTED_ROUTES = [
   '/dashboard', '/agenda', '/clientes', '/servicos', '/cadastros', '/caixa',
   '/financeiro', '/produtos', '/lembretes', '/documentos', '/relatorios',
-  '/super-admin', '/admin', '/configuracoes', '/ajuda', '/suporte',
+  '/admin', '/configuracoes', '/ajuda', '/suporte',
 ];
 
 function LocationSpy({ onChange }: { onChange: (path: string) => void }) {

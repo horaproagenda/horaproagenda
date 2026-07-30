@@ -57,11 +57,11 @@ serve(async (req) => {
     // liberação manual.
     if (evolutionServerConfigured()) {
       const creds = await provisionEvolutionInstance(supabaseService, professional_id);
-      const result = await evolutionGetQrCode(creds);
+      const result: any = await evolutionGetQrCode(creds);
       if (result.connected) {
         return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
       }
-      if (!result.qrcode) {
+      if (!result.qrcode && !result.qrText) {
         return json({
           success: false,
           provider: 'evolution',
@@ -71,7 +71,8 @@ serve(async (req) => {
       return json({
         success: true,
         provider: 'evolution',
-        qrcode: result.qrcode,
+        qrcode: result.qrcode ?? null,
+        qrText: result.qrText ?? null,
         pairingCode: result.pairingCode ?? null,
       });
     }

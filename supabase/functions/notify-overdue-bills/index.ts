@@ -160,25 +160,16 @@ serve(async (req) => {
       try {
         console.log(`Sending notification to ${entry.client.name} (${phone})`);
 
-        const form = new URLSearchParams();
-        form.set('token', ultramsgToken);
-        form.set('to', phone);
-        form.set('body', message);
+        const result = await sendWhatsapp(phone, message);
 
-        const response = await fetch(`${ultramsgBase}/${encodeURIComponent(ultramsgInstance)}/messages/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: form.toString(),
-        });
-
-        if (response.ok) {
+        if (result.ok) {
           sentCount++;
           console.log(`Successfully sent notification for entry ${entry.id}`);
         } else {
-          const errorText = await response.text();
-          console.error(`Failed to send notification for entry ${entry.id}:`, errorText);
-          errors.push(`Entry ${entry.id}: ${errorText}`);
+          console.error(`Failed to send notification for entry ${entry.id}:`, result.detail);
+          errors.push(`Entry ${entry.id}: ${result.detail}`);
         }
+
       } catch (sendError: unknown) {
         const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
         console.error(`Error sending notification for entry ${entry.id}:`, sendError);

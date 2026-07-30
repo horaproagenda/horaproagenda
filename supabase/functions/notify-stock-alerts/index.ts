@@ -28,9 +28,8 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const ultramsgBase = (Deno.env.get('ULTRAMSG_API_URL') || 'https://api.ultramsg.com').replace(/\/+$/, '');
-    const ultramsgInstance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
-    const ultramsgToken = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
+
+
 
     // --- AuthN/AuthZ: require valid JWT and admin/receptionist role ---
     const authHeader = req.headers.get('Authorization');

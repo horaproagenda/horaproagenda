@@ -69,10 +69,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // ---- Real-time connection status (instance_status events) ----
-    // UltraMsg envia event_type "instance_status" sempre que a sessão muda
-    // (authenticated, disconnected, got_qr_code, etc). Refletimos o status
-    // em professional_whatsapp_credentials para a UI atualizar via realtime.
+    // ---- Real-time connection status (eventos de status da instância) ----
+    // A Evolution API notifica mudanças de sessão (connection.update etc).
+    // Refletimos o status em professional_whatsapp_credentials para a UI
+    // atualizar via realtime.
+
     try {
       const evt = String(payload?.event_type || payload?.type || '').toLowerCase();
       const instanceId = String(
@@ -145,10 +146,11 @@ serve(async (req) => {
     }
 
     // Try to act on incoming text messages: detect confirm/cancel intent.
-    // Supports BOTH UltraMsg and Evolution API (v2/v6) payload shapes.
+    // Evolution API (v2/v6) payload shapes.
     const data = (payload?.data || payload?.message || payload || {}) as any;
 
-    // Evolution: data.key.fromMe — UltraMsg: data.fromMe
+    // Evolution: data.key.fromMe
+
     const fromMe =
       data?.fromMe === true || data?.fromMe === 'true' ||
       data?.key?.fromMe === true || data?.key?.fromMe === 'true';
@@ -196,19 +198,7 @@ serve(async (req) => {
 
         const tenantOwners = new Set<string>();
         if (instanceId) {
-          const { data: poolRow } = await supabase
-            .from('ultramsg_instance_pool')
-            .select('assigned_professional_id')
-            .eq('instance_id', instanceId)
-            .maybeSingle();
-          if (poolRow?.assigned_professional_id) {
-            const { data: prof } = await supabase
-              .from('professionals')
-              .select('account_owner_id')
-              .eq('id', poolRow.assigned_professional_id)
-              .maybeSingle();
-            if (prof?.account_owner_id) tenantOwners.add(prof.account_owner_id);
-          }
+
           const { data: credRows } = await supabase
             .from('professional_whatsapp_credentials')
             .select('account_owner_id')

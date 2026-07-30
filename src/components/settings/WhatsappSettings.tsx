@@ -12,6 +12,7 @@ import {
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
+import { QRCodeSVG } from 'qrcode.react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ type ConnectionSnapshot = {
   configured: boolean;
   connected: boolean;
   state?: string | null;
+  requiresRelease?: boolean;
   checkedAt: string;
 };
 
@@ -40,7 +42,7 @@ type ConnectionSnapshot = {
  */
 export function WhatsappSettings() {
   const {
-    checkConnection, getQRCode, clearQRCode, qrCode, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
+    checkConnection, getQRCode, clearQRCode, qrCode, qrText, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
   } = useWhatsapp();
 
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export function WhatsappSettings() {
           configured: status.configured !== false,
           connected: status.connected === true,
           state: status.state ?? null,
+          requiresRelease: (status as any).requiresRelease !== false,
           checkedAt: new Date().toISOString(),
         },
       }));
@@ -89,6 +92,7 @@ export function WhatsappSettings() {
         configured: status.configured !== false,
         connected: status.connected === true,
         state: status.state ?? null,
+        requiresRelease: (status as any).requiresRelease !== false,
         checkedAt: new Date().toISOString(),
       },
     }));
@@ -235,6 +239,11 @@ export function WhatsappSettings() {
     return professionals.find(p => p.id === selectedProfId)?.name || 'Profissional';
   }, [selectedProfId, professionals]);
 
+  // Com Evolution API (auto-hospedada) não existe liberação manual de instância:
+  // qualquer profissional pode conectar direto pelo QR Code.
+  const requiresRelease = selectedConnection?.requiresRelease !== false;
+  const canConnect = !requiresRelease || releaseApproved === true;
+
   const selectedCreds = selectedProfId ? credsMap[selectedProfId] : null;
   const lastConnectedAt = selectedCreds?.last_connected_at
     ? new Date(selectedCreds.last_connected_at).toLocaleString('pt-BR')
@@ -286,8 +295,8 @@ export function WhatsappSettings() {
       }
 
       // Hidrata o QR vindo direto do whatsapp-connect (evita 2º round-trip).
-      if (data.qrcode) {
-        setQRCodeDirect(data.qrcode, data.pairingCode ?? null);
+      if (data.qrcode || data.qrText) {
+        setQRCodeDirect(data.qrcode, data.pairingCode ?? null, data.qrText ?? null);
       }
 
       // Atualiza flags de credenciais em paralelo (não bloqueia a exibição do QR).
@@ -300,7 +309,7 @@ export function WhatsappSettings() {
         });
 
       // Fallback: se por algum motivo o connect não trouxe QR, busca via getQRCode.
-      if (!data.qrcode) {
+      if (!data.qrcode && !data.qrText) {
         const qrResult = await getQRCode();
         if ((qrResult as any)?.connected) {
           await refreshConnection(selectedProfId);
@@ -379,7 +388,7 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        {!connected && myProfessionalId && releaseApproved === false && (
+        {!connected && myProfessionalId && requiresRelease && releaseApproved === false && (
           <Alert>
             <Clock className="h-4 w-4" />
             <AlertTitle>Validando seu cadastro…</AlertTitle>
@@ -391,7 +400,7 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        {!connected && releaseApproved && (
+        {!connected && canConnect && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>
@@ -407,7 +416,7 @@ export function WhatsappSettings() {
           </Alert>
         )}
 
-        {(connected || releaseApproved !== false) && (
+        {(connected || canConnect) && (
           <Alert variant={connected || configured ? 'default' : 'destructive'}>
             {connected ? <ShieldCheck className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
             <AlertTitle>{connected ? 'Conexão ativa' : 'Conectar WhatsApp'}</AlertTitle>
@@ -434,7 +443,7 @@ export function WhatsappSettings() {
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Verificar conexão
           </Button>
-          {!connected && selectedProfId && releaseApproved && (
+          {!connected && selectedProfId && canConnect && (
             <Button
               onClick={handleConnect}
               disabled={connecting || isLoadingQR}
@@ -450,15 +459,19 @@ export function WhatsappSettings() {
           )}
         </div>
 
-        {!connected && (qrCode || pairingCode) && (
+        {!connected && (qrCode || qrText || pairingCode) && (
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[180px_1fr]">
-            {qrCode && (
+            {qrCode ? (
               <img
                 src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
                 alt="QR Code para conectar WhatsApp"
                 className="h-44 w-44 rounded-md border bg-white p-2"
               />
-            )}
+            ) : qrText ? (
+              <div className="h-44 w-44 rounded-md border bg-white p-2 flex items-center justify-center">
+                <QRCodeSVG value={qrText} size={160} level="M" />
+              </div>
+            ) : null}
             <div className="space-y-2 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">
                 Abra o WhatsApp {selectedName ? <>de <em>{selectedName}</em></> : null} no celular e leia o QR Code.

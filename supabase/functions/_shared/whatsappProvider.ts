@@ -1,6 +1,5 @@
-// Dispatcher único de WhatsApp: escolhe entre Evolution API (auto-hospedada,
-// gratuita, conexão por QR Code) e UltraMsg (legado / pool pago), conforme o
-// provedor salvo em professional_whatsapp_credentials.provider.
+// Dispatcher de WhatsApp — provedor único: Evolution API (auto-hospedada,
+// gratuita, conexão por QR Code).
 import {
   evolutionServerConfigured,
   evolutionInstanceNameFor,
@@ -12,26 +11,20 @@ import {
   sanitizeBaseUrl,
   type EvolutionCreds,
 } from './evolution.ts';
-import {
-  ultramsgStatus,
-  ultramsgSendText,
-  ultramsgGetQrCode,
-  type UltramsgCreds,
-} from './ultramsg.ts';
 
-export type WhatsappProvider = 'evolution' | 'ultramsg';
+export type WhatsappProvider = 'evolution';
 
 export interface ResolvedWhatsapp {
   provider: WhatsappProvider;
   source: 'professional' | 'none';
   evolution?: EvolutionCreds;
-  ultramsg?: UltramsgCreds;
 }
 
-/** Provedor preferido para novas conexões: Evolution quando o servidor existe. */
 export function preferredProvider(): WhatsappProvider {
-  return evolutionServerConfigured() ? 'evolution' : 'ultramsg';
+  return 'evolution';
 }
+
+export { evolutionServerConfigured };
 
 export async function resolveWhatsapp(
   supabaseService: any,
@@ -42,29 +35,19 @@ export async function resolveWhatsapp(
       .rpc('get_professional_whatsapp_token', { _professional_id: professional_id })
       .maybeSingle();
 
-    if (data?.is_active && data.instance_id) {
-      const provider: WhatsappProvider = data.provider === 'evolution' ? 'evolution' : 'ultramsg';
-      if (provider === 'evolution') {
-        return {
-          provider,
-          source: 'professional',
-          evolution: {
-            base: data.api_url || Deno.env.get('EVOLUTION_API_URL') || null,
-            apiKey: data.token || Deno.env.get('EVOLUTION_API_KEY') || null,
-            instance: data.instance_id,
-          },
-        };
-      }
-      if (data.token) {
-        return {
-          provider: 'ultramsg',
-          source: 'professional',
-          ultramsg: { base: data.api_url || null, instance: data.instance_id, token: data.token },
-        };
-      }
+    if (data?.is_active && data.instance_id && data.provider === 'evolution') {
+      return {
+        provider: 'evolution',
+        source: 'professional',
+        evolution: {
+          base: data.api_url || Deno.env.get('EVOLUTION_API_URL') || null,
+          apiKey: data.token || Deno.env.get('EVOLUTION_API_KEY') || null,
+          instance: data.instance_id,
+        },
+      };
     }
   }
-  return { provider: preferredProvider(), source: 'none' };
+  return { provider: 'evolution', source: 'none' };
 }
 
 /**
@@ -109,23 +92,18 @@ export async function provisionEvolutionInstance(
 }
 
 export async function whatsappStatus(resolved: ResolvedWhatsapp) {
-  if (resolved.provider === 'evolution') return evolutionStatus(resolved.evolution ?? null);
-  return ultramsgStatus(resolved.ultramsg ?? null);
+  return evolutionStatus(resolved.evolution ?? null);
 }
 
 export async function whatsappQrCode(resolved: ResolvedWhatsapp) {
-  if (resolved.provider === 'evolution') return evolutionGetQrCode(resolved.evolution ?? null);
-  return ultramsgGetQrCode(resolved.ultramsg ?? null);
+  return evolutionGetQrCode(resolved.evolution ?? null);
 }
 
 export async function whatsappSendText(resolved: ResolvedWhatsapp, opts: { to: string; body: string }) {
-  if (resolved.provider === 'evolution') return evolutionSendText(opts, resolved.evolution ?? null);
-  return ultramsgSendText({ to: opts.to, body: opts.body }, resolved.ultramsg ?? null);
+  return evolutionSendText(opts, resolved.evolution ?? null);
 }
 
 export async function whatsappDisconnect(resolved: ResolvedWhatsapp) {
-  if (resolved.provider === 'evolution' && resolved.evolution) {
-    return evolutionLogout(resolved.evolution);
-  }
+  if (resolved.evolution) return evolutionLogout(resolved.evolution);
   return null;
 }

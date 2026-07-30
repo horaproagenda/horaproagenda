@@ -96,12 +96,20 @@ export async function evolutionEnsureInstance(override: EvolutionCreds) {
   } catch (_) {
     // Instância não existe ainda → cria
   }
+  const webhookUrl = `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
   await evolutionFetch('/instance/create', {
     method: 'POST',
     body: JSON.stringify({
       instanceName: cfg.instance,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
+      // Webhook para receber respostas (confirmar/cancelar agendamento).
+      webhook: {
+        url: webhookUrl,
+        byEvents: false,
+        base64: false,
+        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
+      },
     }),
   }, override);
   return { created: true };

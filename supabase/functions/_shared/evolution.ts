@@ -79,10 +79,14 @@ async function evolutionFetch(
   let data: any = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
   if (!response.ok) {
-    const err = new Error(`Evolution API ${response.status}: ${JSON.stringify(data).slice(0, 500)}`);
+    const msg = response.status === 401
+      ? `Chave da Evolution API inválida (401). A chave salva em EVOLUTION_API_KEY não corresponde ao AUTHENTICATION_API_KEY do servidor ${cfg.base}. Atualize o segredo com a chave do .env da VPS.`
+      : `Evolution API ${response.status}: ${JSON.stringify(data).slice(0, 500)}`;
+    const err = new Error(msg);
     (err as any).status = response.status;
     throw err;
   }
+
   return data;
 }
 

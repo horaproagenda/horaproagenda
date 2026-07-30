@@ -11,12 +11,14 @@ interface WhatsAppConnectionStatus {
   message?: string;
   provider?: string;
   source?: 'professional' | 'global' | 'none';
+  requiresRelease?: boolean;
   error?: string;
 }
 
 interface QRCodeResponse {
   success: boolean;
   qrcode?: string;
+  qrText?: string;
   pairingCode?: string;
   instance?: string;
   connected?: boolean;
@@ -34,6 +36,7 @@ export function useWhatsapp() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<WhatsAppConnectionStatus | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrText, setQrText] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
 
@@ -51,6 +54,7 @@ export function useWhatsapp() {
       // Clear QR code if connected
       if (data?.connected) {
         setQrCode(null);
+        setQrText(null);
         setPairingCode(null);
       }
       
@@ -67,6 +71,7 @@ export function useWhatsapp() {
   const getQRCode = useCallback(async (professional_id?: string) => {
     setIsLoadingQR(true);
     setQrCode(null);
+    setQrText(null);
     setPairingCode(null);
     
     try {
@@ -84,8 +89,9 @@ export function useWhatsapp() {
         return { connected: true };
       }
       
-      if (response.success && response.qrcode) {
-        setQrCode(response.qrcode);
+      if (response.success && (response.qrcode || response.qrText)) {
+        setQrCode(response.qrcode ?? null);
+        setQrText(response.qrText ?? null);
         if (response.pairingCode) {
           setPairingCode(response.pairingCode);
         }
@@ -181,6 +187,7 @@ Um grande abraço! 🎁`;
 
   const clearQRCode = useCallback(() => {
     setQrCode(null);
+    setQrText(null);
     setPairingCode(null);
   }, []);
 
@@ -189,8 +196,9 @@ Um grande abraço! 🎁`;
    * endpoint (ex.: whatsapp-connect) sem precisar de uma segunda chamada
    * a whatsapp-get-qrcode — economiza um round-trip e acelera o fluxo.
    */
-  const setQRCodeDirect = useCallback((qr: string | null, pairing?: string | null) => {
+  const setQRCodeDirect = useCallback((qr: string | null, pairing?: string | null, text?: string | null) => {
     setQrCode(qr ?? null);
+    setQrText(text ?? null);
     setPairingCode(pairing ?? null);
   }, []);
 
@@ -202,6 +210,7 @@ Um grande abraço! 🎁`;
     sendReminder,
     sendBirthdayMessage,
     qrCode,
+    qrText,
     pairingCode,
     isLoadingQR,
     getQRCode,

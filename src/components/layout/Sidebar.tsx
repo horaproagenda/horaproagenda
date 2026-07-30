@@ -18,7 +18,6 @@ import {
   MessageSquare,
   Bell,
   FileSignature,
-  Crown,
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
@@ -30,7 +29,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 import { BRAND, PRIMARY_TAGLINE } from '@/content/brand';
 import horaProIcon from '@/assets/horapro-icon.png';
-import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
 
 const navigation = [
@@ -46,12 +44,12 @@ const navigation = [
   
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
-  { name: 'Super Admin', href: '/super-admin', icon: Crown, superAdminOnly: true },
+  
   { name: 'Painel do Administrador', href: '/admin', icon: ShieldCheck, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },
   { name: 'Suporte', href: '/suporte', icon: MessageSquare },
-] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean; superAdminOnly?: boolean }>;
+] as Array<{ name: string; href: string; icon: typeof Calendar; adminOnly?: boolean }>;
 
 interface SidebarProps {
   onNewAppointment: () => void;
@@ -94,14 +92,9 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
   // No mobile o drawer sempre exibe variante expandida (sem tooltips do Radix),
   // evitando que o primeiro toque abra tooltip em vez de navegar.
   const effectiveCollapsed = isCollapsed && !isMobile && !mobileOpen;
-  const isPlatformOwner = isSuperAdminEmail(user?.email);
   const visibleNavigation = navigation.filter(item => {
     // Aguarda o carregamento das roles para evitar esconder itens de admin
     // durante a hidratação inicial (race condition pós-cadastro).
-    if (item.superAdminOnly) {
-      if (authLoading) return false;
-      return hasRole('super_admin') && isPlatformOwner;
-    }
     if (item.adminOnly) {
       if (authLoading) return false;
       return hasRole('admin');

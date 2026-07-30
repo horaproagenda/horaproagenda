@@ -46,7 +46,7 @@ const Documentos = lazy(lazyWithRetry(() => import("./pages/Documentos")));
 const Configuracoes = lazy(lazyWithRetry(() => import("./pages/Configuracoes")));
 // Auditoria removido — informações agora no Painel Admin
 const AdminPanel = lazy(lazyWithRetry(() => import("./pages/AdminPanel")));
-const SuperAdmin = lazy(lazyWithRetry(() => import("./pages/SuperAdmin")));
+
 const UsuariosConta = lazy(lazyWithRetry(() => import("./pages/UsuariosConta")));
 const Ajuda = lazy(lazyWithRetry(() => import("./pages/Ajuda")));
 const Suporte = lazy(lazyWithRetry(() => import("./pages/Suporte")));
@@ -221,7 +221,7 @@ const App = () => {
                 <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
                 <Route path="/auditoria" element={<Navigate to="/admin" replace />} />
                 <Route path="/admin" element={<ProtectedRoute><RequireRole role="admin"><AdminPanel /></RequireRole></ProtectedRoute>} />
-                <Route path="/super-admin" element={<ProtectedRoute><RequireRole role="super_admin" requirePlatformOwner><SuperAdmin /></RequireRole></ProtectedRoute>} />
+                <Route path="/super-admin" element={<Navigate to="/" replace />} />
                 <Route path="/usuarios-conta" element={<ProtectedRoute><UsuariosConta /></ProtectedRoute>} />
                 <Route path="/ajuda" element={<ProtectedRoute><Ajuda /></ProtectedRoute>} />
                 <Route path="/suporte" element={<ProtectedRoute><Suporte /></ProtectedRoute>} />

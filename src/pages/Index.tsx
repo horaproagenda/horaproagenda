@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
 import { useIsSmartphone } from '@/hooks/use-mobile';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Users, Filter, Crown } from 'lucide-react';
+import { Calendar, Users, Filter } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
@@ -16,37 +16,11 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useClientsCredits } from '@/hooks/useClientCredits';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useAuth } from '@/contexts/AuthContext';
-import { isSuperAdminEmail } from '@/lib/superAdminAllowlist';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-function AdminShortcutCard() {
-  const { user, hasRole } = useAuth();
-  const isPlatformOwner = isSuperAdminEmail(user?.email);
-
-  if (hasRole('super_admin') && isPlatformOwner) {
-    return (
-      <Link to="/super-admin">
-        <Card className="card-hover bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="rounded-full bg-primary/10 p-2">
-              <Crown className="h-4 w-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">Painel Super Admin</p>
-              <p className="text-xs text-muted-foreground truncate">Clique para abrir</p>
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
-    );
-  }
-
-  return null;
-}
 
 const Index = () => {
   const isSmartphone = useIsSmartphone();
@@ -104,7 +78,6 @@ const Index = () => {
               </SelectContent>
             </Select>
           </div>
-          <AdminShortcutCard />
         </div>
 
         {/* Sales Overview */}

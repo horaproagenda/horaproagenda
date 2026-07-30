@@ -8,6 +8,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { evolutionServerConfigured, evolutionGetQrCode } from "../_shared/evolution.ts";
+import { provisionEvolutionInstance } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +52,30 @@ serve(async (req) => {
     if (requested_professional_id && requested_professional_id !== professional_id) {
       return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' });
     }
+    // Caminho gratuito (Evolution API auto-hospedada): cada profissional ganha
+    // a sua própria instância e conecta pelo QR Code, sem pool pago e sem
+    // liberação manual.
+    if (evolutionServerConfigured()) {
+      const creds = await provisionEvolutionInstance(supabaseService, professional_id);
+      const result = await evolutionGetQrCode(creds);
+      if (result.connected) {
+        return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
+      }
+      if (!result.qrcode) {
+        return json({
+          success: false,
+          provider: 'evolution',
+          error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
+        });
+      }
+      return json({
+        success: true,
+        provider: 'evolution',
+        qrcode: result.qrcode,
+        pairingCode: result.pairingCode ?? null,
+      });
+    }
+
     if (!ownProf?.whatsapp_release_approved) {
       return json({
         success: false,
@@ -114,6 +140,7 @@ serve(async (req) => {
     }
     return json({
       success: true,
+      provider: 'ultramsg',
       qrcode: result.qrcode,
       pairingCode: null,
     });

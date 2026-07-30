@@ -110,6 +110,7 @@ serve(async (req) => {
       connected: st.connected,
       provider: resolved.provider,
       source,
+      requiresRelease,
       instance: st.instance ?? null,
       state: st.state ?? null,
       substatus: st.substatus ?? null,

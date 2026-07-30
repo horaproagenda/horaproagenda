@@ -6,7 +6,7 @@
  * em sessionStorage para sobreviver a navegações dentro da sessão.
  *
  * Cada job é entregue ao edge function `whatsapp-send`. Se o envio
- * falhar (rede, UltraMsg temporariamente indisponível, etc.) o job
+ * falhar (rede, WhatsApp temporariamente indisponível, etc.) o job
  * é re-agendado até `maxAttempts`. Após esgotar tentativas, o job
  * é marcado como `failed` e o callback `onFailure` é chamado.
  *

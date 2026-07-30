@@ -94,7 +94,7 @@ export default function PoliticaDePrivacidade() {
                 Não vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de marketing. Podemos compartilhar dados apenas com:
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>Provedores de serviço:</strong> infraestrutura de nuvem (Supabase), gateways de pagamento (Stripe), e serviços de comunicação (Twilio, WhatsApp) — todos contratualmente obrigados à confidencialidade;</li>
+                <li><strong>Provedores de serviço:</strong> infraestrutura de nuvem (Supabase), gateways de pagamento (Stripe), e serviços de comunicação (WhatsApp) — todos contratualmente obrigados à confidencialidade;</li>
                 <li><strong>Autoridades legais:</strong> quando exigido por lei, ordem judicial ou requisição de autoridade competente;</li>
                 <li><strong>Outros usuários da mesma clínica:</strong> dados de clientes e agendamentos são visíveis dentro da mesma conta/organização, conforme as permissões definidas pelo administrador.</li>
               </ul>

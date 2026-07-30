@@ -119,7 +119,7 @@ serve(async (req) => {
       substatus: st.substatus ?? null,
       error: st.error,
       message: st.connected
-        ? `WhatsApp conectado via ${resolved.provider === 'evolution' ? 'Evolution API' : 'UltraMsg'}`
+        ? 'WhatsApp conectado via Evolution API'
         : (st.error || 'WhatsApp não conectado'),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

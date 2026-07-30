@@ -4,7 +4,7 @@ import { useWhatsapp } from './useWhatsapp';
 import { whatsappMessageQueue } from '@/lib/whatsappMessageQueue';
 
 /**
- * Mantém a sessão UltraMsg do profissional viva enquanto a tela estiver
+ * Mantém a sessão de WhatsApp do profissional viva enquanto a tela estiver
  * aberta e reage a quedas de conexão:
  *
  * - Faz ping silencioso a cada `intervalMs` (default 60s) chamando
@@ -15,7 +15,7 @@ import { whatsappMessageQueue } from '@/lib/whatsappMessageQueue';
  *   dispara toast de alerta para o profissional agir rápido.
  * - **Auto-reconexão**: tenta restaurar a sessão automaticamente (5
  *   retentativas em backoff exponencial 5s → 10s → 20s → 40s → 80s)
- *   antes de exigir QR Code novo. Sessões UltraMsg costumam voltar
+ *   antes de exigir QR Code novo. Sessões de WhatsApp costumam voltar
  *   sozinhas após oscilações de rede, então o re-ping é suficiente
  *   na maioria dos casos.
  * - **Throttle da fila**: pausa o envio de mensagens em background

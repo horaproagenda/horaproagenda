@@ -31,12 +31,6 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.whatsapp-webhook]
     verify_jwt = false
-  [functions.whatsapp-pool-healthcheck]
-    verify_jwt = false
-  [functions.whatsapp-pool-add-instance]
-    verify_jwt = false
-  [functions.whatsapp-claim-pool-instance]
-    verify_jwt = false
   [functions.whatsapp-connect]
     verify_jwt = false
   [functions.send-transactional-email]

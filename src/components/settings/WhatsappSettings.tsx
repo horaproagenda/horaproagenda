@@ -208,7 +208,7 @@ export function WhatsappSettings() {
     return () => { cancelled = true; };
   }, [connected, selectedProfId, selectedConnection?.state]);
 
-  // Realtime: reage instantaneamente a eventos do UltraMsg (webhook atualiza
+  // Realtime: reage instantaneamente a eventos do WhatsApp (webhook atualiza
   // professional_whatsapp_credentials.last_connected_at / is_active) sem
   // depender do polling de 4–60s.
   useEffect(() => {
@@ -226,7 +226,7 @@ export function WhatsappSettings() {
         (payload) => {
           const row = (payload.new || payload.old) as Creds | undefined;
           if (row) setCredsMap(prev => ({ ...prev, [selectedProfId]: row }));
-          // Reconsulta o status real (UltraMsg) em vez de assumir conectado.
+          // Reconsulta o status real (Evolution) em vez de assumir conectado.
           void refreshConnection(selectedProfId);
         },
       )

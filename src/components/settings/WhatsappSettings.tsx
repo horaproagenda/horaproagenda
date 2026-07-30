@@ -244,6 +244,19 @@ export function WhatsappSettings() {
   const requiresRelease = selectedConnection?.requiresRelease !== false;
   const canConnect = !requiresRelease || releaseApproved === true;
 
+  // Enquanto o QR Code está na tela, verifica a conexão a cada 4s para que a
+  // tela mude para "Conectado" assim que o celular ler o código.
+  useEffect(() => {
+    if (connected || (!qrCode && !qrText && !pairingCode) || !selectedProfId) return;
+    const timer = setInterval(() => { void refreshConnection(selectedProfId); }, 4000);
+    return () => clearInterval(timer);
+  }, [connected, qrCode, qrText, pairingCode, selectedProfId, refreshConnection]);
+
+  useEffect(() => {
+    if (connected) clearQRCode();
+  }, [connected, clearQRCode]);
+
+
   const selectedCreds = selectedProfId ? credsMap[selectedProfId] : null;
   const lastConnectedAt = selectedCreds?.last_connected_at
     ? new Date(selectedCreds.last_connected_at).toLocaleString('pt-BR')

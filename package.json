@@ -17,7 +17,6 @@
     "test:regression": "bun run lint && bun run typecheck && bun run test:unit && bun run build && bun run test",
     "preview": "vite preview"
   },
-
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/mcp-js": "^0.20.0",
@@ -66,6 +65,7 @@
     "next-themes": "^0.3.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.1.200",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",

@@ -174,34 +174,34 @@ serve(async (req) => {
       minute: '2-digit'
     })}`;
 
-    // Send WhatsApp notification via UltraMsg if configured
-    if (ultramsgInstance && ultramsgToken && notifyPhone) {
+    // Envia alerta pelo WhatsApp conectado (Evolution API) via whatsapp-send
+    if (notifyPhone) {
       try {
         let cleanPhone = notifyPhone.replace(/\D/g, '');
         if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
         if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
 
-        const form = new URLSearchParams();
-        form.set('token', ultramsgToken);
-        form.set('to', cleanPhone);
-        form.set('body', message);
-
-        const response = await fetch(`${ultramsgBase}/${encodeURIComponent(ultramsgInstance)}/messages/chat`, {
+        const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-send`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: form.toString(),
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: supabaseAnonKey,
+            Authorization: authHeader,
+          },
+          body: JSON.stringify({ phone: cleanPhone, message }),
         });
+        const out = await response.json().catch(() => ({} as any));
 
-        if (response.ok) {
+        if (response.ok && (out as any)?.success !== false) {
           results.whatsapp_sent = true;
         } else {
-          const errorText = await response.text();
-          results.whatsapp_error = `Failed to send: ${errorText}`;
+          results.whatsapp_error = `Failed to send: ${(out as any)?.error || response.status}`;
         }
       } catch (error) {
         results.whatsapp_error = error instanceof Error ? error.message : 'Unknown WhatsApp error';
       }
     }
+
 
     // Log the notification
     await supabase.from('audit_logs').insert({

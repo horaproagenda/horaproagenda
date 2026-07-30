@@ -24,8 +24,7 @@ export interface BusinessSettings {
   automation_occupancy_dashboard: boolean;
   automation_smart_recurrence: boolean;
   reminder_hours_before: number[];
-  reminder_provider: 'whatsapp' | 'twilio_sms' | 'twilio_whatsapp';
-  twilio_from_number: string | null;
+  reminder_provider: 'whatsapp';
   created_at: string;
   updated_at: string;
 }
@@ -50,7 +49,7 @@ export function useBusinessSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['business-settings'],
     queryFn: async () => {
-      // Select non-sensitive columns explicitly. CNPJ and Twilio number
+      // Select non-sensitive columns explicitly. CNPJ is
       // are restricted to admin/receptionist via column-level grants and
       // fetched separately through get_sensitive_business_settings RPC.
       const { data, error } = await supabase
@@ -66,7 +65,6 @@ export function useBusinessSettings() {
         const { data: sensitive } = await supabase.rpc('get_sensitive_business_settings');
         const row = Array.isArray(sensitive) ? sensitive[0] : sensitive;
         (data as any).clinic_cnpj = row?.clinic_cnpj ?? null;
-        (data as any).twilio_from_number = row?.twilio_from_number ?? null;
       }
 
       // Overlay per-user effective settings (global + professional_preferences)

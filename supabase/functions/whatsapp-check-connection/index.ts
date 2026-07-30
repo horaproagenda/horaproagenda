@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveWhatsapp, whatsappStatus } from "../_shared/whatsappProvider.ts";
+import { evolutionServerConfigured } from "../_shared/evolution.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,12 +50,14 @@ serve(async (req) => {
 
     const resolved = await resolveWhatsapp(supabaseService, professional_id);
     const source = resolved.source;
+    const requiresRelease = !evolutionServerConfigured();
     if (source !== 'professional') {
       return new Response(JSON.stringify({
         configured: false,
         connected: false,
         provider: resolved.provider,
         source: 'none',
+        requiresRelease,
         error: 'WhatsApp próprio não conectado para o profissional vinculado ao seu login.',
         message: 'Conecte seu WhatsApp em Configurações → WhatsApp.',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -107,6 +110,7 @@ serve(async (req) => {
       connected: st.connected,
       provider: resolved.provider,
       source,
+      requiresRelease,
       instance: st.instance ?? null,
       state: st.state ?? null,
       substatus: st.substatus ?? null,

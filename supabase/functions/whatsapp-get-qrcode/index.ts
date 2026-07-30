@@ -56,7 +56,7 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (!result.qrcode) {
+    if (!result.qrcode && !result.qrText) {
       return new Response(JSON.stringify({
         success: false, source,
         error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
@@ -65,7 +65,12 @@ serve(async (req) => {
 
     // Não retornamos `instance` ao cliente — é credencial sensível.
     return new Response(JSON.stringify({
-      success: true, qrcode: result.qrcode, pairingCode: result.pairingCode ?? null, source, provider: resolved.provider,
+      success: true,
+      qrcode: result.qrcode ?? null,
+      qrText: result.qrText ?? null,
+      pairingCode: result.pairingCode ?? null,
+      source,
+      provider: resolved.provider,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

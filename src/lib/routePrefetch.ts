@@ -27,7 +27,7 @@ const loaders: Record<string, Loader> = {
   '/configuracoes': () => import('@/pages/Configuracoes'),
   '/ajuda': () => import('@/pages/Ajuda'),
   '/suporte': () => import('@/pages/Suporte'),
-  '/super-admin': () => import('@/pages/SuperAdmin'),
+  
   '/admin': () => import('@/pages/AdminPanel'),
   '/usuarios-conta': () => import('@/pages/UsuariosConta'),
   '/assinatura': () => import('@/pages/Assinatura'),

@@ -46,7 +46,7 @@ const navigation = [
   
   { name: 'Documentos', href: '/documentos', icon: FileSignature },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3 },
-  { name: 'Super Admin', href: '/super-admin', icon: Crown, superAdminOnly: true },
+  
   { name: 'Painel do Administrador', href: '/admin', icon: ShieldCheck, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
   { name: 'Ajuda', href: '/ajuda', icon: HelpCircle },

@@ -148,7 +148,6 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
         <NotificationsPanel />
 
         {/* Admin / Super Admin shortcut */}
-        <AdminShortcut />
 
         {/* User Menu */}
         <div className="flex items-center gap-3">

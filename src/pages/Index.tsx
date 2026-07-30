@@ -80,7 +80,6 @@ const Index = () => {
               </SelectContent>
             </Select>
           </div>
-          <AdminShortcutCard />
         </div>
 
         {/* Sales Overview */}

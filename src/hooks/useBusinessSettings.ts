@@ -49,8 +49,8 @@ export function useBusinessSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['business-settings'],
     queryFn: async () => {
-      // Select non-sensitive columns explicitly. CNPJ is
-      // are restricted to admin/receptionist via column-level grants and
+      // Select non-sensitive columns explicitly. CNPJ is restricted
+      // to admin/receptionist via column-level grants and
       // fetched separately through get_sensitive_business_settings RPC.
       const { data, error } = await supabase
         .from('business_settings')

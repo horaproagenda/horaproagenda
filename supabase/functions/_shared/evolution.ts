@@ -86,6 +86,30 @@ async function evolutionFetch(
   return data;
 }
 
+const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'];
+
+function webhookUrl() {
+  return `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
+}
+
+/** Registra/atualiza o webhook da instância (Evolution v2: /webhook/set/{instance}). */
+async function evolutionSetWebhook(override: EvolutionCreds) {
+  const cfg = getEvolutionConfig(override);
+  const payloads = [
+    { webhook: { enabled: true, url: webhookUrl(), byEvents: false, base64: false, events: WEBHOOK_EVENTS } },
+    { enabled: true, url: webhookUrl(), webhook_by_events: false, events: WEBHOOK_EVENTS },
+  ];
+  for (const body of payloads) {
+    try {
+      await evolutionFetch(`/webhook/set/${encodeURIComponent(cfg.instance)}`, {
+        method: 'POST', body: JSON.stringify(body),
+      }, override);
+      return true;
+    } catch (_) { /* tenta o próximo formato (v2.0 x v2.2) */ }
+  }
+  return false;
+}
+
 /** Cria a instância no servidor Evolution (idempotente). */
 export async function evolutionEnsureInstance(override: EvolutionCreds) {
   const cfg = getEvolutionConfig(override);
@@ -96,50 +120,32 @@ export async function evolutionEnsureInstance(override: EvolutionCreds) {
   } catch (_) {
     // Instância não existe ainda → cria
   }
-  const webhookUrl = `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
-  await evolutionFetch('/instance/create', {
-    method: 'POST',
-    body: JSON.stringify({
-      instanceName: cfg.instance,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-      // Webhook para receber respostas (confirmar/cancelar agendamento).
-      webhook: {
-        url: webhookUrl,
-        byEvents: false,
-        base64: false,
-        events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
-      },
-    }),
-  }, override);
+
+  const base = { instanceName: cfg.instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' as const };
+  try {
+    // Evolution v2.2+: webhook aninhado no create
+    await evolutionFetch('/instance/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...base,
+        webhook: { url: webhookUrl(), byEvents: false, base64: false, events: WEBHOOK_EVENTS },
+      }),
+    }, override);
+  } catch (_) {
+    // Versões mais antigas rejeitam o objeto webhook → cria simples e configura depois
+    await evolutionFetch('/instance/create', { method: 'POST', body: JSON.stringify(base) }, override);
+  }
+  await evolutionSetWebhook({ base: cfg.base, apiKey: cfg.apiKey, instance: cfg.instance });
   return { created: true };
 }
-
-export async function evolutionStatus(override?: EvolutionCreds | null) {
-  const cfg = getEvolutionConfig(override);
-  if (!cfg.configured) {
-    return { configured: false, connected: false, error: 'Evolution API não configurada.' };
-  }
-  try {
-    const data = await evolutionFetch(
-      `/instance/connectionState/${encodeURIComponent(cfg.instance)}`, {}, override,
-    );
-    const state = data?.instance?.state || data?.state || data?.status || data?.connectionState || null;
-    const connected = state === 'open' || state === 'connected' || data?.connected === true;
-    return {
-      configured: true,
-      connected,
-      instance: cfg.instance,
-      state,
-      raw: data,
-      error: connected ? null : `WhatsApp não conectado na Evolution API (${state || 'desconhecido'})`,
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Erro desconhecido';
-    return { configured: true, connected: false, instance: cfg.instance, state: null, error: msg };
-  }
-}
-
+...
+/**
+ * Obtém o QR Code da instância.
+ * Evolution v2 responde `{ code, base64, pairingCode, count }` onde:
+ *  - `base64` é a imagem PNG (data URL ou base64 puro);
+ *  - `code` é o TEXTO do QR (deve ser renderizado como QR no cliente);
+ *  - `pairingCode` é o código de pareamento por telefone (8 caracteres).
+ */
 export async function evolutionGetQrCode(override?: EvolutionCreds | null) {
   const cfg = getEvolutionConfig(override);
   if (!cfg.configured) throw new Error('Evolution API não configurada.');
@@ -147,18 +153,29 @@ export async function evolutionGetQrCode(override?: EvolutionCreds | null) {
   await evolutionEnsureInstance({ base: cfg.base, apiKey: cfg.apiKey, instance: cfg.instance });
 
   const st = await evolutionStatus(override);
-  if (st.connected) return { connected: true, instance: cfg.instance, qrcode: null, pairingCode: null };
+  if (st.connected) {
+    return { connected: true, instance: cfg.instance, qrcode: null, qrText: null, pairingCode: null };
+  }
 
   const data = await evolutionFetch(`/instance/connect/${encodeURIComponent(cfg.instance)}`, {}, override);
-  let qrcode: string | null = data?.base64 || data?.qrcode?.base64 || data?.qrcode || data?.qr || null;
-  if (qrcode && typeof qrcode === 'string' && !qrcode.startsWith('data:image')) {
-    qrcode = `data:image/png;base64,${qrcode}`;
+
+  let qrcode: string | null =
+    data?.base64 || data?.qrcode?.base64 || data?.qrcode_base64 || null;
+  if (typeof qrcode === 'string' && qrcode && !qrcode.startsWith('data:image')) {
+    qrcode = `data:image/png;base64,${qrcode.replace(/^base64,/, '')}`;
   }
+
+  const rawCode = data?.code || data?.qrcode?.code || data?.qr || null;
+  const qrText = typeof rawCode === 'string' && rawCode.length > 20 ? rawCode : null;
+
+  const pairing = data?.pairingCode || data?.qrcode?.pairingCode || null;
+
   return {
     connected: false,
     instance: cfg.instance,
     qrcode,
-    pairingCode: data?.pairingCode || data?.code || data?.qrcode?.pairingCode || null,
+    qrText,
+    pairingCode: typeof pairing === 'string' && pairing.length <= 12 ? pairing : null,
     raw: data,
   };
 }

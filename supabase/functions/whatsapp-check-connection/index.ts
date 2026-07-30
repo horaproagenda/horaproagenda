@@ -50,12 +50,14 @@ serve(async (req) => {
 
     const resolved = await resolveWhatsapp(supabaseService, professional_id);
     const source = resolved.source;
+    const requiresRelease = !evolutionServerConfigured();
     if (source !== 'professional') {
       return new Response(JSON.stringify({
         configured: false,
         connected: false,
         provider: resolved.provider,
         source: 'none',
+        requiresRelease,
         error: 'WhatsApp próprio não conectado para o profissional vinculado ao seu login.',
         message: 'Conecte seu WhatsApp em Configurações → WhatsApp.',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

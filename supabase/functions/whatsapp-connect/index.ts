@@ -1,13 +1,9 @@
 // whatsapp-connect — endpoint único para o cliente.
 //
-// Faz numa só chamada: (1) reserva instância do pool (se ainda não tem),
-// (2) gera o QR Code e devolve APENAS o QR e o pairing code.
-//
-// Não vaza instance_id, token, api_url ou qualquer credencial UltraMsg
-// para o cliente. Toda gestão de pool/custos é exclusiva do Super Admin.
+// Provisiona a instância Evolution do profissional logado e devolve APENAS o
+// QR Code (imagem/texto) e o pairing code. Nenhuma credencial é exposta.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
 import { evolutionServerConfigured, evolutionGetQrCode } from "../_shared/evolution.ts";
 import { provisionEvolutionInstance } from "../_shared/whatsappProvider.ts";
 
@@ -45,105 +41,39 @@ serve(async (req) => {
     const requested_professional_id: string | undefined = body?.professional_id;
 
     const { data: ownProf } = await supabaseService
-      .from('professionals').select('id, whatsapp_release_approved').eq('user_id', user.id).maybeSingle();
+      .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
 
     const professional_id = ownProf?.id;
     if (!professional_id) return json({ success: false, error: 'Seu login não está vinculado a um profissional.' });
     if (requested_professional_id && requested_professional_id !== professional_id) {
       return json({ success: false, error: 'O WhatsApp só pode ser conectado ao profissional vinculado ao usuário logado.' });
     }
-    // Caminho gratuito (Evolution API auto-hospedada): cada profissional ganha
-    // a sua própria instância e conecta pelo QR Code, sem pool pago e sem
-    // liberação manual.
-    if (evolutionServerConfigured()) {
-      const creds = await provisionEvolutionInstance(supabaseService, professional_id);
-      const result: any = await evolutionGetQrCode(creds);
-      if (result.connected) {
-        return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
-      }
-      if (!result.qrcode && !result.qrText) {
-        return json({
-          success: false,
-          provider: 'evolution',
-          error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
-        });
-      }
+
+    if (!evolutionServerConfigured()) {
       return json({
-        success: true,
-        provider: 'evolution',
-        qrcode: result.qrcode ?? null,
-        qrText: result.qrText ?? null,
-        pairingCode: result.pairingCode ?? null,
+        success: false,
+        error: 'Servidor de WhatsApp não configurado. Contate o administrador.',
       });
     }
 
-    if (!ownProf?.whatsapp_release_approved) {
-      return json({
-        success: false,
-        pending_validation: true,
-        error: 'Estamos validando seu cadastro. Assim que a instância de WhatsApp for liberada, o QR Code aparecerá aqui automaticamente. Você receberá um aviso pelo WhatsApp.',
-      }, 200);
-    }
-
-    // 1) Reserva instância se ainda não houver
-    const { data: existing } = await supabaseService
-      .from('professional_whatsapp_credentials')
-      .select('instance_id, is_active')
-      .eq('professional_id', professional_id)
-      .maybeSingle();
-
-    if (!existing?.is_active || !existing?.instance_id) {
-      const { data: claimed, error: claimErr } = await supabaseService
-        .rpc('claim_ultramsg_pool_instance', { p_professional_id: professional_id });
-      if (claimErr) {
-        console.error('claim_ultramsg_pool_instance error', claimErr);
-        return json({ success: false, error: claimErr.message });
-      }
-      const row = Array.isArray(claimed) ? claimed[0] : claimed;
-      if (!row) {
-        return json({
-          success: false,
-          fallback: true,
-          error: 'Nenhuma instância de WhatsApp disponível no momento. Tente novamente em alguns minutos ou contate o administrador.',
-        }, 200);
-      }
-      const { error: upErr } = await supabaseService
-        .from('professional_whatsapp_credentials')
-        .upsert({
-          professional_id,
-          api_url: row.api_url,
-          instance_id: row.instance_id,
-          token: row.token,
-          is_active: true,
-        }, { onConflict: 'professional_id' });
-      if (upErr) {
-        console.error('professional_whatsapp_credentials upsert error', upErr);
-        return json({ success: false, error: upErr.message });
-      }
-    }
-
-    // 2) Gera QR Code (sem expor instance_id no retorno)
-    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
-    if (source !== 'professional') {
-      return json({ success: false, error: 'Conecte uma instância própria para o profissional vinculado ao seu login.' });
-    }
-    if (!creds) return json({ success: false, error: 'Conexão indisponível.' }, 500);
-
-    const result = await ultramsgGetQrCode(creds);
+    const creds = await provisionEvolutionInstance(supabaseService, professional_id);
+    const result: any = await evolutionGetQrCode(creds);
     if (result.connected) {
-      return json({ success: true, connected: true, message: 'WhatsApp já está conectado.' });
+      return json({ success: true, connected: true, provider: 'evolution', message: 'WhatsApp já está conectado.' });
     }
-    if (!result.qrcode) {
+    if (!result.qrcode && !result.qrText) {
       return json({
         success: false,
+        provider: 'evolution',
         error: 'QR Code indisponível. Aguarde alguns segundos e tente novamente.',
       });
     }
     return json({
       success: true,
-      provider: 'ultramsg',
-      qrcode: result.qrcode,
-      pairingCode: null,
+      provider: 'evolution',
+      qrcode: result.qrcode ?? null,
+      qrText: result.qrText ?? null,
+      pairingCode: result.pairingCode ?? null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';

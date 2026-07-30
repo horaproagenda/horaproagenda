@@ -85,7 +85,7 @@ describe('Sidebar admin visibility (integration)', () => {
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
   });
 
-  it('shows Super Admin only for the platform-owner allowlist', () => {
+  it('não exibe mais o item Super Admin (página removida)', () => {
     useAuthMock.mockReturnValue(
       authState({
         roles: ['admin', 'super_admin'] as AppRole[],
@@ -93,7 +93,8 @@ describe('Sidebar admin visibility (integration)', () => {
       }),
     );
     renderSidebar();
-    expect(screen.getByText('Super Admin')).toBeInTheDocument();
+    expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
     expect(screen.getByText('Painel do Administrador')).toBeInTheDocument();
   });
+
 });

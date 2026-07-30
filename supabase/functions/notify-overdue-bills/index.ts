@@ -88,24 +88,24 @@ serve(async (req) => {
     }
     const callerOwner = callerProfile.account_owner_id;
 
-    const ultramsgBase = (Deno.env.get('ULTRAMSG_API_URL') || 'https://api.ultramsg.com').replace(/\/+$/, '');
-    const ultramsgInstance = (Deno.env.get('ULTRAMSG_INSTANCE_ID') || '').trim();
-    const ultramsgToken = (Deno.env.get('ULTRAMSG_TOKEN') || '').trim();
+    // Envio via WhatsApp conectado do profissional (Evolution API),
+    // delegado à edge function whatsapp-send.
+    const sendWhatsapp = async (to: string, body: string) => {
+      const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
+          Authorization: authHeader,
+        },
+        body: JSON.stringify({ phone: to, message: body }),
+      });
+      const out = await res.json().catch(() => ({}));
+      return { ok: res.ok && out?.success !== false, detail: out?.error || '' };
+    };
 
     console.log('Starting overdue bills notification check for tenant:', callerOwner);
 
-    // Check if WhatsApp (UltraMsg) is configured
-    if (!ultramsgInstance || !ultramsgToken) {
-      console.log('UltraMsg not configured, skipping notifications');
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'UltraMsg not configured',
-          sent: 0
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Get today's date
     const today = new Date().toISOString().split('T')[0];
@@ -160,25 +160,16 @@ serve(async (req) => {
       try {
         console.log(`Sending notification to ${entry.client.name} (${phone})`);
 
-        const form = new URLSearchParams();
-        form.set('token', ultramsgToken);
-        form.set('to', phone);
-        form.set('body', message);
+        const result = await sendWhatsapp(phone, message);
 
-        const response = await fetch(`${ultramsgBase}/${encodeURIComponent(ultramsgInstance)}/messages/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: form.toString(),
-        });
-
-        if (response.ok) {
+        if (result.ok) {
           sentCount++;
           console.log(`Successfully sent notification for entry ${entry.id}`);
         } else {
-          const errorText = await response.text();
-          console.error(`Failed to send notification for entry ${entry.id}:`, errorText);
-          errors.push(`Entry ${entry.id}: ${errorText}`);
+          console.error(`Failed to send notification for entry ${entry.id}:`, result.detail);
+          errors.push(`Entry ${entry.id}: ${result.detail}`);
         }
+
       } catch (sendError: unknown) {
         const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
         console.error(`Error sending notification for entry ${entry.id}:`, sendError);

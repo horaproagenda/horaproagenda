@@ -3,6 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveWhatsapp, whatsappStatus } from "../_shared/whatsappProvider.ts";
 import { evolutionServerConfigured } from "../_shared/evolution.ts";
 
+/** Evolution auto-hospedada = sem liberação manual de instância. */
+const releaseRequired = () => !evolutionServerConfigured();
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -14,7 +17,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'unauthenticated', message: 'Faça login para verificar o WhatsApp.' }),
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', requiresRelease: releaseRequired(), error: 'unauthenticated', message: 'Faça login para verificar o WhatsApp.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -36,7 +39,7 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'unauthenticated', message: 'Sessão expirada. Faça login novamente.' }),
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', requiresRelease: releaseRequired(), error: 'unauthenticated', message: 'Sessão expirada. Faça login novamente.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -44,13 +47,13 @@ serve(async (req) => {
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
     const professional_id = prof?.id ?? null;
     if (!professional_id || (requested_professional_id && requested_professional_id !== professional_id)) {
-      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', error: 'no_professional', message: 'O status do WhatsApp só pode ser consultado para o profissional vinculado ao usuário logado.' }),
+      return new Response(JSON.stringify({ configured: false, connected: false, provider: 'ultramsg', source: 'none', requiresRelease: releaseRequired(), error: 'no_professional', message: 'O status do WhatsApp só pode ser consultado para o profissional vinculado ao usuário logado.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const resolved = await resolveWhatsapp(supabaseService, professional_id);
     const source = resolved.source;
-    const requiresRelease = !evolutionServerConfigured();
+    const requiresRelease = releaseRequired();
     if (source !== 'professional') {
       return new Response(JSON.stringify({
         configured: false,

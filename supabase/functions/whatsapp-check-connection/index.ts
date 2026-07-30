@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgStatus, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { resolveWhatsapp, whatsappStatus } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,21 +47,22 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    const resolved = await resolveWhatsapp(supabaseService, professional_id);
+    const source = resolved.source;
     if (source !== 'professional') {
       return new Response(JSON.stringify({
         configured: false,
         connected: false,
-        provider: 'ultramsg',
+        provider: resolved.provider,
         source: 'none',
         error: 'WhatsApp próprio não conectado para o profissional vinculado ao seu login.',
         message: 'Conecte seu WhatsApp em Configurações → WhatsApp.',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const st = await ultramsgStatus(creds);
+    const st: any = await whatsappStatus(resolved);
 
-    if (professional_id && source === 'professional' && creds) {
+    if (professional_id && source === 'professional') {
       await supabaseService
         .from('professional_whatsapp_credentials')
         .update({
@@ -104,14 +105,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       configured: st.configured,
       connected: st.connected,
-      provider: 'ultramsg',
+      provider: resolved.provider,
       source,
       instance: st.instance ?? null,
       state: st.state ?? null,
       substatus: st.substatus ?? null,
       error: st.error,
       message: st.connected
-        ? `WhatsApp conectado via UltraMsg (${source === 'professional' ? 'conta do profissional' : 'conta do salão'})`
+        ? `WhatsApp conectado via ${resolved.provider === 'evolution' ? 'Evolution API' : 'UltraMsg'}`
         : (st.error || 'WhatsApp não conectado'),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

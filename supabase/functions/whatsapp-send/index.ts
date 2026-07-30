@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgSendText, normalizeBrPhone, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { normalizeBrPhone } from "../_shared/ultramsg.ts";
+import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,16 +89,18 @@ serve(async (req) => {
 
     // Mensagens manuais sempre usam as credenciais do profissional vinculado ao usuário logado.
     const targetProf = currentProfId || null;
-    const { creds, source } = await resolveProfessionalCreds(supabaseService, targetProf);
-    if (source !== 'professional') {
+    const resolved = await resolveWhatsapp(supabaseService, targetProf);
+    if (resolved.source !== 'professional') {
       throw new Error('Conecte o WhatsApp próprio do seu login em Configurações → WhatsApp.');
     }
-    if (!creds) throw new Error('UltraMsg não configurado.');
 
-    const result = await ultramsgSendText({ to: phone, body: message }, creds);
+    const result = await whatsappSendText(resolved, { to: phone, body: message });
     return new Response(JSON.stringify({
-      success: true, provider: 'ultramsg', route: 'ultramsg-api',
-      data: result, instance: creds.instance, source,
+      success: true,
+      provider: resolved.provider,
+      route: `${resolved.provider}-api`,
+      data: result,
+      source: resolved.source,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {

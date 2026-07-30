@@ -54,16 +54,16 @@ serve(async (req) => {
     // para que o operador saiba que precisa configurar. Rejeitar aqui derrubaria
     // todas as respostas dos clientes silenciosamente.
     if (!expectedToken) {
-      console.warn('[ultramsg-webhook] Nenhum token configurado (ULTRAMSG_WEBHOOK_TOKEN/ULTRAMSG_TOKEN) — aceitando sem verificar.');
+      console.warn('[whatsapp-webhook] Nenhum token configurado (ULTRAMSG_WEBHOOK_TOKEN/ULTRAMSG_TOKEN) — aceitando sem verificar.');
     } else if (incoming !== expectedToken) {
-      console.warn('[ultramsg-webhook] Token inválido no webhook — rejeitando.');
+      console.warn('[whatsapp-webhook] Token inválido no webhook — rejeitando.');
       return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const payload = await req.json().catch(() => ({} as any));
-    console.log('[ultramsg-webhook] event:', JSON.stringify(payload).slice(0, 1000));
+    console.log('[whatsapp-webhook] event:', JSON.stringify(payload).slice(0, 1000));
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -107,8 +107,8 @@ serve(async (req) => {
           .from('professional_whatsapp_credentials')
           .update(patch)
           .eq('instance_id', instanceId);
-        if (upErr) console.warn('[ultramsg-webhook] cred update error:', upErr.message);
-        else console.log('[ultramsg-webhook] cred updated', { instanceId, statusStr, substatus, isConnected });
+        if (upErr) console.warn('[whatsapp-webhook] cred update error:', upErr.message);
+        else console.log('[whatsapp-webhook] cred updated', { instanceId, statusStr, substatus, isConnected });
 
         // Ao reconectar: reabre itens travados por "não conectado" e dispara o cron
         // imediatamente para que nenhuma mensagem programada deixe de ser enviada.
@@ -125,7 +125,7 @@ serve(async (req) => {
               })
               .or('status.eq.failed,status.eq.pending')
               .ilike('last_error', '%não conectado%');
-          } catch (e) { console.warn('[ultramsg-webhook] queue reopen failed', e); }
+          } catch (e) { console.warn('[whatsapp-webhook] queue reopen failed', e); }
 
           try {
             const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-appointment-reminders`;
@@ -138,11 +138,11 @@ serve(async (req) => {
               },
               body: JSON.stringify({ catchup: true, trigger: 'reconnect' }),
             });
-          } catch (e) { console.warn('[ultramsg-webhook] reminders trigger failed', e); }
+          } catch (e) { console.warn('[whatsapp-webhook] reminders trigger failed', e); }
         }
       }
     } catch (e) {
-      console.warn('[ultramsg-webhook] instance_status handler error:', e);
+      console.warn('[whatsapp-webhook] instance_status handler error:', e);
     }
 
     // Try to act on incoming text messages: detect confirm/cancel intent.
@@ -172,7 +172,7 @@ serve(async (req) => {
     const bodyText: string = (data?.body || data?.text || data?.message?.text || evoText || '') as string;
     const isIncomingText = !fromMe && !!bodyText;
 
-    console.log('[ultramsg-webhook] parsed', { fromMe, incomingType, hasBody: !!bodyText, preview: String(bodyText).slice(0, 60) });
+    console.log('[whatsapp-webhook] parsed', { fromMe, incomingType, hasBody: !!bodyText, preview: String(bodyText).slice(0, 60) });
 
     if (isIncomingText) {
       const fromRaw: string =
@@ -180,7 +180,7 @@ serve(async (req) => {
         data?.key?.remoteJid || data?.remoteJid || '';
       const phone = normalizePhone(String(fromRaw).replace(/@.*/, ''));
       const intent = detectIntent(bodyText);
-      console.log('[ultramsg-webhook] intent detected', { phone, intent });
+      console.log('[whatsapp-webhook] intent detected', { phone, intent });
 
       if (phone && intent) {
         // Find the most recent upcoming or recent appointment for this phone.
@@ -245,9 +245,9 @@ serve(async (req) => {
               p_token: target.confirmation_token,
               p_action: intent,
             });
-            console.log('[ultramsg-webhook] intent applied', { phone, intent, result: rpcRes, err: rpcErr?.message });
+            console.log('[whatsapp-webhook] intent applied', { phone, intent, result: rpcRes, err: rpcErr?.message });
           } else {
-            console.log('[ultramsg-webhook] no matching upcoming appointment for phone', phone);
+            console.log('[whatsapp-webhook] no matching upcoming appointment for phone', phone);
           }
         }
       }
@@ -257,7 +257,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('[ultramsg-webhook] error:', err);
+    console.error('[whatsapp-webhook] error:', err);
     return new Response(JSON.stringify({ ok: false }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

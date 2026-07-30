@@ -7,7 +7,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { normalizeBrPhone } from '../_shared/ultramsg.ts';
+import { normalizeBrPhone } from '../_shared/phone.ts';
 import { resolveWhatsapp, whatsappSendText } from '../_shared/whatsappProvider.ts';
 
 const corsHeaders = {

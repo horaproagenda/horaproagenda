@@ -121,9 +121,12 @@ export async function evolutionEnsureInstance(override: EvolutionCreds) {
   try {
     await evolutionFetch(`/instance/connectionState/${encodeURIComponent(cfg.instance)}`, {}, override);
     return { created: false };
-  } catch (_) {
-    // Instância não existe ainda → cria
+  } catch (e) {
+    // 401 = credencial errada; não adianta tentar criar a instância.
+    if ((e as any)?.status === 401) throw e;
+    // Qualquer outro erro (404) → instância ainda não existe, segue para criar.
   }
+
 
   const base = { instanceName: cfg.instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' as const };
   try {

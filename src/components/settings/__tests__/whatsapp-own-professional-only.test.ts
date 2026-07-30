@@ -28,7 +28,8 @@ describe('WhatsApp isolamento por login/profissional', () => {
     expect(qr).toMatch(/requested_professional_id !== professional_id/);
     expect(check).toMatch(/requested_professional_id/);
     expect(check).toMatch(/requested_professional_id !== professional_id/);
-    expect(connect).toMatch(/source !== 'professional'/);
+    // connect provisiona uma instância Evolution exclusiva do profissional
+    expect(connect).toMatch(/provisionEvolutionInstance\(supabaseService, professional_id\)/);
     expect(qr).toMatch(/source !== 'professional'/);
     expect(check).toMatch(/source !== 'professional'/);
   });
@@ -40,9 +41,15 @@ describe('WhatsApp isolamento por login/profissional', () => {
   });
 
   it('não usa credencial global Evolution no fluxo de QR/conexão manual', () => {
-    expect(connect).not.toMatch(/getEvolutionConfig|evolutionGetQrCode/);
+    expect(connect).not.toMatch(/getEvolutionConfig/);
     expect(qr).not.toMatch(/getEvolutionConfig|evolutionGetQrCode/);
     expect(check).not.toMatch(/getEvolutionConfig|evolutionStatus/);
     expect(send).not.toMatch(/getEvolutionConfig|evolutionSendText/);
+  });
+
+  it('não referencia provedores legados (UltraMsg/Twilio)', () => {
+    for (const src of [settings, connect, qr, check, send]) {
+      expect(src).not.toMatch(/ultramsg|twilio/i);
+    }
   });
 });

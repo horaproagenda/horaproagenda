@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgSendText, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -273,7 +273,7 @@ async function processQueue(supabase: any, summary: any) {
       }
     }
     try {
-      const { creds } = await resolveProfessionalCreds(supabase, row.professional_id);
+      const resolved = await resolveWhatsapp(supabase, row.professional_id);
       const body = await rebuildQueuedBodyIfNeeded(supabase, row);
       // Lock atômico: tenta reservar o log antes de enviar para não duplicar
       // com o caminho síncrono nem com outra execução paralela do cron.
@@ -292,7 +292,7 @@ async function processQueue(supabase: any, summary: any) {
           continue;
         }
       }
-      await ultramsgSendText({ to: row.to_phone, body }, creds);
+      await whatsappSendText(resolved, { to: row.to_phone, body });
       await supabase.from('whatsapp_send_queue').update({
         body, status: 'sent', updated_at: new Date().toISOString(), attempts: (row.attempts ?? 0) + 1,
       }).eq('id', row.id);
@@ -341,8 +341,8 @@ async function trySend(
   summary: any,
 ): Promise<boolean> {
   try {
-    const { creds } = await resolveProfessionalCreds(supabase, payload.professional_id ?? null);
-    await ultramsgSendText({ to: payload.to, body: payload.body }, creds);
+    const resolved = await resolveWhatsapp(supabase, payload.professional_id ?? null);
+    await whatsappSendText(resolved, { to: payload.to, body: payload.body });
     return true;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

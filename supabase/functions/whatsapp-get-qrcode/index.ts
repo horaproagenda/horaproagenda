@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ultramsgGetQrCode, resolveProfessionalCreds } from "../_shared/ultramsg.ts";
+import { resolveWhatsapp, whatsappQrCode } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,17 +41,14 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { creds, source } = await resolveProfessionalCreds(supabaseService, professional_id);
+    const resolved = await resolveWhatsapp(supabaseService, professional_id);
+    const source = resolved.source;
     if (source !== 'professional') {
       return new Response(JSON.stringify({ success: false, error: 'QR Code indisponível: conecte uma instância própria para o profissional vinculado ao seu login.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (!creds) {
-      return new Response(JSON.stringify({ success: false, error: 'UltraMsg não configurado para este profissional nem globalmente.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
 
-    const result = await ultramsgGetQrCode(creds);
+    const result: any = await whatsappQrCode(resolved);
     if (result.connected) {
       return new Response(JSON.stringify({
         success: true, connected: true, source,
@@ -68,7 +65,7 @@ serve(async (req) => {
 
     // Não retornamos `instance` ao cliente — é credencial sensível.
     return new Response(JSON.stringify({
-      success: true, qrcode: result.qrcode, pairingCode: null, source,
+      success: true, qrcode: result.qrcode, pairingCode: result.pairingCode ?? null, source, provider: resolved.provider,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

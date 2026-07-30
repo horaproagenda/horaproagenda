@@ -7,7 +7,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { resolveProfessionalCreds, ultramsgSendText, normalizeBrPhone } from '../_shared/ultramsg.ts';
+import { normalizeBrPhone } from '../_shared/ultramsg.ts';
+import { resolveWhatsapp, whatsappSendText } from '../_shared/whatsappProvider.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,11 +93,11 @@ async function buildAndSendFor(supabase: any, owner: Owner, today: string) {
     .eq('user_id', owner.account_owner_id)
     .maybeSingle();
 
-  const { creds } = await resolveProfessionalCreds(supabase, prof?.id || null);
-  if (!creds) return { skipped: true, reason: 'sem credencial whatsapp' };
+  const resolved = await resolveWhatsapp(supabase, prof?.id || null);
+  if (resolved.source !== 'professional') return { skipped: true, reason: 'sem credencial whatsapp' };
 
   try {
-    await ultramsgSendText({ to: normalizeBrPhone(phone), body }, creds);
+    await whatsappSendText(resolved, { to: normalizeBrPhone(phone), body });
     return { sent: true, bills: billList.length, reminders: remList.length };
   } catch (err) {
     return { sent: false, error: err instanceof Error ? err.message : String(err) };

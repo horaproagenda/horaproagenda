@@ -138,7 +138,49 @@ export async function evolutionEnsureInstance(override: EvolutionCreds) {
   await evolutionSetWebhook({ base: cfg.base, apiKey: cfg.apiKey, instance: cfg.instance });
   return { created: true };
 }
-...
+
+/**
+ * Estado da conexão da instância.
+ * Evolution v2 responde `{ instance: { instanceName, state } }`, onde `state`
+ * pode ser `open` (conectado), `connecting` (aguardando QR) ou `close`.
+ */
+export async function evolutionStatus(override?: EvolutionCreds | null) {
+  const cfg = getEvolutionConfig(override);
+  if (!cfg.configured) {
+    return {
+      configured: false,
+      connected: false,
+      state: null as string | null,
+      instance: cfg.instance || null,
+      error: 'Evolution API não configurada.',
+    };
+  }
+  try {
+    const data: any = await evolutionFetch(
+      `/instance/connectionState/${encodeURIComponent(cfg.instance)}`,
+      {},
+      override,
+    );
+    const state: string | null = data?.instance?.state ?? data?.state ?? null;
+    return {
+      configured: true,
+      connected: state === 'open',
+      state,
+      instance: cfg.instance,
+      error: state === 'open' ? undefined : 'WhatsApp não conectado. Gere um novo QR Code.',
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const notFound = /404/.test(msg);
+    return {
+      configured: true,
+      connected: false,
+      state: notFound ? 'not_created' : null,
+      instance: cfg.instance,
+      error: notFound ? 'Instância ainda não criada. Clique em Conectar ao WhatsApp.' : msg,
+    };
+  }
+}
 /**
  * Obtém o QR Code da instância.
  * Evolution v2 responde `{ code, base64, pairingCode, count }` onde:

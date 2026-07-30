@@ -1,6 +1,7 @@
-// UltraMsg webhook receiver.
-// Public endpoint (no JWT) — UltraMsg posts events here.
-// Configure this URL in UltraMsg dashboard for all webhook events.
+// WhatsApp webhook receiver (Evolution API).
+// Public endpoint (no JWT) — a Evolution API posta os eventos aqui.
+// Configure esta URL no webhook da instância Evolution.
+
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -39,22 +40,20 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // Aceita ULTRAMSG_WEBHOOK_TOKEN (dedicado) ou, como fallback, o próprio
-    // ULTRAMSG_TOKEN — assim o webhook já funciona com a configuração que o
-    // cliente colocou no painel da UltraMsg sem precisar de secret extra.
-    const expectedToken = Deno.env.get('ULTRAMSG_WEBHOOK_TOKEN') || Deno.env.get('ULTRAMSG_TOKEN') || '';
+    // Token opcional de verificação do webhook.
+    const expectedToken = Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '';
     const url = new URL(req.url);
     const incoming =
       url.searchParams.get('token') ||
       req.headers.get('x-webhook-token') ||
-      req.headers.get('x-ultramsg-token') ||
       '';
 
     // Se nenhum token está configurado no servidor, aceita mesmo assim mas loga
     // para que o operador saiba que precisa configurar. Rejeitar aqui derrubaria
     // todas as respostas dos clientes silenciosamente.
     if (!expectedToken) {
-      console.warn('[whatsapp-webhook] Nenhum token configurado (ULTRAMSG_WEBHOOK_TOKEN/ULTRAMSG_TOKEN) — aceitando sem verificar.');
+      console.warn('[whatsapp-webhook] Nenhum token configurado (WHATSAPP_WEBHOOK_TOKEN) — aceitando sem verificar.');
+
     } else if (incoming !== expectedToken) {
       console.warn('[whatsapp-webhook] Token inválido no webhook — rejeitando.');
       return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {

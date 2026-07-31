@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { resolveWhatsapp, whatsappStatus } from "../_shared/whatsappProvider.ts";
+import { resolveWhatsapp, whatsappStatus, whatsappEnsureConnected } from "../_shared/whatsappProvider.ts";
 import { evolutionServerConfigured } from "../_shared/evolution.ts";
 
 /** Evolution auto-hospedada = sem liberação manual de instância. */
@@ -22,9 +22,11 @@ serve(async (req) => {
     }
 
     let requested_professional_id: string | undefined;
+    let body_autoRecover: boolean | undefined;
     try {
       const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
       requested_professional_id = body?.professional_id;
+      body_autoRecover = body?.autoRecover;
     } catch { /* ignore */ }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -66,7 +68,18 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const st: any = await whatsappStatus(resolved);
+    let st: any = await whatsappStatus(resolved);
+
+    // Auto-reconexão: se a sessão caiu (state !== 'open') mas a instância já
+    // existe, reinicia o socket reaproveitando a sessão salva — evita que o
+    // usuário precise escanear um novo QR Code a cada oscilação de rede.
+    const autoRecover = body_autoRecover !== false;
+    if (!st.connected && st.state && st.state !== 'not_created' && autoRecover) {
+      try {
+        const recovered: any = await whatsappEnsureConnected(resolved);
+        if (recovered?.connected) st = recovered;
+      } catch (_) { /* mantém o status original */ }
+    }
 
     if (professional_id && source === 'professional') {
       await supabaseService
@@ -115,6 +128,7 @@ serve(async (req) => {
       source,
       requiresRelease,
       instance: st.instance ?? null,
+      recovered: st.recovered === true,
       state: st.state ?? null,
       substatus: st.substatus ?? null,
       error: st.error,

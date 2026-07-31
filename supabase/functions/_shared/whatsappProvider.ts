@@ -8,6 +8,8 @@ import {
   evolutionStatus,
   evolutionSendText,
   evolutionLogout,
+  evolutionEnsureConnected,
+  evolutionSetSettings,
   sanitizeBaseUrl,
   type EvolutionCreds,
 } from './evolution.ts';
@@ -93,6 +95,20 @@ export async function provisionEvolutionInstance(
 
 export async function whatsappStatus(resolved: ResolvedWhatsapp) {
   return evolutionStatus(resolved.evolution ?? null);
+}
+
+/**
+ * Verifica o estado e tenta auto-reconectar (restart do socket) quando a
+ * sessão cai — sem exigir novo QR Code do usuário.
+ */
+export async function whatsappEnsureConnected(resolved: ResolvedWhatsapp) {
+  if (!resolved.evolution) return { configured: false, connected: false, state: null, recovered: false };
+  return evolutionEnsureConnected(resolved.evolution);
+}
+
+export async function whatsappApplyStabilitySettings(resolved: ResolvedWhatsapp) {
+  if (!resolved.evolution) return false;
+  return evolutionSetSettings(resolved.evolution);
 }
 
 export async function whatsappQrCode(resolved: ResolvedWhatsapp) {

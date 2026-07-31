@@ -16,6 +16,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
+import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -292,10 +293,10 @@ function AuthInner() {
       });
       // Detecta e-mail já cadastrado (status 409) — não avança para o passo do código.
       let payload: any = data;
-      if (error && (error as any)?.context?.json) {
-        try { payload = await (error as any).context.json(); } catch { /* ignore */ }
+      if (error) {
+        payload = (await readEdgeFunctionError(error)) ?? data;
       }
-      if (payload?.code === 'email_exists') {
+      if (isEmailExistsCode(payload?.code)) {
         toast({
           title: 'E-mail já cadastrado',
           description: "Faça login com sua senha ou use 'Esqueci minha senha' para recuperá-la.",
@@ -305,7 +306,7 @@ function AuthInner() {
         setLoginEmail(email);
         return;
       }
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
       setSignupResendIn(OTP_RESEND_SECONDS);
@@ -321,6 +322,7 @@ function AuthInner() {
     }
   };
 
+
   const handleResendSignupCode = async () => {
     if (signupResendIn > 0) {
       toast({ title: 'Aguarde', description: `Você poderá reenviar em ${signupResendIn}s.`, variant: 'destructive' });
@@ -332,7 +334,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao reenviar'));
       if (data?.error) throw new Error(data.error);
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
@@ -394,7 +396,7 @@ function AuthInner() {
         // Conta já existe: tenta login direto com a senha digitada.
         // Se bater (conta criada em tentativa anterior com a mesma senha),
         // o usuário entra normalmente; se não, encaminhamos para o login.
-        if (errCode === 'email_exists') {
+        if (isEmailExistsCode(errCode)) {
           const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
           if (!loginErr) {
             toast({ title: 'Bem-vindo(a) de volta!', description: 'Sua conta já estava criada — você foi conectado.' });
@@ -498,7 +500,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: forgotEmail, type: 'login' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setAuthView('reset-code');
       setResetResendIn(OTP_RESEND_SECONDS);
@@ -525,7 +527,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: forgotEmail, type: 'login' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setResetResendIn(OTP_RESEND_SECONDS);
       setResetCodeAttempts(0);
@@ -569,7 +571,7 @@ function AuthInner() {
         body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim() },
       });
 
-      if (verifyError) throw verifyError;
+      if (verifyError) throw new Error(await edgeErrorMessage(verifyError, 'Erro ao verificar código'));
       if (!verifyData?.valid) {
         const next = resetCodeAttempts + 1;
         setResetCodeAttempts(next);

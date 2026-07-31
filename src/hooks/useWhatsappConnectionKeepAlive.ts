@@ -64,6 +64,15 @@ export function useWhatsappConnectionKeepAlive(
 
     const scheduleReconnect = () => {
       if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+        // Esgotou o backoff rápido: continua tentando devagar (a cada 60s),
+        // pois a sessão costuma voltar sozinha (e o keepalive do servidor
+        // também reinicia o socket) sem exigir novo QR Code.
+        reconnectTimerRef.current = window.setTimeout(async () => {
+          const status = await checkConnection(professionalId || undefined);
+          onStatus?.(status);
+          if (status?.connected) handleRecovered();
+          else scheduleReconnect();
+        }, 60_000);
         if (downToastIdRef.current) toast.dismiss(downToastIdRef.current);
         if (!notify) return;
         downToastIdRef.current = toast.error(

@@ -14,6 +14,7 @@ import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKee
 import { WhatsappQueueStatusPanel } from './WhatsappQueueStatusPanel';
 import { QRCodeSVG } from 'qrcode.react';
 
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -45,6 +46,9 @@ export function WhatsappSettings() {
     checkConnection, getQRCode, clearQRCode, qrCode, qrText, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
   } = useWhatsapp();
 
+  const { settings } = useBusinessSettings();
+  const remindersEnabled = settings?.automation_whatsapp_reminders !== false;
+
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedProfId, setSelectedProfId] = useState<string>('');
@@ -59,6 +63,7 @@ export function WhatsappSettings() {
   const refreshConnection = useCallback(async (professionalId?: string) => {
     if (!professionalId) return null;
     const status = await checkConnection();
+    if (status?.connected === true) clearQRCode();
     if (status) {
       setConnectionByProf(prev => ({
         ...prev,
@@ -82,10 +87,12 @@ export function WhatsappSettings() {
       }));
     }
     return status;
-  }, [checkConnection]);
+  }, [checkConnection, clearQRCode]);
 
   const syncSelectedConnectionStatus = useCallback((status: any) => {
     if (!selectedProfId || !status) return;
+    // Conectou: some com o QR Code imediatamente (tempo real).
+    if (status.connected === true) clearQRCode();
     setConnectionByProf(prev => ({
       ...prev,
       [selectedProfId]: {
@@ -96,7 +103,7 @@ export function WhatsappSettings() {
         checkedAt: new Date().toISOString(),
       },
     }));
-  }, [selectedProfId]);
+  }, [selectedProfId, clearQRCode]);
 
   // Bootstrap
   useEffect(() => {
@@ -189,7 +196,9 @@ export function WhatsappSettings() {
         : 'Desconectado';
 
   useWhatsappConnectionKeepAlive(selectedProfId || null, {
-    enabled: !!selectedProfId && !!credsMap[selectedProfId],
+    enabled: !!selectedProfId,
+    // Sem lembretes de WhatsApp ativos, não incomodamos com avisos de queda.
+    notify: remindersEnabled,
     onStatus: syncSelectedConnectionStatus,
   });
 
@@ -248,7 +257,7 @@ export function WhatsappSettings() {
   // tela mude para "Conectado" assim que o celular ler o código.
   useEffect(() => {
     if (connected || (!qrCode && !qrText && !pairingCode) || !selectedProfId) return;
-    const timer = setInterval(() => { void refreshConnection(selectedProfId); }, 4000);
+    const timer = setInterval(() => { void refreshConnection(selectedProfId); }, 2000);
     return () => clearInterval(timer);
   }, [connected, qrCode, qrText, pairingCode, selectedProfId, refreshConnection]);
 

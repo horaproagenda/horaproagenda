@@ -114,6 +114,74 @@ async function evolutionSetWebhook(override: EvolutionCreds) {
   return false;
 }
 
+/**
+ * Ajusta as configurações da instância para maximizar a estabilidade da
+ * sessão (evita quedas poucos minutos após conectar):
+ *  - `alwaysOnline`: mantém o socket ativo/presença online;
+ *  - `readMessages`/`readStatus` desligados: menos tráfego desnecessário;
+ *  - `groupsIgnore`: evita sincronizar grupos (fonte comum de desconexão);
+ *  - `syncFullHistory` desligado: sincronização completa derruba a sessão.
+ */
+export async function evolutionSetSettings(override: EvolutionCreds) {
+  const cfg = getEvolutionConfig(override);
+  if (!cfg.configured) return false;
+  const body = {
+    rejectCall: false,
+    groupsIgnore: true,
+    alwaysOnline: true,
+    readMessages: false,
+    readStatus: false,
+    syncFullHistory: false,
+  };
+  try {
+    await evolutionFetch(`/settings/set/${encodeURIComponent(cfg.instance)}`, {
+      method: 'POST', body: JSON.stringify(body),
+    }, override);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Reinicia o socket da instância reaproveitando a sessão salva (sem novo QR). */
+export async function evolutionRestart(override: EvolutionCreds) {
+  const cfg = getEvolutionConfig(override);
+  if (!cfg.configured) throw new Error('Evolution API não configurada.');
+  // v2.2 usa POST; versões anteriores usam PUT. Tenta ambos.
+  for (const method of ['POST', 'PUT'] as const) {
+    try {
+      return await evolutionFetch(`/instance/restart/${encodeURIComponent(cfg.instance)}`, { method }, override);
+    } catch (e) {
+      if ((e as any)?.status === 401) throw e;
+    }
+  }
+  return null;
+}
+
+/**
+ * Garante que a instância volte a ficar conectada sem exigir novo QR Code:
+ * se o estado não for `open`, reinicia o socket e reconsulta com backoff curto.
+ */
+export async function evolutionEnsureConnected(override: EvolutionCreds) {
+  const first = await evolutionStatus(override);
+  if (first.connected || first.state === 'not_created') return { ...first, recovered: false };
+
+  try {
+    await evolutionRestart(override);
+  } catch (_) { /* segue para reconsulta */ }
+
+  const delays = [1500, 2500, 4000];
+  for (const delay of delays) {
+    await new Promise((r) => setTimeout(r, delay));
+    const st = await evolutionStatus(override);
+    if (st.connected) {
+      await evolutionSetSettings(override);
+      return { ...st, recovered: true };
+    }
+  }
+  return { ...first, recovered: false };
+}
+
 /** Cria a instância no servidor Evolution (idempotente). */
 export async function evolutionEnsureInstance(override: EvolutionCreds) {
   const cfg = getEvolutionConfig(override);
@@ -143,6 +211,7 @@ export async function evolutionEnsureInstance(override: EvolutionCreds) {
     await evolutionFetch('/instance/create', { method: 'POST', body: JSON.stringify(base) }, override);
   }
   await evolutionSetWebhook({ base: cfg.base, apiKey: cfg.apiKey, instance: cfg.instance });
+  await evolutionSetSettings({ base: cfg.base, apiKey: cfg.apiKey, instance: cfg.instance });
   return { created: true };
 }
 

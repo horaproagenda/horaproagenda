@@ -83,8 +83,15 @@ serve(async (req) => {
     // Auto-reconexão: se a sessão caiu (state !== 'open') mas a instância já
     // existe, reinicia o socket reaproveitando a sessão salva — evita que o
     // usuário precise escanear um novo QR Code a cada oscilação de rede.
+    // Throttled: no máximo 1 tentativa a cada 60s por instância.
     const autoRecover = body_autoRecover !== false;
-    if (!st.connected && st.state && st.state !== 'not_created' && autoRecover) {
+    const recoverKey = resolved.evolution?.instance || professional_id;
+    const lastTry = lastRecoverAt.get(recoverKey) ?? 0;
+    if (
+      !st.connected && st.state && st.state !== 'not_created' && autoRecover &&
+      Date.now() - lastTry > RECOVER_COOLDOWN_MS
+    ) {
+      lastRecoverAt.set(recoverKey, Date.now());
       try {
         const recovered: any = await whatsappEnsureConnected(resolved);
         if (recovered?.connected) st = recovered;
@@ -104,7 +111,12 @@ serve(async (req) => {
     // Quando o WhatsApp passa a estar conectado, garantimos que a fila de
     // mensagens travadas seja reaberta e o cron rode na hora — assim nenhuma
     // mensagem pré-programada deixa de ser enviada após reconectar.
-    if (st.connected) {
+    // Só na transição (ou a cada 5 min), para não sobrecarregar o worker.
+    const flushKey = `flush:${recoverKey}`;
+    const lastFlush = lastRecoverAt.get(flushKey) ?? 0;
+    if (st.connected && Date.now() - lastFlush > 5 * 60_000) {
+      lastRecoverAt.set(flushKey, Date.now());
+
       try {
         await supabaseService
           .from('whatsapp_send_queue')

@@ -75,7 +75,9 @@ serve(async (req) => {
     // atualizar via realtime.
 
     try {
-      const evt = String(payload?.event_type || payload?.type || '').toLowerCase();
+      const evt = String(
+        payload?.event || payload?.event_type || payload?.type || ''
+      ).toLowerCase().replace(/_/g, '.');
       const instanceId = String(
         (payload as any)?.instanceId ||
         (payload as any)?.instance_id ||
@@ -84,7 +86,9 @@ serve(async (req) => {
         (payload as any)?.data?.instance_id ||
         (payload as any)?.data?.instance || ''
       ).trim();
-      if (instanceId && (evt.includes('instance_status') || evt.includes('status'))) {
+      const isConnectionEvent =
+        evt.includes('connection.update') || evt.includes('instance.status') || evt.includes('status');
+      if (instanceId && isConnectionEvent) {
         const statusStr = String(
           (payload as any)?.status ||
           (payload as any)?.data?.status ||
@@ -95,14 +99,28 @@ serve(async (req) => {
           (payload as any)?.data?.substatus ||
           (payload as any)?.accountStatus?.substatus || ''
         ).toLowerCase();
-        const isConnected = statusStr === 'authenticated' || substatus === 'connected';
-        const isDown = ['disconnected', 'got_qr_code', 'loading', 'pending'].includes(statusStr) ||
+        // Evolution v2: connection.update → data.state = open | connecting | close
+        const state = String(
+          (payload as any)?.data?.state || (payload as any)?.state || ''
+        ).toLowerCase();
+
+        const isConnected = state === 'open' || statusStr === 'authenticated' || substatus === 'connected';
+        const isDown = state === 'close' || state === 'connecting' ||
+                       ['disconnected', 'got_qr_code', 'loading', 'pending'].includes(statusStr) ||
                        ['disconnected', 'loading', 'pending'].includes(substatus);
-        const patch: Record<string, any> = { last_checked_at: new Date().toISOString() };
+        const patch: Record<string, any> = {
+          last_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
         if (isConnected) patch.last_connected_at = new Date().toISOString();
-        if (isConnected || isDown) {
-          patch.is_active = isConnected;
+        // IMPORTANTE: `is_active` indica que a credencial existe/está habilitada.
+        // Uma queda momentânea NÃO pode desativar a credencial (isso fazia o app
+        // reportar "WhatsApp não configurado" e impedia a reconexão automática).
+        if (isConnected) patch.is_active = true;
+        if (!isConnected && !isDown) {
+          // evento sem informação de estado — nada a atualizar além do ping
         }
+
         const { error: upErr } = await supabase
           .from('professional_whatsapp_credentials')
           .update(patch)

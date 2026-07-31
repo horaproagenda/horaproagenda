@@ -64,7 +64,8 @@ async function evolutionFetch(
   path: string,
   init: RequestInit = {},
   override?: EvolutionCreds | null,
-) {
+  _retriedWithEnvKey = false,
+): Promise<any> {
   const cfg = getEvolutionConfig(override);
   if (!cfg.base || !cfg.apiKey) throw new Error('Evolution API não configurada.');
   const response = await fetch(`${cfg.base}${path}`, {
@@ -79,6 +80,22 @@ async function evolutionFetch(
   let data: any = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
   if (!response.ok) {
+    // Auto-heal: credencial salva no banco ficou desatualizada em relação ao
+    // secret EVOLUTION_API_KEY (rotação da chave na VPS). Refaz a chamada com
+    // o valor atual do ambiente antes de falhar.
+    const envKey = (Deno.env.get('EVOLUTION_API_KEY') || '').trim();
+    const envBase = sanitizeBaseUrl(Deno.env.get('EVOLUTION_API_URL'));
+    if (
+      response.status === 401 && !_retriedWithEnvKey && envKey &&
+      (envKey !== cfg.apiKey || (envBase && envBase !== cfg.base))
+    ) {
+      return await evolutionFetch(
+        path,
+        init,
+        { ...(override ?? { instance: cfg.instance }), base: envBase || cfg.base, apiKey: envKey },
+        true,
+      );
+    }
     const msg = response.status === 401
       ? `Chave da Evolution API inválida (401). A chave salva em EVOLUTION_API_KEY não corresponde ao AUTHENTICATION_API_KEY do servidor ${cfg.base}. Atualize o segredo com a chave do .env da VPS.`
       : `Evolution API ${response.status}: ${JSON.stringify(data).slice(0, 500)}`;
@@ -89,6 +106,7 @@ async function evolutionFetch(
 
   return data;
 }
+
 
 const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'];
 

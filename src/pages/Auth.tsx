@@ -16,6 +16,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
+import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -333,7 +334,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: signupEmail.trim().toLowerCase(), type: 'signup' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao reenviar'));
       if (data?.error) throw new Error(data.error);
       setSignupResendIn(OTP_RESEND_SECONDS);
       setSignupCodeAttempts(0);
@@ -499,7 +500,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: forgotEmail, type: 'login' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setAuthView('reset-code');
       setResetResendIn(OTP_RESEND_SECONDS);
@@ -526,7 +527,7 @@ function AuthInner() {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: forgotEmail, type: 'login' },
       });
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setResetResendIn(OTP_RESEND_SECONDS);
       setResetCodeAttempts(0);

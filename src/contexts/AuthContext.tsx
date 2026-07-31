@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { readEdgeFunctionError, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, AppRole } from '@/types';
 import { revalidateVersionAfterAuth } from '@/lib/bootVersionGuard';
@@ -142,9 +143,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       // Tenta extrair payload JSON do erro (FunctionsHttpError mantém o body)
-      let payload: any = null;
-      try { payload = await (error as any)?.context?.json?.(); } catch { /* ignore */ }
-      if (payload?.code === 'email_exists') {
+      const payload: any = await readEdgeFunctionError(error);
+      if (isEmailExistsCode(payload?.code)) {
         const err = new Error(payload.error || 'E-mail já cadastrado') as Error & { code?: string };
         err.code = 'email_exists';
         return { error: err };
@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!data?.success) {
-      if (data?.code === 'email_exists') {
+      if (isEmailExistsCode(data?.code)) {
         const err = new Error(data.error || 'E-mail já cadastrado') as Error & { code?: string };
         err.code = 'email_exists';
         return { error: err };

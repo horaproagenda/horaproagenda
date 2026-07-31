@@ -396,7 +396,7 @@ function AuthInner() {
         // Conta já existe: tenta login direto com a senha digitada.
         // Se bater (conta criada em tentativa anterior com a mesma senha),
         // o usuário entra normalmente; se não, encaminhamos para o login.
-        if (errCode === 'email_exists') {
+        if (isEmailExistsCode(errCode)) {
           const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password: signupPassword });
           if (!loginErr) {
             toast({ title: 'Bem-vindo(a) de volta!', description: 'Sua conta já estava criada — você foi conectado.' });
@@ -571,7 +571,7 @@ function AuthInner() {
         body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim() },
       });
 
-      if (verifyError) throw verifyError;
+      if (verifyError) throw new Error(await edgeErrorMessage(verifyError, 'Erro ao verificar código'));
       if (!verifyData?.valid) {
         const next = resetCodeAttempts + 1;
         setResetCodeAttempts(next);

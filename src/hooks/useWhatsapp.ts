@@ -32,6 +32,19 @@ interface SendMessageOptions {
   test?: boolean;
 }
 
+/**
+ * Cache/deduplicação global das checagens de status.
+ *
+ * Vários pontos da UI (keep-alive, polling do QR Code, realtime, refresh manual)
+ * consultavam `whatsapp-check-connection` ao mesmo tempo, o que sobrecarregava a
+ * edge function (erro 546 WORKER_RESOURCE_LIMIT) e fazia o status oscilar para
+ * "desconectado" mesmo com a sessão ativa. Aqui garantimos no máximo 1 requisição
+ * em voo por profissional e reaproveitamos o resultado por 1,5s.
+ */
+const inflightChecks = new Map<string, Promise<any>>();
+const lastCheck = new Map<string, { at: number; data: any }>();
+const CHECK_TTL_MS = 1_500;
+
 export function useWhatsapp() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<WhatsAppConnectionStatus | null>(null);
@@ -41,32 +54,56 @@ export function useWhatsapp() {
   const [isLoadingQR, setIsLoadingQR] = useState(false);
 
   const checkConnection = useCallback(async (professional_id?: string) => {
+    const key = professional_id || 'self';
+    const cached = lastCheck.get(key);
+    if (cached && Date.now() - cached.at < CHECK_TTL_MS) {
+      setConnectionStatus(cached.data);
+      return cached.data;
+    }
+
+    let promise = inflightChecks.get(key);
+    if (!promise) {
+      promise = (async () => {
+        const { data, error } = await supabase.functions.invoke('whatsapp-check-connection', {
+          body: professional_id ? { professional_id } : {},
+        });
+        if (error) throw error;
+        lastCheck.set(key, { at: Date.now(), data });
+        return data;
+      })().finally(() => { inflightChecks.delete(key); });
+      inflightChecks.set(key, promise);
+    }
+
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-check-connection', {
-        body: professional_id ? { professional_id } : {},
-      });
-      
-      if (error) throw error;
-      
+      const data = await promise;
+
       setConnectionStatus(data);
-      
+
       // Clear QR code if connected
       if (data?.connected) {
         setQrCode(null);
         setQrText(null);
         setPairingCode(null);
       }
-      
+
       return data;
     } catch (error: any) {
       console.error('Error checking WhatsApp connection:', error);
+      // Falha de rede/edge function NÃO significa desconectado: preserva o
+      // último status conhecido para o indicador não piscar "Desconectado".
+      const previous = lastCheck.get(key)?.data;
+      if (previous) {
+        setConnectionStatus(previous);
+        return previous;
+      }
       setConnectionStatus({ configured: false, connected: false, error: error.message });
       return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
+
 
   const getQRCode = useCallback(async (professional_id?: string) => {
     setIsLoadingQR(true);

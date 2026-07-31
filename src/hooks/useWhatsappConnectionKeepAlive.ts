@@ -27,6 +27,8 @@ export function useWhatsappConnectionKeepAlive(
     intervalMs?: number;
     fastIntervalMs?: number;
     enabled?: boolean;
+    /** Quando false, nenhum toast de queda/reconexão é exibido. */
+    notify?: boolean;
     onStatus?: (status: any) => void;
   } = {},
 ) {
@@ -37,6 +39,7 @@ export function useWhatsappConnectionKeepAlive(
     // bem mais frequente para detectar autenticação em segundos.
     fastIntervalMs = 4_000,
     enabled = true,
+    notify = true,
     onStatus,
   } = options;
   const timerRef = useRef<number | null>(null);
@@ -62,6 +65,7 @@ export function useWhatsappConnectionKeepAlive(
     const scheduleReconnect = () => {
       if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
         if (downToastIdRef.current) toast.dismiss(downToastIdRef.current);
+        if (!notify) return;
         downToastIdRef.current = toast.error(
           'WhatsApp continua desconectado após várias tentativas.',
           {
@@ -90,14 +94,14 @@ export function useWhatsappConnectionKeepAlive(
     const handleDropped = () => {
       whatsappMessageQueue.pause();
       if (downToastIdRef.current) toast.dismiss(downToastIdRef.current);
-      downToastIdRef.current = toast.warning(
+      downToastIdRef.current = notify ? toast.warning(
         'Conexão do WhatsApp instável.',
         {
           description: 'Tentando reconectar automaticamente sem precisar de novo QR Code...',
           duration: 8_000,
           id: `wpp-drop-${professionalId ?? 'global'}`,
         },
-      );
+      ) : null;
       cancelReconnect();
       scheduleReconnect();
     };
@@ -107,10 +111,12 @@ export function useWhatsappConnectionKeepAlive(
         toast.dismiss(downToastIdRef.current);
         downToastIdRef.current = null;
       }
-      toast.success('WhatsApp reconectado.', {
-        description: 'Reenviando mensagens que ficaram pendentes...',
-        duration: 4_000,
-      });
+      if (notify) {
+        toast.success('WhatsApp reconectado.', {
+          description: 'Reenviando mensagens que ficaram pendentes...',
+          duration: 4_000,
+        });
+      }
       cancelReconnect();
       // Retoma a fila e reprocessa qualquer envio que falhou enquanto estava offline.
       whatsappMessageQueue.resume();
@@ -167,5 +173,5 @@ export function useWhatsappConnectionKeepAlive(
       cancelReconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [professionalId, enabled, intervalMs, fastIntervalMs, checkConnection, onStatus]);
+  }, [professionalId, enabled, notify, intervalMs, fastIntervalMs, checkConnection, onStatus]);
 }

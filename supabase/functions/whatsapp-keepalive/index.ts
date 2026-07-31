@@ -57,13 +57,31 @@ serve(async (req) => {
 
     const results: Array<Record<string, unknown>> = [];
 
+    // Fonte da verdade = secrets do projeto. Se a chave/URL da VPS mudou,
+    // reescreve as credenciais salvas antes de qualquer chamada, para nunca
+    // rodar com valor desatualizado.
+    let resynced = 0;
+    if (envBase && envKey) {
+      const stale = (rows ?? []).filter((r) => r.token !== envKey || r.api_url !== envBase);
+      for (const row of stale) {
+        await supabase
+          .from('professional_whatsapp_credentials')
+          .update({ token: envKey, api_url: envBase, updated_at: new Date().toISOString() })
+          .eq('professional_id', row.professional_id);
+        row.token = envKey;
+        row.api_url = envBase;
+        resynced++;
+      }
+    }
+
     for (const row of rows ?? []) {
       if (!row.instance_id) continue;
       const creds: EvolutionCreds = {
-        base: row.api_url || envBase,
-        apiKey: row.token || envKey,
+        base: envBase || row.api_url,
+        apiKey: envKey || row.token,
         instance: row.instance_id,
       };
+
 
       let connected = false;
       let recovered = false;
@@ -112,7 +130,7 @@ serve(async (req) => {
       } catch (_) { /* ignore */ }
     }
 
-    return json({ success: true, checked: results.length, results });
+    return json({ success: true, checked: results.length, resynced, results });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     console.error('whatsapp-keepalive error', e);

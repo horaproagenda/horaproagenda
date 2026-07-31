@@ -38,12 +38,16 @@ export async function resolveWhatsapp(
       .maybeSingle();
 
     if (data?.is_active && data.instance_id && data.provider === 'evolution') {
+      // Os secrets do projeto são a fonte da verdade: se a chave/URL da VPS
+      // foi rotacionada, a credencial salva no banco nunca é usada desatualizada.
+      const envBase = sanitizeBaseUrl(Deno.env.get('EVOLUTION_API_URL'));
+      const envKey = (Deno.env.get('EVOLUTION_API_KEY') || '').trim();
       return {
         provider: 'evolution',
         source: 'professional',
         evolution: {
-          base: data.api_url || Deno.env.get('EVOLUTION_API_URL') || null,
-          apiKey: data.token || Deno.env.get('EVOLUTION_API_KEY') || null,
+          base: envBase || data.api_url || null,
+          apiKey: envKey || data.token || null,
           instance: data.instance_id,
         },
       };
@@ -51,6 +55,7 @@ export async function resolveWhatsapp(
   }
   return { provider: 'evolution', source: 'none' };
 }
+
 
 /**
  * Garante uma instância Evolution própria para o profissional e persiste as

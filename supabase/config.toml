@@ -33,6 +33,8 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.whatsapp-connect]
     verify_jwt = false
+  [functions.whatsapp-keepalive]
+    verify_jwt = false
   [functions.send-transactional-email]
     verify_jwt = true
   [functions.preview-transactional-email]

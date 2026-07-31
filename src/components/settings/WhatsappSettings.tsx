@@ -265,6 +265,18 @@ export function WhatsappSettings() {
     if (connected) clearQRCode();
   }, [connected, clearQRCode]);
 
+  // O QR Code da Evolution expira em ~40s. Renova automaticamente enquanto a
+  // tela de pareamento estiver aberta, para que o usuário nunca escaneie um
+  // código vencido (causa comum de "conecta e cai em seguida").
+  useEffect(() => {
+    if (connected || (!qrCode && !qrText) || !selectedProfId) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      void getQRCode(selectedProfId);
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [connected, qrCode, qrText, selectedProfId, getQRCode]);
+
 
   const selectedCreds = selectedProfId ? credsMap[selectedProfId] : null;
   const lastConnectedAt = selectedCreds?.last_connected_at

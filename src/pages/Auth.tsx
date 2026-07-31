@@ -292,10 +292,10 @@ function AuthInner() {
       });
       // Detecta e-mail já cadastrado (status 409) — não avança para o passo do código.
       let payload: any = data;
-      if (error && (error as any)?.context?.json) {
-        try { payload = await (error as any).context.json(); } catch { /* ignore */ }
+      if (error) {
+        payload = (await readEdgeFunctionError(error)) ?? data;
       }
-      if (payload?.code === 'email_exists') {
+      if (isEmailExistsCode(payload?.code)) {
         toast({
           title: 'E-mail já cadastrado',
           description: "Faça login com sua senha ou use 'Esqueci minha senha' para recuperá-la.",
@@ -305,7 +305,7 @@ function AuthInner() {
         setLoginEmail(email);
         return;
       }
-      if (error) throw error;
+      if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao enviar código'));
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
       setSignupResendIn(OTP_RESEND_SECONDS);
@@ -320,6 +320,7 @@ function AuthInner() {
       setLoading(false);
     }
   };
+
 
   const handleResendSignupCode = async () => {
     if (signupResendIn > 0) {

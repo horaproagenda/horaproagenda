@@ -1,20 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 
-const toastMock = {
-  error: vi.fn(() => 'id-error'),
-  warning: vi.fn(() => 'id-warning'),
-  success: vi.fn(() => 'id-success'),
-  dismiss: vi.fn(),
-};
-vi.mock('sonner', () => ({ toast: toastMock }));
-
-const checkConnection = vi.fn();
-vi.mock('@/hooks/useWhatsapp', () => ({
-  useWhatsapp: () => ({ checkConnection }),
+const { toastMock, checkConnection, queue } = vi.hoisted(() => ({
+  toastMock: {
+    error: vi.fn(() => 'id-error'),
+    warning: vi.fn(() => 'id-warning'),
+    success: vi.fn(() => 'id-success'),
+    dismiss: vi.fn(),
+  },
+  checkConnection: vi.fn(),
+  queue: { pause: vi.fn(), resume: vi.fn(), retryFailed: vi.fn() },
 }));
 
-const queue = { pause: vi.fn(), resume: vi.fn(), retryFailed: vi.fn() };
+vi.mock('sonner', () => ({ toast: toastMock }));
+vi.mock('@/hooks/useWhatsapp', () => ({ useWhatsapp: () => ({ checkConnection }) }));
 vi.mock('@/lib/whatsappMessageQueue', () => ({ whatsappMessageQueue: queue }));
 
 import { useWhatsappConnectionKeepAlive } from '@/hooks/useWhatsappConnectionKeepAlive';

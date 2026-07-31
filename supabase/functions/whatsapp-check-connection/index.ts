@@ -6,10 +6,20 @@ import { evolutionServerConfigured } from "../_shared/evolution.ts";
 /** Evolution auto-hospedada = sem liberação manual de instância. */
 const releaseRequired = () => !evolutionServerConfigured();
 
+/**
+ * Throttle da auto-recuperação: reiniciar o socket é caro (restart + esperas).
+ * Sem limite, o polling do app disparava várias recuperações simultâneas e a
+ * função estourava os recursos do worker (546 WORKER_RESOURCE_LIMIT), o que
+ * fazia a UI mostrar "desconectado" mesmo com a sessão ativa.
+ */
+const RECOVER_COOLDOWN_MS = 60_000;
+const lastRecoverAt = new Map<string, number>();
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });

@@ -130,7 +130,7 @@ serve(async (req) => {
       } catch (_) { /* ignore */ }
     }
 
-    return json({ success: true, checked: results.length, results });
+    return json({ success: true, checked: results.length, resynced, results });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';
     console.error('whatsapp-keepalive error', e);

@@ -44,23 +44,24 @@ describe('useWhatsappConnectionKeepAlive', () => {
     expect(queue.pause).toHaveBeenCalled();
   });
 
-  it('reconecta com backoff e retoma a fila quando a sessão volta', async () => {
+  it('reconsulta no intervalo rápido e retoma a fila quando a sessão volta', async () => {
     vi.useFakeTimers();
     checkConnection
       .mockResolvedValueOnce({ configured: true, connected: false, state: 'close' })
       .mockResolvedValue({ configured: true, connected: true, state: 'open' });
 
     renderHook(() =>
-      useWhatsappConnectionKeepAlive('prof-1', { notify: true, intervalMs: 60_000, fastIntervalMs: 60_000 }),
+      useWhatsappConnectionKeepAlive('prof-1', { notify: true, intervalMs: 60_000, fastIntervalMs: 5_000 }),
     );
     await act(async () => { await Promise.resolve(); });
-    // primeira retentativa do backoff acontece em 2s
-    await act(async () => { await vi.advanceTimersByTimeAsync(2_100); });
+    // enquanto desconectado, a próxima verificação acontece no intervalo rápido
+    await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
 
     expect(queue.resume).toHaveBeenCalled();
     expect(queue.retryFailed).toHaveBeenCalled();
     expect(toastMock.success).toHaveBeenCalled();
   });
+
 
   it('propaga o status para o callback onStatus (usado para esconder o QR Code)', async () => {
     checkConnection.mockResolvedValue({ configured: true, connected: true, state: 'open' });

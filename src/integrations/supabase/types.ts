@@ -4398,7 +4398,6 @@ export type Database = {
           monthly_cost_usd: number
           notes: string | null
           status: string
-          token: string | null
           token_encrypted: string | null
           updated_at: string
         }
@@ -4413,7 +4412,6 @@ export type Database = {
           monthly_cost_usd?: number
           notes?: string | null
           status?: string
-          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }
@@ -4428,7 +4426,6 @@ export type Database = {
           monthly_cost_usd?: number
           notes?: string | null
           status?: string
-          token?: string | null
           token_encrypted?: string | null
           updated_at?: string
         }
@@ -5538,6 +5535,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_ultramsg_pool_token: {
+        Args: { _id: string; _token: string }
+        Returns: undefined
       }
       submit_document_fill_by_token:
         | {

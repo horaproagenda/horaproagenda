@@ -123,7 +123,7 @@ serve(async (req) => {
       line_items: [{
         quantity: 1,
         price_data: {
-          currency: "brl",
+          currency: cycle.currency || "brl",
           unit_amount: amount,
           product_data: {
             name: productName,

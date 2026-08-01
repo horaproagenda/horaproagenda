@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLANS, ALLOWED_SEATS, BILLING_PRICE_IDS, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
+import { PLANS, ALLOWED_SEATS, PRICE_LOOKUP_KEYS, FALLBACK_PER_SEAT_CYCLE_BRL, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
 
 describe('plans.ts', () => {
   it('exporta exatamente 8 planos com seats crescentes', () => {
@@ -20,11 +20,13 @@ describe('plans.ts', () => {
     expect(ALLOWED_SEATS).toEqual(PLANS.map(p => p.seats));
   });
 
-  it('BILLING_PRICE_IDS cobre 1, 6 e 12 meses com IDs Stripe válidos', () => {
+  it('PRICE_LOOKUP_KEYS cobre 1, 6 e 12 meses', () => {
     for (const months of [1, 6, 12]) {
-      expect(BILLING_PRICE_IDS[months]).toMatch(/^price_/);
+      expect(PRICE_LOOKUP_KEYS[months]).toMatch(/^horapro_seat_/);
+      expect(FALLBACK_PER_SEAT_CYCLE_BRL[months]).toBeGreaterThan(0);
     }
   });
+
 
   it('suggestPlan retorna o menor plano que comporta os usuários', () => {
     expect(suggestPlan(1).seats).toBe(1);

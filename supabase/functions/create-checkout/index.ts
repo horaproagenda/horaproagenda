@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePricing } from "../_shared/pricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,14 +11,10 @@ const corsHeaders = {
 // Seats permitidos (mantém sincronizado com src/lib/plans.ts).
 const ALLOWED_SEATS = new Set<number>([1, 3, 6, 10, 15, 20, 25, 30]);
 
-// Stripe price IDs recorrentes por ciclo (produto Hora Pro - Assinatura,
-// preço por 1 usuário). Cobrança = quantity (seats) × price do ciclo.
-// Conta Stripe: acct_1Tue8WDNBKGVlEDv (modo live).
-const BILLING_PRICE_IDS: Record<number, string> = {
-  1:  'price_1Tuf4ZDNBKGVlEDvehLJcVJX', // R$ 110,00 / mês
-  6:  'price_1Tuf5CDNBKGVlEDvaRVN4VqB', // R$ 645,62 / semestre
-  12: 'price_1Tuf5XDNBKGVlEDvwng5c269', // R$ 1.276,86 / ano
-};
+// Os price IDs NÃO são fixos em código: são resolvidos no Stripe pelas
+// lookup keys (horapro_seat_monthly / _semiannual / _annual). Para mudar o
+// valor, cria-se um preço novo no Stripe transferindo a lookup key.
+
 
 
 serve(async (req) => {
@@ -42,12 +39,22 @@ serve(async (req) => {
     const seats = Number(body?.seats ?? 0);
     const billingMonths = Number(body?.billingMonths ?? 1);
     if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
-    const cyclePrice = BILLING_PRICE_IDS[billingMonths];
-    if (!cyclePrice) throw new Error("billingMonths inválido");
+    if (![1, 6, 12].includes(billingMonths)) throw new Error("billingMonths inválido");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
+
+    // Preço vigente vem do Stripe (lookup key), nunca de constante em código.
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const pricing = await resolvePricing(stripe, supabaseAdmin);
+    const cyclePrice = pricing[billingMonths]?.price_id;
+    if (!cyclePrice) throw new Error(`Preço não encontrado no Stripe para ${billingMonths} mês(es)`);
+
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data[0]?.id;

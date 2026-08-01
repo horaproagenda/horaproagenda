@@ -5,6 +5,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { fetchPricingFromStripe } from "../_shared/pricing.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,8 +255,25 @@ serve(async (req) => {
         break;
       }
 
+      // ─────────────────────────────────────────────────────────────
+      // Mudança de preço no Stripe → atualiza o cache e o app em tempo real.
+      // ─────────────────────────────────────────────────────────────
+      case "price.created":
+      case "price.updated":
+      case "price.deleted":
+      case "product.updated": {
+        try {
+          await fetchPricingFromStripe(stripe, supabase);
+          log("Pricing cache refreshed", { type: event.type });
+        } catch (e) {
+          log("Pricing cache refresh failed", { msg: e instanceof Error ? e.message : String(e) });
+        }
+        break;
+      }
+
       default:
         log("Unhandled event", { type: event.type });
+
 
     }
 

@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
-import { PLANS, formatBRL, BILLING_PERIODS, periodTotal } from "@/lib/plans";
+import { PLANS, formatBRL } from "@/lib/plans";
+import { usePricing } from "@/hooks/usePricing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 export function AssinaturaSection() {
   const { user } = useAuth();
   const { subscription } = useAccountSubscription();
+  // Preços vindos do Stripe (fonte única da verdade), atualizados em tempo real.
+  const { plans, periods, perSeatMonthlyBRL, cycleTotal } = usePricing();
 
   // Ciclo padrão: o de maior economia (anual).
   const [billingMonths, setBillingMonths] = useState<number>(12);
@@ -50,16 +53,15 @@ export function AssinaturaSection() {
   const isGrandfathered = subscription?.is_grandfathered;
 
   const selectedPlan = useMemo(
-    () => PLANS.find((p) => p.seats === selectedSeats) ?? PLANS[0],
-    [selectedSeats],
+    () => plans.find((p) => p.seats === selectedSeats) ?? plans[0],
+    [plans, selectedSeats],
   );
 
   // Ciclo com maior desconto → base do destaque "Recomendado".
   const recommendedMonths = useMemo(
     () =>
-      BILLING_PERIODS.reduce((best, p) => (p.discount > best.discount ? p : best))
-        .months,
-    [],
+      periods.reduce((best, p) => (p.discount > best.discount ? p : best)).months,
+    [periods],
   );
 
   const [isPixLoading, setIsPixLoading] = useState(false);
@@ -205,7 +207,7 @@ export function AssinaturaSection() {
             <p className="text-xs text-muted-foreground">
               Base:{" "}
               <span className="font-medium text-foreground">
-                {formatBRL(selectedPlan.priceBRL / selectedPlan.seats)}
+                {formatBRL(perSeatMonthlyBRL)}
               </span>{" "}
               por usuário/mês.
             </p>
@@ -223,11 +225,12 @@ export function AssinaturaSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {BILLING_PERIODS.map((p) => (
+          {periods.map((p) => (
             <CycleCard
               key={p.months}
               months={p.months}
               plan={selectedPlan}
+              cycleTotal={cycleTotal}
               selected={billingMonths === p.months}
               recommended={p.months === recommendedMonths}
               currentActive={
@@ -243,6 +246,7 @@ export function AssinaturaSection() {
       {/* Passo 3: resumo + CTA */}
       <SubscriptionSummary
         plan={selectedPlan}
+        cycleTotal={cycleTotal}
         billingMonths={billingMonths}
         isActive={isActive}
         isLoading={isLoading}
@@ -261,6 +265,7 @@ export function AssinaturaSection() {
 interface CycleCardProps {
   months: number;
   plan: (typeof PLANS)[number];
+  cycleTotal: (seats: number, months: number) => number;
   selected: boolean;
   recommended: boolean;
   currentActive: boolean;
@@ -270,13 +275,14 @@ interface CycleCardProps {
 function CycleCard({
   months,
   plan,
+  cycleTotal,
   selected,
   recommended,
   currentActive,
   onSelect,
 }: CycleCardProps) {
   const meta = CYCLE_META[months];
-  const totalCycle = periodTotal(plan.priceBRL, months);
+  const totalCycle = cycleTotal(plan.seats, months);
   const effectiveMonthly = totalCycle / months;
   const fullPrice = plan.priceBRL * months;
   const saved = fullPrice - totalCycle;
@@ -370,6 +376,7 @@ function CycleCard({
 
 interface SubscriptionSummaryProps {
   plan: (typeof PLANS)[number];
+  cycleTotal: (seats: number, months: number) => number;
   billingMonths: number;
   isActive: boolean | undefined;
   isLoading: boolean;
@@ -382,6 +389,7 @@ interface SubscriptionSummaryProps {
 
 function SubscriptionSummary({
   plan,
+  cycleTotal,
   billingMonths,
   isActive,
   isLoading,
@@ -392,7 +400,7 @@ function SubscriptionSummary({
   onBoletoCheckout,
 }: SubscriptionSummaryProps) {
   const meta = CYCLE_META[billingMonths];
-  const planTotal = periodTotal(plan.priceBRL, billingMonths);
+  const planTotal = cycleTotal(plan.seats, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;

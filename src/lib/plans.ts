@@ -2,14 +2,35 @@
 // Modelo simplificado: existe UM produto no Stripe (Hora Pro - Assinatura) com
 // um price recorrente por ciclo. A cobrança é `quantity × price do ciclo`,
 // onde `quantity` é o número de usuários (seats) escolhido pelo cliente.
+//
+// IMPORTANTE — FONTE ÚNICA DA VERDADE DOS VALORES: o STRIPE.
+// Os valores abaixo são apenas FALLBACK (últimos valores conhecidos) usados
+// enquanto o app carrega ou se o Stripe estiver indisponível. Os preços reais
+// são resolvidos pelas lookup keys do Stripe e expostos por `usePricing()`
+// (frontend) e `_shared/pricing.ts` (edge functions).
+// Para mudar o preço: crie um preço novo no Stripe transferindo a lookup key.
 export interface Plan {
   seats: number;
   priceBRL: number; // preço mensal em reais (referência para exibição)
   name: string;
 }
 
-// Preço base por usuário/mês (R$). O total mensal do plano é seats × PER_SEAT_MONTHLY_BRL.
-export const PER_SEAT_MONTHLY_BRL = 110;
+/** Lookup keys fixas no Stripe, por ciclo (meses). */
+export const PRICE_LOOKUP_KEYS: Record<number, string> = {
+  1: 'horapro_seat_monthly',
+  6: 'horapro_seat_semiannual',
+  12: 'horapro_seat_annual',
+};
+
+/** FALLBACK — valor por usuário em cada ciclo (R$). Real vem do Stripe. */
+export const FALLBACK_PER_SEAT_CYCLE_BRL: Record<number, number> = {
+  1: 110,
+  6: 645.62,
+  12: 1276.86,
+};
+
+/** FALLBACK do preço base por usuário/mês (R$). Real vem do Stripe. */
+export const PER_SEAT_MONTHLY_BRL = FALLBACK_PER_SEAT_CYCLE_BRL[1];
 
 export const PLANS: Plan[] = [
   { seats: 1,  priceBRL: 1  * PER_SEAT_MONTHLY_BRL, name: '1 usuário'   },
@@ -29,10 +50,8 @@ export const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // Períodos de cobrança recorrente disponíveis: mensal, semestral e anual.
-// Descontos calibrados para que 1 usuário pague exatamente:
-//   Mensal:    R$ 110,00 / mês
-//   Semestral: R$ 645,62 a cada 6 meses  (economia ~R$ 14,38)
-//   Anual:     R$ 1.276,86 / ano         (economia ~R$ 43,14)
+// Os descontos são recalculados em tempo real por `usePricing()` a partir dos
+// preços reais do Stripe; os valores abaixo são apenas fallback de exibição.
 export interface BillingPeriod {
   months: number;
   discount: number; // 0..1 — aplicado ao total do ciclo (seats × mensal × meses)
@@ -41,19 +60,19 @@ export interface BillingPeriod {
 }
 
 export const BILLING_PERIODS: BillingPeriod[] = [
-  { months: 1,  discount: 0,                    label: 'Mensal' },
-  { months: 6,  discount: 1 - 645.62 / 660,     label: 'Semestral', badge: '-2%' },
-  { months: 12, discount: 1 - 1276.86 / 1320,   label: 'Anual',     badge: '-3%' },
+  { months: 1,  discount: 0, label: 'Mensal' },
+  {
+    months: 6,
+    discount: 1 - FALLBACK_PER_SEAT_CYCLE_BRL[6] / (FALLBACK_PER_SEAT_CYCLE_BRL[1] * 6),
+    label: 'Semestral',
+  },
+  {
+    months: 12,
+    discount: 1 - FALLBACK_PER_SEAT_CYCLE_BRL[12] / (FALLBACK_PER_SEAT_CYCLE_BRL[1] * 12),
+    label: 'Anual',
+  },
 ];
 
-// Stripe price IDs por ciclo (produto Hora Pro - Assinatura, preço por 1 usuário).
-// Conta Stripe: acct_1Tue8WDNBKGVlEDv (Hora Pro Agenda, modo live).
-// A quantidade cobrada no checkout é `seats`.
-export const BILLING_PRICE_IDS: Record<number, string> = {
-  1:  'price_1Tuf4ZDNBKGVlEDvehLJcVJX', // R$ 110,00 / mês
-  6:  'price_1Tuf5CDNBKGVlEDvaRVN4VqB', // R$ 645,62 / semestre
-  12: 'price_1Tuf5XDNBKGVlEDvwng5c269', // R$ 1.276,86 / ano
-};
 
 
 /** Calcula total para N meses aplicando o desconto correspondente. */

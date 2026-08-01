@@ -4,7 +4,7 @@ import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.t
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 const PUBLIC_APP_BASE = (Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://horaproagenda.app').replace(/\/+$/, '');
@@ -421,8 +421,22 @@ serve(async (req) => {
   };
 
   try {
-    const { data: settings } = await supabase.from('business_settings').select('automation_whatsapp_reminders').limit(1).maybeSingle();
-    if (!settings?.automation_whatsapp_reminders) {
+    // Gate por conta (multi-tenant): antes lia apenas UMA linha de
+    // business_settings, então uma conta com automação desligada bloqueava os
+    // lembretes de TODAS as outras. Agora cada conta é avaliada isoladamente.
+    const { data: settingsRows } = await supabase
+      .from('business_settings')
+      .select('account_owner_id, automation_whatsapp_reminders');
+    const remindersByAccount = new Map<string, boolean>();
+    for (const s of settingsRows || []) {
+      remindersByAccount.set(String((s as any).account_owner_id), (s as any).automation_whatsapp_reminders !== false);
+    }
+    const accountEnabled = (accountOwnerId: string | null | undefined): boolean => {
+      if (!accountOwnerId) return true;
+      const v = remindersByAccount.get(String(accountOwnerId));
+      return v === undefined ? true : v;
+    };
+    if ((settingsRows || []).length > 0 && ![...remindersByAccount.values()].some(Boolean)) {
       return new Response(JSON.stringify({ success: true, message: 'Envios desativados', summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

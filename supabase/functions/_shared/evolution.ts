@@ -177,12 +177,31 @@ export async function evolutionRestart(override: EvolutionCreds) {
 }
 
 /**
- * Garante que a instância volte a ficar conectada sem exigir novo QR Code:
- * se o estado não for `open`, reinicia o socket e reconsulta com backoff curto.
+ * Garante que a instância volte a ficar conectada sem exigir novo QR Code.
+ *
+ * IMPORTANTE: só reinicia o socket quando o estado é `close` (sessão caiu de
+ * fato). Reiniciar durante `connecting` aborta o pareamento em andamento — era
+ * exatamente isso que fazia o WhatsApp "conectar e cair poucos minutos depois",
+ * porque o polling do app e o cron do keepalive reiniciavam a instância no meio
+ * da negociação da sessão.
  */
 export async function evolutionEnsureConnected(override: EvolutionCreds) {
   const first = await evolutionStatus(override);
   if (first.connected || first.state === 'not_created') return { ...first, recovered: false };
+
+  // `connecting` = pareamento/negociação em andamento. Apenas aguarda.
+  if (first.state === 'connecting') {
+    for (const delay of [2000, 3000, 5000]) {
+      await new Promise((r) => setTimeout(r, delay));
+      const st = await evolutionStatus(override);
+      if (st.connected) {
+        await evolutionSetSettings(override);
+        return { ...st, recovered: true };
+      }
+      if (st.state && st.state !== 'connecting') break;
+    }
+    return { ...first, recovered: false, skippedRestart: true };
+  }
 
   try {
     await evolutionRestart(override);
@@ -199,6 +218,7 @@ export async function evolutionEnsureConnected(override: EvolutionCreds) {
   }
   return { ...first, recovered: false };
 }
+
 
 /** Cria a instância no servidor Evolution (idempotente). */
 export async function evolutionEnsureInstance(override: EvolutionCreds) {

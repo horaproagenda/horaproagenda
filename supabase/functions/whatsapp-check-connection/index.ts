@@ -83,12 +83,14 @@ serve(async (req) => {
     // Auto-reconexão: se a sessão caiu (state !== 'open') mas a instância já
     // existe, reinicia o socket reaproveitando a sessão salva — evita que o
     // usuário precise escanear um novo QR Code a cada oscilação de rede.
-    // Throttled: no máximo 1 tentativa a cada 60s por instância.
+    // Throttled: no máximo 1 tentativa a cada 60s por instância. E somente
+    // quando o estado é `close` — reiniciar durante `connecting` cancela o
+    // pareamento em andamento e era a causa da queda poucos minutos depois.
     const autoRecover = body_autoRecover !== false;
     const recoverKey = resolved.evolution?.instance || professional_id;
     const lastTry = lastRecoverAt.get(recoverKey) ?? 0;
     if (
-      !st.connected && st.state && st.state !== 'not_created' && autoRecover &&
+      !st.connected && st.state === 'close' && autoRecover &&
       Date.now() - lastTry > RECOVER_COOLDOWN_MS
     ) {
       lastRecoverAt.set(recoverKey, Date.now());
@@ -97,6 +99,7 @@ serve(async (req) => {
         if (recovered?.connected) st = recovered;
       } catch (_) { /* mantém o status original */ }
     }
+
 
     if (professional_id && source === 'professional') {
       await supabaseService

@@ -57,18 +57,17 @@ serve(async (req) => {
 
     const results: Array<Record<string, unknown>> = [];
 
-    // Fonte da verdade = secrets do projeto. Se a chave/URL da VPS mudou,
-    // reescreve as credenciais salvas antes de qualquer chamada, para nunca
-    // rodar com valor desatualizado.
+    // Fonte da verdade = secrets do projeto. Se a URL da VPS mudou, reescreve
+    // a credencial salva antes de qualquer chamada. O token em texto puro não é
+    // mais armazenado (segurança) — por isso só a URL é comparada aqui.
     let resynced = 0;
-    if (envBase && envKey) {
-      const stale = (rows ?? []).filter((r) => r.token !== envKey || r.api_url !== envBase);
+    if (envBase) {
+      const stale = (rows ?? []).filter((r) => r.api_url !== envBase);
       for (const row of stale) {
         await supabase
           .from('professional_whatsapp_credentials')
-          .update({ token: envKey, api_url: envBase, updated_at: new Date().toISOString() })
+          .update({ api_url: envBase, updated_at: new Date().toISOString() })
           .eq('professional_id', row.professional_id);
-        row.token = envKey;
         row.api_url = envBase;
         resynced++;
       }
@@ -90,7 +89,9 @@ serve(async (req) => {
         const st: any = await evolutionStatus(creds);
         state = st.state ?? null;
         connected = st.connected === true;
-        if (!connected && state && state !== 'not_created') {
+        // Só reinicia quando a sessão realmente caiu (`close`). Reiniciar em
+        // `connecting` cancela o pareamento e derruba a conexão recém-feita.
+        if (!connected && state === 'close') {
           const fixed: any = await evolutionEnsureConnected(creds);
           connected = fixed.connected === true;
           recovered = connected;
@@ -100,6 +101,7 @@ serve(async (req) => {
       } catch (e) {
         state = e instanceof Error ? e.message.slice(0, 120) : 'error';
       }
+
 
       await supabase
         .from('professional_whatsapp_credentials')

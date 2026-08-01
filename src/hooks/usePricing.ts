@@ -60,34 +60,40 @@ export function usePricing() {
   const query = useQuery({
     queryKey: ['pricing-cache'],
     queryFn: async (): Promise<Record<number, CyclePricing>> => {
+      // 1) Stripe é a fonte da verdade: get-pricing lê o Stripe pelas lookup
+      //    keys e já atualiza public.pricing_cache.
+      const { data: fn, error: fnErr } = await supabase.functions.invoke('get-pricing');
+      if (!fnErr && Array.isArray(fn?.cycles) && fn.cycles.length > 0) {
+        const rows = (fn.cycles as Array<{
+          lookup_key: string;
+          price_id: string;
+          unit_amount: number;
+          currency: string;
+          months: number;
+        }>).map((c) => ({
+          lookup_key: c.lookup_key,
+          price_id: c.price_id,
+          unit_amount: c.unit_amount,
+          currency: c.currency,
+          interval_months: c.months,
+        })) as PricingRow[];
+        return buildCycles(rows);
+      }
+      if (fnErr) console.warn('[usePricing] get-pricing failed:', fnErr.message);
+
+      // 2) Fallback: última leitura válida guardada no Supabase.
       const { data, error } = await supabase
         .from('pricing_cache')
         .select('lookup_key, price_id, unit_amount, currency, interval_months')
         .eq('active', true);
-
       if (error) console.warn('[usePricing] cache read error:', error.message);
-
-      if (!error && data && data.length > 0) {
-        return buildCycles(data as PricingRow[]);
-      }
-
-      // Cache vazio → busca no Stripe (e popula o cache para as próximas).
-      const { data: fn, error: fnErr } = await supabase.functions.invoke('get-pricing');
-      if (fnErr) {
-        console.warn('[usePricing] get-pricing failed:', fnErr.message);
-        return buildCycles(null);
-      }
-      const rows = (fn?.cycles ?? []).map((c: { lookup_key: string; price_id: string; unit_amount: number; currency: string; months: number }) => ({
-        lookup_key: c.lookup_key,
-        price_id: c.price_id,
-        unit_amount: c.unit_amount,
-        currency: c.currency,
-        interval_months: c.months,
-      })) as PricingRow[];
-      return buildCycles(rows.length > 0 ? rows : null);
+      return buildCycles(data && data.length > 0 ? (data as PricingRow[]) : null);
     },
     staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60_000,
   });
+
 
   // Realtime: preço alterado no Stripe → webhook grava no cache → refetch.
   useEffect(() => {

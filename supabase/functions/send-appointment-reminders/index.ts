@@ -570,7 +570,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -586,7 +586,9 @@ serve(async (req) => {
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
-          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
+          if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
+          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
+        if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const applicableTpls = pickTpls('reminder', profId);
           if (applicableTpls.length === 0) continue;
           for (const tpl of applicableTpls) {
@@ -661,7 +663,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -677,7 +679,9 @@ serve(async (req) => {
           const start = new Date(apt.start_time as string);
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
-          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
+          if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
+          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
+        if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const applicableTpls = pickTpls('confirmation', profId);
           if (applicableTpls.length === 0) continue;
           for (const tpl of applicableTpls) {
@@ -742,7 +746,7 @@ serve(async (req) => {
         const toIso = new Date(now - (minO - 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, end_time, start_time, status, professional_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, end_time, start_time, status, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('end_time', fromIso).lte('end_time', toIso).eq('status', 'completed');
 
         for (const apt of appts || []) {
@@ -752,7 +756,9 @@ serve(async (req) => {
           const end = new Date((apt as any).end_time || apt.start_time);
           const hoursAfter = (now - end.getTime()) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
-          if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
+          if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
+          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
+        if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('follow_up', profId);
           if (!tpl) continue;
           const off = Number(tpl.send_offset_hours);
@@ -793,13 +799,14 @@ serve(async (req) => {
       const dd = String(today.getUTCDate()).padStart(2, '0');
 
       const { data: clients } = await supabase
-        .from('clients').select('id, name, phone, birthdate, assigned_professional_id, is_active').not('birthdate', 'is', null).eq('is_active', true);
+        .from('clients').select('id, name, phone, birthdate, assigned_professional_id, is_active, account_owner_id').not('birthdate', 'is', null).eq('is_active', true);
 
       for (const c of clients || []) {
         if (!c.phone || !c.birthdate) continue;
         const bd = String(c.birthdate);
         if (bd.substring(5, 7) !== mm || bd.substring(8, 10) !== dd) continue;
         const profId = (c as any).assigned_professional_id ?? null;
+        if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
         const tpl = pickTpl('birthday', profId);
         if (!tpl) continue;

@@ -50,8 +50,12 @@ project_id = "nsgcllrbswodjoadybsj"
   [functions.stripe-webhook]
     verify_jwt = false
 
+  [functions.get-pricing]
+    verify_jwt = false
+
   [functions.create-pix-checkout]
     verify_jwt = false
+
 
   [functions.send-contact-change-code]
     verify_jwt = true

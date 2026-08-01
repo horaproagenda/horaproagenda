@@ -13,10 +13,12 @@ import { template as verificationCode } from './verification-code.tsx'
 import { template as accountStatusUpdate } from './account-status-update.tsx'
 import { template as contactChangeCode } from './contact-change-code.tsx'
 import { template as newSignupNotification } from './new-signup-notification.tsx'
+import { template as interestLeadNotification } from './interest-lead-notification.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'verification-code': verificationCode,
   'account-status-update': accountStatusUpdate,
   'contact-change-code': contactChangeCode,
   'new-signup-notification': newSignupNotification,
+  'interest-lead-notification': interestLeadNotification,
 }

@@ -170,6 +170,27 @@ function InterestForm() {
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 500) : null,
       });
       if (error) throw error;
+
+      // Notifica a equipe por e-mail (horaproagenda@gmail.com). Uma falha aqui
+      // não deve impedir o registro do lead.
+      try {
+        await supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'interest-lead-notification',
+            templateData: {
+              name: parsed.name,
+              email: parsed.email,
+              whatsapp: parsed.whatsapp || '',
+              businessArea: parsed.business_area || '',
+              message: parsed.message || '',
+              receivedAt: new Date().toLocaleString('pt-BR'),
+            },
+          },
+        });
+      } catch (mailErr) {
+        console.error('Falha ao notificar novo lead por e-mail', mailErr);
+      }
+
       setSubmitted(true);
       toast.success('Recebemos seu interesse! Entraremos em contato em breve.');
     } catch (err) {

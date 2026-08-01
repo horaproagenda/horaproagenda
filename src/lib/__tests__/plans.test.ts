@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLANS, ALLOWED_SEATS, BILLING_PRICE_IDS, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
+import { PLANS, ALLOWED_SEATS, PRICE_LOOKUP_KEYS, FALLBACK_PER_SEAT_CYCLE_BRL, suggestPlan, formatBRL, APP_MODULES } from '@/lib/plans';
 
 describe('plans.ts', () => {
   it('exporta exatamente 8 planos com seats crescentes', () => {

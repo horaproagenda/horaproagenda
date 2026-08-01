@@ -1,11 +1,12 @@
 // Checkout de pagamento antecipado (prepay) — mode: 'payment'.
 // Suporta Pix (default) e Boleto via body.methods = ['pix'] | ['boleto'] | ['pix','boleto'].
-// Valor = seats × mensal × meses × (1-desconto).
+// Valor = seats × unit_amount do preço vigente no Stripe (lookup key do ciclo).
 // Quando o pagamento é confirmado (async_payment_succeeded), o stripe-webhook
 // lê metadata.kind='prepay' e estende current_period_end pelo número de meses pagos.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePricing } from "../_shared/pricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,15 +14,7 @@ const corsHeaders = {
 };
 
 const ALLOWED_SEATS = new Set<number>([1, 3, 6, 10, 15, 20, 25, 30]);
-const PER_SEAT_MONTHLY_CENTS = 11000; // R$ 110,00
 
-// Total em centavos para N meses (espelha BILLING_PERIODS em src/lib/plans.ts).
-function totalCents(seats: number, months: number): number {
-  const base = seats * PER_SEAT_MONTHLY_CENTS * months;
-  if (months === 6) return Math.round(seats * 64562);   // R$ 645,62 por seat
-  if (months === 12) return Math.round(seats * 127686); // R$ 1.276,86 por seat
-  return base;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

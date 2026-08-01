@@ -2778,6 +2778,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_cache: {
+        Row: {
+          active: boolean
+          created_at: string
+          currency: string
+          interval_months: number
+          lookup_key: string
+          price_id: string
+          unit_amount: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          interval_months: number
+          lookup_key: string
+          price_id: string
+          unit_amount: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          interval_months?: number
+          lookup_key?: string
+          price_id?: string
+          unit_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       processed_stripe_events: {
         Row: {
           event_id: string

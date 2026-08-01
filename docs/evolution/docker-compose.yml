@@ -10,7 +10,7 @@ version: "3.8"
 
 services:
   evolution:
-    image: atendai/evolution-api:v2.1.1
+    image: atendai/evolution-api:v2.3.7
     container_name: evolution_api
     restart: always
     ports:
@@ -52,6 +52,9 @@ services:
       QRCODE_COLOR: "#0F172A"
       CONFIG_SESSION_PHONE_CLIENT: "Hora Pro"
       CONFIG_SESSION_PHONE_NAME: "Chrome"
+      # Versão do WhatsApp Web usada pelo Baileys. Quando fica desatualizada, a
+      # sessão conecta e cai poucos minutos depois. Pode ser sobrescrita no .env.
+      CONFIG_SESSION_PHONE_VERSION: ${CONFIG_SESSION_PHONE_VERSION:-2.3000.1027934701}
       LOG_LEVEL: ERROR
       LOG_BAILEYS: error
     volumes:

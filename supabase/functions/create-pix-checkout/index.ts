@@ -46,12 +46,22 @@ serve(async (req) => {
     if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
     if (![1, 6, 12].includes(billingMonths)) throw new Error("billingMonths inválido");
 
-    const amount = totalCents(seats, billingMonths);
-    if (amount <= 0) throw new Error("Valor calculado inválido");
-
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
+
+    // Valor vem do preço vigente no Stripe (lookup key do ciclo) × seats.
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const pricing = await resolvePricing(stripe, supabaseAdmin);
+    const cycle = pricing[billingMonths];
+    if (!cycle) throw new Error(`Preço não encontrado no Stripe para ${billingMonths} mês(es)`);
+    const amount = seats * cycle.unit_amount;
+    if (amount <= 0) throw new Error("Valor calculado inválido");
+
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId = customers.data[0]?.id;

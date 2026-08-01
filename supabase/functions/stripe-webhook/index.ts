@@ -253,8 +253,25 @@ serve(async (req) => {
         break;
       }
 
+      // ─────────────────────────────────────────────────────────────
+      // Mudança de preço no Stripe → atualiza o cache e o app em tempo real.
+      // ─────────────────────────────────────────────────────────────
+      case "price.created":
+      case "price.updated":
+      case "price.deleted":
+      case "product.updated": {
+        try {
+          await fetchPricingFromStripe(stripe, supabase);
+          log("Pricing cache refreshed", { type: event.type });
+        } catch (e) {
+          log("Pricing cache refresh failed", { msg: e instanceof Error ? e.message : String(e) });
+        }
+        break;
+      }
+
       default:
         log("Unhandled event", { type: event.type });
+
 
     }
 

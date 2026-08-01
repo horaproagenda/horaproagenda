@@ -587,7 +587,6 @@ serve(async (req) => {
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
-          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const applicableTpls = pickTpls('reminder', profId);
           if (applicableTpls.length === 0) continue;
@@ -680,7 +679,6 @@ serve(async (req) => {
           const hoursDiff = (start.getTime() - now) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
-          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const applicableTpls = pickTpls('confirmation', profId);
           if (applicableTpls.length === 0) continue;
@@ -757,7 +755,6 @@ serve(async (req) => {
           const hoursAfter = (now - end.getTime()) / 3600_000;
           const profId = (apt as any).professional_id ?? null;
           if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
-          if (!accountEnabled((c as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
           const tpl = pickTpl('follow_up', profId);
           if (!tpl) continue;

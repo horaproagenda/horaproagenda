@@ -39,12 +39,22 @@ serve(async (req) => {
     const seats = Number(body?.seats ?? 0);
     const billingMonths = Number(body?.billingMonths ?? 1);
     if (!ALLOWED_SEATS.has(seats)) throw new Error("seats inválido");
-    const cyclePrice = BILLING_PRICE_IDS[billingMonths];
-    if (!cyclePrice) throw new Error("billingMonths inválido");
+    if (![1, 6, 12].includes(billingMonths)) throw new Error("billingMonths inválido");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
+
+    // Preço vigente vem do Stripe (lookup key), nunca de constante em código.
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+    const pricing = await resolvePricing(stripe, supabaseAdmin);
+    const cyclePrice = pricing[billingMonths]?.price_id;
+    if (!cyclePrice) throw new Error(`Preço não encontrado no Stripe para ${billingMonths} mês(es)`);
+
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data[0]?.id;

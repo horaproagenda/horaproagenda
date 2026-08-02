@@ -111,8 +111,13 @@ async function evolutionFetch(
 const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'];
 
 function webhookUrl() {
-  return `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
+  const base = `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
+  // O webhook é público (verify_jwt=false) mas valida um segredo compartilhado:
+  // sem o token na URL, o receptor rejeita o evento (fail-closed).
+  const token = (Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '').trim();
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
+
 
 /** Registra/atualiza o webhook da instância (Evolution v2: /webhook/set/{instance}). */
 async function evolutionSetWebhook(override: EvolutionCreds) {

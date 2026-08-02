@@ -48,6 +48,19 @@ async function findOwnerByCustomer(customerId: string, fallbackEmail?: string | 
   return u?.id ?? null;
 }
 
+/**
+ * Na API basil, `current_period_end` vive no subscription item (não no
+ * objeto Subscription). Ler direto de `sub` gerava Invalid Date.
+ */
+function subPeriodEnd(sub: Stripe.Subscription): Date | null {
+  // deno-lint-ignore no-explicit-any
+  const s = sub as any;
+  const raw = s.current_period_end ?? s.items?.data?.[0]?.current_period_end ?? null;
+  if (!raw) return null;
+  const d = new Date(Number(raw) * 1000);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 async function syncSubscription(sub: Stripe.Subscription) {
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
   const ownerId = await findOwnerByCustomer(customerId);
@@ -74,7 +87,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
       stripe_price_id: priceId,
       plan_tier: seats,
       seat_limit: seats,
-      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      ...(subPeriodEnd(sub) ? { current_period_end: subPeriodEnd(sub)!.toISOString() } : {}),
     })
     .eq('owner_user_id', ownerId);
 
@@ -86,7 +99,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
       ownerId,
       'past_due',
       {},
-      `stripe-sub-past-due-${sub.id}-${sub.current_period_end}`,
+      `stripe-sub-past-due-${sub.id}-${subPeriodEnd(sub)?.getTime() ?? 0}`,
     );
   }
 }
@@ -179,7 +192,7 @@ serve(async (req) => {
           const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
           const ownerId = await findOwnerByCustomer(customerId);
           if (ownerId) {
-            const periodEnd = new Date(sub.current_period_end * 1000);
+            const periodEnd = subPeriodEnd(sub) ?? new Date();
             const item = sub.items.data[0];
             const seats = item?.quantity ?? 0;
             await sendAccountEmail(

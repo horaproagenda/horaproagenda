@@ -79,6 +79,31 @@ export async function fetchPricingFromStripe(
   return map;
 }
 
+/** Lê o cache e informa se ainda está dentro do TTL. */
+export async function fetchPricingFromCacheWithAge(
+  supabase: SupabaseClient,
+): Promise<{ fresh: boolean; map: PricingMap }> {
+  const { data, error } = await supabase
+    .from("pricing_cache")
+    .select("lookup_key, price_id, unit_amount, currency, interval_months, updated_at")
+    .eq("active", true);
+  if (error || !data || data.length === 0) return { fresh: false, map: {} };
+  const map: PricingMap = {};
+  let oldest = Date.now();
+  for (const row of data) {
+    map[row.interval_months as number] = {
+      months: row.interval_months as number,
+      lookup_key: row.lookup_key as string,
+      price_id: row.price_id as string,
+      unit_amount: row.unit_amount as number,
+      currency: row.currency as string,
+    };
+    const ts = row.updated_at ? new Date(row.updated_at as string).getTime() : 0;
+    if (ts < oldest) oldest = ts;
+  }
+  return { fresh: Date.now() - oldest < CACHE_TTL_MS, map };
+}
+
 /** Lê o cache no Supabase (fallback quando o Stripe está indisponível). */
 export async function fetchPricingFromCache(supabase: SupabaseClient): Promise<PricingMap> {
   const { data, error } = await supabase
@@ -99,19 +124,40 @@ export async function fetchPricingFromCache(supabase: SupabaseClient): Promise<P
   return map;
 }
 
-/** Stripe primeiro; se falhar, cache. Lança se nenhum dos dois responder. */
+// Memo por isolate + TTL do cache: evita bater no Stripe em cada request
+// (o que estourava o rate limit e derrubava os checkouts com 500).
+const MEMO_TTL_MS = 5 * 60_000;
+const CACHE_TTL_MS = 10 * 60_000;
+let memo: { at: number; map: PricingMap } | null = null;
+
+/** Cache fresco primeiro; Stripe só quando o cache está vazio ou velho. */
 export async function resolvePricing(
   stripe: Stripe,
   supabase: SupabaseClient,
+  opts: { force?: boolean } = {},
 ): Promise<PricingMap> {
+  if (!opts.force && memo && Date.now() - memo.at < MEMO_TTL_MS) return memo.map;
+
+  if (!opts.force) {
+    const { fresh, map } = await fetchPricingFromCacheWithAge(supabase);
+    if (fresh && Object.keys(map).length > 0) {
+      memo = { at: Date.now(), map };
+      return map;
+    }
+  }
+
   try {
     const fromStripe = await fetchPricingFromStripe(stripe, supabase);
-    if (Object.keys(fromStripe).length > 0) return fromStripe;
+    if (Object.keys(fromStripe).length > 0) {
+      memo = { at: Date.now(), map: fromStripe };
+      return fromStripe;
+    }
     console.warn("[pricing] Stripe returned no prices for lookup keys");
   } catch (e) {
     console.error("[pricing] Stripe lookup failed:", e instanceof Error ? e.message : e);
   }
   const cached = await fetchPricingFromCache(supabase);
+  if (Object.keys(cached).length > 0) memo = { at: Date.now(), map: cached };
   if (Object.keys(cached).length === 0) {
     throw new Error(
       "Preços indisponíveis: nenhum preço ativo encontrado no Stripe para as lookup keys " +

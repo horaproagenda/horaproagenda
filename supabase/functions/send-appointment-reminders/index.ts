@@ -420,21 +420,27 @@ serve(async (req) => {
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   let catchup = true;
   let drain = false;
+  // Janela de recuperação (horas) para disparos perdidos — padrão 1h.
+  // Permite reprocessar lembretes presos por incidentes sem reenviar duplicatas
+  // (o UNIQUE do appointment_reminder_log continua garantindo 1 envio).
+  let catchupHours = 1;
   let force = false;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       catchup = body?.catchup !== false;
       drain = body?.drain === true;
+      catchupHours = Math.min(Math.max(Number(body?.catchup_hours ?? 1) || 1, 1), 72);
       force = body?.force === true;
     } else {
       const url = new URL(req.url);
       catchup = url.searchParams.get('catchup') !== 'false';
       drain = url.searchParams.get('drain') === 'true';
+      catchupHours = Math.min(Math.max(Number(url.searchParams.get('catchup_hours') ?? 1) || 1, 1), 72);
       force = url.searchParams.get('force') === 'true';
     }
   } catch (_) { /* ignore */ }
-  const summary: any = { catchup, drain, force, sent: 0, skipped: 0, skippedByWindow: 0, skippedInvalidPhone: 0, queued: 0, retriedSent: 0, retriedFailed: 0, drained: 0, errors: [] as string[], invalidPhones: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
+  const summary: any = { catchup, drain, catchupHours, force, sent: 0, skipped: 0, skippedByWindow: 0, skippedInvalidPhone: 0, queued: 0, retriedSent: 0, retriedFailed: 0, drained: 0, errors: [] as string[], invalidPhones: [] as string[], byType: { reminder: 0, confirmation: 0, follow_up: 0, birthday: 0 } };
 
   // Phone helper: skip clearly invalid numbers and surface them so admin can fix.
   const isValidBrPhone = (raw: string | null | undefined): boolean => {
@@ -633,7 +639,7 @@ serve(async (req) => {
           // Catchup: só recupera disparos perdidos por até 1h. Antes disso
           // permitir hoursDiff <= h fazia o template de 5 dias (120h) disparar
           // junto com o de 24h quando o agendamento era criado tarde.
-          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -catchupHours;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase
@@ -728,7 +734,7 @@ serve(async (req) => {
             const triggerHour = Number(new Date(triggerMs).toLocaleString('pt-BR', { hour: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' }));
             if (!withinWindow(w.start, w.end, triggerHour)) preemptive = true;
           }
-          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -1;
+          const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -catchupHours;
           if (!inBand && !preemptive && !catchupOk) continue;
 
           const { data: existing } = await supabase

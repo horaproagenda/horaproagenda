@@ -22,7 +22,7 @@ import {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 function json(payload: unknown, status = 200) {
@@ -32,10 +32,49 @@ function json(payload: unknown, status = 200) {
   });
 }
 
+/**
+ * Este job afeta TODOS os tenants (reinicia sessões e destrava filas), então
+ * nunca pode ser público: exige o segredo do cron (x-cron-secret) ou um JWT
+ * de usuário com papel administrativo.
+ */
+async function isAuthorized(req: Request): Promise<boolean> {
+  const cronSecret = (Deno.env.get('CRON_SECRET') || '').trim();
+  const providedCron = req.headers.get('x-cron-secret');
+  if (cronSecret && providedCron && providedCron === cronSecret) return true;
+
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const token = authHeader.replace('Bearer ', '').trim();
+
+  // O service role key é usado nas chamadas internas (webhook/check-connection).
+  const serviceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
+  if (serviceKey && token === serviceKey) return true;
+
+  try {
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data, error } = await userClient.auth.getClaims(token);
+    const userId = data?.claims?.sub;
+    if (error || !userId) return false;
+    const { data: roles } = await userClient.from('user_roles').select('role').eq('user_id', userId);
+    const names = (roles || []).map((r: any) => r.role);
+    return names.includes('admin') || names.includes('super_admin');
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    if (!(await isAuthorized(req))) {
+      return json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
     if (!evolutionServerConfigured()) {
       return json({ success: false, error: 'Servidor Evolution API não configurado.' });
     }

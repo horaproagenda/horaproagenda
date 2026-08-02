@@ -160,7 +160,7 @@ async function enqueueRetry(
   payload: {
     to: string; body: string; appointment_id?: string | null; professional_id?: string | null;
     template_type?: string; hours_before?: number; provider?: string; dedup_key?: string; reason?: string;
-    error?: string;
+    error?: string; account_owner_id?: string | null;
   },
 ) {
   try {
@@ -175,6 +175,7 @@ async function enqueueRetry(
       provider: payload.provider ?? 'whatsapp',
       dedup_key: payload.dedup_key ?? null,
       reason: payload.reason ?? null,
+      account_owner_id: payload.account_owner_id ?? null,
       last_error: payload.error ?? null,
       next_attempt_at: next,
       status: 'pending',
@@ -183,6 +184,13 @@ async function enqueueRetry(
   } catch (e) {
     console.warn('enqueueRetry failed:', e);
   }
+}
+
+/** Só o UNIQUE(appointment_id, hours_before, provider) indica duplicidade real. */
+function isDuplicateLockError(err: any): boolean {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '').toLowerCase();
+  return code === '23505' || msg.includes('duplicate key');
 }
 
 function hasTemplatePlaceholders(body: string): boolean {
@@ -284,11 +292,25 @@ async function processQueue(supabase: any, summary: any) {
           provider: row.provider,
           channel: 'whatsapp',
           status: 'pending',
+          account_owner_id: row.account_owner_id ?? null,
         });
         if (lockErr) {
-          await supabase.from('whatsapp_send_queue').update({
-            status: 'sent', last_error: 'duplicate (already logged)', updated_at: new Date().toISOString(),
-          }).eq('id', row.id);
+          // APENAS violação de UNIQUE significa "já enviado". Qualquer outro erro
+          // (ex.: coluna obrigatória, RLS) NÃO pode marcar como enviado — antes
+          // isso silenciava falhas e as mensagens nunca saíam.
+          if (isDuplicateLockError(lockErr)) {
+            await supabase.from('whatsapp_send_queue').update({
+              status: 'sent', last_error: 'duplicate (already logged)', updated_at: new Date().toISOString(),
+            }).eq('id', row.id);
+          } else {
+            console.error('lock insert falhou (fila):', lockErr);
+            await supabase.from('whatsapp_send_queue').update({
+              status: 'pending',
+              last_error: `lock_error: ${lockErr.message || lockErr.code}`,
+              next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
+              updated_at: new Date().toISOString(),
+            }).eq('id', row.id);
+          }
           continue;
         }
       }
@@ -337,6 +359,7 @@ async function trySend(
   payload: {
     to: string; body: string; appointment_id?: string | null; professional_id?: string | null;
     template_type?: string; hours_before?: number; provider?: string; dedup_key?: string;
+    account_owner_id?: string | null;
   },
   summary: any,
 ): Promise<boolean> {
@@ -549,6 +572,7 @@ serve(async (req) => {
             provider: payload.provider ?? 'whatsapp',
             dedup_key: payload.dedup_key ?? null,
             reason: 'outside_window',
+            account_owner_id: (payload as any).account_owner_id ?? null,
             next_attempt_at: nextAt.toISOString(),
             status: 'pending',
             updated_at: new Date().toISOString(),
@@ -626,6 +650,7 @@ serve(async (req) => {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'reminder', hours_before: h, provider: 'whatsapp',
             dedup_key: `reminder-${apt.id}-${h}`,
+            account_owner_id: (apt as any).account_owner_id ?? null,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
           // Lock atômico via UNIQUE(appointment_id, hours_before, provider):
@@ -633,8 +658,15 @@ serve(async (req) => {
           // cron não disparem o mesmo lembrete duas vezes.
           const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
             appointment_id: apt.id, hours_before: h, provider: 'whatsapp', channel: 'whatsapp', status: 'pending',
+            account_owner_id: (apt as any).account_owner_id ?? null,
           });
-          if (lockErr) { summary.skipped++; continue; }
+          if (lockErr) {
+            if (!isDuplicateLockError(lockErr)) {
+              console.error('lock insert falhou (reminder):', lockErr);
+              summary.errors.push(`reminder:${apt.id}: lock_error ${lockErr.message || lockErr.code}`);
+            }
+            summary.skipped++; continue;
+          }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
             await supabase.from('appointment_reminder_log')
@@ -713,12 +745,20 @@ serve(async (req) => {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
             template_type: 'confirmation', hours_before: h, provider: 'whatsapp_confirmation',
             dedup_key: `confirmation-${apt.id}-${h}`,
+            account_owner_id: (apt as any).account_owner_id ?? null,
           };
           if (!(await guardWindow(getProf(profId), tpl, payload, start.getTime(), h))) continue;
           const { error: lockErr } = await supabase.from('appointment_reminder_log').insert({
             appointment_id: apt.id, hours_before: h, provider: 'whatsapp_confirmation', channel: 'whatsapp', status: 'pending',
+            account_owner_id: (apt as any).account_owner_id ?? null,
           });
-          if (lockErr) { summary.skipped++; continue; }
+          if (lockErr) {
+            if (!isDuplicateLockError(lockErr)) {
+              console.error('lock insert falhou (confirmation):', lockErr);
+              summary.errors.push(`confirmation:${apt.id}: lock_error ${lockErr.message || lockErr.code}`);
+            }
+            summary.skipped++; continue;
+          }
           const ok = await trySend(supabase, payload, summary);
           if (ok) {
             await supabase.from('appointment_reminder_log')
@@ -773,6 +813,7 @@ serve(async (req) => {
           );
           const payload = {
             to: phone, body: message, appointment_id: apt.id, professional_id: profId,
+            account_owner_id: (apt as any).account_owner_id ?? null,
             template_type: 'follow_up', hours_before: -off, provider: 'whatsapp_followup',
             dedup_key: `followup-${apt.id}-${off}`,
           };
@@ -781,6 +822,7 @@ serve(async (req) => {
           if (ok) {
             await supabase.from('appointment_reminder_log').insert({
               appointment_id: apt.id, hours_before: -off, provider: 'whatsapp_followup', channel: 'whatsapp', status: 'sent',
+              account_owner_id: (apt as any).account_owner_id ?? null,
             });
             summary.sent++; summary.byType.follow_up++;
           }
@@ -820,12 +862,14 @@ serve(async (req) => {
           to: c.phone, body: message, appointment_id: null, professional_id: profId,
           template_type: 'birthday', hours_before: sendHour, provider: 'whatsapp_birthday',
           dedup_key: dedupKey,
+          account_owner_id: (c as any).account_owner_id ?? null,
         };
         if (!(await guardWindow(getProf(profId), tpl, payload))) continue;
         const ok = await trySend(supabase, payload, summary);
         if (ok) {
           await supabase.from('appointment_reminder_log').insert({
             appointment_id: null, hours_before: sendHour, provider: 'whatsapp_birthday', channel: 'whatsapp', status: 'sent', error: dedupKey,
+            account_owner_id: (c as any).account_owner_id ?? null,
           });
           summary.sent++; summary.byType.birthday++;
         }

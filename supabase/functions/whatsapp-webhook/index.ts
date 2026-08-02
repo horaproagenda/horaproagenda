@@ -48,13 +48,17 @@ serve(async (req) => {
       req.headers.get('x-webhook-token') ||
       '';
 
-    // Se nenhum token está configurado no servidor, aceita mesmo assim mas loga
-    // para que o operador saiba que precisa configurar. Rejeitar aqui derrubaria
-    // todas as respostas dos clientes silenciosamente.
+    // Fail-closed: sem segredo configurado, não há como distinguir eventos
+    // legítimos da Evolution API de payloads forjados (que poderiam confirmar
+    // ou cancelar agendamentos reais). Rejeita até o segredo ser configurado.
     if (!expectedToken) {
-      console.warn('[whatsapp-webhook] Nenhum token configurado (WHATSAPP_WEBHOOK_TOKEN) — aceitando sem verificar.');
+      console.error('[whatsapp-webhook] WHATSAPP_WEBHOOK_TOKEN não configurado — rejeitando evento.');
+      return new Response(JSON.stringify({ ok: false, error: 'Webhook not configured' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    } else if (incoming !== expectedToken) {
+    if (incoming !== expectedToken) {
       console.warn('[whatsapp-webhook] Token inválido no webhook — rejeitando.');
       return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

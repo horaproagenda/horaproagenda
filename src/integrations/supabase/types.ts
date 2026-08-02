@@ -5180,6 +5180,10 @@ export type Database = {
         Args: { _package_id: string }
         Returns: Json
       }
+      enforce_temp_password_column_privileges: {
+        Args: never
+        Returns: undefined
+      }
       ensure_admin_professional: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -5521,6 +5525,7 @@ export type Database = {
         Returns: string
       }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
+      security_check_temp_password_protected: { Args: never; Returns: boolean }
       seed_default_payment_methods: {
         Args: { _owner_id: string }
         Returns: undefined

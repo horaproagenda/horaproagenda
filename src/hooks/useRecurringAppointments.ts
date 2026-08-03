@@ -694,13 +694,16 @@ Até breve! ✨`;
       let currentDate = params.new_start_time;
 
       for (const apt of appointmentsToUpdate) {
-        // Calculate next date based on interval
-        const nextDate = addDays(currentDate, intervalDays);
-        
-        // Preserve original time from the new start time
+        // Preserve original duration
         const originalAptStart = new Date(apt.start_time);
         const originalAptEnd = new Date(apt.end_time);
-        const duration = originalAptEnd.getTime() - originalAptStart.getTime();
+        const duration = originalAptEnd.getTime() - originalAptEnd.getTime() + (originalAptEnd.getTime() - originalAptStart.getTime());
+
+        // Base date: keep the already chosen date when only the time changed,
+        // otherwise recalculate from the interval.
+        const nextDate = params.time_only
+          ? new Date(originalAptStart)
+          : addDays(currentDate, intervalDays);
 
         const newAptStart = new Date(nextDate);
         newAptStart.setHours(

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { SUBSCRIPTION_SYNC_KEY } from '@/lib/stripeCheckout';
+
 
 export interface AccountSubscription {
   id: string;
@@ -52,6 +54,29 @@ export function useAccountSubscription() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, qc]);
+
+  // Revalida ao voltar o foco e quando outra aba avisa que a assinatura mudou
+  // (retorno do Stripe Checkout / Portal em outra aba).
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ['account-subscription', user.id] });
+      qc.invalidateQueries({ queryKey: ['seat-usage', user.id] });
+    };
+    const onFocus = () => { if (document.visibilityState !== 'hidden') refresh(); };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SUBSCRIPTION_SYNC_KEY) refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [user?.id, qc]);
+
 
   const sub = query.data;
   const now = Date.now();

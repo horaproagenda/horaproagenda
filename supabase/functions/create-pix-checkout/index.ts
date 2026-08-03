@@ -144,8 +144,10 @@ serve(async (req) => {
         : undefined,
       // Sessão de checkout expira em ~24h; boleto gerado tem seu próprio prazo (~3 dias úteis).
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 23 + 55 * 60,
-      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}&checkout=success`,
       cancel_url: `${origin}/assinatura/cancelado`,
+      locale: "pt-BR",
+      client_reference_id: user.id,
       metadata: {
         user_id: user.id,
         billing_months: String(billingMonths),

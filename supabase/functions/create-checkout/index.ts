@@ -70,8 +70,14 @@ serve(async (req) => {
         price: cyclePrice,
         quantity: seats,
       }],
-      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/assinatura/sucesso?session_id={CHECKOUT_SESSION_ID}&checkout=success`,
       cancel_url: `${origin}/assinatura/cancelado`,
+      locale: 'pt-BR',
+      client_reference_id: user.id,
+      billing_address_collection: 'auto',
+      tax_id_collection: { enabled: true },
+      // Exigido pelo Stripe quando tax_id_collection está ativo em um Customer existente.
+      customer_update: customerId ? { name: 'auto', address: 'auto' } : undefined,
       subscription_data: {
         metadata: {
           user_id: user.id,

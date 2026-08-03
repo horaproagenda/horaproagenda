@@ -256,6 +256,8 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
             propagate_type: 'package',
             package_id: packageId,
             interval_days: (appointment as any)?.package_appointment?.package?.interval_days || undefined,
+            time_only:
+              new Date(appointment.start_time).toDateString() === newStartTime.toDateString(),
           });
           toast.success('Datas dos próximos agendamentos do pacote ajustadas!');
         }

@@ -60,6 +60,12 @@ interface PropagateSeriesDatesParams {
   propagate_type: 'recurring' | 'package';
   recurring_group_id?: string;
   package_id?: string;
+  /**
+   * When true, keep each following appointment on its ORIGINAL date (chosen by
+   * the professional/client) and only apply the new time of day. Nothing else
+   * (professional, room, equipment, date) is touched.
+   */
+  time_only?: boolean;
   interval_days?: number;
 }
 

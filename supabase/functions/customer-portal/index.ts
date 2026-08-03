@@ -37,7 +37,8 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
     const portal = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${origin}/assinatura`,
+      return_url: `${origin}/assinatura/status?portal=return`,
+      locale: "pt-BR",
     });
 
     return new Response(JSON.stringify({ url: portal.url }), {

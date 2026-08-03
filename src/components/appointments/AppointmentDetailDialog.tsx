@@ -944,6 +944,10 @@ export function AppointmentDetailDialog({
         const dateChanged =
           new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
           new Date(appointment.end_time).getTime() !== newEndTime.getTime();
+        // Only the clock time changed (same calendar day): following sessions
+        // must keep their own dates, professional, room and equipment.
+        const timeOnly =
+          new Date(appointment.start_time).toDateString() === newStartTime.toDateString();
 
         // If user pre-checked the inline option, propagate immediately
         if (propagateDates) {
@@ -954,6 +958,7 @@ export function AppointmentDetailDialog({
               new_end_time: newEndTime,
               propagate_type: 'recurring',
               recurring_group_id: appointment.recurring_group_id!,
+              time_only: timeOnly,
             });
           } else if (isPackageApt && resolvedPackageId) {
             propagateSeriesDates.mutate({
@@ -962,6 +967,7 @@ export function AppointmentDetailDialog({
               new_end_time: newEndTime,
               propagate_type: 'package',
               package_id: resolvedPackageId,
+              time_only: timeOnly,
             });
           }
         } else if (dateChanged && (isPackageApt || isRecurringApt)) {
@@ -975,6 +981,7 @@ export function AppointmentDetailDialog({
               type: isRecurringApt ? 'recurring' : 'package',
               recurring_group_id: appointment.recurring_group_id || undefined,
               package_id: resolvedPackageId || undefined,
+              time_only: timeOnly,
             });
           }
         }
@@ -995,6 +1002,7 @@ export function AppointmentDetailDialog({
         new_end_time: pendingPropagation.new_end_time,
         propagate_type: 'recurring',
         recurring_group_id: pendingPropagation.recurring_group_id,
+        time_only: pendingPropagation.time_only,
       });
     } else if (pendingPropagation.type === 'package' && pendingPropagation.package_id) {
       propagateSeriesDates.mutate({
@@ -1003,10 +1011,12 @@ export function AppointmentDetailDialog({
         new_end_time: pendingPropagation.new_end_time,
         propagate_type: 'package',
         package_id: pendingPropagation.package_id,
+        time_only: pendingPropagation.time_only,
       });
     }
     setPendingPropagation(null);
   };
+
 
   const handleCancelEdit = () => {
     setIsEditing(false);

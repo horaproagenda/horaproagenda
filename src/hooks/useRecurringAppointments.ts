@@ -572,15 +572,30 @@ Até breve! ✨`;
             continue;
           }
 
+          const origStart = new Date(apt.start_time);
+          const origEnd = new Date(apt.end_time);
+          const duration = origEnd.getTime() - origStart.getTime();
+
+          if (params.time_only) {
+            // Keep the date already chosen; change only the time of day.
+            const sameDayStart = new Date(origStart);
+            sameDayStart.setHours(
+              params.new_start_time.getHours(),
+              params.new_start_time.getMinutes(),
+              0, 0
+            );
+            const sameDayEnd = new Date(sameDayStart.getTime() + duration);
+            proposed.push({ pa, apt, start: sameDayStart, end: sameDayEnd, duration });
+            prevInterval = Number(pa.interval_after_days) || prevInterval;
+            continue;
+          }
+
           let nextStart = addDays(cursor, prevInterval);
           nextStart.setHours(
             params.new_start_time.getHours(),
             params.new_start_time.getMinutes(),
             0, 0
           );
-          const origStart = new Date(apt.start_time);
-          const origEnd = new Date(apt.end_time);
-          const duration = origEnd.getTime() - origStart.getTime();
 
           // Adjust to business hours / open days
           if (bhCfg) {

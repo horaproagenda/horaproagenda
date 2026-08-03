@@ -207,6 +207,11 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       const start_time = new Date(`${date}T${startTime}`).toISOString();
       const end_time = new Date(`${date}T${endTime}`).toISOString();
 
+      // Only the time of day changed? Then following sessions must keep their
+      // own dates (chosen by the professional) and only shift the clock time.
+      const originalDate = format(parseISO(appointment.start_time), 'yyyy-MM-dd');
+      const timeOnly = originalDate === date;
+
       await updateAppointment.mutateAsync({
         id: appointment.id,
         updates: {
@@ -228,6 +233,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             new_end_time: newEndTime,
             propagate_type: 'recurring',
             recurring_group_id: appointment.recurring_group_id,
+            time_only: timeOnly,
           });
         } else if (appointment.package_appointment?.package_id) {
           await propagateSeriesDates.mutateAsync({
@@ -236,11 +242,15 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             new_end_time: newEndTime,
             propagate_type: 'package',
             package_id: appointment.package_appointment.package_id,
+            time_only: timeOnly,
           });
-          // After cascade by trigger, auto-resolve any remaining conflicts
-          await autoResolveConflicts(appointment.package_appointment.package_id);
+          if (!timeOnly) {
+            // After cascade by trigger, auto-resolve any remaining conflicts
+            await autoResolveConflicts(appointment.package_appointment.package_id);
+          }
         }
       }
+
 
       onOpenChange(false);
     } catch (error) {

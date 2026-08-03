@@ -440,6 +440,7 @@ export function AppointmentDetailDialog({
     type: 'package' | 'recurring';
     package_id?: string;
     recurring_group_id?: string;
+    time_only?: boolean;
   }>(null);
 
   // Confirmation when changing status to "missed" or "cancelled" on a package appointment:

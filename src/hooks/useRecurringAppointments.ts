@@ -697,7 +697,7 @@ Até breve! ✨`;
         // Preserve original duration
         const originalAptStart = new Date(apt.start_time);
         const originalAptEnd = new Date(apt.end_time);
-        const duration = originalAptEnd.getTime() - originalAptEnd.getTime() + (originalAptEnd.getTime() - originalAptStart.getTime());
+        const duration = originalAptEnd.getTime() - originalAptStart.getTime();
 
         // Base date: keep the already chosen date when only the time changed,
         // otherwise recalculate from the interval.

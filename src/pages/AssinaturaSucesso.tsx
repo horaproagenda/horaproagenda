@@ -6,6 +6,7 @@ import { CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { consumeCheckoutReturnPath, notifySubscriptionUpdated } from "@/lib/stripeCheckout";
 
 export default function AssinaturaSucesso() {
   const navigate = useNavigate();
@@ -15,12 +16,16 @@ export default function AssinaturaSucesso() {
   const { user } = useAuth();
   const [confirming, setConfirming] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
+  // Rota de origem (memorizada antes de ir ao Stripe) — resolvida uma única vez.
+  const [returnPath] = useState(() => consumeCheckoutReturnPath("/"));
 
   // Após retorno do Stripe, força check-subscription (não depende do webhook)
   // e faz polling curto até que account_subscriptions.status = 'active'.
   useEffect(() => {
     let cancelled = false;
+    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
+      let ok = false;
       try {
         // dispara sincronização com o Stripe
         try {
@@ -36,6 +41,7 @@ export default function AssinaturaSucesso() {
           const { data } = await (supabase as any).rpc("get_my_subscription");
           const sub = data && (data.id ? data : Array.isArray(data) ? data[0] : null);
           if (sub && (sub.status === "active" || sub.status === "grandfathered" || sub.is_grandfathered)) {
+            ok = true;
             if (!cancelled) setConfirmed(true);
             break;
           }
@@ -51,12 +57,23 @@ export default function AssinaturaSucesso() {
             qc.invalidateQueries({ queryKey: ["account-subscription", user.id] });
             qc.invalidateQueries({ queryKey: ["seat-usage", user.id] });
           }
+          // avisa outras abas do app que o acesso mudou
+          notifySubscriptionUpdated();
+          // volta automaticamente para onde o usuário estava antes do checkout
+          if (ok) {
+            redirectTimer = setTimeout(() => {
+              navigate(returnPath, { replace: true });
+            }, 1800);
+          }
         }
       }
     };
     void run();
-    return () => { cancelled = true; };
-  }, [sessionId, user?.id, qc]);
+    return () => {
+      cancelled = true;
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
+  }, [sessionId, user?.id, qc, navigate, returnPath]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -76,7 +93,7 @@ export default function AssinaturaSucesso() {
             {confirming
               ? "Aguarde enquanto ativamos sua conta."
               : confirmed
-                ? "Sua assinatura foi ativada com sucesso."
+                ? "Sua assinatura foi ativada com sucesso. Levando você de volta ao aplicativo..."
                 : "Recebemos o pagamento. A ativação pode levar alguns instantes."}
           </CardDescription>
         </CardHeader>
@@ -84,8 +101,12 @@ export default function AssinaturaSucesso() {
           <p className="text-muted-foreground">
             Obrigado por assinar! Você já tem acesso completo ao sistema.
           </p>
-          <Button onClick={() => navigate("/")} className="w-full" disabled={confirming}>
-            Ir para o Dashboard
+          <Button
+            onClick={() => navigate(returnPath, { replace: true })}
+            className="w-full"
+            disabled={confirming}
+          >
+            Voltar ao aplicativo
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>

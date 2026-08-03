@@ -78,7 +78,8 @@ export function AssinaturaSection() {
         body: { seats: selectedSeats, billingMonths },
       });
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
+      if (data?.url) goToStripe(data.url);
+
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao iniciar checkout";
       toast.error(msg);

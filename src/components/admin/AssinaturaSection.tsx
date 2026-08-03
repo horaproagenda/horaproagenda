@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL } from "@/lib/plans";
 import { usePricing } from "@/hooks/usePricing";
+import { goToStripe } from "@/lib/stripeCheckout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +102,7 @@ export function AssinaturaSection() {
         body: { seats: selectedSeats, billingMonths, methods },
       });
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
+      if (data?.url) goToStripe(data.url);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento";
       toast.error(msg);
@@ -118,7 +119,7 @@ export function AssinaturaSection() {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
+      if (data?.url) goToStripe(data.url);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir portal";
       toast.error(msg);

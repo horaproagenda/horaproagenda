@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { toast } from "sonner";
+import { goToStripe } from "@/lib/stripeCheckout";
 import {
   CheckCircle2, AlertCircle, XCircle, Clock, Sparkles, FileText,
   RefreshCw, CreditCard, ArrowLeft, LogOut, Calendar, Users, Loader2,
@@ -71,7 +72,7 @@ export default function AssinaturaStatus() {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank", "noopener,noreferrer");
+      if (data?.url) goToStripe(data.url);
       else throw new Error("Portal indisponível");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir portal";

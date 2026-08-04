@@ -163,8 +163,8 @@ export async function fetchPricingFromCache(supabase: SupabaseClient): Promise<P
 
 // Memo por isolate + TTL do cache: evita bater no Stripe em cada request
 // (o que estourava o rate limit e derrubava os checkouts com 500).
-const MEMO_TTL_MS = 5 * 60_000;
-const CACHE_TTL_MS = 10 * 60_000;
+const MEMO_TTL_MS = 60_000;
+const CACHE_TTL_MS = 3 * 60_000;
 let memo: { at: number; map: PricingMap } | null = null;
 
 /** Cache fresco primeiro; Stripe só quando o cache está vazio ou velho. */

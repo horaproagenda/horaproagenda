@@ -78,9 +78,41 @@ export function useAccountSubscription() {
     };
   }, [user?.id, qc]);
 
+  // Auto-heal: o webhook do Stripe pode não estar entregando eventos. Se a
+  // assinatura local não estiver ativa, sincronizamos direto com o Stripe via
+  // check-subscription (throttle de 60s) e revalidamos. Assim, quem já pagou
+  // deixa de ver a cobrança sem precisar de nenhuma ação manual.
+  const lastSyncRef = useRef(0);
+  useEffect(() => {
+    if (!user?.id) return;
+    const sub = query.data;
+    if (query.isLoading) return;
+    const trialEnds = sub?.trial_ends_at ? new Date(sub.trial_ends_at).getTime() : 0;
+    const looksInactive =
+      !sub ||
+      (!sub.is_grandfathered &&
+        sub.status !== 'grandfathered' &&
+        sub.status !== 'active' &&
+        !(sub.status === 'trial' && trialEnds > Date.now()));
+    if (!looksInactive) return;
+    const now = Date.now();
+    if (now - lastSyncRef.current < 60_000) return;
+    lastSyncRef.current = now;
+    void (async () => {
+      try {
+        await supabase.functions.invoke('check-subscription');
+      } catch (e) {
+        console.warn('[useAccountSubscription] check-subscription falhou:', e);
+        return;
+      }
+      qc.invalidateQueries({ queryKey: ['account-subscription', user.id] });
+      qc.invalidateQueries({ queryKey: ['seat-usage', user.id] });
+    })();
+  }, [user?.id, qc, query.data, query.isLoading]);
 
   const sub = query.data;
   const now = Date.now();
+
   const trialEndsMs = sub?.trial_ends_at ? new Date(sub.trial_ends_at).getTime() : 0;
   const trialDaysLeft = sub?.status === 'trial'
     ? Math.max(0, Math.ceil((trialEndsMs - now) / (1000 * 60 * 60 * 24)))

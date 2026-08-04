@@ -17,7 +17,7 @@ export default function AssinaturaSucesso() {
   const [confirming, setConfirming] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   // Rota de origem (memorizada antes de ir ao Stripe) — resolvida uma única vez.
-  const [returnPath] = useState(() => consumeCheckoutReturnPath("/"));
+  const [returnPath] = useState(() => consumeCheckoutReturnPath("/agenda"));
 
   // Após retorno do Stripe, força check-subscription (não depende do webhook)
   // e faz polling curto até que account_subscriptions.status = 'active'.

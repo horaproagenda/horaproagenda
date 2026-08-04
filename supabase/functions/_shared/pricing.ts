@@ -34,7 +34,16 @@ function monthsOf(price: Stripe.Price): number {
   return 1;
 }
 
-/** Lê os preços no Stripe pelas lookup keys e atualiza o cache no Supabase. */
+/**
+ * Lê os preços vigentes no Stripe e atualiza o cache no Supabase.
+ *
+ * Estratégia (tolerante a alterações feitas no painel do Stripe):
+ * 1. Busca os preços pelas lookup keys (caminho canônico).
+ * 2. Para ciclos sem preço com lookup key (ex.: o usuário criou um preço novo
+ *    no painel e arquivou o antigo, sem transferir a lookup key), procura o
+ *    preço ATIVO mais recente do mesmo produto com o mesmo intervalo.
+ * Assim, qualquer mudança de valor no Stripe reflete no app.
+ */
 export async function fetchPricingFromStripe(
   stripe: Stripe,
   supabase?: SupabaseClient,
@@ -44,13 +53,14 @@ export async function fetchPricingFromStripe(
     lookup_keys: lookupKeys,
     active: true,
     limit: 20,
-    expand: ["data.product"],
   });
 
   const map: PricingMap = {};
+  const productIds = new Set<string>();
   for (const price of list.data) {
     if (!price.lookup_key || price.unit_amount == null) continue;
     const months = monthsOf(price);
+    if (typeof price.product === "string") productIds.add(price.product);
     map[months] = {
       months,
       lookup_key: price.lookup_key,
@@ -59,6 +69,33 @@ export async function fetchPricingFromStripe(
       currency: price.currency,
     };
   }
+
+  // Fallback: ciclos sem lookup key → preço ativo mais recente do produto.
+  const missing = Object.keys(PRICE_LOOKUP_KEYS)
+    .map(Number)
+    .filter((m) => !map[m]);
+  if (missing.length > 0) {
+    const pids = productIds.size > 0 ? [...productIds] : [undefined];
+    for (const product of pids) {
+      const all = await stripe.prices.list({ active: true, limit: 100, product });
+      const recurring = all.data
+        .filter((p) => p.type === "recurring" && p.unit_amount != null)
+        .sort((a, b) => (b.created ?? 0) - (a.created ?? 0));
+      for (const months of missing) {
+        if (map[months]) continue;
+        const found = recurring.find((p) => monthsOf(p) === months);
+        if (!found) continue;
+        map[months] = {
+          months,
+          lookup_key: found.lookup_key ?? PRICE_LOOKUP_KEYS[months],
+          price_id: found.id,
+          unit_amount: found.unit_amount as number,
+          currency: found.currency,
+        };
+      }
+    }
+  }
+
 
   if (supabase && Object.keys(map).length > 0) {
     const rows = Object.values(map).map((c) => ({
@@ -126,8 +163,8 @@ export async function fetchPricingFromCache(supabase: SupabaseClient): Promise<P
 
 // Memo por isolate + TTL do cache: evita bater no Stripe em cada request
 // (o que estourava o rate limit e derrubava os checkouts com 500).
-const MEMO_TTL_MS = 5 * 60_000;
-const CACHE_TTL_MS = 10 * 60_000;
+const MEMO_TTL_MS = 60_000;
+const CACHE_TTL_MS = 3 * 60_000;
 let memo: { at: number; map: PricingMap } | null = null;
 
 /** Cache fresco primeiro; Stripe só quando o cache está vazio ou velho. */

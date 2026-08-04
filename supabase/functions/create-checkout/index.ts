@@ -65,7 +65,8 @@ serve(async (req) => {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       mode: 'subscription',
-      payment_method_types: ['card'],
+      // Sem payment_method_types fixo: os métodos habilitados no painel do
+      // Stripe (cartão, Pix, boleto...) passam a valer automaticamente.
       line_items: [{
         price: cyclePrice,
         quantity: seats,

@@ -60,16 +60,10 @@ export function usePricing() {
   const query = useQuery({
     queryKey: ['pricing-cache'],
     queryFn: async (): Promise<Record<number, CyclePricing>> => {
-      // 1) Cache no Supabase (alimentado pelo webhook do Stripe e pelo
-      //    get-pricing) — leitura barata e em tempo real via Realtime.
-      const { data, error } = await supabase
-        .from('pricing_cache')
-        .select('lookup_key, price_id, unit_amount, currency, interval_months')
-        .eq('active', true);
-      if (error) console.warn('[usePricing] cache read error:', error.message);
-      if (data && data.length > 0) return buildCycles(data as PricingRow[]);
-
-      // 2) Cache vazio: pede ao get-pricing para ler o Stripe e popular.
+      // 1) Fonte da verdade: get-pricing consulta o Stripe (com cache curto no
+      //    servidor) e atualiza `pricing_cache`. Chamamos sempre para que uma
+      //    alteração de valor no painel do Stripe reflita no app em minutos,
+      //    mesmo sem os eventos `price.*` do webhook configurados.
       const { data: fn, error: fnErr } = await supabase.functions.invoke('get-pricing');
       if (!fnErr && Array.isArray(fn?.cycles) && fn.cycles.length > 0) {
         const rows = (fn.cycles as Array<{
@@ -88,12 +82,22 @@ export function usePricing() {
         return buildCycles(rows);
       }
       if (fnErr) console.warn('[usePricing] get-pricing failed:', fnErr.message);
+
+      // 2) Stripe indisponível: usa a última leitura válida do cache.
+      const { data, error } = await supabase
+        .from('pricing_cache')
+        .select('lookup_key, price_id, unit_amount, currency, interval_months')
+        .eq('active', true);
+      if (error) console.warn('[usePricing] cache read error:', error.message);
+      if (data && data.length > 0) return buildCycles(data as PricingRow[]);
+
       return buildCycles(null);
     },
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchInterval: 15 * 60_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60_000,
   });
+
 
 
   // Realtime: preço alterado no Stripe → webhook grava no cache → refetch.

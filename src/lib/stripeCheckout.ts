@@ -23,11 +23,16 @@ export function goToStripe(url: string) {
 }
 
 /** Rota para onde voltar após o Stripe (padrão: dashboard). */
-export function consumeCheckoutReturnPath(fallback = '/'): string {
+export function consumeCheckoutReturnPath(fallback = '/agenda'): string {
   try {
     const stored = sessionStorage.getItem(RETURN_KEY);
     sessionStorage.removeItem(RETURN_KEY);
-    if (stored && stored.startsWith('/')) return stored;
+    // Evita devolver o usuário a telas de assinatura/checkout (onde ele veria
+    // novamente a oferta de pagamento logo após ter pago).
+    const blocked = ['/assinatura', '/conta-inativa', '/auth'];
+    if (stored && stored.startsWith('/') && !blocked.some((b) => stored.startsWith(b))) {
+      return stored;
+    }
   } catch {
     /* noop */
   }

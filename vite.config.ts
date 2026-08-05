@@ -140,8 +140,12 @@ export default defineConfig(({ mode }) => ({
     }),
   ].filter(Boolean),
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      // "sonner" resolve para nossa camada de notificações humanizadas,
+      // que internamente usa o pacote real via "sonner-original".
+      { find: /^sonner$/, replacement: path.resolve(__dirname, "./src/lib/toast.ts") },
+      { find: /^sonner-original$/, replacement: path.resolve(__dirname, "./node_modules/sonner") },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
 }));

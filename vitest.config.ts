@@ -11,6 +11,10 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: [
+      { find: /^sonner$/, replacement: path.resolve(__dirname, './src/lib/toast.ts') },
+      { find: /^sonner-original$/, replacement: path.resolve(__dirname, './node_modules/sonner') },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+    ],
   },
 });

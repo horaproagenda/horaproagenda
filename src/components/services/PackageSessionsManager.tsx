@@ -440,7 +440,7 @@ export function PackageSessionsManager({
         for (const preview of massReschedulePreview) {
           const session = sessions.find(s => s.session_number === preview.sessionNumber);
           if (!session) continue;
-          const duration = session.service?.duration || packageInfo?.duration || 60;
+          const duration = resolveSessionDuration(session);
           const proposedDate = previousScheduledDate
             ? addDays(previousScheduledDate, sessions.find(s => (s.sequence_order || s.session_number) === ((session.sequence_order || session.session_number) - 1))?.interval_after_days || intervalDays)
             : preview.date;

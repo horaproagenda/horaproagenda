@@ -29,9 +29,29 @@ function generateToken(): string {
     .join('')
 }
 
-// Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
-// gateway validates the caller's JWT (anon or service_role) before the request
-// reaches this code. No in-function auth check is needed.
+// Auth model:
+// - Trusted server-side callers (other edge functions) send the
+//   `x-internal-secret` header matching INTERNAL_EMAIL_SECRET and may use any
+//   template with any recipient.
+// - Templates with a fixed recipient (`template.to`, e.g. owner notifications)
+//   may be triggered without the secret, but recipient and data are never
+//   taken from the caller in a sensitive way.
+// - A signed-in user (real user JWT) may only trigger SELF_TEMPLATES and the
+//   recipient is forced to the e-mail in their own JWT.
+// Anything else is rejected — the public anon key alone is not enough.
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const SELF_TEMPLATES = new Set(['account-status-update'])
+
+function sanitizeTemplateData(data: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === 'string') out[key] = value.slice(0, 300)
+    else if (typeof value === 'number' || typeof value === 'boolean') out[key] = value
+  }
+  return out
+}
+
 
 Deno.serve(async (req) => {
   // Handle CORS preflight

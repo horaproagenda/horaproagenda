@@ -123,10 +123,48 @@ Deno.serve(async (req) => {
     )
   }
 
+  // --- Authorization -------------------------------------------------------
+  const internalSecret = Deno.env.get('INTERNAL_EMAIL_SECRET')
+  const providedSecret = req.headers.get('x-internal-secret')
+  const isInternalCaller =
+    !!internalSecret && !!providedSecret && providedSecret === internalSecret
+
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
-  const effectiveRecipient = template.to || recipientEmail
+  let effectiveRecipient = template.to || recipientEmail
+
+  if (!isInternalCaller) {
+    if (template.to) {
+      // Fixed-recipient notification (owner inbox). Never trust caller data shape.
+      effectiveRecipient = template.to
+      templateData = sanitizeTemplateData(templateData)
+    } else if (SELF_TEMPLATES.has(templateName)) {
+      // Only a real signed-in user, and only to their own address.
+      const authHeader = req.headers.get('Authorization') ?? ''
+      const token = authHeader.replace(/^Bearer\s+/i, '')
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!
+      )
+      const { data, error } = await supabase.auth.getClaims(token)
+      const claimEmail = (data?.claims as { email?: string } | undefined)?.email
+      if (error || !claimEmail) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      effectiveRecipient = claimEmail
+      templateData = sanitizeTemplateData(templateData)
+    } else {
+      console.warn('Rejected untrusted transactional email request', { templateName })
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+  }
 
   if (!effectiveRecipient) {
     return new Response(
@@ -139,6 +177,7 @@ Deno.serve(async (req) => {
       }
     )
   }
+
 
   // 2. Render React Email template to HTML and plain text
   const html = await renderAsync(

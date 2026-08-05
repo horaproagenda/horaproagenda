@@ -223,11 +223,31 @@ export function PackageSessionsManager({
     }
   };
 
+  // Duração real de UMA sessão (nunca a duração somada do pacote).
+  const resolveSessionDuration = (session?: PackageSession | null): number => {
+    const appointment = session?.appointment;
+    if (appointment?.start_time && appointment?.end_time) {
+      const minutes = Math.round(
+        (new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime()) / 60000,
+      );
+      if (Number.isFinite(minutes) && minutes > 0 && minutes <= 8 * 60) return minutes;
+    }
+
+    const serviceDuration = Number(session?.service?.duration);
+    if (Number.isFinite(serviceDuration) && serviceDuration > 0 && serviceDuration <= 8 * 60) {
+      return serviceDuration;
+    }
+
+    // packageInfo.duration costuma trazer a soma de todas as sessões:
+    // o utilitário descarta valores acima de 8h e cai em 60 min.
+    return getSchedulingDurationMinutes({ duration: packageInfo?.duration ?? null }, [], 60);
+  };
+
   // Check for conflicts for a given date/time
   const checkConflict = (dateTime: Date): ConflictInfo => {
     if (!packageInfo) return { hasConflict: false };
 
-    const duration = packageInfo.duration || 60;
+    const duration = resolveSessionDuration(selectedSession);
     const endTime = addMinutes(dateTime, duration);
     const selectedOrder = selectedSession?.sequence_order || selectedSession?.session_number || 0;
     const cascadeIgnoredAppointments = sessions

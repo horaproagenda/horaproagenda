@@ -94,7 +94,7 @@ export function NewSignupsPanel() {
       )}
 
       <p className="text-[11px] text-muted-foreground border-t pt-2">
-        Uma notificação é enviada automaticamente para <strong>horaproagenda@gmail.com</strong> a
+        Uma notificação é enviada automaticamente para <strong>suporte@horaproagenda.app</strong> a
         cada novo cadastro, sem incluir nome, e-mail ou qualquer identificação do profissional.
       </p>
     </Card>

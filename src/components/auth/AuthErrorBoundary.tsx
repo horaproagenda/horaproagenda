@@ -15,7 +15,7 @@ interface State {
   kind: ErrorKind;
 }
 
-const SUPPORT_EMAIL = 'horaproagenda@gmail.com';
+const SUPPORT_EMAIL = 'suporte@horaproagenda.app';
 
 function classify(error?: Error): ErrorKind {
   const msg = (error?.message || '').toLowerCase();

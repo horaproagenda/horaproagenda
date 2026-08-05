@@ -14,8 +14,8 @@ export const BRAND = {
   domain: "horaproagenda.app",
   url: "https://horaproagenda.app",
   twitter: "@HoraProApp",
-  email: "horaproagenda@gmail.com",
-  supportEmail: "horaproagenda@gmail.com",
+  email: "suporte@horaproagenda.app",
+  supportEmail: "suporte@horaproagenda.app",
 } as const;
 
 export const TAGLINES = [

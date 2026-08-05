@@ -65,7 +65,7 @@ const InterestLeadNotification = ({
 
 export const template = {
   component: InterestLeadNotification,
-  to: 'horaproagenda@gmail.com',
+  to: 'suporte@horaproagenda.app',
   subject: `Novo interesse recebido no ${SITE_NAME}`,
   displayName: 'Novo interesse (interno)',
   previewData: {

@@ -503,7 +503,7 @@ Até breve! ✨`;
         }
       } else {
         // Single session reschedule
-        const singleDuration = selectedSession.service?.duration || packageInfo?.duration || 60;
+        const singleDuration = resolveSessionDuration(selectedSession);
         const conflict = findSchedulingConflict(newDateTime, singleDuration, existingAppointments, {
           professional_id: packageInfo?.professional_id,
           room_id: packageInfo?.room_id,
@@ -511,7 +511,10 @@ Até breve! ✨`;
         });
 
         if (conflict) {
-          throw new Error(`${conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala'} já possui atendimento neste horário.`);
+          const who = conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala';
+          const when = format(parseISO(conflict.start_time), "dd/MM 'às' HH:mm", { locale: ptBR });
+          const until = format(parseISO(conflict.end_time), 'HH:mm', { locale: ptBR });
+          throw new Error(`${who} já possui atendimento em ${when} (até ${until}).`);
         }
 
         if (selectedSession.appointment_id) {

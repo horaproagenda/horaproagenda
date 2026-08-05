@@ -139,6 +139,16 @@ type Toast = Omit<ToasterToast, "id">;
 function toast({ ...props }: Toast) {
   const id = genId();
 
+  // Toda notificação legada também é explicada em linguagem clara,
+  // sem códigos de erro ou jargão técnico.
+  if (typeof props.title === "string") {
+    props.title = humanizeToastMessage(props.title) as string;
+  }
+  if (typeof props.description === "string") {
+    props.description = humanizeToastMessage(props.description) as string;
+  }
+
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",

@@ -38,6 +38,16 @@ describe('packageScheduling', () => {
     expect(conflict).toBeUndefined();
   });
 
+  it('ignora agendamentos reagendados, pois não ocupam horário', () => {
+    const conflict = findSchedulingConflict(
+      new Date('2026-08-14T19:00:00'),
+      60,
+      [apt('2026-08-14T19:00:00', '2026-08-14T20:00:00', { professional_id: 'p1', status: 'rescheduled' })],
+      { professional_id: 'p1' },
+    );
+    expect(conflict).toBeUndefined();
+  });
+
   it('ignora IDs informados em ignoreAppointmentIds', () => {
     const conflict = findSchedulingConflict(
       new Date('2026-05-10T09:30:00'),

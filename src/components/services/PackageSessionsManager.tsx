@@ -452,14 +452,12 @@ export function PackageSessionsManager({
           previousScheduledDate = safeDate;
 
           if (session.appointment_id) {
-            const { error: aptError } = await supabase
-              .from('appointments')
-              .update({
-                start_time: safeDate.toISOString(),
-                end_time: addMinutes(safeDate, duration).toISOString(),
-                status: 'scheduled',
-              })
-              .eq('id', session.appointment_id);
+            const { error: aptError } = await supabase.rpc('reschedule_package_appointment_safely', {
+              p_appointment_id: session.appointment_id,
+              p_new_start: safeDate.toISOString(),
+              p_new_end: addMinutes(safeDate, duration).toISOString(),
+              p_expected_version: null,
+            });
 
             if (aptError) throw aptError;
           }
@@ -518,14 +516,12 @@ Até breve! ✨`;
         }
 
         if (selectedSession.appointment_id) {
-          const { error: aptError } = await supabase
-            .from('appointments')
-            .update({
-              start_time: newDateTime.toISOString(),
-              end_time: addMinutes(newDateTime, singleDuration).toISOString(),
-              status: 'scheduled',
-            })
-            .eq('id', selectedSession.appointment_id);
+          const { error: aptError } = await supabase.rpc('reschedule_package_appointment_safely', {
+            p_appointment_id: selectedSession.appointment_id,
+            p_new_start: newDateTime.toISOString(),
+            p_new_end: addMinutes(newDateTime, singleDuration).toISOString(),
+            p_expected_version: null,
+          });
 
           if (aptError) throw aptError;
         }

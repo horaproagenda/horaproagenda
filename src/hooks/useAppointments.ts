@@ -325,24 +325,50 @@ export function useAppointments() {
     mutationFn: async ({ id, updates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const isPureReschedule =
-        updates.status === 'scheduled' &&
-        !!updates.start_time &&
-        !!updates.end_time &&
-        Object.keys(updates).every((key) => ['start_time', 'end_time', 'status'].includes(key));
+      // Toda alteração de horário de uma sessão de pacote precisa passar pela
+      // operação atômica. A edição completa também envia profissional/sala/notas
+      // e, antes, escapava desta proteção, disparando a cascata entre updates e
+      // causando falsos conflitos com as próprias etapas do pacote.
+      const hasCompleteTimeRange = !!updates.start_time && !!updates.end_time;
+      let currentPackageAppointmentId: string | null = null;
+      if (hasCompleteTimeRange) {
+        const { data: current, error: currentError } = await supabase
+          .from('appointments')
+          .select('package_appointment_id')
+          .eq('id', id)
+          .maybeSingle();
+        if (currentError) throw currentError;
+        currentPackageAppointmentId = current?.package_appointment_id ?? null;
+      }
 
-      if (isPureReschedule) {
+      if (hasCompleteTimeRange && currentPackageAppointmentId) {
         const { data, error } = await supabase.rpc('reschedule_package_appointment_safely', {
           p_appointment_id: id,
-          p_new_start: updates.start_time!,
-          p_new_end: updates.end_time!,
+          p_new_start: updates.start_time,
+          p_new_end: updates.end_time,
           p_expected_version: expectedVersion ?? null,
         });
 
         if (error) throw error;
         if (!data) throw new AppointmentConflictError();
 
-        return { ...(data as Appointment), sessionReleased: false };
+        const remainingUpdates = Object.fromEntries(
+          Object.entries(updates).filter(([key]) => !['start_time', 'end_time', 'status'].includes(key)),
+        ) as AppointmentUpdate;
+
+        if (Object.keys(remainingUpdates).length === 0) {
+          return { ...(data as Appointment), sessionReleased: false };
+        }
+
+        const { data: completedUpdate, error: completedError } = await supabase
+          .from('appointments')
+          .update({ ...remainingUpdates, updated_by: user?.id })
+          .eq('id', id)
+          .select('*, package_appointment_id, version')
+          .single();
+        if (completedError) throw completedError;
+
+        return { ...(completedUpdate as Appointment), sessionReleased: false };
       }
 
       const runUpdate = async (versionGuard?: number) => {

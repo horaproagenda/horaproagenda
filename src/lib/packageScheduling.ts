@@ -29,7 +29,7 @@ export const findSchedulingConflict = (
 
   return appointments.find((appointment) => {
     if (appointment.id && ignored.has(appointment.id)) return false;
-    if (['cancelled', 'missed'].includes(appointment.status || '')) return false;
+    if (['cancelled', 'missed', 'rescheduled'].includes(appointment.status || '')) return false;
     const sameProfessional = scope.professional_id && appointment.professional_id === scope.professional_id;
     const sameRoom = scope.room_id && appointment.room_id === scope.room_id;
     if (!sameProfessional && !sameRoom) return false;

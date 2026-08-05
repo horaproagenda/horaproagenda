@@ -50,7 +50,7 @@ const NewSignupNotification = ({ signupTime = '', totalAccounts = 0 }: Props) =>
 
 export const template = {
   component: NewSignupNotification,
-  to: 'horaproagenda@gmail.com',
+  to: 'suporte@horaproagenda.app',
   subject: `Novo cadastro no ${SITE_NAME}`,
   displayName: 'Novo cadastro (interno)',
   previewData: { signupTime: '16/07/2026 14:32', totalAccounts: 42 },

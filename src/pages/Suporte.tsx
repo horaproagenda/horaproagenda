@@ -78,8 +78,8 @@ const Suporte = () => {
     {
       icon: <Mail className="h-5 w-5" />,
       title: "E-mail",
-      description: "horaproagenda@gmail.com",
-      href: "mailto:horaproagenda@gmail.com",
+      description: "suporte@horaproagenda.app",
+      href: "mailto:suporte@horaproagenda.app",
       color: "bg-accent/80",
     },
     {

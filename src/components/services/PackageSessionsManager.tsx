@@ -27,6 +27,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
+import { getSchedulingDurationMinutes } from '@/lib/duration';
+
+// Status que nunca ocupam um horário na agenda.
+const NON_BLOCKING_STATUSES = ['cancelled', 'missed', 'rescheduled'];
 
 interface PackageSession {
   id: string;
@@ -181,12 +185,27 @@ export function PackageSessionsManager({
 
       // Fetch existing appointments and absences if we have professional/room
       if (pkg?.professional_id || pkg?.room_id) {
+        // Só agendamentos que realmente ocupam o profissional/sala do pacote
+        // podem gerar conflito. Cancelado/faltou/reagendado nunca bloqueiam.
+        let appointmentsQuery = supabase
+          .from('appointments')
+          .select('id, start_time, end_time, professional_id, room_id, status')
+          .not('status', 'in', `(${NON_BLOCKING_STATUSES.join(',')})`)
+          .gte('start_time', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(2000);
+
+        if (pkg?.professional_id && pkg?.room_id) {
+          appointmentsQuery = appointmentsQuery.or(
+            `professional_id.eq.${pkg.professional_id},room_id.eq.${pkg.room_id}`,
+          );
+        } else if (pkg?.professional_id) {
+          appointmentsQuery = appointmentsQuery.eq('professional_id', pkg.professional_id);
+        } else if (pkg?.room_id) {
+          appointmentsQuery = appointmentsQuery.eq('room_id', pkg.room_id);
+        }
+
         const [appointmentsRes, absencesRes] = await Promise.all([
-          supabase
-            .from('appointments')
-            .select('id, start_time, end_time, professional_id, room_id, status')
-            .not('status', 'eq', 'cancelled')
-            .gte('start_time', new Date().toISOString()),
+          appointmentsQuery,
           pkg?.professional_id
             ? supabase
                 .from('professional_absences')

@@ -960,30 +960,18 @@ export function AppointmentDetailDialog({
               recurring_group_id: appointment.recurring_group_id!,
               time_only: timeOnly,
             });
-          } else if (isPackageApt && resolvedPackageId) {
-            propagateSeriesDates.mutate({
-              appointment_id: appointment.id,
-              new_start_time: newStartTime,
-              new_end_time: newEndTime,
-              propagate_type: 'package',
-              package_id: resolvedPackageId,
-              time_only: timeOnly,
-            });
           }
-        } else if (dateChanged && (isPackageApt || isRecurringApt)) {
+        } else if (dateChanged && isRecurringApt) {
           // Ask the user whether to also shift following steps.
           // For packages, only ask when we could actually resolve the package id
           // (otherwise the confirmation would be a dead-end).
-          if (isRecurringApt || (isPackageApt && resolvedPackageId)) {
-            setPendingPropagation({
-              new_start_time: newStartTime,
-              new_end_time: newEndTime,
-              type: isRecurringApt ? 'recurring' : 'package',
-              recurring_group_id: appointment.recurring_group_id || undefined,
-              package_id: resolvedPackageId || undefined,
-              time_only: timeOnly,
-            });
-          }
+          setPendingPropagation({
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            type: 'recurring',
+            recurring_group_id: appointment.recurring_group_id || undefined,
+            time_only: timeOnly,
+          });
         }
 
         setIsEditing(false);

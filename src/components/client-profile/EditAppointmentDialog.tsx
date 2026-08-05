@@ -235,19 +235,6 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
             recurring_group_id: appointment.recurring_group_id,
             time_only: timeOnly,
           });
-        } else if (appointment.package_appointment?.package_id) {
-          await propagateSeriesDates.mutateAsync({
-            appointment_id: appointment.id,
-            new_start_time: newStartTime,
-            new_end_time: newEndTime,
-            propagate_type: 'package',
-            package_id: appointment.package_appointment.package_id,
-            time_only: timeOnly,
-          });
-          if (!timeOnly) {
-            // After cascade by trigger, auto-resolve any remaining conflicts
-            await autoResolveConflicts(appointment.package_appointment.package_id);
-          }
         }
       }
 
@@ -255,7 +242,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating appointment:', error);
-      toast.error('Erro ao salvar agendamento');
+      toast.error('Erro ao atualizar agendamento: ' + ((error as Error)?.message || 'Não foi possível salvar a alteração.'));
     } finally {
       setLoading(false);
       setShowPropagateConfirm(false);

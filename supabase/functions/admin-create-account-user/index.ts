@@ -78,7 +78,8 @@ serve(async (req) => {
           const ownerEmail = ownerData?.user?.email;
           if (ownerEmail) {
             await supaAdmin.functions.invoke('send-transactional-email', {
-              body: {
+              headers: { 'x-internal-secret': Deno.env.get('INTERNAL_EMAIL_SECRET') ?? '' },
+      body: {
                 templateName: 'account-status-update',
                 recipientEmail: ownerEmail,
                 idempotencyKey: `seats-blocked-${callerId}-${sub.seat_limit}-${Date.now()}`,

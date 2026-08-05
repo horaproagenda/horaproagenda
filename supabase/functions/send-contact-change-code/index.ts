@@ -134,6 +134,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${PUBLISHABLE_JWT}`,
         apikey: PUBLISHABLE_JWT,
+        "x-internal-secret": Deno.env.get("INTERNAL_EMAIL_SECRET") ?? "",
       },
       body: JSON.stringify({
         templateName: "contact-change-code",

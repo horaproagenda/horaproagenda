@@ -19,6 +19,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "sonner-original": [
+        "./node_modules/sonner"
+      ],
+      "sonner": [
+        "./src/lib/toast.ts"
       ]
     },
     "skipLibCheck": true,

@@ -1,6 +1,8 @@
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import { humanizeToastMessage } from "@/lib/humanError";
+
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -136,6 +138,16 @@ type Toast = Omit<ToasterToast, "id">;
 
 function toast({ ...props }: Toast) {
   const id = genId();
+
+  // Toda notificação legada também é explicada em linguagem clara,
+  // sem códigos de erro ou jargão técnico.
+  if (typeof props.title === "string") {
+    props.title = humanizeToastMessage(props.title) as string;
+  }
+  if (typeof props.description === "string") {
+    props.description = humanizeToastMessage(props.description) as string;
+  }
+
 
   const update = (props: ToasterToast) =>
     dispatch({

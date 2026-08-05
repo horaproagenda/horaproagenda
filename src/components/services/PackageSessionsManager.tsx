@@ -27,6 +27,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
+import { getSchedulingDurationMinutes } from '@/lib/duration';
+
+// Status que nunca ocupam um horário na agenda.
+const NON_BLOCKING_STATUSES = ['cancelled', 'missed', 'rescheduled'];
 
 interface PackageSession {
   id: string;
@@ -181,12 +185,27 @@ export function PackageSessionsManager({
 
       // Fetch existing appointments and absences if we have professional/room
       if (pkg?.professional_id || pkg?.room_id) {
+        // Só agendamentos que realmente ocupam o profissional/sala do pacote
+        // podem gerar conflito. Cancelado/faltou/reagendado nunca bloqueiam.
+        let appointmentsQuery = supabase
+          .from('appointments')
+          .select('id, start_time, end_time, professional_id, room_id, status')
+          .not('status', 'in', `(${NON_BLOCKING_STATUSES.join(',')})`)
+          .gte('start_time', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(2000);
+
+        if (pkg?.professional_id && pkg?.room_id) {
+          appointmentsQuery = appointmentsQuery.or(
+            `professional_id.eq.${pkg.professional_id},room_id.eq.${pkg.room_id}`,
+          );
+        } else if (pkg?.professional_id) {
+          appointmentsQuery = appointmentsQuery.eq('professional_id', pkg.professional_id);
+        } else if (pkg?.room_id) {
+          appointmentsQuery = appointmentsQuery.eq('room_id', pkg.room_id);
+        }
+
         const [appointmentsRes, absencesRes] = await Promise.all([
-          supabase
-            .from('appointments')
-            .select('id, start_time, end_time, professional_id, room_id, status')
-            .not('status', 'eq', 'cancelled')
-            .gte('start_time', new Date().toISOString()),
+          appointmentsQuery,
           pkg?.professional_id
             ? supabase
                 .from('professional_absences')
@@ -204,11 +223,31 @@ export function PackageSessionsManager({
     }
   };
 
+  // Duração real de UMA sessão (nunca a duração somada do pacote).
+  const resolveSessionDuration = (session?: PackageSession | null): number => {
+    const appointment = session?.appointment;
+    if (appointment?.start_time && appointment?.end_time) {
+      const minutes = Math.round(
+        (new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime()) / 60000,
+      );
+      if (Number.isFinite(minutes) && minutes > 0 && minutes <= 8 * 60) return minutes;
+    }
+
+    const serviceDuration = Number(session?.service?.duration);
+    if (Number.isFinite(serviceDuration) && serviceDuration > 0 && serviceDuration <= 8 * 60) {
+      return serviceDuration;
+    }
+
+    // packageInfo.duration costuma trazer a soma de todas as sessões:
+    // o utilitário descarta valores acima de 8h e cai em 60 min.
+    return getSchedulingDurationMinutes({ duration: packageInfo?.duration ?? null }, [], 60);
+  };
+
   // Check for conflicts for a given date/time
   const checkConflict = (dateTime: Date): ConflictInfo => {
     if (!packageInfo) return { hasConflict: false };
 
-    const duration = packageInfo.duration || 60;
+    const duration = resolveSessionDuration(selectedSession);
     const endTime = addMinutes(dateTime, duration);
     const selectedOrder = selectedSession?.sequence_order || selectedSession?.session_number || 0;
     const cascadeIgnoredAppointments = sessions
@@ -401,7 +440,7 @@ export function PackageSessionsManager({
         for (const preview of massReschedulePreview) {
           const session = sessions.find(s => s.session_number === preview.sessionNumber);
           if (!session) continue;
-          const duration = session.service?.duration || packageInfo?.duration || 60;
+          const duration = resolveSessionDuration(session);
           const proposedDate = previousScheduledDate
             ? addDays(previousScheduledDate, sessions.find(s => (s.sequence_order || s.session_number) === ((session.sequence_order || session.session_number) - 1))?.interval_after_days || intervalDays)
             : preview.date;
@@ -464,7 +503,7 @@ Até breve! ✨`;
         }
       } else {
         // Single session reschedule
-        const singleDuration = selectedSession.service?.duration || packageInfo?.duration || 60;
+        const singleDuration = resolveSessionDuration(selectedSession);
         const conflict = findSchedulingConflict(newDateTime, singleDuration, existingAppointments, {
           professional_id: packageInfo?.professional_id,
           room_id: packageInfo?.room_id,
@@ -472,7 +511,10 @@ Até breve! ✨`;
         });
 
         if (conflict) {
-          throw new Error(`${conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala'} já possui atendimento neste horário.`);
+          const who = conflict.professional_id === packageInfo?.professional_id ? 'Profissional' : 'Sala';
+          const when = format(parseISO(conflict.start_time), "dd/MM 'às' HH:mm", { locale: ptBR });
+          const until = format(parseISO(conflict.end_time), 'HH:mm', { locale: ptBR });
+          throw new Error(`${who} já possui atendimento em ${when} (até ${until}).`);
         }
 
         if (selectedSession.appointment_id) {

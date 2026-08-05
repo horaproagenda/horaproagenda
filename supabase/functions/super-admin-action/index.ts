@@ -234,6 +234,7 @@ async function sendNotificationEmail(
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const { error } = await client.functions.invoke("send-transactional-email", {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_EMAIL_SECRET') ?? '' },
       body: {
         templateName: "account-status-update",
         recipientEmail: target.email,

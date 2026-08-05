@@ -324,6 +324,7 @@ async function sendAccountEmail(
       ?? (u?.user?.user_metadata?.name as string | undefined)
       ?? email.split('@')[0];
     const { error } = await supabase.functions.invoke('send-transactional-email', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_EMAIL_SECRET') ?? '' },
       body: {
         templateName: 'account-status-update',
         recipientEmail: email,

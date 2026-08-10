@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { changeOwnPassword } from '@/lib/passwordChange';
+
 
 /**
  * Bloqueia toda a UI até que o profissional troque a senha,

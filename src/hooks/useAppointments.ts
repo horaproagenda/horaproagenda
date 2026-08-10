@@ -49,9 +49,11 @@ export interface AppointmentUpdate {
   service_id?: string | null;
   professional_id?: string | null;
   room_id?: string | null;
+  equipment_id?: string | null;
   notes?: string;
   status?: AppointmentStatus;
 }
+
 
 class AppointmentConflictError extends Error {
   constructor() {

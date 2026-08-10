@@ -202,10 +202,16 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
 
   const performSave = async (propagate: boolean) => {
     if (!appointment) return;
+    const dayError = nonWorkingDayMessage(new Date(`${date}T12:00:00`), settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
     setLoading(true);
     try {
       const start_time = new Date(`${date}T${startTime}`).toISOString();
       const end_time = new Date(`${date}T${endTime}`).toISOString();
+
 
       // Only the time of day changed? Then following sessions must keep their
       // own dates (chosen by the professional) and only shift the clock time.

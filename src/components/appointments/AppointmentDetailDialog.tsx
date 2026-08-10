@@ -707,7 +707,13 @@ export function AppointmentDetailDialog({
   const handleRescheduleAndDelete = async () => {
     if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
 
-    const newStartTime = createDateTimeInTimeZone(new Date(`${rescheduleDate}T12:00:00`), rescheduleTime, settings?.timezone);
+    const rescheduleBase = new Date(`${rescheduleDate}T12:00:00`);
+    const rescheduleDayError = nonWorkingDayMessage(rescheduleBase, settings);
+    if (rescheduleDayError) {
+      toast.error(rescheduleDayError);
+      return;
+    }
+    const newStartTime = createDateTimeInTimeZone(rescheduleBase, rescheduleTime, settings?.timezone);
     const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEndTime = new Date(newStartTime.getTime() + duration);
 

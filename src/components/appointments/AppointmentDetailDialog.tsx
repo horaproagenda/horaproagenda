@@ -525,6 +525,8 @@ export function AppointmentDetailDialog({
       setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
+      setEditEquipmentId((appointment as any).equipment_id || null);
+
       setEditNotes(appointment.notes || '');
     }
   }, [appointment, isEditing, settings?.timezone]);

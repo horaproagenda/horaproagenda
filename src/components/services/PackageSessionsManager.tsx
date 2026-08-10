@@ -116,6 +116,9 @@ export function PackageSessionsManager({
   const [sessionHistory, setSessionHistory] = useState<Record<string, PackageSessionHistoryItem[]>>({});
 
   const { sendMessage: sendWhatsappMessage } = useWhatsapp();
+  const { settings } = useBusinessSettings();
+  const isAllowedDay = (d: Date) => isSchedulableDay(d, settings);
+
 
   useEffect(() => {
     fetchSessions();

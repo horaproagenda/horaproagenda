@@ -3,9 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { KeyRound, Loader2 } from 'lucide-react';
+import { changeOwnPassword } from '@/lib/passwordChange';
 
 export function ChangeMyPasswordCard() {
   const [pwd, setPwd] = useState('');
@@ -14,24 +14,18 @@ export function ChangeMyPasswordCard() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pwd.length < 8) { toast.error('A senha precisa ter no mínimo 8 caracteres.'); return; }
-    if (pwd !== confirm) { toast.error('As senhas não coincidem.'); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwd });
-      if (error) throw error;
-      // Limpa flag must_change_password
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from('profiles').update({ must_change_password: false }).eq('id', user.id);
+      const result = await changeOwnPassword(pwd, confirm);
+      if (!result.success) {
+        toast.error(result.message);
+        return;
       }
-      toast.success('Senha alterada com sucesso.');
+      toast.success(result.message);
       setPwd(''); setConfirm('');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao alterar senha.');
     } finally { setLoading(false); }
   };
+
 
   return (
     <Card>

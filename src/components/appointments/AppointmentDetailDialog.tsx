@@ -182,6 +182,8 @@ export function AppointmentDetailDialog({
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
+  const { equipment } = useEquipment();
+
   const { activeServices } = useServices();
   const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();

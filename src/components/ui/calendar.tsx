@@ -1,17 +1,40 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
+import { ptBR } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
+/** Extrai a primeira data válida de `selected` (single, múltiplo ou range). */
+function firstSelectedDate(selected: unknown): Date | undefined {
+  if (!selected) return undefined;
+  if (selected instanceof Date) return selected;
+  if (Array.isArray(selected)) {
+    const found = selected.find((d) => d instanceof Date) as Date | undefined;
+    return found;
+  }
+  if (typeof selected === "object") {
+    const range = selected as { from?: Date; to?: Date };
+    if (range.from instanceof Date) return range.from;
+    if (range.to instanceof Date) return range.to;
+  }
+  return undefined;
+}
+
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  // Abre sempre no mês da data já selecionada no formulário e em português por padrão.
+  const defaultMonth = props.defaultMonth ?? firstSelectedDate((props as { selected?: unknown }).selected);
+
   return (
     <DayPicker
+      locale={ptBR}
+      defaultMonth={defaultMonth}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
+
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",

@@ -95,6 +95,7 @@ import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { ClientBoletoStatus } from './ClientBoletoStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
+import { nonWorkingDayMessage } from '@/lib/workingDays';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import {
   buildChangeDescription,

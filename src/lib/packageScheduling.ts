@@ -13,7 +13,10 @@ type ConflictScope = {
   professional_id?: string | null;
   room_id?: string | null;
   ignoreAppointmentIds?: Array<string | null | undefined>;
+  /** Dias em que é permitido agendar (ex.: bloquear domingo quando desligado). */
+  isAllowedDay?: (date: Date) => boolean;
 };
+
 
 export const overlapsTimeRange = (start: Date, end: Date, otherStart: Date, otherEnd: Date) =>
   start < otherEnd && end > otherStart;

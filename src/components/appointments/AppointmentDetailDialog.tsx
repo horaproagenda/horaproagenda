@@ -79,6 +79,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
+
 import { useServices } from '@/hooks/useServices';
 import { useProducts } from '@/hooks/useProducts';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';

@@ -2001,7 +2001,7 @@ const Agenda = () => {
 
         {/* Row 2: View Toggle - Mobile Responsive */}
         <div className="flex flex-wrap items-center gap-1">
-          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start gap-0.5">
+          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && changeViewType(v as ViewType)} className="justify-start gap-0.5">
             <ToggleGroupItem value="day" aria-label="Ver dia" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
               <List className="h-3 w-3" />
               <span className="hidden xs:inline">Dia</span>

@@ -1745,7 +1745,22 @@ export function AppointmentDetailDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label className="text-xs">Equipamento</Label>
+                    <Select value={editEquipmentId || 'none'} onValueChange={(v) => setEditEquipmentId(v === 'none' ? null : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {equipment.filter(e => e.is_active).map(e => (
+                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
 
                 <div>
                   <Label className="text-xs">Observações</Label>

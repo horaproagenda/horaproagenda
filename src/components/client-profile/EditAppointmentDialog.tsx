@@ -48,6 +48,7 @@ interface PreviewConflict {
 
 export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditAppointmentDialogProps) {
   const { rooms } = useRooms();
+  const { settings } = useBusinessSettings();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();

@@ -626,6 +626,24 @@ const Agenda = () => {
     setMonthStart(startOfMonth(today));
   };
 
+  // Keep the period anchors in sync when switching views so the user stays
+  // on the month/week/day they were looking at instead of jumping to today.
+  const changeViewType = (next: ViewType, anchorDate?: Date) => {
+    const currentAnchor =
+      anchorDate ??
+      (viewType === 'day' || viewType === 'professional'
+        ? selectedDate
+        : viewType === 'week'
+          ? weekStart
+          : monthStart);
+
+    setSelectedDate(currentAnchor);
+    setWeekStart(startOfWeek(currentAnchor, { weekStartsOn: 1 }));
+    setMonthStart(startOfMonth(currentAnchor));
+    setViewType(next);
+  };
+
+
   // Persist filters to localStorage
   useEffect(() => {
     localStorage.setItem('agenda-filter-professional', professionalFilter);
@@ -1247,9 +1265,9 @@ const Agenda = () => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      setSelectedDate(day);
-                      setViewType('day');
+                      changeViewType('day', day);
                     }}
+
                     className={cn(
                       'flex flex-col items-center rounded-lg p-2 transition-all duration-200 relative',
                       isSelected 
@@ -1402,9 +1420,9 @@ const Agenda = () => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      setSelectedDate(day);
-                      setViewType('day');
+                      changeViewType('day', day);
                     }}
+
                     className={cn(
                       'flex flex-col items-center rounded-lg p-2 min-h-[80px] transition-all duration-200 relative',
                       isSelected 
@@ -1983,7 +2001,7 @@ const Agenda = () => {
 
         {/* Row 2: View Toggle - Mobile Responsive */}
         <div className="flex flex-wrap items-center gap-1">
-          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && setViewType(v as ViewType)} className="justify-start gap-0.5">
+          <ToggleGroup type="single" value={viewType} onValueChange={(v) => v && changeViewType(v as ViewType)} className="justify-start gap-0.5">
             <ToggleGroupItem value="day" aria-label="Ver dia" className="h-6 px-2 sm:px-2.5 text-[10px] sm:text-[11px] gap-0.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
               <List className="h-3 w-3" />
               <span className="hidden xs:inline">Dia</span>

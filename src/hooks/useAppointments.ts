@@ -324,53 +324,75 @@ export function useAppointments() {
   });
 
   const updateAppointment = useMutation({
-    mutationFn: async ({ id, updates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
+    mutationFn: async ({ id, updates: rawUpdates, expectedVersion }: { id: string; updates: AppointmentUpdate; expectedVersion?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Toda alteração de horário de uma sessão de pacote precisa passar pela
-      // operação atômica. A edição completa também envia profissional/sala/notas
-      // e, antes, escapava desta proteção, disparando a cascata entre updates e
-      // causando falsos conflitos com as próprias etapas do pacote.
-      const hasCompleteTimeRange = !!updates.start_time && !!updates.end_time;
-      let currentPackageAppointmentId: string | null = null;
-      if (hasCompleteTimeRange) {
-        const { data: current, error: currentError } = await supabase
-          .from('appointments')
-          .select('package_appointment_id')
-          .eq('id', id)
-          .maybeSingle();
-        if (currentError) throw currentError;
-        currentPackageAppointmentId = current?.package_appointment_id ?? null;
+      // Lê o estado atual para (1) saber se é sessão de pacote e (2) enviar
+      // somente os campos realmente alterados — assim uma troca de horário não
+      // reescreve profissional/sala/equipamento/serviço já registrados.
+      const { data: current, error: currentError } = await supabase
+        .from('appointments')
+        .select('package_appointment_id, start_time, end_time, professional_id, room_id, equipment_id, service_id, notes, status, version')
+        .eq('id', id)
+        .maybeSingle();
+      if (currentError) throw currentError;
+      if (!current) throw new AppointmentConflictError();
+
+      const normalize = (key: string, value: unknown) => {
+        if (value === null || value === undefined || value === '') return null;
+        if (key === 'start_time' || key === 'end_time') {
+          const parsed = new Date(value as string).getTime();
+          return Number.isNaN(parsed) ? null : parsed;
+        }
+        return value;
+      };
+
+      const updates: AppointmentUpdate = {};
+      for (const [key, value] of Object.entries(rawUpdates ?? {})) {
+        if (value === undefined) continue;
+        if (normalize(key, value) === normalize(key, (current as any)[key])) continue;
+        (updates as any)[key] = value;
       }
 
-      if (hasCompleteTimeRange && currentPackageAppointmentId) {
-        const { data, error } = await supabase.rpc('reschedule_package_appointment_safely', {
+      // Quando o horário muda, os dois extremos precisam ser coerentes.
+      if (updates.start_time && !updates.end_time && rawUpdates.end_time) updates.end_time = rawUpdates.end_time;
+      if (updates.end_time && !updates.start_time && rawUpdates.start_time) updates.start_time = rawUpdates.start_time;
+
+      if (Object.keys(updates).length === 0) {
+        return { ...(current as any), id, sessionReleased: false, noChanges: true };
+      }
+
+      const currentPackageAppointmentId = current.package_appointment_id ?? null;
+      const scheduleFieldKeys = ['professional_id', 'room_id', 'equipment_id', 'service_id', 'notes'] as const;
+      const fieldUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key]) => (scheduleFieldKeys as readonly string[]).includes(key)),
+      );
+      const hasTimeChange = !!updates.start_time || !!updates.end_time;
+
+      // Sessões de pacote (comum, sequencial ou kit) alteram data/hora e recursos
+      // sempre pela operação atômica: ela valida o conflito real com o novo
+      // profissional/sala/equipamento e não move as demais aplicações.
+      if (currentPackageAppointmentId && (hasTimeChange || Object.keys(fieldUpdates).length > 0)) {
+        const { data: rpcData, error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
           p_appointment_id: id,
-          p_new_start: updates.start_time,
-          p_new_end: updates.end_time,
+          p_new_start: hasTimeChange ? (updates.start_time ?? current.start_time) : null,
+          p_new_end: hasTimeChange ? (updates.end_time ?? current.end_time) : null,
           p_expected_version: expectedVersion ?? null,
+          p_field_updates: fieldUpdates,
         });
 
         if (error) throw error;
-        if (!data) throw new AppointmentConflictError();
+        if (!rpcData) throw new AppointmentConflictError();
 
-        const remainingUpdates = Object.fromEntries(
-          Object.entries(updates).filter(([key]) => !['start_time', 'end_time', 'status'].includes(key)),
-        ) as AppointmentUpdate;
-
-        if (Object.keys(remainingUpdates).length === 0) {
-          return { ...(data as Appointment), sessionReleased: false };
+        if (updates.status === undefined) {
+          return { ...(rpcData as Appointment), sessionReleased: false };
         }
 
-        const { data: completedUpdate, error: completedError } = await supabase
-          .from('appointments')
-          .update({ ...remainingUpdates, updated_by: user?.id })
-          .eq('id', id)
-          .select('*, package_appointment_id, version')
-          .single();
-        if (completedError) throw completedError;
-
-        return { ...(completedUpdate as Appointment), sessionReleased: false };
+        // Restam apenas mudanças de status: seguem pelo fluxo padrão abaixo.
+        for (const key of Object.keys(updates)) {
+          if (key !== 'status') delete (updates as any)[key];
+        }
+        expectedVersion = undefined;
       }
 
       const runUpdate = async (versionGuard?: number) => {
@@ -386,6 +408,7 @@ export function useAppointments() {
         }
         return q.select('*, package_appointment_id, version').maybeSingle();
       };
+
 
       let { data, error } = await runUpdate(expectedVersion);
       if (error) throw error;

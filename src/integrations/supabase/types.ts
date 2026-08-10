@@ -398,6 +398,7 @@ export type Database = {
           created_by: string | null
           discount_amount: number
           end_time: string
+          equipment_id: string | null
           id: string
           notes: string | null
           package_appointment_id: string | null
@@ -428,6 +429,7 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           end_time: string
+          equipment_id?: string | null
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
@@ -458,6 +460,7 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           end_time?: string
+          equipment_id?: string | null
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
@@ -482,6 +485,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
           {
@@ -4972,6 +4982,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      appointment_conflict_reason: {
+        Args: {
+          p_end: string
+          p_equipment_id: string
+          p_id: string
+          p_professional_id: string
+          p_room_id: string
+          p_start: string
+          p_status: string
+        }
+        Returns: string
+      }
       appointment_has_conflict: {
         Args: {
           p_end: string
@@ -5480,8 +5502,9 @@ export type Database = {
         Args: {
           p_appointment_id: string
           p_expected_version?: number
-          p_new_end: string
-          p_new_start: string
+          p_field_updates?: Json
+          p_new_end?: string
+          p_new_start?: string
         }
         Returns: {
           account_owner_id: string
@@ -5495,6 +5518,7 @@ export type Database = {
           created_by: string | null
           discount_amount: number
           end_time: string
+          equipment_id: string | null
           id: string
           notes: string | null
           package_appointment_id: string | null
@@ -5549,6 +5573,7 @@ export type Database = {
           created_by: string | null
           discount_amount: number
           end_time: string
+          equipment_id: string | null
           id: string
           notes: string | null
           package_appointment_id: string | null

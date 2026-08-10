@@ -79,6 +79,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
+
 import { useServices } from '@/hooks/useServices';
 import { useProducts } from '@/hooks/useProducts';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -180,6 +182,8 @@ export function AppointmentDetailDialog({
   const { activeLock, isLockedByOther, isAcquiring, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
   const { deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { rooms } = useRooms();
+  const { equipment } = useEquipment();
+
   const { activeServices } = useServices();
   const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();
@@ -431,6 +435,8 @@ export function AppointmentDetailDialog({
   const [editServiceId, setEditServiceId] = useState<string | null>(null);
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
+  const [editEquipmentId, setEditEquipmentId] = useState<string | null>(null);
+
   const [editNotes, setEditNotes] = useState('');
   const [propagateDates, setPropagateDates] = useState(false); // New: propagate dates to following appointments
   // Post-save confirmation when date/time of a package/recurring step changes
@@ -523,6 +529,8 @@ export function AppointmentDetailDialog({
       setEditServiceId(appointment.service_id || null);
       setEditProfessionalId(appointment.professional_id || null);
       setEditRoomId(appointment.room_id || null);
+      setEditEquipmentId((appointment as any).equipment_id || null);
+
       setEditNotes(appointment.notes || '');
     }
   }, [appointment, isEditing, settings?.timezone]);
@@ -919,18 +927,23 @@ export function AppointmentDetailDialog({
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
     
+    // Envia todos os campos do formulário; o hook compara com o estado atual e
+    // grava apenas o que realmente mudou (dia, horário, serviço, profissional,
+    // sala, equipamento ou observações).
     updateAppointment.mutate({
       id: appointment.id,
       updates: {
         start_time: newStartTime.toISOString(),
         end_time: newEndTime.toISOString(),
-          service_id: editServiceId,
+        service_id: editServiceId,
         professional_id: editProfessionalId,
         room_id: editRoomId,
-        notes: editNotes || undefined,
+        equipment_id: editEquipmentId,
+        notes: editNotes,
       },
       expectedVersion: appointment.version,
     }, {
+
       onSuccess: () => {
         // Resolve package_id robustly: some fetches nest it under `.package.id`,
         // others expose it as `.package_id`; older/legacy rows may only expose
@@ -1736,7 +1749,22 @@ export function AppointmentDetailDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label className="text-xs">Equipamento</Label>
+                    <Select value={editEquipmentId || 'none'} onValueChange={(v) => setEditEquipmentId(v === 'none' ? null : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {equipment.filter(e => e.is_active).map(e => (
+                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
 
                 <div>
                   <Label className="text-xs">Observações</Label>

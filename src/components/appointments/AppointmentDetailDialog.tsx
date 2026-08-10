@@ -801,6 +801,11 @@ export function AppointmentDetailDialog({
       return;
     }
     const baseDate = new Date(`${date}T12:00:00`);
+    const statusDayError = nonWorkingDayMessage(baseDate, settings);
+    if (statusDayError) {
+      toast.error(statusDayError);
+      return;
+    }
     const newStart = createDateTimeInTimeZone(baseDate, time, settings?.timezone);
     const originalDuration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + originalDuration);

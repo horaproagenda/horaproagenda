@@ -1713,10 +1713,13 @@ export function AppointmentDetailDialog({
                           <DatePickerCalendar
                             mode="single"
                             selected={editDate ? new Date(`${editDate}T12:00:00`) : undefined}
+                            defaultMonth={editDate ? new Date(`${editDate}T12:00:00`) : undefined}
+                            locale={ptBR}
                             onSelect={(date) => date && setEditDate(format(date, 'yyyy-MM-dd'))}
                             initialFocus
                             className="p-3 pointer-events-auto"
                           />
+
                         </PopoverContent>
                       </Popover>
                     </div>

@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
 import { useIsSmartphone } from '@/hooks/use-mobile';
 import { ptBR } from 'date-fns/locale';
@@ -50,8 +49,6 @@ const Index = () => {
   }, [todayAppointments]);
 
   const { data: clientCreditsMap } = useClientsCredits(clientIds);
-
-  if (isSmartphone) return <Navigate to="/agenda" replace />;
 
   return (
     <AppLayout 
@@ -105,7 +102,7 @@ const Index = () => {
         )}
 
         {/* Charts Grid */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
           <SalesChart 
             salesData={monthlySalesChart || []}
             clientsData={newClientsChart || []}
@@ -114,7 +111,7 @@ const Index = () => {
         </div>
 
         {/* Bottom Grid */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
           <ServicesDistribution data={servicesDistribution || []} />
 
           {/* Today's Appointments */}
@@ -131,7 +128,7 @@ const Index = () => {
             
             {todayAppointments.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                {todayAppointments.slice(0, 6).map((appointment, index) => (
+                {todayAppointments.slice(0, isSmartphone ? 3 : 6).map((appointment, index) => (
                   <div 
                     key={appointment.id} 
                     style={{ animationDelay: `${index * 50}ms` }}

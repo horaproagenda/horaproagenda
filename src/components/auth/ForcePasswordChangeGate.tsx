@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { changeOwnPassword } from '@/lib/passwordChange';
+
 
 /**
  * Bloqueia toda a UI até que o profissional troque a senha,
@@ -35,23 +37,21 @@ export function ForcePasswordChangeGate({ children }: { children: React.ReactNod
   }, [user?.id]);
 
   const handleSave = async () => {
-    if (pwd.length < 8) { toast.error('A senha deve ter pelo menos 8 caracteres.'); return; }
-    if (pwd !== pwd2) { toast.error('As senhas não coincidem.'); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwd });
-      if (error) throw error;
-      const { error: rpcErr } = await supabase.rpc('mark_password_changed');
-      if (rpcErr) throw rpcErr;
-      toast.success('Senha atualizada com sucesso!');
+      const result = await changeOwnPassword(pwd, pwd2);
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success(result.message);
       setMustChange(false);
       setPwd(''); setPwd2('');
-    } catch (e: any) {
-      toast.error('Erro ao atualizar senha: ' + (e.message || e));
     } finally {
       setSaving(false);
     }
   };
+
 
   if (checking) return <>{children}</>;
 

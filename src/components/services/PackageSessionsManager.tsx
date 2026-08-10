@@ -418,7 +418,8 @@ export function PackageSessionsManager({
 
     let accumulatedDays = 0;
     const preview = pendingSessions.map((session, index) => {
-      const date = addDays(baseDate, accumulatedDays);
+      // Nunca prever sessões em dias não atendidos (ex.: domingo desligado).
+      const date = nextSchedulableDay(addDays(baseDate, accumulatedDays), settings);
       const interval = packageInfo?.package_type === 'sequential'
         ? session.interval_after_days || 0
         : massRescheduleInterval;
@@ -427,7 +428,8 @@ export function PackageSessionsManager({
     });
 
     setMassReschedulePreview(preview);
-  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type]);
+  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type, settings]);
+
 
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;

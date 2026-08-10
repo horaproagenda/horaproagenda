@@ -314,10 +314,10 @@ export type Database = {
         }
         Insert: {
           account_owner_id?: string
-          appointment_id?: string
+          appointment_id: string
           created_at?: string
           id?: string
-          product_id?: string
+          product_id: string
           quantity_used?: number
           source_id: string
           source_type: string

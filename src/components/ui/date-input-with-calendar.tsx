@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,6 +42,14 @@ export function DateInputWithCalendar({
     }
   }, [value]);
 
+  const [open, setOpen] = React.useState(false);
+  const [month, setMonth] = React.useState<Date | undefined>(selectedDate);
+
+  // Sempre que abrir (ou a data mudar), o calendário exibe o mês da data do formulário.
+  React.useEffect(() => {
+    if (selectedDate) setMonth(selectedDate);
+  }, [selectedDate]);
+
   return (
     <div className="grid grid-cols-[1fr_auto] gap-2">
       <Input
@@ -51,7 +60,13 @@ export function DateInputWithCalendar({
         className={cn('min-w-0', inputClassName)}
         {...inputProps}
       />
-      <Popover>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (next) setMonth(selectedDate ?? new Date());
+          setOpen(next);
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -68,7 +83,14 @@ export function DateInputWithCalendar({
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(d) => d && onChange(format(d, 'yyyy-MM-dd'))}
+            month={month}
+            onMonthChange={setMonth}
+            locale={ptBR}
+            onSelect={(d) => {
+              if (!d) return;
+              onChange(format(d, 'yyyy-MM-dd'));
+              setOpen(false);
+            }}
             initialFocus
             className={cn('p-3 pointer-events-auto')}
           />
@@ -77,3 +99,4 @@ export function DateInputWithCalendar({
     </div>
   );
 }
+

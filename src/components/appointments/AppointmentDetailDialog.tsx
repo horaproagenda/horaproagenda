@@ -923,18 +923,23 @@ export function AppointmentDetailDialog({
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
     
+    // Envia todos os campos do formulário; o hook compara com o estado atual e
+    // grava apenas o que realmente mudou (dia, horário, serviço, profissional,
+    // sala, equipamento ou observações).
     updateAppointment.mutate({
       id: appointment.id,
       updates: {
         start_time: newStartTime.toISOString(),
         end_time: newEndTime.toISOString(),
-          service_id: editServiceId,
+        service_id: editServiceId,
         professional_id: editProfessionalId,
         room_id: editRoomId,
-        notes: editNotes || undefined,
+        equipment_id: editEquipmentId,
+        notes: editNotes,
       },
       expectedVersion: appointment.version,
     }, {
+
       onSuccess: () => {
         // Resolve package_id robustly: some fetches nest it under `.package.id`,
         // others expose it as `.package_id`; older/legacy rows may only expose

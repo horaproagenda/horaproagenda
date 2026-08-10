@@ -431,6 +431,8 @@ export function AppointmentDetailDialog({
   const [editServiceId, setEditServiceId] = useState<string | null>(null);
   const [editProfessionalId, setEditProfessionalId] = useState<string | null>(null);
   const [editRoomId, setEditRoomId] = useState<string | null>(null);
+  const [editEquipmentId, setEditEquipmentId] = useState<string | null>(null);
+
   const [editNotes, setEditNotes] = useState('');
   const [propagateDates, setPropagateDates] = useState(false); // New: propagate dates to following appointments
   // Post-save confirmation when date/time of a package/recurring step changes

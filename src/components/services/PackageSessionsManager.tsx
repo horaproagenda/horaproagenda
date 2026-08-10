@@ -29,7 +29,7 @@ import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
 import { getSchedulingDurationMinutes } from '@/lib/duration';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
-import { isSchedulableDay, nonWorkingDayMessage } from '@/lib/workingDays';
+import { isSchedulableDay, nextSchedulableDay, nonWorkingDayMessage } from '@/lib/workingDays';
 
 
 // Status que nunca ocupam um horário na agenda.

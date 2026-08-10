@@ -626,6 +626,24 @@ const Agenda = () => {
     setMonthStart(startOfMonth(today));
   };
 
+  // Keep the period anchors in sync when switching views so the user stays
+  // on the month/week/day they were looking at instead of jumping to today.
+  const changeViewType = (next: ViewType, anchorDate?: Date) => {
+    const currentAnchor =
+      anchorDate ??
+      (viewType === 'day' || viewType === 'professional'
+        ? selectedDate
+        : viewType === 'week'
+          ? weekStart
+          : monthStart);
+
+    setSelectedDate(currentAnchor);
+    setWeekStart(startOfWeek(currentAnchor, { weekStartsOn: 1 }));
+    setMonthStart(startOfMonth(currentAnchor));
+    setViewType(next);
+  };
+
+
   // Persist filters to localStorage
   useEffect(() => {
     localStorage.setItem('agenda-filter-professional', professionalFilter);

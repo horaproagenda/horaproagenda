@@ -924,8 +924,15 @@ export function AppointmentDetailDialog({
     }
 
     const editBaseDate = new Date(`${editDate}T12:00:00`);
+    const dayError = nonWorkingDayMessage(editBaseDate, settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
+    
+
     
     // Envia todos os campos do formulário; o hook compara com o estado atual e
     // grava apenas o que realmente mudou (dia, horário, serviço, profissional,

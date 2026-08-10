@@ -13,7 +13,10 @@ type ConflictScope = {
   professional_id?: string | null;
   room_id?: string | null;
   ignoreAppointmentIds?: Array<string | null | undefined>;
+  /** Dias em que é permitido agendar (ex.: bloquear domingo quando desligado). */
+  isAllowedDay?: (date: Date) => boolean;
 };
+
 
 export const overlapsTimeRange = (start: Date, end: Date, otherStart: Date, otherEnd: Date) =>
   start < otherEnd && end > otherStart;
@@ -45,11 +48,23 @@ export const findNextAvailablePackageSlot = (
 ) => {
   let candidate = new Date(desiredStart);
 
+  const shiftToAllowedDay = (date: Date) => {
+    if (!scope.isAllowedDay) return date;
+    const next = new Date(date);
+    for (let i = 0; i < 14 && !scope.isAllowedDay(next); i += 1) {
+      next.setDate(next.getDate() + 1);
+    }
+    return next;
+  };
+
+  candidate = shiftToAllowedDay(candidate);
+
   for (let attempt = 0; attempt < 96; attempt += 1) {
     const conflict = findSchedulingConflict(candidate, durationMinutes, appointments, scope);
     if (!conflict) return candidate;
-    candidate = addMinutes(new Date(conflict.end_time), 15);
+    candidate = shiftToAllowedDay(addMinutes(new Date(conflict.end_time), 15));
   }
+
 
   throw new Error('Não foi possível encontrar horário livre para as próximas etapas do pacote. Ajuste a data/horário manualmente.');
 };

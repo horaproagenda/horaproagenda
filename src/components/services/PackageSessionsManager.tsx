@@ -28,6 +28,9 @@ import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { findNextAvailablePackageSlot, findSchedulingConflict } from '@/lib/packageScheduling';
 import { getSchedulingDurationMinutes } from '@/lib/duration';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { isSchedulableDay, nextSchedulableDay, nonWorkingDayMessage } from '@/lib/workingDays';
+
 
 // Status que nunca ocupam um horário na agenda.
 const NON_BLOCKING_STATUSES = ['cancelled', 'missed', 'rescheduled'];
@@ -113,6 +116,9 @@ export function PackageSessionsManager({
   const [sessionHistory, setSessionHistory] = useState<Record<string, PackageSessionHistoryItem[]>>({});
 
   const { sendMessage: sendWhatsappMessage } = useWhatsapp();
+  const { settings } = useBusinessSettings();
+  const isAllowedDay = (d: Date) => isSchedulableDay(d, settings);
+
 
   useEffect(() => {
     fetchSessions();
@@ -412,7 +418,8 @@ export function PackageSessionsManager({
 
     let accumulatedDays = 0;
     const preview = pendingSessions.map((session, index) => {
-      const date = addDays(baseDate, accumulatedDays);
+      // Nunca prever sessões em dias não atendidos (ex.: domingo desligado).
+      const date = nextSchedulableDay(addDays(baseDate, accumulatedDays), settings);
       const interval = packageInfo?.package_type === 'sequential'
         ? session.interval_after_days || 0
         : massRescheduleInterval;
@@ -421,10 +428,17 @@ export function PackageSessionsManager({
     });
 
     setMassReschedulePreview(preview);
-  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type]);
+  }, [massRescheduleEnabled, selectedSession, newDate, newTime, massRescheduleInterval, sessions, packageInfo?.package_type, settings]);
+
 
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;
+
+    const dayError = nonWorkingDayMessage(new Date(`${newDate}T${newTime}:00`), settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -448,7 +462,9 @@ export function PackageSessionsManager({
             professional_id: packageInfo?.professional_id,
             room_id: packageInfo?.room_id,
             ignoreAppointmentIds: ignoredAppointments,
+            isAllowedDay,
           });
+
           previousScheduledDate = safeDate;
 
           if (session.appointment_id) {

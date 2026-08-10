@@ -95,6 +95,7 @@ import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 import { ClientBoletoStatus } from './ClientBoletoStatus';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { createDateTimeInTimeZone, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
+import { nonWorkingDayMessage } from '@/lib/workingDays';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import {
   buildChangeDescription,
@@ -706,7 +707,13 @@ export function AppointmentDetailDialog({
   const handleRescheduleAndDelete = async () => {
     if (!rescheduleDate || !rescheduleTime || !appointment.package_appointment) return;
 
-    const newStartTime = createDateTimeInTimeZone(new Date(`${rescheduleDate}T12:00:00`), rescheduleTime, settings?.timezone);
+    const rescheduleBase = new Date(`${rescheduleDate}T12:00:00`);
+    const rescheduleDayError = nonWorkingDayMessage(rescheduleBase, settings);
+    if (rescheduleDayError) {
+      toast.error(rescheduleDayError);
+      return;
+    }
+    const newStartTime = createDateTimeInTimeZone(rescheduleBase, rescheduleTime, settings?.timezone);
     const duration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEndTime = new Date(newStartTime.getTime() + duration);
 
@@ -794,6 +801,11 @@ export function AppointmentDetailDialog({
       return;
     }
     const baseDate = new Date(`${date}T12:00:00`);
+    const statusDayError = nonWorkingDayMessage(baseDate, settings);
+    if (statusDayError) {
+      toast.error(statusDayError);
+      return;
+    }
     const newStart = createDateTimeInTimeZone(baseDate, time, settings?.timezone);
     const originalDuration = new Date(appointment.end_time).getTime() - new Date(appointment.start_time).getTime();
     const newEnd = new Date(newStart.getTime() + originalDuration);
@@ -924,8 +936,15 @@ export function AppointmentDetailDialog({
     }
 
     const editBaseDate = new Date(`${editDate}T12:00:00`);
+    const dayError = nonWorkingDayMessage(editBaseDate, settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
+    
+
     
     // Envia todos os campos do formulário; o hook compara com o estado atual e
     // grava apenas o que realmente mudou (dia, horário, serviço, profissional,

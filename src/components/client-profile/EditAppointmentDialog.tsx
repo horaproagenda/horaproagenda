@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { Trash2, Eye, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
 import { supabase } from '@/integrations/supabase/client';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { nonWorkingDayMessage } from '@/lib/workingDays';
 
 interface EditAppointmentDialogProps {
   appointment: Appointment | null;
@@ -46,6 +48,7 @@ interface PreviewConflict {
 
 export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditAppointmentDialogProps) {
   const { rooms } = useRooms();
+  const { settings } = useBusinessSettings();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
@@ -202,10 +205,16 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
 
   const performSave = async (propagate: boolean) => {
     if (!appointment) return;
+    const dayError = nonWorkingDayMessage(new Date(`${date}T12:00:00`), settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
     setLoading(true);
     try {
       const start_time = new Date(`${date}T${startTime}`).toISOString();
       const end_time = new Date(`${date}T${endTime}`).toISOString();
+
 
       // Only the time of day changed? Then following sessions must keep their
       // own dates (chosen by the professional) and only shift the clock time.

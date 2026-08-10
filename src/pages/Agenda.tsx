@@ -1420,9 +1420,9 @@ const Agenda = () => {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      setSelectedDate(day);
-                      setViewType('day');
+                      changeViewType('day', day);
                     }}
+
                     className={cn(
                       'flex flex-col items-center rounded-lg p-2 min-h-[80px] transition-all duration-200 relative',
                       isSelected 

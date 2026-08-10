@@ -432,6 +432,12 @@ export function PackageSessionsManager({
   const handleReschedule = async () => {
     if (!selectedSession || !newDate || !newTime) return;
 
+    const dayError = nonWorkingDayMessage(new Date(`${newDate}T${newTime}:00`), settings);
+    if (dayError) {
+      toast.error(dayError);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const newDateTime = new Date(`${newDate}T${newTime}:00`);
@@ -454,7 +460,9 @@ export function PackageSessionsManager({
             professional_id: packageInfo?.professional_id,
             room_id: packageInfo?.room_id,
             ignoreAppointmentIds: ignoredAppointments,
+            isAllowedDay,
           });
+
           previousScheduledDate = safeDate;
 
           if (session.appointment_id) {

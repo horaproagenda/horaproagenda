@@ -59,6 +59,7 @@ const CadastroCliente = lazy(lazyWithRetry(() => import("./pages/CadastroCliente
 const Unsubscribe = lazy(lazyWithRetry(() => import("./pages/Unsubscribe")));
 const TermosDeServico = lazy(lazyWithRetry(() => import("./pages/TermosDeServico")));
 const PoliticaDePrivacidade = lazy(lazyWithRetry(() => import("./pages/PoliticaDePrivacidade")));
+const Contato = lazy(lazyWithRetry(() => import("./pages/Contato")));
 const ContaInativa = lazy(lazyWithRetry(() => import("./pages/ContaInativa")));
 const ConfirmarAgendamento = lazy(lazyWithRetry(() => import("./pages/ConfirmarAgendamento")));
 const OAuthConsent = lazy(lazyWithRetry(() => import("./pages/OAuthConsent")));
@@ -203,6 +204,7 @@ const App = () => {
                 <Route path="/c/:token" element={<ConfirmarAgendamento />} />
                 <Route path="/termos-de-servico" element={<TermosDeServico />} />
                 <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+                <Route path="/contato" element={<Contato />} />
                 <Route path="/conta-inativa" element={<ContaInativa />} />
                 <Route path="/" element={<HomeRoute />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />

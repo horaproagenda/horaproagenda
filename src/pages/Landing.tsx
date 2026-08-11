@@ -171,7 +171,7 @@ function InterestForm() {
       });
       if (error) throw error;
 
-      // Notifica a equipe por e-mail (suporte@horaproagenda.app). Uma falha aqui
+      // Notifica a equipe por e-mail (suporte@horaproagenda.tech). Uma falha aqui
       // não deve impedir o registro do lead.
       try {
         await supabase.functions.invoke('send-transactional-email', {
@@ -739,12 +739,21 @@ export default function Landing() {
               />
               <span>© {new Date().getFullYear()} Hora Pro. Todos os direitos reservados.</span>
             </div>
+            <p className="text-center">
+              E-mail de contato:{' '}
+              <a href={`mailto:${BRAND.supportEmail}`} className="hover:text-foreground">
+                {BRAND.supportEmail}
+              </a>
+            </p>
             <nav className="flex items-center gap-5">
               <Link to="/termos-de-servico" className="hover:text-foreground">
                 Termos
               </Link>
               <Link to="/politica-de-privacidade" className="hover:text-foreground">
                 Privacidade
+              </Link>
+              <Link to="/contato" className="hover:text-foreground">
+                Contato
               </Link>
               <Link to="/auth" className="hover:text-foreground">
                 Entrar

@@ -100,7 +100,17 @@ export function useRecurringAppointments() {
 
     const createdAppointments: any[] = [];
     const failedAppointments: number[] = [];
+    const failureReasons: string[] = [];
     const totalSessions = appointments.length;
+
+    const extractReason = (result: any, response?: Response): string => {
+      if (Array.isArray(result?.errors) && result.errors.length > 0) {
+        return result.errors.map((e: any) => e?.message).filter(Boolean).join(' / ');
+      }
+      if (result?.error) return String(result.error);
+      if (response && !response.ok) return `Falha na comunicação com o servidor (${response.status}).`;
+      return '';
+    };
     
     // Create appointments sequentially to avoid conflicts
     for (let i = 0; i < appointments.length; i++) {

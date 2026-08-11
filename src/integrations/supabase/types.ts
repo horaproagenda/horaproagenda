@@ -5382,6 +5382,7 @@ export type Database = {
         Returns: Json
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_tenant_staff: { Args: never; Returns: boolean }
       link_current_user_professional: { Args: never; Returns: string }
       link_package_session_to_appointment: {
         Args: { _appointment_id: string; _package_id: string }

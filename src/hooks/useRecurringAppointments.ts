@@ -160,10 +160,14 @@ export function useRecurringAppointments() {
           queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } else {
           failedAppointments.push(i + 1);
+          const reason = extractReason(result, response);
+          if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
         }
       } catch (error) {
         console.error(`Error creating appointment ${i + 1}:`, error);
         failedAppointments.push(i + 1);
+        const reason = error instanceof Error ? error.message : '';
+        if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
       }
     }
 

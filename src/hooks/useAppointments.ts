@@ -16,6 +16,8 @@ export interface AppointmentInsert {
   notes?: string;
   professional_id?: string | null;
   room_id?: string | null;
+  equipment_id?: string | null;
+
   payment_status?: PaymentStatus;
 }
 

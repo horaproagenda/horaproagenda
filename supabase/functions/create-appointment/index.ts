@@ -493,6 +493,8 @@ serve(async (req) => {
       service_id: body.service_id || null,
       professional_id: body.professional_id || null,
       room_id: body.room_id || null,
+      equipment_id: body.equipment_id || null,
+
       start_time: body.start_time,
       end_time: body.end_time,
       notes: body.notes || null,

@@ -268,7 +268,7 @@ const Ajuda = () => {
                   </Card>
                 </a>
                 <a
-                  href="mailto:suporte@horaproagenda.app"
+                  href="mailto:suporte@horaproagenda.tech"
                   className="block"
                 >
                   <Card className="card-hover h-full">
@@ -279,7 +279,7 @@ const Ajuda = () => {
                         </div>
                         <div className="flex-1">
                           <h3 className="font-medium text-sm">E-mail</h3>
-                          <p className="text-xs text-muted-foreground">suporte@horaproagenda.app</p>
+                          <p className="text-xs text-muted-foreground">suporte@horaproagenda.tech</p>
                         </div>
                         <ExternalLink className="h-3 w-3 text-muted-foreground" />
                       </div>

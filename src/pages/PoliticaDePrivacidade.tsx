@@ -5,7 +5,7 @@ import { Helmet } from "react-helmet-async";
 
 export default function PoliticaDePrivacidade() {
   const siteUrl = "https://horaproagenda.app";
-  const email = "suporte@horaproagenda.app";
+  const email = "suporte@horaproagenda.tech";
 
   return (
     <div className="min-h-screen bg-background">

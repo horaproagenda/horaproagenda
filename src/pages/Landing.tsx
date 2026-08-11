@@ -171,7 +171,7 @@ function InterestForm() {
       });
       if (error) throw error;
 
-      // Notifica a equipe por e-mail (suporte@horaproagenda.app). Uma falha aqui
+      // Notifica a equipe por e-mail (suporte@horaproagenda.tech). Uma falha aqui
       // não deve impedir o registro do lead.
       try {
         await supabase.functions.invoke('send-transactional-email', {

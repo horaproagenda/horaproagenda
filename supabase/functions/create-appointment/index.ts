@@ -557,10 +557,18 @@ serve(async (req) => {
         }
       }
       console.error('Insert error:', insertError);
+      // Os gatilhos do banco já devolvem explicações em português (conflito de
+      // recurso, dia não atendido, isolamento de conta). Repassamos essa
+      // mensagem para o usuário em vez de um erro genérico.
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create appointment', details: insertError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: insertError.message || 'Não foi possível criar o agendamento.',
+          details: insertError.message,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
     console.log('Appointment created successfully:', appointment.id);

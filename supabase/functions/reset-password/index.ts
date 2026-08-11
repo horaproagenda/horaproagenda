@@ -116,7 +116,7 @@ serve(async (req) => {
 
     if (!user) {
       console.warn("reset-password user not found after valid code:", normalizedEmail);
-      await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail).eq("type", "login");
+      await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
       return jsonResponse(
         { code: "user_not_found", error: "Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo." },
         404,
@@ -139,7 +139,7 @@ serve(async (req) => {
       return jsonResponse({ error: "Erro ao atualizar senha" }, 500);
     }
 
-    await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail).eq("type", "login");
+    await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
 
     console.log("Password updated successfully for:", normalizedEmail);
 

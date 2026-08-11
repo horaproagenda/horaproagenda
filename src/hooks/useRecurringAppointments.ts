@@ -212,7 +212,8 @@ Até breve! ✨`;
 
     // Show final result toast
     if (failedAppointments.length > 0) {
-      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} tiveram conflitos.`);
+      const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
+      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} não foram agendadas.${motivo}`);
     } else if (createdAppointments.length > 0) {
       toast.success(`✅ Todos os ${createdAppointments.length} agendamentos foram registrados com sucesso!`);
     }

@@ -9,7 +9,9 @@ const corsHeaders = {
 interface VerifyRequest {
   email: string;
   code: string;
+  type?: string;
 }
+
 
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {

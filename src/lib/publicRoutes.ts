@@ -15,6 +15,7 @@ export const DOCUMENT_FILL_ROUTE = '/preencher-documento/:slug';
 export const DOCUMENT_FILL_ROUTE_LEGACY = '/preencher-documento';
 export const UNSUBSCRIBE_ROUTE = '/unsubscribe';
 export const APPOINTMENT_CONFIRM_ROUTE = '/c/:token';
+export const CONTACT_ROUTE = '/contato';
 
 /** Lista usada pelos testes para validar que `App.tsx` registra todas elas. */
 export const PUBLIC_ROUTES = [
@@ -23,6 +24,7 @@ export const PUBLIC_ROUTES = [
   DOCUMENT_FILL_ROUTE_LEGACY,
   UNSUBSCRIBE_ROUTE,
   APPOINTMENT_CONFIRM_ROUTE,
+  CONTACT_ROUTE,
 ] as const;
 
 /** Base canônica para URLs públicas compartilhadas (WhatsApp, e-mail, etc.). */

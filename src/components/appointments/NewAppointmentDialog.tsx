@@ -1290,6 +1290,7 @@ export function NewAppointmentDialog({
           const sessionsToCreate = editablePreviewDates.length - 1;
           let createdCount = 0;
           const failedSessions: number[] = [];
+          const failureReasons: string[] = [];
 
           // Fecha o formulário imediatamente; os agendamentos seguintes são
           // criados em segundo plano com auto-reagendamento em caso de conflito.
@@ -1386,13 +1387,16 @@ export function NewAppointmentDialog({
             } catch (error) {
               console.error(`Error creating session ${i + 1}:`, error);
               failedSessions.push(i + 1);
+              const reason = (error as any)?.message ? String((error as any).message) : '';
+              if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
               // Continue creating other sessions even if one fails
             }
           }
 
           // Report results
           if (failedSessions.length > 0) {
-            toast.error(`Sessões ${failedSessions.join(', ')} não foram agendadas devido a conflitos de horário. Verifique a agenda e reagende manualmente.`, { duration: 8000 });
+            const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
+            toast.error(`Sessões ${failedSessions.join(', ')} não foram agendadas.${motivo} Verifique a agenda e reagende manualmente.`, { duration: 8000 });
             toast.info(`${createdCount + 1} de ${sessionsToCreate + 1} agendamentos foram criados.`);
           } else {
             toast.success(`${createdCount + 1} agendamentos criados automaticamente!`);

@@ -100,7 +100,17 @@ export function useRecurringAppointments() {
 
     const createdAppointments: any[] = [];
     const failedAppointments: number[] = [];
+    const failureReasons: string[] = [];
     const totalSessions = appointments.length;
+
+    const extractReason = (result: any, response?: Response): string => {
+      if (Array.isArray(result?.errors) && result.errors.length > 0) {
+        return result.errors.map((e: any) => e?.message).filter(Boolean).join(' / ');
+      }
+      if (result?.error) return String(result.error);
+      if (response && !response.ok) return `Falha na comunicação com o servidor (${response.status}).`;
+      return '';
+    };
     
     // Create appointments sequentially to avoid conflicts
     for (let i = 0; i < appointments.length; i++) {
@@ -150,10 +160,14 @@ export function useRecurringAppointments() {
           queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } else {
           failedAppointments.push(i + 1);
+          const reason = extractReason(result, response);
+          if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
         }
       } catch (error) {
         console.error(`Error creating appointment ${i + 1}:`, error);
         failedAppointments.push(i + 1);
+        const reason = error instanceof Error ? error.message : '';
+        if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
       }
     }
 
@@ -198,7 +212,8 @@ Até breve! ✨`;
 
     // Show final result toast
     if (failedAppointments.length > 0) {
-      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} tiveram conflitos.`);
+      const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
+      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} não foram agendadas.${motivo}`);
     } else if (createdAppointments.length > 0) {
       toast.success(`✅ Todos os ${createdAppointments.length} agendamentos foram registrados com sucesso!`);
     }

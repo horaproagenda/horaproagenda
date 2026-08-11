@@ -568,7 +568,7 @@ function AuthInner() {
     setLoading(true);
     try {
       const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
-        body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim() },
+        body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim(), type: 'login' },
       });
 
       if (verifyError) throw new Error(await edgeErrorMessage(verifyError, 'Erro ao verificar código'));

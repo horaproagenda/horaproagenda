@@ -1290,6 +1290,7 @@ export function NewAppointmentDialog({
           const sessionsToCreate = editablePreviewDates.length - 1;
           let createdCount = 0;
           const failedSessions: number[] = [];
+          const failureReasons: string[] = [];
 
           // Fecha o formulário imediatamente; os agendamentos seguintes são
           // criados em segundo plano com auto-reagendamento em caso de conflito.

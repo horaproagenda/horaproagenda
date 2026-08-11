@@ -362,19 +362,9 @@ serve(async (req) => {
         });
       }
 
-      // Block scheduling on professional absences (vacation/leave/blocked period).
-      if (body.professional_id) {
-        const { data: absences } = await supabase
-          .from('professional_absences')
-          .select('start_date, end_date, reason')
-          .eq('professional_id', body.professional_id)
-          .lte('start_date', body.end_time)
-          .gte('end_date', body.start_time);
-        if (absences && absences.length > 0) {
-          const reason = absences[0].reason || 'ausência registrada';
-          errors.push({ field: 'professional_id', message: `Profissional indisponível neste período (${reason}).` });
-        }
-      }
+      // Ausências do profissional são validadas adiante (etapa 8), usando as
+      // colunas reais da tabela (start_time/end_time).
+
     }
 
     if (errors.length > 0) {

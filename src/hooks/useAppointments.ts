@@ -16,6 +16,8 @@ export interface AppointmentInsert {
   notes?: string;
   professional_id?: string | null;
   room_id?: string | null;
+  equipment_id?: string | null;
+
   payment_status?: PaymentStatus;
 }
 
@@ -126,6 +128,7 @@ export function useAppointments() {
           service_id: appointment.service_id,
           professional_id: appointment.professional_id,
           room_id: appointment.room_id,
+          equipment_id: appointment.equipment_id ?? null,
           start_time: appointment.start_time,
           end_time: appointment.end_time,
           notes: appointment.notes,
@@ -133,18 +136,21 @@ export function useAppointments() {
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
 
-      if (!result.success) {
-        if (result.errors && Array.isArray(result.errors)) {
+      if (!result || !result.success) {
+        if (result?.errors && Array.isArray(result.errors)) {
           const errorMessages = result.errors.map((e: EdgeFunctionError) => e.message).join(', ');
           throw new Error(errorMessages);
         }
-        throw new Error(result.error || 'Erro ao criar agendamento');
+        throw new Error(
+          result?.error || result?.details || 'Não foi possível criar o agendamento agora. Tente novamente.',
+        );
       }
 
       return result.data;
     },
+
     onMutate: async (newAppointment) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['appointments'] });

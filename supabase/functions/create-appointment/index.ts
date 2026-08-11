@@ -11,6 +11,8 @@ interface AppointmentRequest {
   service_id?: string;
   professional_id?: string;
   room_id?: string;
+  equipment_id?: string | null;
+
   start_time: string;
   end_time: string;
   notes?: string;
@@ -362,19 +364,9 @@ serve(async (req) => {
         });
       }
 
-      // Block scheduling on professional absences (vacation/leave/blocked period).
-      if (body.professional_id) {
-        const { data: absences } = await supabase
-          .from('professional_absences')
-          .select('start_date, end_date, reason')
-          .eq('professional_id', body.professional_id)
-          .lte('start_date', body.end_time)
-          .gte('end_date', body.start_time);
-        if (absences && absences.length > 0) {
-          const reason = absences[0].reason || 'ausência registrada';
-          errors.push({ field: 'professional_id', message: `Profissional indisponível neste período (${reason}).` });
-        }
-      }
+      // Ausências do profissional são validadas adiante (etapa 8), usando as
+      // colunas reais da tabela (start_time/end_time).
+
     }
 
     if (errors.length > 0) {
@@ -455,119 +447,32 @@ serve(async (req) => {
       );
     }
 
-    // 8. Check for professional time conflicts (skipped in legacy mode)
-    if (body.professional_id && !body.legacy) {
-      const { data: conflicts } = await supabase
-        .from('appointments')
-        .select('id, start_time, end_time')
-        .eq('professional_id', body.professional_id)
-        .not('status', 'eq', 'cancelled')
-        .or(`and(start_time.lt.${body.end_time},end_time.gt.${body.start_time})`);
+    // 8. Conflitos de profissional, sala, equipamento e ausências.
+    // Fonte única da verdade: a função do banco `appointment_conflict_reason`,
+    // a mesma usada pelos gatilhos e pelo reagendamento. Ela já ignora status
+    // que não bloqueiam agenda (cancelado, remarcado, falta) e devolve a
+    // explicação em português.
+    if (!body.legacy) {
+      const { data: conflictReason, error: conflictError } = await supabase.rpc(
+        'appointment_conflict_reason',
+        {
+          p_id: null,
+          p_professional_id: body.professional_id ?? null,
+          p_room_id: body.room_id ?? null,
+          p_equipment_id: body.equipment_id ?? null,
+          p_start: body.start_time,
+          p_end: body.end_time,
+          p_status: body.status ?? 'scheduled',
+        },
+      );
 
-      if (conflicts && conflicts.length > 0) {
-        errors.push({ 
-          field: 'professional_id', 
-          message: 'Professional has a conflicting appointment at this time' 
-        });
+      if (conflictError) {
+        console.error('Falha ao verificar conflitos:', conflictError);
+      } else if (conflictReason) {
+        errors.push({ field: 'time', message: String(conflictReason) });
       }
     }
 
-    // 9. Check for room conflicts (skipped in legacy mode)
-    if (body.room_id && !body.legacy) {
-      const { data: roomConflicts } = await supabase
-        .from('appointments')
-        .select('id, start_time, end_time')
-        .eq('room_id', body.room_id)
-        .not('status', 'eq', 'cancelled')
-        .or(`and(start_time.lt.${body.end_time},end_time.gt.${body.start_time})`);
-
-      if (roomConflicts && roomConflicts.length > 0) {
-        errors.push({ 
-          field: 'room_id', 
-          message: 'Room is already booked at this time' 
-        });
-      }
-    }
-
-    // 10. Check for professional absences (skipped in legacy mode)
-    if (body.professional_id && !body.legacy) {
-      const { data: absences } = await supabase
-        .from('professional_absences')
-        .select('id, start_time, end_time, reason')
-        .eq('professional_id', body.professional_id)
-        .or(`and(start_time.lt.${body.end_time},end_time.gt.${body.start_time})`);
-
-      if (absences && absences.length > 0) {
-        const absence = absences[0];
-        errors.push({ 
-          field: 'professional_id', 
-          message: `Professional is unavailable during this time${absence.reason ? `: ${absence.reason}` : ''}` 
-        });
-      }
-    }
-
-    // 11. Check for equipment conflicts (skipped in legacy mode)
-    if (body.legacy) {
-      // Skip equipment validation block entirely
-    } else {
-    // Get equipment from the room if specified
-    let newAppointmentEquipment: string[] = [];
-    
-    if (body.room_id) {
-      const { data: roomData } = await supabase
-        .from('rooms')
-        .select('equipment')
-        .eq('id', body.room_id)
-        .single();
-      
-      if (roomData?.equipment && Array.isArray(roomData.equipment)) {
-        newAppointmentEquipment = [...roomData.equipment];
-      }
-    }
-    
-    // Remove duplicates
-    newAppointmentEquipment = [...new Set(newAppointmentEquipment)];
-    
-    if (newAppointmentEquipment.length > 0) {
-      console.log('Checking equipment conflicts for:', newAppointmentEquipment);
-      
-      // Find overlapping appointments with rooms that have equipment
-      const { data: overlappingAppointments } = await supabase
-        .from('appointments')
-        .select('id, room_id')
-        .not('status', 'eq', 'cancelled')
-        .not('room_id', 'is', null)
-        .or(`and(start_time.lt.${body.end_time},end_time.gt.${body.start_time})`);
-      
-      if (overlappingAppointments && overlappingAppointments.length > 0) {
-        // Get rooms for overlapping appointments
-        const roomIds = [...new Set(overlappingAppointments.map(a => a.room_id).filter(Boolean))];
-        
-        if (roomIds.length > 0) {
-          const { data: roomsData } = await supabase
-            .from('rooms')
-            .select('id, name, equipment')
-            .in('id', roomIds);
-          
-          if (roomsData) {
-            for (const room of roomsData) {
-              if (room.equipment && Array.isArray(room.equipment)) {
-                const conflictingEquipment = newAppointmentEquipment.filter(eq => room.equipment.includes(eq));
-                
-                if (conflictingEquipment.length > 0 && room.id !== body.room_id) {
-                  errors.push({
-                    field: 'equipment',
-                    message: `Equipamento(s) "${conflictingEquipment.join(', ')}" já está em uso neste horário na sala "${room.name}"`
-                  });
-                  break; // Only report first conflict
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    } // end !legacy equipment block
 
     if (errors.length > 0) {
       return new Response(
@@ -588,6 +493,8 @@ serve(async (req) => {
       service_id: body.service_id || null,
       professional_id: body.professional_id || null,
       room_id: body.room_id || null,
+      equipment_id: body.equipment_id || null,
+
       start_time: body.start_time,
       end_time: body.end_time,
       notes: body.notes || null,
@@ -650,10 +557,18 @@ serve(async (req) => {
         }
       }
       console.error('Insert error:', insertError);
+      // Os gatilhos do banco já devolvem explicações em português (conflito de
+      // recurso, dia não atendido, isolamento de conta). Repassamos essa
+      // mensagem para o usuário em vez de um erro genérico.
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to create appointment', details: insertError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          error: insertError.message || 'Não foi possível criar o agendamento.',
+          details: insertError.message,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
     console.log('Appointment created successfully:', appointment.id);

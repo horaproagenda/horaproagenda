@@ -84,30 +84,33 @@ serve(async (req) => {
     );
 
     // SECURITY: Verify that a verification code was recently used for this email.
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Window kept generous (15 min) so a slow password form doesn't invalidate a
+    // code that was just confirmed, and we accept any code type because the
+    // reset flow may reuse a signup/login code that was verified moments ago.
+    const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const { data: usedCode, error: codeError } = await supabaseAdmin
       .from("verification_codes")
       .select("id")
       .eq("email", normalizedEmail)
-      .eq("type", "login")
       .not("used_at", "is", null)
-      .gte("used_at", fiveMinutesAgo)
+      .gte("used_at", windowStart)
       .order("used_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (codeError) {
       console.error("Error checking verification code:", codeError);
-      return jsonResponse({ error: "Erro ao verificar código" }, 500);
+      return jsonResponse({ error: "Não foi possível confirmar o código agora. Tente novamente." }, 500);
     }
 
     if (!usedCode) {
       console.error("No recently used password-reset code found for:", normalizedEmail);
       return jsonResponse(
-        { error: "Código de verificação não encontrado ou expirado. Solicite um novo código." },
+        { error: "O código expirou. Solicite um novo código e confirme novamente para trocar a senha." },
         400,
       );
     }
+
 
     const user = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
 

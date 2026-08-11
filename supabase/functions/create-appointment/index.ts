@@ -11,6 +11,8 @@ interface AppointmentRequest {
   service_id?: string;
   professional_id?: string;
   room_id?: string;
+  equipment_id?: string | null;
+
   start_time: string;
   end_time: string;
   notes?: string;

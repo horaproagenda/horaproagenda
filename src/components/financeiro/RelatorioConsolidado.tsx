@@ -249,7 +249,7 @@ export function RelatorioConsolidado() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<ConsolidatedEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // When user clicks delete: if the entry is linked (directly or indirectly) to a
   // PACKAGE sale, route through the "Cancelar Pacote" form (refund + reason)

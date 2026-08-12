@@ -25,7 +25,7 @@ import { exportToCSV } from '@/lib/exportUtils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CancelPackageDialog } from '@/components/financeiro/CancelPackageDialog';
+import { useNavigate } from 'react-router-dom';
 
 interface ConsolidatedEntry {
   id: string;

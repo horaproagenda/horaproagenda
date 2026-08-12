@@ -76,6 +76,9 @@ interface Template {
   id: string;
   title: string;
   content: string;
+  /** Original template body (may be rich HTML). */
+  rawContent: string;
+
   variables: string[];
 }
 

@@ -84,7 +84,7 @@ const CODE_MESSAGES: Record<string, string> = {
   user_already_exists: 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.',
   email_exists: 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.',
   email_already_registered: 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.',
-  weak_password: 'A senha é muito fraca. Use no mínimo 8 caracteres, com letras e números.',
+  weak_password: 'A senha é muito fraca. Use no mínimo 8 caracteres, com letra maiúscula, letra minúscula, número e símbolo (ex.: !@#$).',
   over_email_send_rate_limit: 'Muitos e-mails enviados em pouco tempo. Aguarde alguns minutos e tente novamente.',
   over_request_rate_limit: 'Muitas tentativas em pouco tempo. Aguarde um instante antes de tentar de novo.',
   session_not_found: 'Sua sessão expirou. Entre novamente para continuar.',

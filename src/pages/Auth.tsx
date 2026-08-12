@@ -21,6 +21,8 @@ import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ESTABLISHMENT_TYPES } from '@/lib/establishmentType';
+import { validateNewPassword, explainPasswordUpdateError, PASSWORD_RULES_HINT } from '@/lib/passwordPolicy';
+
 
 const TERMS_ACCEPT_KEY = 'horapro_terms_accepted_v1';
 const TERMS_VERSION = 'v1';
@@ -185,6 +187,8 @@ function AuthInner() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetCode, setResetCode] = useState('');
+  const [resetCodeConfirmed, setResetCodeConfirmed] = useState(false);
+
   const [resetResendIn, setResetResendIn] = useState(0);
   const [resetCodeAttempts, setResetCodeAttempts] = useState(0);
   const [resetLockUntil, setResetLockUntil] = useState(0);
@@ -237,8 +241,9 @@ function AuthInner() {
     if (cpfDigits && !isValidCPF(signupCpf)) return 'CPF inválido.';
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail.trim());
     if (!emailOk) return 'E-mail inválido.';
-    if (signupPassword.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
-    if (signupPassword !== signupConfirmPassword) return 'As senhas não coincidem.';
+    const signupPasswordError = validateNewPassword(signupPassword, signupConfirmPassword);
+    if (signupPasswordError) return signupPasswordError;
+
     const cnpjDigits = signupCnpj.replace(/\D/g, '');
     if (cnpjDigits && cnpjDigits.length !== 14) return 'CNPJ inválido.';
     if (!signupBusinessType) return 'Selecione a área de atuação.';
@@ -523,6 +528,8 @@ function AuthInner() {
     }
     setResending(true);
     setResetCode('');
+    setResetCodeConfirmed(false);
+
     try {
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: forgotEmail, type: 'login' },
@@ -544,15 +551,12 @@ function AuthInner() {
 
   const handleResetPassword = async () => {
     if (resetCode.length !== 6) {
-      toast({ title: 'Erro', description: 'Digite o código de 6 dígitos', variant: 'destructive' });
+      toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos enviados por e-mail.', variant: 'destructive' });
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      toast({ title: 'Erro', description: 'A senha deve ter pelo menos 6 caracteres', variant: 'destructive' });
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: 'Erro', description: 'As senhas não coincidem', variant: 'destructive' });
+    const policyError = validateNewPassword(newPassword, confirmNewPassword);
+    if (policyError) {
+      toast({ title: 'Revise a nova senha', description: policyError, variant: 'destructive' });
       return;
     }
     const tNow = Date.now();
@@ -561,52 +565,63 @@ function AuthInner() {
       toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
       return;
     }
-    if (resetCodeSentAt && tNow - resetCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
-      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
-      return;
-    }
     setLoading(true);
     try {
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
-        body: { email: forgotEmail.trim().toLowerCase(), code: resetCode.replace(/\D/g, '').trim(), type: 'login' },
-      });
+      const normalizedEmail = forgotEmail.trim().toLowerCase();
 
-      if (verifyError) throw new Error(await edgeErrorMessage(verifyError, 'Erro ao verificar código'));
-      if (!verifyData?.valid) {
-        const next = resetCodeAttempts + 1;
-        setResetCodeAttempts(next);
-        const remaining = OTP_MAX_ATTEMPTS - next;
-        if (remaining <= 0) {
-          setResetLockUntil(Date.now() + OTP_LOCKOUT_MS);
-          toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
-        } else {
-          toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+      // O código só é validado uma vez: depois disso o "passe de redefinição"
+      // (código confirmado nos últimos 15 min) permite novas tentativas de
+      // salvar a senha sem pedir outro código.
+      if (!resetCodeConfirmed) {
+        const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-code', {
+          body: { email: normalizedEmail, code: resetCode.replace(/\D/g, '').trim(), type: 'login' },
+        });
+
+        if (verifyError) throw new Error(await edgeErrorMessage(verifyError, 'Não foi possível conferir o código agora.'));
+        if (!verifyData?.valid) {
+          const next = resetCodeAttempts + 1;
+          setResetCodeAttempts(next);
+          const remaining = OTP_MAX_ATTEMPTS - next;
+          if (remaining <= 0) {
+            setResetLockUntil(Date.now() + OTP_LOCKOUT_MS);
+            toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Código inválido', description: `${verifyData?.error || 'Confira o código recebido por e-mail.'} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
+          }
+          return;
         }
-        return;
+        setResetCodeConfirmed(true);
       }
+
       const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: { email: forgotEmail, newPassword },
+        body: { email: normalizedEmail, newPassword },
       });
       if (error) {
         let payload: { error?: string; code?: string } | null = null;
-        try { payload = await (error as any)?.context?.json?.(); } catch { /* ignore */ }
-        throw new Error(payload?.error || error.message || 'Erro ao alterar senha');
+        try { payload = await (error as { context?: { json?: () => Promise<{ error?: string; code?: string }> } })?.context?.json?.() ?? null; } catch { /* ignore */ }
+        if (payload?.code === 'code_expired') setResetCodeConfirmed(false);
+        throw new Error(payload?.error || explainPasswordUpdateError(error));
       }
-      if (data?.error) throw new Error(data.error);
-      toast({ title: 'Senha alterada!', description: 'Faça login com a nova senha.' });
+      if (data?.error) {
+        if (data.code === 'code_expired') setResetCodeConfirmed(false);
+        throw new Error(data.error);
+      }
+      toast({ title: 'Senha alterada!', description: 'Já pode entrar no aplicativo com a nova senha.' });
       setAuthView('login');
       setLoginEmail(forgotEmail);
       setForgotEmail('');
       setResetCode('');
+      setResetCodeConfirmed(false);
       setNewPassword('');
       setConfirmNewPassword('');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao alterar senha';
-      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+      const msg = err instanceof Error ? err.message : explainPasswordUpdateError(err);
+      toast({ title: 'Não foi possível alterar a senha', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
+
 
   const signupOtpStatus: OtpStatus = signupLockUntil > now
     ? { kind: 'blocked', until: signupLockUntil }
@@ -623,6 +638,12 @@ function AuthInner() {
       : resetCodeSentAt
         ? { kind: 'sent', at: resetCodeSentAt }
         : { kind: 'idle' };
+
+  // Aviso em tempo real da política de senha (evita erro só após o clique).
+  const passwordHint = newPassword
+    ? validateNewPassword(newPassword, confirmNewPassword || undefined)
+    : null;
+
 
   if (authLoading) {
     return (
@@ -688,18 +709,22 @@ function AuthInner() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-password">Nova senha</Label>
-              <Input id="new-password" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Input id="new-password" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+              <p className={`text-xs ${passwordHint ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {passwordHint ?? PASSWORD_RULES_HINT}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirm-new-password">Confirmar nova senha</Label>
-              <Input id="confirm-new-password" type="password" placeholder="••••••••" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} />
+              <Input id="confirm-new-password" type="password" placeholder="••••••••" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} autoComplete="new-password" />
             </div>
             <Button className="w-full" onClick={handleResetPassword} disabled={loading || resetCode.length !== 6}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Alterar senha
             </Button>
             <div className="flex items-center justify-between text-sm">
-              <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setNewPassword(''); setConfirmNewPassword(''); }}>
+              <button type="button" className="text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => { setAuthView('forgot-password'); setResetCode(''); setResetCodeConfirmed(false); setNewPassword(''); setConfirmNewPassword(''); }}>
+
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </button>
               <button type="button" className="text-primary hover:underline disabled:opacity-50" onClick={handleResendResetCode} disabled={resending || resetResendIn > 0}>
@@ -769,7 +794,9 @@ function AuthInner() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Senha *</Label>
-                    <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} autoComplete="new-password" />
+                    <Input id="signup-password" type="password" placeholder="Ex.: Minha@Senha1" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} autoComplete="new-password" />
+                    <p className="text-xs text-muted-foreground">{PASSWORD_RULES_HINT}</p>
+
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-confirm-password">Confirmar senha *</Label>

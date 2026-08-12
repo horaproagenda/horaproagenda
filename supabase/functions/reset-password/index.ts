@@ -11,11 +11,92 @@ interface ResetPasswordRequest {
   newPassword: string;
 }
 
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_RULES_HINT =
+  "Mínimo de 8 caracteres, com letra maiúscula, letra minúscula, número e símbolo (ex.: !@#$).";
+const SYMBOLS = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
+
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
+
+/** Mesma política de senha do aplicativo (src/lib/passwordPolicy.ts). */
+function validatePassword(password: string): string | null {
+  if (!password) return "Informe a nova senha.";
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `A nova senha precisa ter no mínimo ${PASSWORD_MIN_LENGTH} caracteres.`;
+  }
+  if (/\s/.test(password)) return "A nova senha não pode conter espaços.";
+  if (!/[a-z]/.test(password)) return "Inclua pelo menos uma letra minúscula na nova senha.";
+  if (!/[A-Z]/.test(password)) return "Inclua pelo menos uma letra maiúscula na nova senha.";
+  if (!/\d/.test(password)) return "Inclua pelo menos um número na nova senha.";
+  if (!SYMBOLS.test(password)) return "Inclua pelo menos um símbolo na nova senha (ex.: ! @ # $).";
+  return null;
+}
+
+/** Converte a falha do serviço de autenticação em motivo + mensagem clara. */
+function classifyUpdateError(error: { message?: string; code?: string; status?: number }) {
+  const code = (error.code ?? "").toLowerCase();
+  const message = (error.message ?? "").toLowerCase();
+
+  if (code === "same_password" || message.includes("different from the old password")) {
+    return {
+      status: 400,
+      code: "same_password",
+      error: "A nova senha precisa ser diferente da senha atual. Escolha outra senha.",
+    };
+  }
+  if (message.includes("at least") && message.includes("characters")) {
+    return {
+      status: 400,
+      code: "short_password",
+      error: `A nova senha é curta demais. Use no mínimo ${PASSWORD_MIN_LENGTH} caracteres.`,
+    };
+  }
+  if (message.includes("one character of each") || message.includes("required characters")) {
+    return {
+      status: 400,
+      code: "weak_password",
+      error: `A senha não atende aos requisitos de segurança. ${PASSWORD_RULES_HINT}`,
+    };
+  }
+  if (
+    code === "weak_password" ||
+    message.includes("weak") ||
+    message.includes("pwned") ||
+    message.includes("compromised") ||
+    message.includes("easy to guess")
+  ) {
+    return {
+      status: 400,
+      code: "weak_password",
+      error: `Essa senha é fraca ou já apareceu em vazamentos. ${PASSWORD_RULES_HINT}`,
+    };
+  }
+  if (message.includes("not found")) {
+    return {
+      status: 404,
+      code: "user_not_found",
+      error: "Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo.",
+    };
+  }
+  if (code === "over_request_rate_limit" || error.status === 429 || message.includes("rate limit")) {
+    return {
+      status: 429,
+      code: "rate_limited",
+      error: "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+    };
+  }
+  return {
+    status: 500,
+    code: "update_failed",
+    error:
+      "Não conseguimos gravar a nova senha agora. Tente novamente em instantes; se continuar, fale com o suporte.",
+  };
+}
+
 
 async function findAuthUserByEmail(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -28,7 +109,7 @@ async function findAuthUserByEmail(
     .limit(1)
     .maybeSingle();
 
-  if (profileError) console.warn("reset-password profile lookup failed:", profileError);
+  if (profileError) console.warn("[reset-password] profile lookup failed:", profileError);
   if (profile?.id) return { id: profile.id, email: profile.email };
 
   const { data: trial, error: trialError } = await supabaseAdmin
@@ -39,14 +120,14 @@ async function findAuthUserByEmail(
     .limit(1)
     .maybeSingle();
 
-  if (trialError) console.warn("reset-password trial lookup failed:", trialError);
+  if (trialError) console.warn("[reset-password] trial lookup failed:", trialError);
   if (trial?.user_id) return { id: trial.user_id, email: trial.email };
 
   const perPage = 1000;
   for (let page = 1; page <= 100; page += 1) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
     if (error) {
-      console.error("reset-password listUsers failed:", error);
+      console.error("[reset-password] listUsers failed:", error);
       throw new Error("Erro ao buscar usuário");
     }
 
@@ -70,11 +151,13 @@ serve(async (req) => {
     const normalizedEmail = (email ?? "").toString().trim().toLowerCase();
 
     if (!normalizedEmail || !newPassword) {
-      return jsonResponse({ error: "Email e nova senha são obrigatórios" }, 400);
+      return jsonResponse({ code: "missing_fields", error: "Informe o e-mail e a nova senha." }, 400);
     }
 
-    if (newPassword.length < 6) {
-      return jsonResponse({ error: "A senha deve ter pelo menos 6 caracteres" }, 400);
+    const policyError = validatePassword(newPassword);
+    if (policyError) {
+      console.warn("[reset-password] password policy rejected", { email: normalizedEmail });
+      return jsonResponse({ code: "policy", error: policyError }, 400);
     }
 
     const supabaseAdmin = createClient(
@@ -83,10 +166,9 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // SECURITY: Verify that a verification code was recently used for this email.
-    // Window kept generous (15 min) so a slow password form doesn't invalidate a
-    // code that was just confirmed, and we accept any code type because the
-    // reset flow may reuse a signup/login code that was verified moments ago.
+    // SEGURANÇA: exige um código de verificação confirmado recentemente para
+    // este e-mail. Janela de 15 min (passe de redefinição) para que o usuário
+    // possa tentar salvar a senha mais de uma vez sem pedir um novo código.
     const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const { data: usedCode, error: codeError } = await supabaseAdmin
       .from("verification_codes")
@@ -99,26 +181,37 @@ serve(async (req) => {
       .maybeSingle();
 
     if (codeError) {
-      console.error("Error checking verification code:", codeError);
-      return jsonResponse({ error: "Não foi possível confirmar o código agora. Tente novamente." }, 500);
+      console.error("[reset-password] code check failed:", codeError);
+      return jsonResponse(
+        { code: "code_check_failed", error: "Não foi possível confirmar o código agora. Tente novamente." },
+        500,
+      );
     }
 
     if (!usedCode) {
-      console.error("No recently used password-reset code found for:", normalizedEmail);
+      console.warn("[reset-password] no confirmed code in window", { email: normalizedEmail });
       return jsonResponse(
-        { error: "O código expirou. Solicite um novo código e confirme novamente para trocar a senha." },
+        {
+          code: "code_expired",
+          error: "O código expirou. Solicite um novo código e confirme novamente para trocar a senha.",
+        },
         400,
       );
     }
 
+    console.log("[reset-password] code confirmed, locating user", { email: normalizedEmail });
 
     const user = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
 
     if (!user) {
-      console.warn("reset-password user not found after valid code:", normalizedEmail);
-      await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
+      console.warn("[reset-password] user not found", { email: normalizedEmail });
+      // O código NÃO é apagado: se o e-mail estiver certo e a conta existir em
+      // outro caminho, o usuário pode tentar novamente dentro da janela.
       return jsonResponse(
-        { code: "user_not_found", error: "Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo." },
+        {
+          code: "user_not_found",
+          error: "Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo.",
+        },
         404,
       );
     }
@@ -128,25 +221,28 @@ serve(async (req) => {
     });
 
     if (updateError) {
-      console.error("Error updating password:", updateError);
-      const message = updateError.message?.toLowerCase() ?? "";
-      if (message.includes("not found")) {
-        return jsonResponse(
-          { code: "user_not_found", error: "Este e-mail não possui cadastro. Faça um novo cadastro para acessar o aplicativo." },
-          404,
-        );
-      }
-      return jsonResponse({ error: "Erro ao atualizar senha" }, 500);
+      const classified = classifyUpdateError(updateError as { message?: string; code?: string; status?: number });
+      console.error("[reset-password] update failed", {
+        email: normalizedEmail,
+        reason: classified.code,
+        raw: updateError.message,
+      });
+      // Mantém o passe de redefinição válido para nova tentativa.
+      return jsonResponse({ code: classified.code, error: classified.error }, classified.status);
     }
 
+    // Só consome o código depois do sucesso real.
     await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
 
-    console.log("Password updated successfully for:", normalizedEmail);
+    console.log("[reset-password] password updated", { email: normalizedEmail });
 
     return jsonResponse({ success: true, message: "Senha atualizada com sucesso" });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error in reset-password:", errorMessage);
-    return jsonResponse({ error: "Erro ao alterar senha. Tente novamente." }, 500);
+    console.error("[reset-password] unexpected error:", errorMessage);
+    return jsonResponse(
+      { code: "unexpected", error: "Não conseguimos alterar a senha agora. Tente novamente em instantes." },
+      500,
+    );
   }
 });

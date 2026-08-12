@@ -88,6 +88,7 @@ export default function CadastroCliente() {
   const [signedBy, setSignedBy] = useState('');
   // Generated content per template (filled after submit, used for PDF downloads)
   const [generatedDocs, setGeneratedDocs] = useState<Array<{ id: string; title: string; content: string }>>([]);
+  const [documentStamp, setDocumentStamp] = useState<Date>(() => new Date());
 
   const calcAge = (iso: string) => {
     if (!iso) return '';
@@ -128,11 +129,9 @@ export default function CadastroCliente() {
       data_nascimento: nascimentoBR,
       idade: calcAge(form.birthdate),
       idade_cliente: calcAge(form.birthdate),
-      data: today,
-      data_atual: today,
-      date: today,
-      data_extenso: today,
-      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      // Single source of truth for date/time variables (data_extenso is always
+      // spelled out and the time matches the saved record).
+      ...buildDocumentDateTimeValues(documentStamp),
       endereco,
       'endereço': endereco,
       cep: form.cep,
@@ -272,19 +271,26 @@ export default function CadastroCliente() {
 
   const handleDocsSubmit = () => {
     if (!signedBy.trim()) { toast.error('Informe seu nome completo para assinar.'); return; }
+    // One captured instant for every document of this submission.
+    const stamp = new Date();
+    setDocumentStamp(stamp);
     const templates = linkData?.templates || [];
     const filled = templates.map((t) => {
       const state = docStates[t.id] || emptyDocumentState();
       // Ensure signed_by is reflected in the body where {nome} is used after editing
       const withSignedName: InteractiveDocumentState = {
         ...state,
-        formData: { ...state.formData, nome: signedBy || state.formData.nome || form.name },
+        formData: {
+          ...state.formData,
+          ...buildDocumentDateTimeValues(stamp),
+          nome: signedBy || state.formData.nome || form.name,
+        },
       };
       const content = buildContentFromState(t.content, withSignedName);
       return {
         template_id: t.id,
         content,
-        variables: { ...withSignedName.formData, data: new Date().toLocaleDateString('pt-BR'), signed_by: signedBy },
+        variables: { ...withSignedName.formData, ...buildDocumentDateTimeValues(stamp), signed_by: signedBy },
         signed_by: signedBy,
       };
     });

@@ -27,6 +27,9 @@ import {
   type InteractiveDocumentState,
 } from '@/components/clients/InteractiveDocumentFiller';
 import { generateClientDocumentPdf, generateCombinedClientDocumentsPdf } from '@/lib/clientDocumentPdf';
+import { buildDocumentDateTimeValues } from '@/lib/documentTemplateFields';
+import { isRichDocument } from '@/lib/documentRichContent';
+import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 
 const REFERRAL_SOURCES = ['Instagram', 'Facebook', 'Google', 'Indicação de amigo', 'Indicação de cliente', 'Passou na frente', 'WhatsApp', 'TikTok', 'Outros'];
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -103,7 +106,6 @@ export default function CadastroCliente() {
 
   // Auto-fill map from registration form to document variables.
   const autoFillMap = useMemo<Record<string, string>>(() => {
-    const today = new Date().toLocaleDateString('pt-BR');
     const nascimentoBR = form.birthdate
       ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
       : '';
@@ -142,7 +144,7 @@ export default function CadastroCliente() {
       professional: profName,
       nome_profissional: profName,
     };
-  }, [form, linkData]);
+  }, [form, linkData, documentStamp]);
 
   useEffect(() => {
     if (!token) return;
@@ -297,7 +299,23 @@ export default function CadastroCliente() {
     void submit(filled);
   };
 
+  const buildPdfHeaderLines = () => [
+    `Cliente: ${signedBy || form.name}`,
+    form.cpf ? `CPF: ${form.cpf}` : '',
+    form.birthdate ? `Nascimento: ${new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')}` : '',
+    linkData?.professional?.name ? `Profissional: ${linkData.professional.name}` : '',
+  ];
+
   const downloadDocPdf = (doc: { id: string; title: string; content: string }) => {
+    if (isRichDocument(doc.content)) {
+      void downloadRichDocumentPdf({
+        title: doc.title,
+        bodyHtml: doc.content,
+        headerLines: buildPdfHeaderLines(),
+        fileName: `${doc.title} - ${signedBy || form.name || 'Documento'}`,
+      });
+      return;
+    }
     generateClientDocumentPdf({
       title: doc.title,
       filledContent: doc.content,
@@ -313,6 +331,10 @@ export default function CadastroCliente() {
   };
 
   const downloadAllPdfs = () => {
+    if (generatedDocs.some((d) => isRichDocument(d.content))) {
+      generatedDocs.forEach((d) => downloadDocPdf(d));
+      return;
+    }
     generateCombinedClientDocumentsPdf({
       documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
       header: {

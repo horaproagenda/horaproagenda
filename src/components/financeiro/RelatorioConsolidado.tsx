@@ -581,7 +581,8 @@ export function RelatorioConsolidado() {
             <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação é definitiva. Todos os registros vinculados ao pagamento serão removidos:
-              <br />• Se for venda de serviço ou pacote: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• Se for venda de serviço: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• Vendas de pacote são excluídas na aba Pacotes, com formulário de devolução.
               <br />• O lançamento no Caixa, no Financeiro e no perfil do cliente também serão apagados.
               {deleteTarget && (
                 <span className="block mt-3 text-foreground font-medium">

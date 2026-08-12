@@ -31,8 +31,11 @@ export function detectIntent(body: string): ConfirmIntent | null {
   if (/\bnao\b.*\b(vou|posso|consigo|da|dara|poderei|comparecer|ir)\b/.test(text)) return 'cancel';
   if (/\b(nao|n)\s*(quero|desejo)?\s*(confirm)/.test(text)) return 'cancel';
 
-  if (/^(1|1\)|1-|opcao 1|confirmar|confirmo|confirmado|confirmada|confirma|sim|s|ok|okay|okey|oka|presente|vou|estarei|vou sim|pode ser|pode manter|mantenho|manter|beleza|blz|show|otimo|otima|perfeito|isso|claro|certo|combinado|positivo)\b/.test(text)) return 'confirm';
-  if (/^(2|2\)|2-|opcao 2|cancelar|cancelo|cancelado|cancelada|cancela|nao|n|nao posso|nao vou|nao consigo|nao da|desmarcar|desmarca|desmarque|remarcar|remarca|remarque|adiar|negativo)\b/.test(text)) return 'cancel';
+  // Confirmação exige resposta objetiva. Cortesias genéricas ("ok", "obrigada",
+  // "beleza", "show") NÃO confirmam presença — antes disso qualquer mensagem do
+  // cliente confirmava o horário indevidamente.
+  if (/^(1|1\)|1-|opcao 1|confirmar|confirmo|confirmado|confirmada|confirma|sim|estarei|estou|presente|vou sim|pode manter|mantenho|manter|combinado|confirmando)\b/.test(text)) return 'confirm';
+  if (/^(2|2\)|2-|opcao 2|cancelar|cancelo|cancelado|cancelada|cancela|nao|nao posso|nao vou|nao consigo|nao da|desmarcar|desmarca|desmarque|remarcar|remarca|remarque|adiar)\b/.test(text)) return 'cancel';
 
   if (/\bcancel/.test(text) || /\bdesmarc/.test(text) || /\bremarc/.test(text) || /\badiar\b/.test(text)) return 'cancel';
   if (/\bconfirm/.test(text)) return 'confirm';
@@ -41,6 +44,30 @@ export function detectIntent(body: string): ConfirmIntent | null {
   if (CANCEL_EMOJI.some((e) => original.includes(e))) return 'cancel';
   return null;
 }
+
+/** Frases usadas nas respostas automáticas do próprio sistema. */
+const SYSTEM_MESSAGE_MARKERS = [
+  'presenca confirmada',
+  'cancelado.',
+  'nao entendi sua resposta',
+  'nao encontramos um horario ativo',
+  'quando quiser reagendar',
+  'responda *1*',
+  'responda 1 para confirmar',
+  'seu horario:',
+  'lembrete do seu horario',
+];
+
+/**
+ * Detecta se a mensagem recebida é apenas o eco de uma mensagem automática do
+ * próprio sistema (acontece quando duas instâncias da mesma conta conversam).
+ */
+export function isEchoOfSystemMessage(body: string): boolean {
+  const text = normalizeText(body);
+  if (!text) return false;
+  return SYSTEM_MESSAGE_MARKERS.some((m) => text.includes(m));
+}
+
 
 /** Só os dígitos de um telefone/JID. */
 export function onlyDigits(value: string): string {

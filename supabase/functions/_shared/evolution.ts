@@ -120,7 +120,7 @@ function webhookUrl() {
 
 
 /** Registra/atualiza o webhook da instância (Evolution v2: /webhook/set/{instance}). */
-async function evolutionSetWebhook(override: EvolutionCreds) {
+export async function evolutionSetWebhook(override: EvolutionCreds) {
   const cfg = getEvolutionConfig(override);
   const payloads = [
     { webhook: { enabled: true, url: webhookUrl(), byEvents: false, base64: false, events: WEBHOOK_EVENTS } },

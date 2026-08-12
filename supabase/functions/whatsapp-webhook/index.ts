@@ -9,9 +9,11 @@ import {
   detectIntent,
   extractMessageText,
   extractSenderPhone,
+  isEchoOfSystemMessage,
   normalizePhone,
   phonesMatch,
 } from "../_shared/whatsappIntent.ts";
+
 import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {

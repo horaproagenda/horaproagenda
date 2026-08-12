@@ -15,6 +15,7 @@ import {
   evolutionServerConfigured,
   evolutionStatus,
   evolutionEnsureConnected,
+  evolutionEnsureWebhook,
   evolutionSetSettings,
   sanitizeBaseUrl,
   type EvolutionCreds,
@@ -136,7 +137,11 @@ serve(async (req) => {
           recovered = connected;
           state = fixed.state ?? state;
         }
-        if (connected) await evolutionSetSettings(creds);
+        if (connected) {
+          await evolutionSetSettings(creds);
+          // Garante o webhook de mensagens (respostas de confirmação do cliente).
+          await evolutionEnsureWebhook(creds);
+        }
       } catch (e) {
         state = e instanceof Error ? e.message.slice(0, 120) : 'error';
       }

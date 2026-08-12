@@ -1394,3 +1394,20 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     padding-bottom: 4px !important;
   }
 }
+
+/* Rich document rendering: keeps the formatting authored in the editor
+   (bold, colors, alignment, lists, tables and inline images). */
+.rich-document-view {
+  word-break: break-word;
+}
+.rich-document-view p { margin: 0 0 0.5rem; }
+.rich-document-view h1,
+.rich-document-view h2,
+.rich-document-view h3 { font-weight: 600; margin: 0.75rem 0 0.5rem; }
+.rich-document-view ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+.rich-document-view ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+.rich-document-view img { max-width: 100%; height: auto; border-radius: 0.25rem; }
+.rich-document-view table { border-collapse: collapse; max-width: 100%; margin-bottom: 0.5rem; }
+.rich-document-view td,
+.rich-document-view th { border: 1px solid hsl(var(--border)); padding: 0.25rem 0.5rem; }
+.rich-document-view a { text-decoration: underline; }

@@ -27,6 +27,9 @@ import {
   type InteractiveDocumentState,
 } from '@/components/clients/InteractiveDocumentFiller';
 import { generateClientDocumentPdf, generateCombinedClientDocumentsPdf } from '@/lib/clientDocumentPdf';
+import { buildDocumentDateTimeValues } from '@/lib/documentTemplateFields';
+import { isRichDocument } from '@/lib/documentRichContent';
+import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 
 const REFERRAL_SOURCES = ['Instagram', 'Facebook', 'Google', 'Indicação de amigo', 'Indicação de cliente', 'Passou na frente', 'WhatsApp', 'TikTok', 'Outros'];
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -88,6 +91,7 @@ export default function CadastroCliente() {
   const [signedBy, setSignedBy] = useState('');
   // Generated content per template (filled after submit, used for PDF downloads)
   const [generatedDocs, setGeneratedDocs] = useState<Array<{ id: string; title: string; content: string }>>([]);
+  const [documentStamp, setDocumentStamp] = useState<Date>(() => new Date());
 
   const calcAge = (iso: string) => {
     if (!iso) return '';
@@ -102,7 +106,6 @@ export default function CadastroCliente() {
 
   // Auto-fill map from registration form to document variables.
   const autoFillMap = useMemo<Record<string, string>>(() => {
-    const today = new Date().toLocaleDateString('pt-BR');
     const nascimentoBR = form.birthdate
       ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
       : '';
@@ -128,11 +131,9 @@ export default function CadastroCliente() {
       data_nascimento: nascimentoBR,
       idade: calcAge(form.birthdate),
       idade_cliente: calcAge(form.birthdate),
-      data: today,
-      data_atual: today,
-      date: today,
-      data_extenso: today,
-      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      // Single source of truth for date/time variables (data_extenso is always
+      // spelled out and the time matches the saved record).
+      ...buildDocumentDateTimeValues(documentStamp),
       endereco,
       'endereço': endereco,
       cep: form.cep,
@@ -143,7 +144,7 @@ export default function CadastroCliente() {
       professional: profName,
       nome_profissional: profName,
     };
-  }, [form, linkData]);
+  }, [form, linkData, documentStamp]);
 
   useEffect(() => {
     if (!token) return;
@@ -272,26 +273,49 @@ export default function CadastroCliente() {
 
   const handleDocsSubmit = () => {
     if (!signedBy.trim()) { toast.error('Informe seu nome completo para assinar.'); return; }
+    // One captured instant for every document of this submission.
+    const stamp = new Date();
+    setDocumentStamp(stamp);
     const templates = linkData?.templates || [];
     const filled = templates.map((t) => {
       const state = docStates[t.id] || emptyDocumentState();
       // Ensure signed_by is reflected in the body where {nome} is used after editing
       const withSignedName: InteractiveDocumentState = {
         ...state,
-        formData: { ...state.formData, nome: signedBy || state.formData.nome || form.name },
+        formData: {
+          ...state.formData,
+          ...buildDocumentDateTimeValues(stamp),
+          nome: signedBy || state.formData.nome || form.name,
+        },
       };
       const content = buildContentFromState(t.content, withSignedName);
       return {
         template_id: t.id,
         content,
-        variables: { ...withSignedName.formData, data: new Date().toLocaleDateString('pt-BR'), signed_by: signedBy },
+        variables: { ...withSignedName.formData, ...buildDocumentDateTimeValues(stamp), signed_by: signedBy },
         signed_by: signedBy,
       };
     });
     void submit(filled);
   };
 
+  const buildPdfHeaderLines = () => [
+    `Cliente: ${signedBy || form.name}`,
+    form.cpf ? `CPF: ${form.cpf}` : '',
+    form.birthdate ? `Nascimento: ${new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')}` : '',
+    linkData?.professional?.name ? `Profissional: ${linkData.professional.name}` : '',
+  ];
+
   const downloadDocPdf = (doc: { id: string; title: string; content: string }) => {
+    if (isRichDocument(doc.content)) {
+      void downloadRichDocumentPdf({
+        title: doc.title,
+        bodyHtml: doc.content,
+        headerLines: buildPdfHeaderLines(),
+        fileName: `${doc.title} - ${signedBy || form.name || 'Documento'}`,
+      });
+      return;
+    }
     generateClientDocumentPdf({
       title: doc.title,
       filledContent: doc.content,
@@ -307,6 +331,10 @@ export default function CadastroCliente() {
   };
 
   const downloadAllPdfs = () => {
+    if (generatedDocs.some((d) => isRichDocument(d.content))) {
+      generatedDocs.forEach((d) => downloadDocPdf(d));
+      return;
+    }
     generateCombinedClientDocumentsPdf({
       documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
       header: {

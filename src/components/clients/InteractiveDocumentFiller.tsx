@@ -9,6 +9,7 @@ import {
   tokenizeDocumentLine,
   type DocumentFieldToken,
 } from '@/lib/documentTemplateFields';
+import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
 
 export interface InteractiveDocumentState {
   formData: Record<string, string>;
@@ -25,6 +26,21 @@ export const emptyDocumentState = (): InteractiveDocumentState => ({
 });
 
 export function buildContentFromState(rawContent: string, state: InteractiveDocumentState): string {
+  // Rich templates keep their HTML (bold, colors, images, tables) — answers are
+  // injected into text nodes only.
+  if (isRichDocument(rawContent)) {
+    const html = fillDocumentHtml(sanitizeRichDocumentHtml(rawContent), {
+      formData: state.formData,
+      yesNoAnswers: state.yesNoAnswers,
+      additionalInfo: state.additionalInfo,
+      checkboxAnswers: state.checkboxAnswers,
+    });
+    const notes = state.additionalInfo.observacoes?.trim();
+    return notes
+      ? `${html}<p><strong>Observações adicionais:</strong> ${notes.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</p>`
+      : html;
+  }
+
   const content = buildFilledDocumentContent({
     content: htmlToPlainText(rawContent),
     formData: state.formData,

@@ -37,7 +37,9 @@ import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { useServices } from '@/hooks/useServices';
 import { supabase } from '@/integrations/supabase/client';
-import { htmlToPlainText } from '@/lib/documentTemplateFields';
+import { htmlToPlainText, buildDocumentDateTimeValues, formatDocumentDateTime } from '@/lib/documentTemplateFields';
+import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { RichTextEditor } from './RichTextEditor';
 import { parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { SignaturePad } from './SignaturePad';
 
@@ -108,6 +110,7 @@ export function FillDocumentDialog({
   const [signedBy, setSignedBy] = useState('');
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
+  const isRich = isRichDocument(template?.content) || isRichDocument(filledContent);
 
   // Extract variables from template
   const extractVariables = (content: string): string[] => {
@@ -143,10 +146,32 @@ export function FillDocumentDialog({
   useEffect(() => {
     if (!template?.content) return;
 
-    let content = htmlToPlainText(template.content);
-    const todayStr = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
+    const rich = isRichDocument(template.content);
+    const now = new Date();
+    const dateValues = buildDocumentDateTimeValues(now);
+    // Map of every variable we can resolve. Used both for the rich (HTML)
+    // pipeline and for the plain-text fallback so behaviour never diverges.
+    const values: Record<string, string> = { ...dateValues };
+    let content = rich ? sanitizeRichDocumentHtml(template.content) : htmlToPlainText(template.content);
+    const todayStr = dateValues.data;
 
     if (selectedClient) {
+      const professionalNameValue = (selectedClient as any).assigned_professional?.name || '';
+      Object.assign(values, {
+        nome: selectedClient.name || '',
+        cliente: selectedClient.name || '',
+        nome_cliente: selectedClient.name || '',
+        email: selectedClient.email || '',
+        telefone: selectedClient.phone || '',
+        cpf: selectedClient.cpf || '',
+        nascimento: selectedClient.birthdate ? format(new Date(selectedClient.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '',
+        data_nascimento: selectedClient.birthdate ? format(new Date(selectedClient.birthdate + 'T12:00:00'), 'dd/MM/yyyy') : '',
+        cidade: (selectedClient as any).address_city || '',
+        endereco: buildClientAddress(selectedClient),
+        endereco_cliente: buildClientAddress(selectedClient),
+        profissional: professionalNameValue,
+        nome_profissional: professionalNameValue,
+      });
       content = content.replace(/\{nome\}/gi, selectedClient.name || '');
       content = content.replace(/\{nome_cliente\}/gi, selectedClient.name || '');
       content = content.replace(/\{email\}/gi, selectedClient.email || '');
@@ -167,6 +192,8 @@ export function FillDocumentDialog({
         const m = today.getMonth() - birth.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
         content = content.replace(/\{idade\}/gi, String(age));
+        values.idade = String(age);
+        values.idade_cliente = String(age);
       }
 
       setSignedBy(selectedClient.name);
@@ -174,6 +201,13 @@ export function FillDocumentDialog({
 
     // Clinic data
     if (businessSettings) {
+      Object.assign(values, {
+        endereco_clinica: businessSettings.clinic_address || '',
+        nome_clinica: businessSettings.clinic_name || '',
+        telefone_clinica: businessSettings.clinic_phone || '',
+        email_clinica: businessSettings.clinic_email || '',
+        cnpj_clinica: businessSettings.clinic_cnpj || '',
+      });
       content = content.replace(/\{endereco_clinica\}/gi, businessSettings.clinic_address || '');
       content = content.replace(/\{nome_clinica\}/gi, businessSettings.clinic_name || '');
       content = content.replace(/\{telefone_clinica\}/gi, businessSettings.clinic_phone || '');
@@ -188,6 +222,8 @@ export function FillDocumentDialog({
         if (svc) {
           content = content.replace(/\{servico\}/gi, svc.name);
           content = content.replace(/\{valor\}/gi, formatBRL(svc.price as any));
+          values.servico = svc.name;
+          values.valor = formatBRL(svc.price as any);
         }
       } else if (selectedOfferingId.startsWith('pkg:')) {
         const pkg = clientPackages.find(p => p.id === selectedOfferingId.slice(4));
@@ -195,20 +231,34 @@ export function FillDocumentDialog({
           const label = `Pacote: ${pkg.name || pkg.service?.name || ''}`.trim();
           content = content.replace(/\{servico\}/gi, label);
           content = content.replace(/\{valor\}/gi, formatBRL(pkg.total_price));
+          values.servico = label;
+          values.valor = formatBRL(pkg.total_price);
         }
       }
     }
 
-    content = content.replace(/\{data\}/gi, todayStr);
-    content = content.replace(/\{data_atual\}/gi, todayStr);
-    content = content.replace(/\{hora\}/gi, format(new Date(), 'HH:mm', { locale: ptBR }));
-    content = content.replace(/\{data_extenso\}/gi, format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }));
+    Object.entries(dateValues).forEach(([key, value]) => {
+      content = content.replace(new RegExp(`\\{${key}\\}`, 'gi'), value);
+    });
 
     // Apply custom variables (last so user override wins)
     Object.entries(customVariables).forEach(([key, value]) => {
+      values[key.toLowerCase()] = value;
       const regex = new RegExp(`\\{${key}\\}`, 'gi');
       content = content.replace(regex, value);
     });
+
+    if (rich) {
+      // Fill inside text nodes only: bold, colors, alignment, tables and
+      // images stay exactly as edited in the template.
+      setFilledContent(
+        fillDocumentHtml(sanitizeRichDocumentHtml(template.content), {
+          formData: values,
+          keepUnfilledVariables: true,
+        }),
+      );
+      return;
+    }
 
     setFilledContent(content);
   }, [template, selectedClient, customVariables, businessSettings, selectedOfferingId, activeServices, clientPackages]);
@@ -275,9 +325,12 @@ export function FillDocumentDialog({
               padding-bottom: 10px;
             }
             .content { 
-              white-space: pre-wrap; 
+              ${isRich ? '' : 'white-space: pre-wrap;'}
               font-size: 12px;
             }
+            .content img { max-width: 100%; height: auto; }
+            .content table { border-collapse: collapse; max-width: 100%; }
+            .content td, .content th { border: 1px solid #d1d5db; padding: 4px 6px; }
             .footer {
               margin-top: 40px;
               border-top: 1px solid #ccc;
@@ -308,7 +361,7 @@ export function FillDocumentDialog({
         </head>
         <body>
           <h1>${escapeHtml(template.title)}</h1>
-          <div class="content">${sanitizeDocumentContent(filledContent)}</div>
+          <div class="content">${isRich ? sanitizeRichDocumentHtml(filledContent) : sanitizeDocumentContent(filledContent)}</div>
           ${signatureHtml}
           <div class="footer">
             Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -352,13 +405,14 @@ export function FillDocumentDialog({
         ? 'consent'
         : 'other';
 
+      const savedAt = new Date();
       const hasContent = filledContent && filledContent.trim().length > 0;
       const insertData: any = {
         client_id: selectedClientId,
         template_id: template.id,
         title: template.title,
         description: hasContent
-          ? `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+          ? `Preenchido em ${formatDocumentDateTime(savedAt)}`
           : null,
         type: docType,
         content: hasContent ? filledContent : null,
@@ -366,7 +420,7 @@ export function FillDocumentDialog({
       };
 
       if (withSignature && signatureData) {
-        insertData.signed_at = new Date().toISOString();
+        insertData.signed_at = savedAt.toISOString();
         insertData.signed_by = signedBy;
       }
 
@@ -567,12 +621,21 @@ export function FillDocumentDialog({
               <TabsContent value="content" className="flex-1 m-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="p-4">
-                    <Textarea
-                      value={filledContent}
-                      onChange={(e) => setFilledContent(e.target.value)}
-                      className="min-h-[450px] font-mono text-sm resize-none"
-                      placeholder="Conteúdo do documento..."
-                    />
+                    {isRich ? (
+                      <RichTextEditor
+                        value={filledContent}
+                        onChange={setFilledContent}
+                        placeholder="Conteúdo do documento..."
+                        minHeightClassName="min-h-[450px]"
+                      />
+                    ) : (
+                      <Textarea
+                        value={filledContent}
+                        onChange={(e) => setFilledContent(e.target.value)}
+                        className="min-h-[450px] font-mono text-sm resize-none"
+                        placeholder="Conteúdo do documento..."
+                      />
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -582,9 +645,16 @@ export function FillDocumentDialog({
                   <div className="p-4">
                     <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border shadow-sm">
                       <h2 className="text-lg font-semibold text-center mb-4 pb-3 border-b">{template.title}</h2>
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                        {filledContent}
-                      </pre>
+                      {isRich ? (
+                        <div
+                          className="rich-document-view text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichDocumentHtml(filledContent) }}
+                        />
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                          {filledContent}
+                        </pre>
+                      )}
                       {signatureData && (
                         <div className="mt-6 pt-4 border-t">
                           <p className="text-xs text-muted-foreground mb-2">Assinatura Digital:</p>

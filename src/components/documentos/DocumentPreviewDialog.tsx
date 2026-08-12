@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Edit2, Download, ExternalLink, FileSignature } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { sanitizeHtmlContent } from '@/lib/htmlSanitizer';
+import { sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
 
 interface DocumentPreviewDialogProps {
   open: boolean;
@@ -71,8 +71,8 @@ export function DocumentPreviewDialog({
           <div className="prose prose-sm max-w-none dark:prose-invert pr-2">
             {/<[a-z][\s\S]*?>/i.test(template.content || '') ? (
               <div
-                className="bg-muted/30 rounded-lg p-4 border whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtmlContent(template.content) }}
+                className="rich-document-view bg-muted/30 rounded-lg p-4 border text-sm"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichDocumentHtml(template.content) }}
               />
             ) : (
               <pre className="whitespace-pre-wrap break-words font-sans text-sm bg-muted/30 rounded-lg p-4 border">

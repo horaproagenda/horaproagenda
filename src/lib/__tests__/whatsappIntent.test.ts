@@ -3,12 +3,13 @@ import {
   detectIntent,
   extractMessageText,
   extractSenderPhone,
+  isEchoOfSystemMessage,
   phonesMatch,
 } from '../../../supabase/functions/_shared/whatsappIntent';
 
 describe('detectIntent', () => {
   it('reconhece confirmações', () => {
-    for (const t of ['1', 'sim', 'Confirmo', 'CONFIRMAR', 'ok', 'Vou sim', 'Beleza', '✅', '👍']) {
+    for (const t of ['1', 'sim', 'Confirmo', 'CONFIRMAR', 'Vou sim', 'Estarei presente', '✅', '👍']) {
       expect(detectIntent(t)).toBe('confirm');
     }
   });

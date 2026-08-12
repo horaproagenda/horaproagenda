@@ -126,9 +126,13 @@ export function isAutoFilledVariable(name: string): boolean {
     'date',
     'data_atual',
     'hora',
+    'hora_atual',
+    'data_hora',
     'data_extenso',
-  ].includes(normalized);
-}
+    'data_extensa',
+    'data_por_extenso',
+    'data_extenso_completa',
+
 
 export interface DocumentTokenCounters {
   freeTextIndex: number;

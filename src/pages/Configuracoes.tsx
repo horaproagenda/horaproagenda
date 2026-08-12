@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import { WhatsappTemplatesSettings } from '@/components/settings/WhatsappTemplatesSettings';
 import { WhatsappSettings } from '@/components/settings/WhatsappSettings';
+import { WhatsappInboundPanel } from '@/components/settings/WhatsappInboundPanel';
 import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';

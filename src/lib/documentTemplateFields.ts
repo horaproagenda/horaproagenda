@@ -132,6 +132,10 @@ export function isAutoFilledVariable(name: string): boolean {
     'data_extensa',
     'data_por_extenso',
     'data_extenso_completa',
+  ].includes(normalized);
+}
+
+
 
 
 export interface DocumentTokenCounters {

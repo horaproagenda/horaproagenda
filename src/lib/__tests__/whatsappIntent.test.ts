@@ -52,3 +52,31 @@ describe('extractMessageText', () => {
     expect(extractMessageText({ message: { conversation: 'sim' } })).toBe('sim');
   });
 });
+
+describe('cortesias não confirmam presença', () => {
+  it.each(['Ok, obrigada', 'obrigado', 'beleza', 'blz', 'show', 'perfeito', 'ótimo', 'claro'])(
+    '"%s" não é confirmação',
+    (msg) => {
+      expect(detectIntent(msg)).toBeNull();
+    },
+  );
+
+  it('respostas objetivas continuam valendo', () => {
+    expect(detectIntent('1')).toBe('confirm');
+    expect(detectIntent('Confirmar')).toBe('confirm');
+    expect(detectIntent('sim')).toBe('confirm');
+    expect(detectIntent('2')).toBe('cancel');
+    expect(detectIntent('não posso')).toBe('cancel');
+  });
+});
+
+describe('isEchoOfSystemMessage', () => {
+  it('detecta eco das mensagens automáticas', () => {
+    expect(isEchoOfSystemMessage('Presença confirmada! ✅\n\nSeu horário: *14/08 às 08:00*.\nAté breve! ✨')).toBe(true);
+    expect(isEchoOfSystemMessage('Não entendi sua resposta 🙂 Responda *1* para confirmar')).toBe(true);
+  });
+  it('não marca mensagens reais do cliente', () => {
+    expect(isEchoOfSystemMessage('1')).toBe(false);
+    expect(isEchoOfSystemMessage('Bom dia, posso remarcar?')).toBe(false);
+  });
+});

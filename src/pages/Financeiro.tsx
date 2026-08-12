@@ -195,7 +195,11 @@ export default function Financeiro() {
           </TabsContent>
 
           <TabsContent value="pacotes" className="page-enter">
-            <PacotesFinanceiro />
+            <PacotesFinanceiro
+              focusSaleId={focusPackageSaleId}
+              onFocusHandled={() => setFocusPackageSaleId(null)}
+            />
+
           </TabsContent>
 
           <TabsContent value="categorias" className="page-enter">

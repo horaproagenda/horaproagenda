@@ -4979,7 +4979,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      professional_whatsapp_status: {
+        Row: {
+          account_owner_id: string | null
+          instance_id: string | null
+          is_active: boolean | null
+          last_checked_at: string | null
+          last_connected_at: string | null
+          professional_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_owner_id?: string | null
+          instance_id?: string | null
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          last_connected_at?: string | null
+          professional_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_owner_id?: string | null
+          instance_id?: string | null
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          last_connected_at?: string | null
+          professional_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_whatsapp_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       appointment_conflict_reason: {

@@ -26,6 +26,11 @@ const OUTCOMES: Record<string, { label: string; variant: 'default' | 'secondary'
   instance_unknown: { label: 'Instância não vinculada', variant: 'outline' },
   error: { label: 'Falha ao registrar', variant: 'destructive' },
   ignored: { label: 'Sem ação', variant: 'outline' },
+  ignored_echo: { label: 'Eco de mensagem automática', variant: 'outline' },
+  ignored_own_number: { label: 'Número da própria conta', variant: 'outline' },
+  no_pending_confirmation: { label: 'Sem confirmação pendente', variant: 'outline' },
+  already_cancelled: { label: 'Horário cancelado (não confirmado)', variant: 'destructive' },
+
 };
 
 export function WhatsappInboundPanel() {

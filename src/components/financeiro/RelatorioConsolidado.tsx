@@ -291,7 +291,10 @@ export function RelatorioConsolidado() {
           .eq('id', saleId)
           .maybeSingle();
         if (sale && ((sale as any).item_type === 'package' || (sale as any).package_id)) {
-          setCancelPackageSaleId(saleId);
+          // Venda de PACOTE: o fluxo oficial de exclusão (devolução, liberação das
+          // aplicações e sincronização da agenda) acontece na aba Pacotes.
+          toast.info('Exclusão de venda de pacote acontece na aba Pacotes. Abrindo o formulário...');
+          navigate(`/financeiro?tab=pacotes&cancelSale=${saleId}`, { replace: true });
           return;
         }
       }
@@ -300,6 +303,7 @@ export function RelatorioConsolidado() {
     }
     setDeleteTarget(entry);
   };
+
 
   const invalidateAllFinancial = () => {
     const keys = [

@@ -34,6 +34,9 @@ import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
+import { isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
+import { htmlToPlainText } from '@/lib/documentTemplateFields';
 
 interface ClientDocumentViewDialogProps {
   open: boolean;
@@ -158,7 +161,34 @@ export function ClientDocumentViewDialog({
   const isImageFile = !!previewSrc && (/\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(fileName) || !!fileMimeType?.startsWith('image/'));
   const canInlinePreviewFile = isPdfFile || isImageFile;
 
-  const handleDownloadPdf = () => {
+  const contentIsRich = isRichDocument(document.content);
+  /** Plain-text projection used for WhatsApp / e-mail bodies. */
+  const contentAsText = contentIsRich ? htmlToPlainText(document.content) : (document.content || '');
+
+  const handleDownloadPdf = async () => {
+    if (contentIsRich) {
+      // Rich documents are rasterized so bold, colors, tables and images
+      // are preserved exactly as saved.
+      try {
+        await downloadRichDocumentPdf({
+          title: document.title || 'Documento',
+          bodyHtml: document.content,
+          headerLines: [
+            `Cliente: ${client?.name || 'Não informado'}`,
+            `Gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+            document.signed_at
+              ? `Assinado em ${format(new Date(document.signed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}${document.signed_by ? ` por ${document.signed_by}` : ''}`
+              : '',
+          ],
+          fileName: `${document.title} - ${client?.name || 'cliente'}`,
+        });
+      } catch (error) {
+        console.error('Error generating rich PDF:', error);
+        toast.error('Não foi possível gerar o PDF do documento agora.');
+      }
+      return;
+    }
+
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const margin = 22;
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -257,7 +287,7 @@ ${documentTypeLabels[document.type] || 'Documento'}
 ${signedStatus}
 
 ---
-${document.content.substring(0, 3000)}${document.content.length > 3000 ? '\n\n... (documento truncado)' : ''}
+${contentAsText.substring(0, 3000)}${contentAsText.length > 3000 ? '\n\n... (documento truncado)' : ''}
 ---
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
@@ -309,7 +339,7 @@ ${documentTypeLabels[document.type] || 'Documento'}
 Status: ${signedStatus}
 
 ---
-${document.content}
+${contentAsText}
 ---
 
 Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`);
@@ -362,9 +392,16 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
         <ScrollArea className="flex-1 min-h-0 px-6 py-4" style={{ maxHeight: 'calc(85vh - 220px)' }}>
           {document.content ? (
             <div className="mx-auto w-full max-w-[620px] rounded-sm border bg-background p-6 shadow-sm">
-              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">
-                {document.content}
-              </pre>
+              {contentIsRich ? (
+                <div
+                  className="rich-document-view text-sm leading-6 text-foreground"
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichDocumentHtml(document.content) }}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">
+                  {document.content}
+                </pre>
+              )}
             </div>
           ) : document.file_path || document.file_url ? (
             <div className="mx-auto w-full max-w-[720px] rounded-sm border bg-background p-3 shadow-sm">

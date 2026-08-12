@@ -40,7 +40,7 @@ export function WhatsappInboundPanel() {
       const { data, error } = await supabase
         .from('whatsapp_messages')
         .select('id, created_at, from_number, body, status, provider_payload')
-        .eq('direction', 'inbound')
+        .in('direction', ['in', 'inbound'])
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;

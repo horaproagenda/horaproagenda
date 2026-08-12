@@ -5,6 +5,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  detectIntent,
+  extractMessageText,
+  extractSenderPhone,
+  normalizePhone,
+  phonesMatch,
+} from "../_shared/whatsappIntent.ts";
+import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,29 +20,18 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
-function normalizePhone(phone: string): string {
-  let d = String(phone || '').replace(/\D/g, '');
-  if (d.startsWith('0')) d = d.substring(1);
-  if (!d.startsWith('55') && d.length <= 11) d = '55' + d;
-  return d;
+const BR_TZ = 'America/Sao_Paulo';
+
+function formatWhen(iso?: string | null): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('pt-BR', { timeZone: BR_TZ, day: '2-digit', month: '2-digit' });
+    const time = d.toLocaleTimeString('pt-BR', { timeZone: BR_TZ, hour: '2-digit', minute: '2-digit' });
+    return `${date} às ${time}`;
+  } catch { return ''; }
 }
 
-/** Detects intent from a free-text reply. Returns 'confirm' | 'cancel' | null. */
-function detectIntent(body: string): 'confirm' | 'cancel' | null {
-  const text = String(body || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
-  if (!text) return null;
-  // 1) Palavras isoladas no início (respostas curtas típicas: "1", "confirmar", "sim", "ok"…)
-  if (/^(1|confirmar|confirmo|confirmado|confirma|sim|ok|okay|okey|presente|vou|estarei|vou sim|pode ser|beleza|blz|show|otimo|otima|perfeito)\b/.test(text)) return 'confirm';
-  if (/^(2|cancelar|cancelo|cancelado|cancela|nao|desmarcar|desmarca|nao posso|nao vou|nao consigo|remarcar|remarca)\b/.test(text)) return 'cancel';
-  // 2) Fallback por radical em qualquer posição (ex: "quero confirmar meu horario")
-  if (/\bconfirm/.test(text)) return 'confirm';
-  if (/\bcancel/.test(text) || /\bdesmarc/.test(text) || /\bremarc/.test(text)) return 'cancel';
-  return null;
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

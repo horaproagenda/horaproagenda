@@ -49,7 +49,14 @@ interface PackageSaleRow {
   refundedAmount: number;
 }
 
-export function PacotesFinanceiro() {
+interface PacotesFinanceiroProps {
+  /** Venda de pacote que deve ser focada automaticamente (deep link do Relatório). */
+  focusSaleId?: string | null;
+  /** Chamado após abrir o formulário da venda focada, para limpar o parâmetro. */
+  onFocusHandled?: () => void;
+}
+
+export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanceiroProps = {}) {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');

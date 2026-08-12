@@ -227,16 +227,14 @@ serve(async (req) => {
         outcome = 'instance_unknown';
         outcomeDetail = `Instância "${instanceId}" não está vinculada a nenhuma conta.`;
       } else {
-        // Números da própria conta (instâncias/profissionais) não são clientes.
-        const [{ data: ownCreds }, { data: ownPros }] = await Promise.all([
-          supabase.from('professional_whatsapp_credentials').select('phone_number').eq('account_owner_id', ownerId),
-          supabase.from('professionals').select('phone').eq('account_owner_id', ownerId),
-        ]);
-        const ownNumbers = [
-          ...((ownCreds || []) as any[]).map((c) => c.phone_number),
-          ...((ownPros || []) as any[]).map((p) => p.phone),
-        ].filter(Boolean);
+        // Números da própria conta (profissionais) não são clientes.
+        const { data: ownPros } = await supabase
+          .from('professionals')
+          .select('phone')
+          .eq('account_owner_id', ownerId);
+        const ownNumbers = ((ownPros || []) as any[]).map((p) => p.phone).filter(Boolean);
         const isOwnNumber = ownNumbers.some((n: string) => phonesMatch(n, phone));
+
 
         if (isOwnNumber) {
           outcome = 'ignored_own_number';

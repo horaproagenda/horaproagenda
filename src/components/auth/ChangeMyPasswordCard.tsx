@@ -31,7 +31,7 @@ export function ChangeMyPasswordCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" />Alterar senha</CardTitle>
-        <CardDescription>Defina uma nova senha de acesso. Mínimo 8 caracteres.</CardDescription>
+        <CardDescription>Defina uma nova senha de acesso: mínimo 8 caracteres, com letra maiúscula, letra minúscula, número e símbolo.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-3 max-w-sm">

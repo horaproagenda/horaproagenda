@@ -384,6 +384,8 @@ const Configuracoes = () => {
 
           <WhatsappSettings />
           <WhatsappTemplatesSettings />
+          <WhatsappInboundPanel />
+
 
           {/* Aparência da interface removida — a paleta do app é padronizada (Petróleo + Âmbar).
               A cor do agendamento por profissional continua configurável na aba do profissional. */}

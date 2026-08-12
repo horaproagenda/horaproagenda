@@ -111,6 +111,7 @@ export function FillDocumentDialog({
   const [signedBy, setSignedBy] = useState('');
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
+  const isRich = isRichDocument(template?.content) || isRichDocument(filledContent);
 
   // Extract variables from template
   const extractVariables = (content: string): string[] => {
@@ -325,9 +326,12 @@ export function FillDocumentDialog({
               padding-bottom: 10px;
             }
             .content { 
-              white-space: pre-wrap; 
+              ${isRich ? '' : 'white-space: pre-wrap;'}
               font-size: 12px;
             }
+            .content img { max-width: 100%; height: auto; }
+            .content table { border-collapse: collapse; max-width: 100%; }
+            .content td, .content th { border: 1px solid #d1d5db; padding: 4px 6px; }
             .footer {
               margin-top: 40px;
               border-top: 1px solid #ccc;
@@ -358,7 +362,7 @@ export function FillDocumentDialog({
         </head>
         <body>
           <h1>${escapeHtml(template.title)}</h1>
-          <div class="content">${sanitizeDocumentContent(filledContent)}</div>
+          <div class="content">${isRich ? sanitizeRichDocumentHtml(filledContent) : sanitizeDocumentContent(filledContent)}</div>
           ${signatureHtml}
           <div class="footer">
             Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -402,13 +406,14 @@ export function FillDocumentDialog({
         ? 'consent'
         : 'other';
 
+      const savedAt = new Date();
       const hasContent = filledContent && filledContent.trim().length > 0;
       const insertData: any = {
         client_id: selectedClientId,
         template_id: template.id,
         title: template.title,
         description: hasContent
-          ? `Preenchido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+          ? `Preenchido em ${formatDocumentDateTime(savedAt)}`
           : null,
         type: docType,
         content: hasContent ? filledContent : null,
@@ -416,7 +421,7 @@ export function FillDocumentDialog({
       };
 
       if (withSignature && signatureData) {
-        insertData.signed_at = new Date().toISOString();
+        insertData.signed_at = savedAt.toISOString();
         insertData.signed_by = signedBy;
       }
 
@@ -617,12 +622,21 @@ export function FillDocumentDialog({
               <TabsContent value="content" className="flex-1 m-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="p-4">
-                    <Textarea
-                      value={filledContent}
-                      onChange={(e) => setFilledContent(e.target.value)}
-                      className="min-h-[450px] font-mono text-sm resize-none"
-                      placeholder="Conteúdo do documento..."
-                    />
+                    {isRich ? (
+                      <RichTextEditor
+                        value={filledContent}
+                        onChange={setFilledContent}
+                        placeholder="Conteúdo do documento..."
+                        minHeightClassName="min-h-[450px]"
+                      />
+                    ) : (
+                      <Textarea
+                        value={filledContent}
+                        onChange={(e) => setFilledContent(e.target.value)}
+                        className="min-h-[450px] font-mono text-sm resize-none"
+                        placeholder="Conteúdo do documento..."
+                      />
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -632,9 +646,16 @@ export function FillDocumentDialog({
                   <div className="p-4">
                     <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border shadow-sm">
                       <h2 className="text-lg font-semibold text-center mb-4 pb-3 border-b">{template.title}</h2>
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                        {filledContent}
-                      </pre>
+                      {isRich ? (
+                        <div
+                          className="rich-document-view text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichDocumentHtml(filledContent) }}
+                        />
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                          {filledContent}
+                        </pre>
+                      )}
                       {signatureData && (
                         <div className="mt-6 pt-4 border-t">
                           <p className="text-xs text-muted-foreground mb-2">Assinatura Digital:</p>

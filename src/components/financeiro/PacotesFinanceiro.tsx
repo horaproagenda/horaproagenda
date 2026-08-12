@@ -49,7 +49,14 @@ interface PackageSaleRow {
   refundedAmount: number;
 }
 
-export function PacotesFinanceiro() {
+interface PacotesFinanceiroProps {
+  /** Venda de pacote que deve ser focada automaticamente (deep link do Relatório). */
+  focusSaleId?: string | null;
+  /** Chamado após abrir o formulário da venda focada, para limpar o parâmetro. */
+  onFocusHandled?: () => void;
+}
+
+export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanceiroProps = {}) {
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
@@ -330,6 +337,34 @@ export function PacotesFinanceiro() {
       setCalculatingCost(false);
     }
   };
+
+  // Deep link vindo do Relatório: abre a ação correta para a venda de pacote.
+  const [handledFocusId, setHandledFocusId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusSaleId || handledFocusId === focusSaleId) return;
+    if (isLoading) return; // aguarda a lista carregar
+    const row = rows.find((r) => r.saleId === focusSaleId);
+    setHandledFocusId(focusSaleId);
+    if (!row) {
+      toast.error('Não encontramos esta venda de pacote. Ela pode já ter sido apagada.');
+      onFocusHandled?.();
+      return;
+    }
+    if (row.isCancelled || row.isCompleted) {
+      // Já devolvido/concluído: o passo correto é apagar o pacote definitivamente.
+      setDeleteTarget(row);
+      setDeleteOpen(true);
+      toast.info('Este pacote já foi cancelado ou concluído. Confirme para apagá-lo definitivamente.');
+    } else {
+      setSearch(row.clientName);
+      void openCancel(row);
+      toast.info('Preencha o formulário de cancelamento para excluir esta venda de pacote.');
+    }
+    onFocusHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSaleId, handledFocusId, isLoading, rows]);
+
+
 
   const cancelMutation = useMutation({
     mutationFn: async () => {

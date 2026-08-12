@@ -25,7 +25,7 @@ import { exportToCSV } from '@/lib/exportUtils';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CancelPackageDialog } from '@/components/financeiro/CancelPackageDialog';
+import { useNavigate } from 'react-router-dom';
 
 interface ConsolidatedEntry {
   id: string;
@@ -249,7 +249,7 @@ export function RelatorioConsolidado() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<ConsolidatedEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // When user clicks delete: if the entry is linked (directly or indirectly) to a
   // PACKAGE sale, route through the "Cancelar Pacote" form (refund + reason)
@@ -291,7 +291,10 @@ export function RelatorioConsolidado() {
           .eq('id', saleId)
           .maybeSingle();
         if (sale && ((sale as any).item_type === 'package' || (sale as any).package_id)) {
-          setCancelPackageSaleId(saleId);
+          // Venda de PACOTE: o fluxo oficial de exclusão (devolução, liberação das
+          // aplicações e sincronização da agenda) acontece na aba Pacotes.
+          toast.info('Exclusão de venda de pacote acontece na aba Pacotes. Abrindo o formulário...');
+          navigate(`/financeiro?tab=pacotes&cancelSale=${saleId}`, { replace: true });
           return;
         }
       }
@@ -300,6 +303,7 @@ export function RelatorioConsolidado() {
     }
     setDeleteTarget(entry);
   };
+
 
   const invalidateAllFinancial = () => {
     const keys = [
@@ -577,7 +581,8 @@ export function RelatorioConsolidado() {
             <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação é definitiva. Todos os registros vinculados ao pagamento serão removidos:
-              <br />• Se for venda de serviço ou pacote: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• Se for venda de serviço: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
+              <br />• Vendas de pacote são excluídas na aba Pacotes, com formulário de devolução.
               <br />• O lançamento no Caixa, no Financeiro e no perfil do cliente também serão apagados.
               {deleteTarget && (
                 <span className="block mt-3 text-foreground font-medium">
@@ -599,13 +604,6 @@ export function RelatorioConsolidado() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <CancelPackageDialog
-        open={!!cancelPackageSaleId}
-        onOpenChange={(o) => { if (!o) setCancelPackageSaleId(null); }}
-        saleId={cancelPackageSaleId}
-        onSuccess={invalidateAllFinancial}
-      />
     </div>
   );
 }

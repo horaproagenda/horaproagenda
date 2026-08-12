@@ -47,11 +47,14 @@ export default function Financeiro() {
   const { professionals } = useProfessionals();
   // Sempre abre na aba Relatório ao entrar na página
   const [activeTab, setActiveTab] = useState('relatorio');
+  // Venda de pacote a ser focada na aba Pacotes (deep link a partir do Relatório)
+  const [focusPackageSaleId, setFocusPackageSaleId] = useState<string | null>(null);
 
   // Handle URL query params for deep linking from notifications
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam) {
+    const cancelSaleParam = searchParams.get('cancelSale');
+    if (tabParam || cancelSaleParam) {
       const tabMap: Record<string, string> = {
         'dashboard': 'dashboard',
         'pagar': 'contas-pagar',
@@ -65,15 +68,16 @@ export default function Financeiro() {
         'metas': 'metas',
         'precificacao': 'precificacao',
       };
-      const mappedTab = tabMap[tabParam] || tabParam;
-      if (mappedTab) {
-        setActiveTab(mappedTab);
-        searchParams.delete('tab');
-        searchParams.delete('entry');
-        setSearchParams(searchParams, { replace: true });
-      }
+      const mappedTab = tabParam ? (tabMap[tabParam] || tabParam) : null;
+      if (mappedTab) setActiveTab(mappedTab);
+      if (cancelSaleParam) setFocusPackageSaleId(cancelSaleParam);
+      searchParams.delete('tab');
+      searchParams.delete('entry');
+      searchParams.delete('cancelSale');
+      setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setActiveTab, setSearchParams]);
+
 
   const balance = totalReceivables - totalPayables;
 
@@ -191,7 +195,11 @@ export default function Financeiro() {
           </TabsContent>
 
           <TabsContent value="pacotes" className="page-enter">
-            <PacotesFinanceiro />
+            <PacotesFinanceiro
+              focusSaleId={focusPackageSaleId}
+              onFocusHandled={() => setFocusPackageSaleId(null)}
+            />
+
           </TabsContent>
 
           <TabsContent value="categorias" className="page-enter">

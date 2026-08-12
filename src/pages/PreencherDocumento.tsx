@@ -36,11 +36,14 @@ import {
   buildFilledDocumentContent,
   extractDocumentPrefillSnapshot,
   htmlToPlainText,
+  buildDocumentDateTimeValues,
   isAutoFilledVariable,
   normalizeDocumentLinkPayload,
   tokenizeDocumentLine,
   type DocumentFieldToken,
 } from '@/lib/documentTemplateFields';
+import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 
 interface DocumentLinkPayload {
   id: string;
@@ -270,11 +273,7 @@ export default function PreencherDocumento() {
       const currentDate = new Date();
       const initialFormData: Record<string, string> = {
         ...(snapshot.formData || {}),
-        data: formatDateExtended(currentDate),
-        date: formatDateExtended(currentDate),
-        data_atual: formatDateExtended(currentDate),
-        hora: format(currentDate, 'HH:mm'),
-        data_extenso: formatDateExtended(currentDate),
+        ...buildDocumentDateTimeValues(currentDate),
       };
 
       if (clientSnapshot?.name) {
@@ -320,6 +319,7 @@ export default function PreencherDocumento() {
         id: templateData.id,
         title: templateData.title,
         content: htmlToPlainText(templateData.content),
+        rawContent: templateData.content || '',
         variables: templateData.variables || [],
       });
       setClient(clientSnapshot);
@@ -337,12 +337,29 @@ export default function PreencherDocumento() {
     }
   };
 
-  const buildFilledContent = (): string => {
+  const buildFilledContent = (stamp: Date = new Date()): string => {
     if (!template) return '';
+
+    // Every date/time variable comes from the same captured instant so the body
+    // of the document and the saved record never diverge.
+    const values = { ...formData, ...buildDocumentDateTimeValues(stamp) };
+
+    if (isRichDocument(template.rawContent)) {
+      const html = fillDocumentHtml(sanitizeRichDocumentHtml(template.rawContent), {
+        formData: values,
+        yesNoAnswers,
+        additionalInfo,
+        checkboxAnswers,
+      });
+      const notes = additionalInfo.observacoes?.trim();
+      return notes
+        ? `${html}<p><strong>Observações adicionais:</strong> ${notes.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</p>`
+        : html;
+    }
 
     let content = buildFilledDocumentContent({
       content: template.content,
-      formData,
+      formData: values,
       yesNoAnswers,
       additionalInfo,
       checkboxAnswers,
@@ -461,6 +478,21 @@ export default function PreencherDocumento() {
   const handleDownloadPdf = () => {
     if (!template) return;
 
+    const content = filledContentForPdf || buildFilledContent();
+    if (isRichDocument(content)) {
+      void downloadRichDocumentPdf({
+        title: template.title,
+        bodyHtml: content,
+        headerLines: [
+          `Data de preenchimento: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+          client?.name ? `Cliente: ${client.name}` : '',
+          client?.cpf ? `CPF: ${client.cpf}` : '',
+        ],
+        fileName: `${template.title} - ${client?.name || 'Documento'}`,
+      });
+      return;
+    }
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
@@ -492,7 +524,6 @@ export default function PreencherDocumento() {
     doc.line(margin, y, pageWidth - margin, y);
     y += 8;
 
-    const content = filledContentForPdf || buildFilledContent();
     const lines = doc.splitTextToSize(removeAccents(content), maxWidth);
 
     for (const line of lines) {

@@ -366,3 +366,22 @@ export async function evolutionSendText(
     }),
   }, override);
 }
+
+/**
+ * Garante que a instância está com o webhook (evento de mensagens) registrado.
+ * Instâncias conectadas antes desta versão podiam ficar sem `MESSAGES_UPSERT`,
+ * o que impedia o app de ler as respostas de confirmação dos clientes.
+ */
+export async function evolutionEnsureWebhook(override: EvolutionCreds) {
+  const cfg = getEvolutionConfig(override);
+  if (!cfg.configured) return false;
+  try {
+    const found = await evolutionFetch(`/webhook/find/${encodeURIComponent(cfg.instance)}`, { method: 'GET' }, override);
+    const current = (found as any)?.webhook ?? found ?? {};
+    const url = String(current?.url || '');
+    const events: string[] = Array.isArray(current?.events) ? current.events.map((e: any) => String(e).toUpperCase()) : [];
+    const ok = current?.enabled !== false && url === webhookUrl() && events.includes('MESSAGES_UPSERT');
+    if (ok) return true;
+  } catch (_) { /* segue para o set */ }
+  return evolutionSetWebhook(override);
+}

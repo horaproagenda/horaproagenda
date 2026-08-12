@@ -113,6 +113,8 @@ export interface DocumentFillValues {
   yesNoAnswers?: Record<string, 'sim' | 'nao' | ''>;
   additionalInfo?: Record<string, string>;
   checkboxAnswers?: Record<string, boolean>;
+  /** When true, `{variavel}` placeholders without a value stay untouched. */
+  keepUnfilledVariables?: boolean;
 }
 
 export function resolveDocumentTokenValue(token: DocumentFieldToken, values: DocumentFillValues): string {
@@ -120,8 +122,11 @@ export function resolveDocumentTokenValue(token: DocumentFieldToken, values: Doc
   switch (token.type) {
     case 'text':
       return token.value;
-    case 'variable':
-      return formData[token.fieldKey] ?? formData[token.fieldKey.toLowerCase()] ?? '';
+    case 'variable': {
+      const value = formData[token.fieldKey] ?? formData[token.fieldKey.toLowerCase()] ?? '';
+      if (!value && values.keepUnfilledVariables) return `{${token.name}}`;
+      return value;
+    }
     case 'yesno': {
       const answer = yesNoAnswers[token.fieldKey] || '';
       if (answer === 'sim') return '(X) Sim ( ) Não';

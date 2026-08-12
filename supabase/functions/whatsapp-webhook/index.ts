@@ -9,9 +9,11 @@ import {
   detectIntent,
   extractMessageText,
   extractSenderPhone,
+  isEchoOfSystemMessage,
   normalizePhone,
   phonesMatch,
 } from "../_shared/whatsappIntent.ts";
+
 import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
@@ -211,13 +213,33 @@ serve(async (req) => {
       let outcomeDetail = '';
       let reply = '';
 
-      if (!phone) {
+      // Eco das próprias mensagens automáticas (duas instâncias da mesma conta
+      // conversando entre si) nunca deve confirmar ou cancelar nada.
+      const isEcho = isEchoOfSystemMessage(bodyText);
+
+      if (isEcho) {
+        outcome = 'ignored_echo';
+        outcomeDetail = 'Mensagem é o eco de uma mensagem automática do sistema.';
+      } else if (!phone) {
         outcome = 'sender_unknown';
         outcomeDetail = 'Não foi possível identificar o telefone do remetente nesta mensagem.';
       } else if (!ownerId) {
         outcome = 'instance_unknown';
         outcomeDetail = `Instância "${instanceId}" não está vinculada a nenhuma conta.`;
       } else {
+        // Números da própria conta (profissionais) não são clientes.
+        const { data: ownPros } = await supabase
+          .from('professionals')
+          .select('phone')
+          .eq('account_owner_id', ownerId);
+        const ownNumbers = ((ownPros || []) as any[]).map((p) => p.phone).filter(Boolean);
+        const isOwnNumber = ownNumbers.some((n: string) => phonesMatch(n, phone));
+
+
+        if (isOwnNumber) {
+          outcome = 'ignored_own_number';
+          outcomeDetail = 'Mensagem veio de um número da própria conta (não é cliente).';
+        } else {
         const { data: clients } = await supabase
           .from('clients')
           .select('id, name, phone')
@@ -229,51 +251,71 @@ serve(async (req) => {
           outcome = 'client_not_found';
           outcomeDetail = `Nenhum cliente cadastrado com o telefone ${phone}.`;
         } else {
-          // Agendamentos candidatos: futuros (ou nas últimas 2h) e ainda ativos.
-          const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+          // Somente horários ativos e futuros podem ser confirmados/cancelados.
+          // Cancelados jamais voltam a ser confirmados por resposta.
+          const nowIso = new Date().toISOString();
           const { data: appts } = await supabase
             .from('appointments')
             .select('id, confirmation_token, start_time, status')
             .eq('client_id', matchedClient.id)
-            .gte('start_time', since)
-            .not('status', 'in', '(completed,missed,rescheduled)')
+            .gte('start_time', nowIso)
+            .not('status', 'in', '(completed,missed,rescheduled,cancelled)')
             .order('start_time', { ascending: true })
             .limit(20);
 
-          const candidates = (appts || []).filter((a: any) => a.status !== 'cancelled' || intent === 'confirm');
+          const candidates = (appts || []);
 
-          // Prioriza o agendamento cuja confirmação foi enviada mais recentemente.
-          if (candidates.length > 1) {
-            const { data: logs } = await supabase
-              .from('appointment_reminder_log')
-              .select('appointment_id, sent_at')
-              .in('appointment_id', candidates.map((a: any) => a.id))
-              .order('sent_at', { ascending: false })
-              .limit(20);
-            const lastId = (logs || [])[0]?.appointment_id;
-            target = candidates.find((a: any) => a.id === lastId) || candidates[0];
-          } else {
-            target = candidates[0] || null;
+          // Só vale como resposta se existir um convite de confirmação enviado
+          // nas últimas 48h para aquele horário.
+          const invitedSince = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+          let invitedIds: string[] = [];
+          if (candidates.length) {
+            const ids = candidates.map((a: any) => a.id);
+            const [{ data: logs }, { data: queued }] = await Promise.all([
+              supabase
+                .from('appointment_reminder_log')
+                .select('appointment_id, sent_at')
+                .in('appointment_id', ids)
+                .gte('sent_at', invitedSince)
+                .order('sent_at', { ascending: false }),
+              supabase
+                .from('whatsapp_send_queue')
+                .select('appointment_id, created_at')
+                .in('appointment_id', ids)
+                .gte('created_at', invitedSince)
+                .order('created_at', { ascending: false }),
+            ]);
+            invitedIds = [
+              ...((logs || []) as any[]).map((l) => l.appointment_id),
+              ...((queued || []) as any[]).map((q) => q.appointment_id),
+            ].filter(Boolean);
           }
 
-          if (!intent) {
+          // Prioriza o agendamento cuja confirmação foi enviada mais recentemente.
+          const invited = candidates.filter((a: any) => invitedIds.includes(a.id));
+          target = invited.find((a: any) => a.id === invitedIds[0]) || invited[0] || null;
+
+          if (!target) {
+            outcome = 'no_pending_confirmation';
+            outcomeDetail = 'Nenhuma confirmação pendente para este cliente — mensagem apenas registrada.';
+          } else if (!intent) {
             outcome = 'intent_unclear';
             outcomeDetail = 'Resposta não compreendida.';
-            if (target) {
-              reply = `Não entendi sua resposta 🙂\n\nResponda *1* para *confirmar* o horário de ${formatWhen(target.start_time)} ou *2* para *cancelar*.`;
-            }
+            reply = `Não entendi sua resposta 🙂\n\nResponda *1* para *confirmar* o horário de ${formatWhen(target.start_time)} ou *2* para *cancelar*.`;
           } else if (!target?.confirmation_token) {
             outcome = 'appointment_not_found';
-            outcomeDetail = 'Cliente não possui agendamento ativo para confirmar ou cancelar.';
-            reply = 'Não encontramos um horário ativo em seu nome. Entre em contato para agendar. 🙏';
+            outcomeDetail = 'Agendamento sem código de confirmação.';
           } else {
             const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('confirm_appointment_by_token', {
               p_token: target.confirmation_token,
               p_action: intent,
             });
             if (rpcErr || !rpcRes?.success) {
-              outcome = 'error';
+              outcome = rpcRes?.reason === 'cancelled' ? 'already_cancelled' : 'error';
               outcomeDetail = rpcErr?.message || rpcRes?.error || 'Falha ao registrar a resposta.';
+              if (rpcRes?.reason === 'cancelled') {
+                reply = 'Este horário está cancelado e não pode ser confirmado por aqui. Para reagendar, é só nos chamar. 🙏';
+              }
             } else {
               outcome = rpcRes.status === 'confirmed' ? 'confirmed' : 'cancelled';
               const when = formatWhen(target.start_time);
@@ -284,13 +326,15 @@ serve(async (req) => {
             console.log('[whatsapp-webhook] intent applied', { phone, intent, outcome, detail: outcomeDetail });
           }
         }
+        }
       }
 
       // Registro da mensagem recebida (ferramenta de diagnóstico do fluxo).
       if (ownerId) {
         const { error: logErr } = await supabase.from('whatsapp_messages').insert({
           account_owner_id: ownerId,
-          direction: 'inbound',
+          direction: 'in',
+
           from_number: phone || String(data?.key?.remoteJid || ''),
           to_number: instanceId || null,
           body: bodyText.slice(0, 2000),

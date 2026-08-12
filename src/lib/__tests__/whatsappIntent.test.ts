@@ -3,12 +3,13 @@ import {
   detectIntent,
   extractMessageText,
   extractSenderPhone,
+  isEchoOfSystemMessage,
   phonesMatch,
 } from '../../../supabase/functions/_shared/whatsappIntent';
 
 describe('detectIntent', () => {
   it('reconhece confirmações', () => {
-    for (const t of ['1', 'sim', 'Confirmo', 'CONFIRMAR', 'ok', 'Vou sim', 'Beleza', '✅', '👍']) {
+    for (const t of ['1', 'sim', 'Confirmo', 'CONFIRMAR', 'Vou sim', 'Estarei presente', '✅', '👍']) {
       expect(detectIntent(t)).toBe('confirm');
     }
   });
@@ -50,5 +51,33 @@ describe('extractMessageText', () => {
   it('lê botões e listas', () => {
     expect(extractMessageText({ message: { buttonsResponseMessage: { selectedDisplayText: 'Confirmar' } } })).toBe('Confirmar');
     expect(extractMessageText({ message: { conversation: 'sim' } })).toBe('sim');
+  });
+});
+
+describe('cortesias não confirmam presença', () => {
+  it.each(['Ok, obrigada', 'obrigado', 'beleza', 'blz', 'show', 'perfeito', 'ótimo', 'claro'])(
+    '"%s" não é confirmação',
+    (msg) => {
+      expect(detectIntent(msg)).toBeNull();
+    },
+  );
+
+  it('respostas objetivas continuam valendo', () => {
+    expect(detectIntent('1')).toBe('confirm');
+    expect(detectIntent('Confirmar')).toBe('confirm');
+    expect(detectIntent('sim')).toBe('confirm');
+    expect(detectIntent('2')).toBe('cancel');
+    expect(detectIntent('não posso')).toBe('cancel');
+  });
+});
+
+describe('isEchoOfSystemMessage', () => {
+  it('detecta eco das mensagens automáticas', () => {
+    expect(isEchoOfSystemMessage('Presença confirmada! ✅\n\nSeu horário: *14/08 às 08:00*.\nAté breve! ✨')).toBe(true);
+    expect(isEchoOfSystemMessage('Não entendi sua resposta 🙂 Responda *1* para confirmar')).toBe(true);
+  });
+  it('não marca mensagens reais do cliente', () => {
+    expect(isEchoOfSystemMessage('1')).toBe(false);
+    expect(isEchoOfSystemMessage('Bom dia, posso remarcar?')).toBe(false);
   });
 });

@@ -74,6 +74,7 @@ import {
   projectStockDuration,
   formatCycleQuantity,
 } from '@/lib/productCycleAnalytics';
+import { resolveCycleDeduction, resolveStockAfterCycle } from '@/lib/productStockFlow';
 
 import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';

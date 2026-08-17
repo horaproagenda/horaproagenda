@@ -55,7 +55,9 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
       <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="text-center">
         {notice.kind === 'trial_charge'
-          ? `Seu teste gratuito termina em ${dias} (${date}). A cobrança será feita automaticamente no cartão salvo.`
+          ? subscription.stripe_subscription_id
+            ? `Seu teste gratuito termina em ${dias} (${date}). A cobrança será feita automaticamente no cartão salvo.`
+            : `Seu teste gratuito termina em ${dias} (${date}). Escolha um plano para continuar usando o aplicativo.`
           : `Sua assinatura será renovada em ${dias} (${date}). Confirme se o cartão cadastrado está válido.`}
       </span>
       {isAdmin && (
@@ -63,7 +65,7 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
           {loading
             ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
             : <CreditCard className="mr-1 h-3.5 w-3.5" />}
-          Atualizar forma de pagamento
+          {subscription.stripe_subscription_id ? 'Atualizar forma de pagamento' : 'Escolher plano'}
         </Button>
       )}
     </div>

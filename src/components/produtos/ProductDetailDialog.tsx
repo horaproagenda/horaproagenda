@@ -68,6 +68,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { convertQuantity, areUnitsCrossFamily } from '@/lib/productStock';
+import {
+  computeCycleClosure,
+  averageFromCycles,
+  projectStockDuration,
+  formatCycleQuantity,
+} from '@/lib/productCycleAnalytics';
+
 import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';

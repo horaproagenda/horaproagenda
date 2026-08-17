@@ -142,7 +142,16 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
 }
 
 
+const PAYMENT_KINDS = new Set<Kind>([
+  'payment_failed',
+  'past_due',
+  'trial_charge_failed',
+  'payment_grace_staff',
+  'access_suspended',
+])
+
 const Email = ({ kind = 'payment_recorded', name, ...rest }: Props) => {
+
   const c = COPY[kind]
   const props = { kind, name, ...rest }
   return (

@@ -397,6 +397,22 @@ export function ProductDetailDialog({
     let currentAppointments = 0;
     let currentConsumed = 0;
     let initialQty = 0;
+    // Quantidade colocada em uso no ciclo ativo (parcial), quando informada.
+    const activeCycleQuantity = Math.max(
+      Number((product as any).cycle_quantity || 0),
+      Number(activePurchase?.cycle_quantity || 0),
+    );
+    // Média histórica por atendimento, apurada nos ciclos já encerrados.
+    const historicAverage = averageFromCycles(
+      productPurchases
+        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
+        .map(p => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+    );
     if (effectiveCycleStart && isCycleActive) {
       const start = parseISO(effectiveCycleStart + 'T00:00:00');
       currentDays = Math.max(0, differenceInDays(new Date(), start));
@@ -405,8 +421,18 @@ export function ProductDetailDialog({
         const t = new Date(a.start_time);
         return t >= start && matchesProduct(a);
       }).length;
-      initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
-      currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
+      if (activeCycleQuantity > 0) {
+        // Ciclo parcial: o estoque total só é reduzido no encerramento, então o
+        // consumo em curso é estimado pela média histórica por atendimento.
+        initialQty = activeCycleQuantity;
+        const avg = historicAverage.avgQuantityPerAppointment ?? 0;
+        currentConsumed = avg > 0
+          ? Math.min(activeCycleQuantity, avg * currentAppointments)
+          : 0;
+      } else {
+        initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
+        currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
+      }
     }
 
     const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
@@ -433,19 +459,25 @@ export function ProductDetailDialog({
       (finishedCycles.length > 0 || productPurchases.length > 0);
     const needsManualStart = cycleClosedWithStock || neverStartedWithHistory;
 
-    // Inconsistências: estoque negativo, ou consumo registrado ≠ variação do estoque
+    // Inconsistências: só estoque negativo ou divergência realmente comprovável.
+    // Com quantidade parcial em uso, ou com mais de uma compra somando o estoque,
+    // comparar o estoque com uma única compra gera alarme falso.
     const inconsistencies: string[] = [];
     if (stock < 0) {
       inconsistencies.push(`Estoque negativo (${stock}). Verifique compras e baixas.`);
     }
-    if (activePurchase && initialQty > 0) {
-      const expectedRemaining = initialQty - currentConsumed;
-      if (Math.abs(expectedRemaining - stock) > 0.001) {
-        inconsistencies.push(
-          `Estoque (${stock}) diverge do esperado (${expectedRemaining.toFixed(2)}) com base na compra ativa de ${initialQty}.`
-        );
-      }
+    if (
+      activePurchase &&
+      activeCycleQuantity <= 0 &&
+      productPurchases.length === 1 &&
+      initialQty > 0 &&
+      stock > initialQty + 0.001
+    ) {
+      inconsistencies.push(
+        `Estoque (${stock}) é maior que a quantidade comprada (${initialQty}). Confira o ajuste manual de estoque.`
+      );
     }
+
     if (productPurchases.some(p => !p.started_using_at && !p.finished_at) && product.started_using_at) {
       // já há ciclo ativo, mas existe compra pendente — apenas informativo, não inconsistência
     }

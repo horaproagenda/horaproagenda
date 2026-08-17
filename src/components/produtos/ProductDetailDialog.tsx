@@ -658,7 +658,7 @@ export function ProductDetailDialog({
       }
     }
 
-    const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+    const newStock = resolveStockAfterCycle(Number(product.current_stock) || 0, totalDeduction);
 
     // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
@@ -680,11 +680,14 @@ export function ProductDetailDialog({
     }
 
     // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
+    // A quantidade em uso é zerada: ela pertencia ao ciclo que acabou.
     await onUpdateProduct({
       id: product.id,
       finished_at: dateStr,
       current_stock: newStock,
+      cycle_quantity: null as any,
     });
+
 
     toast.success(
       `Ciclo encerrado: ${cycleApts.length} atendimento(s), ${formatCycleQuantity(totalDeduction)} ${unitLabel} usado(s).`,

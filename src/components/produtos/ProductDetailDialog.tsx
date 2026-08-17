@@ -2365,7 +2365,7 @@ export function ProductDetailDialog({
               </p>
               {isBulkProduct ? (
                 <p>
-                  Será contabilizada a <strong>quantidade total comprada</strong> deste produto no ciclo,
+                  Será contabilizada a <strong>quantidade da compra em uso</strong> (ou a quantidade parcial informada abaixo),
                   já que ele não tem vínculo com serviços, pacotes ou recipientes.
                 </p>
               ) : (

@@ -28,6 +28,10 @@ type Kind =
   | 'trial_charge_failed'
   | 'payment_grace_staff'
   | 'access_suspended'
+  | 'renewal_reminder'
+  | 'trial_charge_reminder'
+  | 'grace_ending_reminder'
+
 
 interface Props {
   kind?: Kind

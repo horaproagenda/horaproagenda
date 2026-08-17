@@ -25,6 +25,9 @@ type Kind =
   | 'past_due'
   | 'seats_near_limit'
   | 'seats_blocked'
+  | 'trial_charge_failed'
+  | 'payment_grace_staff'
+  | 'access_suspended'
 
 interface Props {
   kind?: Kind
@@ -41,7 +44,20 @@ interface Props {
   used?: number
   seatLimit?: number
   attemptedEmail?: string
+  /** cobrança recusada: dd/mm/aaaa em que a carência termina */
+  graceDeadline?: string
+  /** cobrança recusada: dias restantes de carência */
+  graceDays?: number
+  /** valor da cobrança recusada, já formatado (ex.: "R$ 149,00") */
+  amount?: string
+  /** motivo/observação extra */
+  reason?: string
+  /** nome/e-mail do administrador da conta (avisos para a equipe) */
+  adminEmail?: string
+  /** true quando o destinatário é o administrador (mostra a ação de pagamento) */
+  isAdmin?: boolean
 }
+
 
 const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: (p: Props) => string }> = {
   payment_recorded: {

@@ -34,6 +34,7 @@ import { DurationSelect } from '@/components/ui/duration-select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useServices } from '@/hooks/useServices';

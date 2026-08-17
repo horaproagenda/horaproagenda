@@ -11,6 +11,7 @@ import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useActiveAccountGuard } from '@/hooks/useActiveAccountGuard';
 import { TrialBanner } from '@/components/TrialBanner';
 import { PaymentFailedGate } from '@/components/PaymentFailedGate';
+import { getBlockReason } from '@/lib/subscriptionAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -89,11 +90,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAdmin = hasRole('admin');
   // Pagamento recusado / assinatura interrompida pelo Stripe: bloqueio para
   // TODOS os usuários da conta, com botão de atualizar pagamento só p/ admin.
-  const paymentFailed = !!subscription
-    && !hasAccess
-    && (subscription.status === 'past_due'
-      || (subscription.status === 'canceled' && !!subscription.stripe_customer_id)
-      || (trialExpired && !!subscription.stripe_subscription_id));
+  const paymentFailed = getBlockReason(subscription) === 'payment_failed';
 
   if (subscription && !hasAccess && !isOnSubscriptionPage) {
     if (paymentFailed) {

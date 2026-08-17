@@ -2312,6 +2312,28 @@ export function ProductDetailDialog({
                   {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
                 </p>
               )}
+              {product && (
+                <div className="space-y-1.5 rounded-md border bg-muted/30 p-2.5">
+                  <Label htmlFor="cycle-qty" className="text-xs">
+                    Quantidade que você colocou em uso agora ({PRODUCT_UNITS.find(u => u.value === product.unit)?.label})
+                  </Label>
+                  <Input
+                    id="cycle-qty"
+                    type="number"
+                    min={0}
+                    step="any"
+                    className="h-8"
+                    placeholder={`Ex.: 100 de ${Number(product.current_stock || 0)}`}
+                    value={cycleQtyInput}
+                    onChange={(e) => setCycleQtyInput(e.target.value)}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Se você não sabe quanto usa em cada atendimento, informe aqui só a parte que está usando.
+                    Ao registrar o término, mostraremos quantos atendimentos rendeu, a média por atendimento
+                    e quanto tempo o estoque total ainda deve durar. Deixe em branco para manter o cálculo pelos vínculos.
+                  </p>
+                </div>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -2320,10 +2342,13 @@ export function ProductDetailDialog({
           <AlertDialogAction
             onClick={async () => {
               const d = pendingStartDate!;
+              const qty = Number(String(cycleQtyInput).replace(',', '.'));
               setPendingStartDate(null);
-              await runStartCycle(d);
+              setCycleQtyInput('');
+              await runStartCycle(d, Number.isFinite(qty) && qty > 0 ? qty : null);
             }}
           >
+
             <Save className="h-4 w-4 mr-1" /> Salvar
           </AlertDialogAction>
         </AlertDialogFooter>

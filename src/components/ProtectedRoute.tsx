@@ -123,7 +123,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     <>
       {subscription && inGracePeriod
         ? <PaymentGraceBanner subscription={subscription} isAdmin={isAdmin} />
-        : <TrialBanner />}
+        : (subscription
+            ? <>
+                <RenewalReminderBanner subscription={subscription} isAdmin={isAdmin} />
+                <TrialBanner />
+              </>
+            : <TrialBanner />)}
+      {children}
+    </>
+  );
+
       {children}
     </>
   );

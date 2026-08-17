@@ -98,9 +98,3 @@ export default function AssinaturaSucesso() {
     </div>
   );
 }
-
-        </CardContent>
-      </Card>
-    </div>
-  );
-}

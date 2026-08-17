@@ -11,6 +11,7 @@ import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useActiveAccountGuard } from '@/hooks/useActiveAccountGuard';
 import { TrialBanner } from '@/components/TrialBanner';
 import { PaymentFailedGate } from '@/components/PaymentFailedGate';
+import { PaymentGraceBanner } from '@/components/PaymentGraceBanner';
 import { getBlockReason } from '@/lib/subscriptionAccess';
 
 interface ProtectedRouteProps {
@@ -22,7 +23,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [resending, setResending] = useState(false);
   const location = useLocation();
   const checkedRef = useRef(false);
-  const { subscription, trialExpired, hasAccess } = useAccountSubscription();
+  const { subscription, trialExpired, hasAccess, inGracePeriod } = useAccountSubscription();
 
   // Realtime guard: desloga imediatamente se admin inativar este usuário.
   useActiveAccountGuard();
@@ -118,7 +119,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return (
     <>
-      <TrialBanner />
+      {subscription && inGracePeriod
+        ? <PaymentGraceBanner subscription={subscription} isAdmin={isAdmin} />
+        : <TrialBanner />}
       {children}
     </>
   );

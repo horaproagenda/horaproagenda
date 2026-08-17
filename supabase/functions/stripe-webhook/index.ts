@@ -369,7 +369,32 @@ serve(async (req) => {
   }
 });
 
+/** Envia o template de status da conta para um e-mail específico. */
+async function sendEmailTo(
+  recipientEmail: string,
+  name: string | undefined,
+  templateData: Record<string, unknown>,
+  idempotencyKey: string,
+) {
+  try {
+    const { error } = await supabase.functions.invoke('send-transactional-email', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_EMAIL_SECRET') ?? '' },
+      body: {
+        templateName: 'account-status-update',
+        recipientEmail,
+        idempotencyKey,
+        templateData: { name, ...templateData },
+      },
+    });
+    if (error) log('Email send failed', { error: error.message, idempotencyKey });
+    else log('Email enqueued', { idempotencyKey });
+  } catch (e) {
+    log('Email threw', { idempotencyKey, e: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 async function sendAccountEmail(
+
   ownerUserId: string,
   kind: 'subscription_activated' | 'payment_failed' | 'past_due' | 'payment_recorded' | 'trial_extended' | 'lifetime_granted',
   data: Record<string, unknown>,

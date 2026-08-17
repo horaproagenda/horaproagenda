@@ -228,16 +228,59 @@ serve(async (req) => {
         if (customerId) {
           const ownerId = await findOwnerByCustomer(customerId);
           if (ownerId) {
-            await supabase
-              .from('account_subscriptions')
-              .update({ status: 'past_due' })
-              .eq('owner_user_id', ownerId);
-            log("Marked past_due", { ownerId });
-            await sendAccountEmail(ownerId, 'payment_failed', {}, `stripe-invoice-failed-${invoice.id}`);
+            // A cobrança do fim do teste chega com billing_reason
+            // "subscription_cycle" logo após trial_end. Detectamos pelo
+            // trial_end da assinatura (até 3 dias atrás).
+            let isTrialCharge = false;
+            if (invoice.subscription) {
+              try {
+                const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+                const trialEndMs = sub.trial_end ? sub.trial_end * 1000 : 0;
+                isTrialCharge = !!trialEndMs
+                  && Date.now() - trialEndMs < 3 * 24 * 60 * 60 * 1000;
+              } catch (e) {
+                log('Falha ao ler assinatura da invoice', { e: e instanceof Error ? e.message : String(e) });
+              }
+            }
+            await handlePaymentFailure(
+              supabase,
+              ownerId,
+              {
+                isTrialCharge,
+                amount: formatBrl(invoice.amount_due, invoice.currency ?? 'brl'),
+                idempotencyBase: `invoice-${invoice.id}`,
+              },
+              sendEmailTo,
+              log,
+            );
           }
         }
         break;
       }
+
+      // Stripe desistiu das tentativas de cobrança → suspensão definitiva.
+      case "invoice.marked_uncollectible": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+        if (customerId) {
+          const ownerId = await findOwnerByCustomer(customerId);
+          if (ownerId) {
+            await supabase
+              .from('account_subscriptions')
+              .update({ status: 'past_due' })
+              .eq('owner_user_id', ownerId);
+            await notifyAccessSuspended(
+              supabase,
+              ownerId,
+              `invoice-uncollectible-${invoice.id}`,
+              sendEmailTo,
+              'A cobrança foi encerrada como não recebida pelo processador de pagamentos.',
+            );
+          }
+        }
+        break;
+      }
+
 
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {

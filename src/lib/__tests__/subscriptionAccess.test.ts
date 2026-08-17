@@ -50,3 +50,40 @@ describe('subscriptionAccess', () => {
     expect(getBlockReason(null, NOW)).toBeNull();
   });
 });
+
+describe('carência após cobrança recusada', () => {
+  it('mantém acesso dentro da carência e suspende depois', async () => {
+    const { getPaymentPhase, getGraceDaysLeft } = await import('@/lib/subscriptionAccess');
+    const pastDue = {
+      ...base,
+      status: 'past_due' as const,
+      current_period_end: '2026-08-15T12:00:00Z',
+    };
+    expect(getPaymentPhase(pastDue, NOW)).toBe('grace');
+    expect(hasSubscriptionAccess(pastDue, NOW)).toBe(true);
+    expect(getGraceDaysLeft(pastDue, NOW)).toBe(3);
+
+    const late = { ...pastDue, current_period_end: '2026-08-01T12:00:00Z' };
+    expect(getPaymentPhase(late, NOW)).toBe('suspended');
+    expect(hasSubscriptionAccess(late, NOW)).toBe(false);
+  });
+
+  it('cobrança do fim do teste recusada entra em carência', async () => {
+    const { getPaymentPhase } = await import('@/lib/subscriptionAccess');
+    const trialFailed = {
+      ...base,
+      status: 'trial' as const,
+      trial_ends_at: '2026-08-16T12:00:00Z',
+      current_period_end: null,
+    };
+    expect(getPaymentPhase(trialFailed, NOW)).toBe('grace');
+    expect(hasSubscriptionAccess(trialFailed, NOW)).toBe(true);
+  });
+
+  it('quem nunca assinou não recebe carência', async () => {
+    const { getPaymentPhase } = await import('@/lib/subscriptionAccess');
+    const never = { ...base, status: 'canceled' as const, stripe_customer_id: null, stripe_subscription_id: null };
+    expect(getPaymentPhase(never, NOW)).toBe('ok');
+    expect(hasSubscriptionAccess(never, NOW)).toBe(false);
+  });
+});

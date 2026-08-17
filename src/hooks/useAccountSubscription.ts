@@ -98,7 +98,7 @@ export function useAccountSubscription() {
         !(sub.status === 'trial' && trialEnds > Date.now()));
     if (!looksInactive) return;
     const now = Date.now();
-    if (now - lastSyncRef.current < 60_000) return;
+    if (now - lastSyncRef.current < 15_000) return;
     lastSyncRef.current = now;
     void (async () => {
       try {

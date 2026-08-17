@@ -2436,7 +2436,7 @@ export function ProductDetailDialog({
                 Será encerrado o ciclo em{' '}
                 <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>
                 {isBulkProduct
-                  ? <> com base na <strong>quantidade total comprada</strong> deste produto.</>
+                  ? <> com base na <strong>quantidade em uso registrada</strong> (ou na quantidade da compra em uso).</>
                   : <> com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.</>}
               </p>
               {endCyclePreview && product && (

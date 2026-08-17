@@ -107,6 +107,14 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     },
   });
 
+  // Profissional (não administrador) só pode criar pacotes vinculados a si mesmo.
+  const { professionalId: ownProfessionalId, isProfessional } = useCurrentProfessional();
+  useEffect(() => {
+    if (open && isProfessional && ownProfessionalId) {
+      form.setValue('professional_id', ownProfessionalId);
+    }
+  }, [open, isProfessional, ownProfessionalId, form]);
+
   const watchPrice = form.watch('price');
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');

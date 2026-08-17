@@ -69,3 +69,6 @@ project_id = "nsgcllrbswodjoadybsj"
 
 
 
+
+  [functions.notify-subscription-reminders]
+    verify_jwt = false

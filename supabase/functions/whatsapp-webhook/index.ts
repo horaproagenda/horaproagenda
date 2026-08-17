@@ -6,13 +6,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  decideReplyAction,
   detectIntent,
   extractMessageText,
   extractSenderPhone,
+  INTENT_WINDOW_HOURS,
   isEchoOfSystemMessage,
   normalizePhone,
   phonesMatch,
+  type ReplyCandidate,
 } from "../_shared/whatsappIntent.ts";
+
 
 import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
 

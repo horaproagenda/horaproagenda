@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS cycle_quantity numeric;
+COMMENT ON COLUMN public.products.cycle_quantity IS 'Quantidade colocada em uso no ciclo ativo (ex.: 100 de 600 unidades). Nulo quando nao ha ciclo parcial ativo.';

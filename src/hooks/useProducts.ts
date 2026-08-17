@@ -57,6 +57,9 @@ export interface Product {
   started_using_at: string | null;
   finished_at: string | null;
   current_stock: number;
+  /** Quantidade colocada em uso no ciclo ativo (ex.: 100 de 600 unidades). */
+  cycle_quantity?: number | null;
+
   min_stock_alert: number | null;
   notes: string | null;
   is_active: boolean;

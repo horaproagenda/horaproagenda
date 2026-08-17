@@ -74,6 +74,7 @@ import {
   projectStockDuration,
   formatCycleQuantity,
 } from '@/lib/productCycleAnalytics';
+import { resolveCycleDeduction, resolveStockAfterCycle } from '@/lib/productStockFlow';
 
 import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
@@ -316,7 +317,13 @@ export function ProductDetailDialog({
       return t >= startedUsing && t <= finishedUsing;
     };
 
-    const totalQuantityUsed = Math.max(0, (product.quantity_purchased || 0) - (product.current_stock || 0));
+    // Total já comprado = soma das compras registradas (o campo do produto pode
+    // ficar defasado se uma compra for editada ou excluída).
+    const totalPurchased = Math.max(
+      Number(product.quantity_purchased || 0),
+      productPurchases.reduce((s, p) => s + (Number(p.quantity) || 0), 0),
+    );
+    const totalQuantityUsed = Math.max(0, totalPurchased - (product.current_stock || 0));
     let totalAppointments = 0;
 
     const perService = productServiceLinks.map((sp: any) => {
@@ -350,7 +357,7 @@ export function ProductDetailDialog({
 
     const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
     return { totalAppointments, avgPerAppointment, byService };
-  }, [product, productServiceLinks, appointments, activeServices]);
+  }, [product, productServiceLinks, productPurchases, appointments, activeServices]);
 
   // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark.
   // Funciona para TODOS os produtos — com ou sem vínculo a serviços. Quando o produto não
@@ -396,6 +403,22 @@ export function ProductDetailDialog({
     let currentAppointments = 0;
     let currentConsumed = 0;
     let initialQty = 0;
+    // Quantidade colocada em uso no ciclo ativo (parcial), quando informada.
+    const activeCycleQuantity = Math.max(
+      Number((product as any).cycle_quantity || 0),
+      Number(activePurchase?.cycle_quantity || 0),
+    );
+    // Média histórica por atendimento, apurada nos ciclos já encerrados.
+    const historicAverage = averageFromCycles(
+      productPurchases
+        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
+        .map(p => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+    );
     if (effectiveCycleStart && isCycleActive) {
       const start = parseISO(effectiveCycleStart + 'T00:00:00');
       currentDays = Math.max(0, differenceInDays(new Date(), start));
@@ -404,8 +427,18 @@ export function ProductDetailDialog({
         const t = new Date(a.start_time);
         return t >= start && matchesProduct(a);
       }).length;
-      initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
-      currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
+      if (activeCycleQuantity > 0) {
+        // Ciclo parcial: o estoque total só é reduzido no encerramento, então o
+        // consumo em curso é estimado pela média histórica por atendimento.
+        initialQty = activeCycleQuantity;
+        const avg = historicAverage.avgQuantityPerAppointment ?? 0;
+        currentConsumed = avg > 0
+          ? Math.min(activeCycleQuantity, avg * currentAppointments)
+          : 0;
+      } else {
+        initialQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? 0);
+        currentConsumed = Math.max(0, initialQty - Number(product.current_stock || 0));
+      }
     }
 
     const nextPurchase = productPurchases.find(p => !p.started_using_at && !p.finished_at) || null;
@@ -432,19 +465,25 @@ export function ProductDetailDialog({
       (finishedCycles.length > 0 || productPurchases.length > 0);
     const needsManualStart = cycleClosedWithStock || neverStartedWithHistory;
 
-    // Inconsistências: estoque negativo, ou consumo registrado ≠ variação do estoque
+    // Inconsistências: só estoque negativo ou divergência realmente comprovável.
+    // Com quantidade parcial em uso, ou com mais de uma compra somando o estoque,
+    // comparar o estoque com uma única compra gera alarme falso.
     const inconsistencies: string[] = [];
     if (stock < 0) {
       inconsistencies.push(`Estoque negativo (${stock}). Verifique compras e baixas.`);
     }
-    if (activePurchase && initialQty > 0) {
-      const expectedRemaining = initialQty - currentConsumed;
-      if (Math.abs(expectedRemaining - stock) > 0.001) {
-        inconsistencies.push(
-          `Estoque (${stock}) diverge do esperado (${expectedRemaining.toFixed(2)}) com base na compra ativa de ${initialQty}.`
-        );
-      }
+    if (
+      activePurchase &&
+      activeCycleQuantity <= 0 &&
+      productPurchases.length === 1 &&
+      initialQty > 0 &&
+      stock > initialQty + 0.001
+    ) {
+      inconsistencies.push(
+        `Estoque (${stock}) é maior que a quantidade comprada (${initialQty}). Confira o ajuste manual de estoque.`
+      );
     }
+
     if (productPurchases.some(p => !p.started_using_at && !p.finished_at) && product.started_using_at) {
       // já há ciclo ativo, mas existe compra pendente — apenas informativo, não inconsistência
     }
@@ -456,6 +495,9 @@ export function ProductDetailDialog({
       currentAppointments,
       currentConsumed,
       initialQty,
+      activeCycleQuantity,
+      historicAverage,
+
       activePurchase,
       nextPurchase,
       runningOutAlert,
@@ -530,25 +572,26 @@ export function ProductDetailDialog({
     }
     const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
     const stockBefore = Number(product.current_stock || 0);
-    let totalDeduction = estimatedDeduction + exactDeduction;
-
-    if (isBulk) {
-      // Produto sem vínculo e sem recipiente: consome a quantidade total da compra ativa
-      // (papel toalha, álcool a granel, etc.). Se não houver compra ativa registrada,
-      // usa o estoque atual como referência.
-      const bulkQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? stockBefore);
-      totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
-    }
 
     // Quantidade parcial colocada em uso (ex.: 100 das 600 unidades compradas).
-    // Quando informada, ela é a referência do ciclo — tanto para a baixa do
-    // estoque quanto para o cálculo da média por atendimento.
-    const cycleQuantity = Number(activePurchase?.cycle_quantity || 0);
-    if (cycleQuantity > 0) {
-      totalDeduction = Math.max(0, Math.min(stockBefore, cycleQuantity));
-    }
+    // Guardada no produto (ciclo ativo) e também na compra em uso, para que o
+    // controle continue correto quando o mesmo lote passa por vários ciclos.
+    const cycleQuantity = Math.max(
+      Number((product as any).cycle_quantity || 0),
+      Number(activePurchase?.cycle_quantity || 0),
+    );
 
-    const remainingStock = Math.max(0, stockBefore - totalDeduction);
+    const totalDeduction = resolveCycleDeduction({
+      stockBefore,
+      cycleQuantity,
+      activePurchaseQuantity: activePurchase?.quantity ?? null,
+      estimatedDeduction,
+      exactDeduction,
+      isBulk,
+    });
+
+    const remainingStock = resolveStockAfterCycle(stockBefore, totalDeduction);
+
 
     // Métricas reais deste ciclo
     const closure = computeCycleClosure({
@@ -616,11 +659,15 @@ export function ProductDetailDialog({
     } else if (active && onUpdatePurchase && qty) {
       await onUpdatePurchase({ id: active.id, cycle_quantity: qty });
     }
+    // A quantidade em uso também fica no produto: assim o ciclo continua correto
+    // mesmo quando o mesmo lote passa por vários ciclos (sem compra nova).
     await onUpdateProduct({
       id: product.id,
       started_using_at: dateStr,
       finished_at: null as any,
+      cycle_quantity: qty as any,
     });
+
     toast.success(
       qty
         ? `Início do uso registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(qty)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} em uso.`
@@ -652,7 +699,7 @@ export function ProductDetailDialog({
       }
     }
 
-    const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
+    const newStock = resolveStockAfterCycle(Number(product.current_stock) || 0, totalDeduction);
 
     // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
@@ -674,11 +721,14 @@ export function ProductDetailDialog({
     }
 
     // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
+    // A quantidade em uso é zerada: ela pertencia ao ciclo que acabou.
     await onUpdateProduct({
       id: product.id,
       finished_at: dateStr,
       current_stock: newStock,
+      cycle_quantity: null as any,
     });
+
 
     toast.success(
       `Ciclo encerrado: ${cycleApts.length} atendimento(s), ${formatCycleQuantity(totalDeduction)} ${unitLabel} usado(s).`,
@@ -1320,12 +1370,30 @@ export function ProductDetailDialog({
                                 {isBulkProduct && (
                                   <li>
                                     <strong>Modo a granel:</strong> este produto não tem vínculo com serviços, pacotes nem recipiente.
-                                    Ao encerrar o ciclo, será descontada a <strong>quantidade total comprada</strong> do estoque.
+                                    Ao encerrar o ciclo, será descontada a{' '}
+                                    <strong>
+                                      {cycleSummary.activeCycleQuantity > 0
+                                        ? 'quantidade que você colocou em uso'
+                                        : 'quantidade da compra em uso'}
+                                    </strong>{' '}
+                                    do estoque total — nunca todo o histórico de compras.
                                   </li>
                                 )}
                                 <li>
-                                  <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                                  {cycleSummary.activeCycleQuantity > 0 ? (
+                                    <>
+                                      <strong>Quantidade em uso:</strong> {formatCycleQuantity(cycleSummary.activeCycleQuantity)}{' '}
+                                      {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} de{' '}
+                                      {Number(product.current_stock || 0)} em estoque. O estoque total é reduzido somente
+                                      quando você registra o término deste ciclo.
+                                    </>
+                                  ) : (
+                                    <>
+                                      <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                                    </>
+                                  )}
                                 </li>
+
                                 <li>
                                   <strong>Alerta de fim de ciclo:</strong> dispara quando dias, atendimentos ou consumo atingem ≥ 80% do ciclo anterior.
                                 </li>
@@ -2297,7 +2365,7 @@ export function ProductDetailDialog({
               </p>
               {isBulkProduct ? (
                 <p>
-                  Será contabilizada a <strong>quantidade total comprada</strong> deste produto no ciclo,
+                  Será contabilizada a <strong>quantidade da compra em uso</strong> (ou a quantidade parcial informada abaixo),
                   já que ele não tem vínculo com serviços, pacotes ou recipientes.
                 </p>
               ) : (
@@ -2368,7 +2436,7 @@ export function ProductDetailDialog({
                 Será encerrado o ciclo em{' '}
                 <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>
                 {isBulkProduct
-                  ? <> com base na <strong>quantidade total comprada</strong> deste produto.</>
+                  ? <> com base na <strong>quantidade em uso registrada</strong> (ou na quantidade da compra em uso).</>
                   : <> com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.</>}
               </p>
               {endCyclePreview && product && (

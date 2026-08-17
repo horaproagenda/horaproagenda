@@ -3008,6 +3008,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_stock: number
+          cycle_quantity: number | null
           description: string | null
           expiry_date: string | null
           finished_at: string | null
@@ -3037,6 +3038,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_stock?: number
+          cycle_quantity?: number | null
           description?: string | null
           expiry_date?: string | null
           finished_at?: string | null
@@ -3066,6 +3068,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_stock?: number
+          cycle_quantity?: number | null
           description?: string | null
           expiry_date?: string | null
           finished_at?: string | null

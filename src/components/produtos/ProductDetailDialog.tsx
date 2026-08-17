@@ -2385,6 +2385,39 @@ export function ProductDetailDialog({
                     </strong>{' '}
                     (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
                   </div>
+                  {endCyclePreview.cycleQuantity > 0 && (
+                    <div className="text-muted-foreground">
+                      Quantidade em uso registrada no início:{' '}
+                      <strong>{formatCycleQuantity(endCyclePreview.cycleQuantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}</strong>
+                    </div>
+                  )}
+                  {endCyclePreview.closure.avgQuantityPerAppointment !== null && (
+                    <div className="rounded border border-primary/30 bg-primary/5 p-2 space-y-1">
+                      <div className="font-medium text-foreground">O que aprendemos com este ciclo</div>
+                      <div>
+                        Média por atendimento:{' '}
+                        <strong>
+                          {formatCycleQuantity(endCyclePreview.closure.avgQuantityPerAppointment)}{' '}
+                          {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                        </strong>
+                      </div>
+                      <div>
+                        Rendimento: <strong>{endCyclePreview.appointments} atendimento(s)</strong> em{' '}
+                        <strong>{endCyclePreview.days} dia(s)</strong>
+                      </div>
+                      {endCyclePreview.forecast.remainingAppointments !== null && (
+                        <div>
+                          Estoque restante ({formatCycleQuantity(endCyclePreview.remainingStock)}{' '}
+                          {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}) deve render ainda{' '}
+                          <strong>~{endCyclePreview.forecast.remainingAppointments} atendimento(s)</strong>
+                          {endCyclePreview.forecast.remainingDays !== null && (
+                            <> / <strong>~{endCyclePreview.forecast.remainingDays} dia(s)</strong></>
+                          )}.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {endCyclePreview.usedCrossFamilyConversion && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ A unidade do recipiente difere da unidade do estoque (ex.: ml × kg).

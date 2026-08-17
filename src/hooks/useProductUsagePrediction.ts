@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
+import { averageFromCycles, projectStockDuration } from '@/lib/productCycleAnalytics';
+
 
 export interface ProductUsageHistory {
   product_id: string;
@@ -148,13 +150,29 @@ export function useProductUsagePrediction() {
         }
       });
       
-      const avgAppointmentsPerUnit = totalUnitsConsumed > 0 
-        ? totalHistoricalAppointments / totalUnitsConsumed 
-        : 0;
-      
-      const avgDaysPerUnit = totalUnitsConsumed > 0 
-        ? totalDaysUsed / totalUnitsConsumed 
-        : 0;
+      // Médias reais medidas em ciclos com quantidade parcial em uso
+      // (ex.: 100 das 600 unidades). Quando existem, têm prioridade — são
+      // medições diretas de quanto o produto rende por atendimento.
+      const cycleAverage = averageFromCycles(
+        completedPurchases.map((p: any) => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+      );
+
+      const avgAppointmentsPerUnit = cycleAverage.avgQuantityPerAppointment
+        ? 1 / cycleAverage.avgQuantityPerAppointment
+        : totalUnitsConsumed > 0
+          ? totalHistoricalAppointments / totalUnitsConsumed
+          : 0;
+
+      const avgDaysPerUnit = cycleAverage.daysPerUnit
+        ? cycleAverage.daysPerUnit
+        : totalUnitsConsumed > 0
+          ? totalDaysUsed / totalUnitsConsumed
+          : 0;
       
       // Calculate current usage (since last purchase or started_using_at)
       const currentStartDate = product.started_using_at 
@@ -169,13 +187,26 @@ export function useProductUsagePrediction() {
       const currentDays = differenceInDays(new Date(), currentStartDate);
       
       // Predict remaining usage
-      const predictedRemainingAppointments = avgAppointmentsPerUnit > 0
-        ? Math.max(0, (product.current_stock * avgAppointmentsPerUnit) - currentAppointments)
-        : -1; // -1 means no historical data
+      const cycleForecast = cycleAverage.avgQuantityPerAppointment
+        ? projectStockDuration({
+            stockQuantity: Number(product.current_stock || 0),
+            avgQuantityPerAppointment: cycleAverage.avgQuantityPerAppointment,
+            appointmentsPerDay: cycleAverage.appointmentsPerDay,
+          })
+        : null;
+
+      const predictedRemainingAppointments = cycleForecast?.remainingAppointments != null
+        ? cycleForecast.remainingAppointments
+        : avgAppointmentsPerUnit > 0
+          ? Math.max(0, (product.current_stock * avgAppointmentsPerUnit) - currentAppointments)
+          : -1; // -1 means no historical data
       
-      const predictedRemainingDays = avgDaysPerUnit > 0
-        ? Math.max(0, (product.current_stock * avgDaysPerUnit) - currentDays)
-        : -1;
+      const predictedRemainingDays = cycleForecast?.remainingDays != null
+        ? cycleForecast.remainingDays
+        : avgDaysPerUnit > 0
+          ? Math.max(0, (product.current_stock * avgDaysPerUnit) - currentDays)
+          : -1;
+
       
       // Calculate depletion percentage based on usage pattern
       let depletionPercentage = 0;
@@ -189,7 +220,8 @@ export function useProductUsagePrediction() {
       // Determine alert levels
       const isLowStock = product.current_stock <= (product.min_stock_alert || 0);
       const isNearDepletionByUsage = predictedRemainingAppointments >= 0 && predictedRemainingAppointments <= 5;
-      const isNearDepletionByTime = predictedRemainingDays >= 0 && predictedRemainingDays <= 7;
+      // Janela de recompra: avisa com 14 dias de antecedência para dar tempo de comprar
+      const isNearDepletionByTime = predictedRemainingDays >= 0 && predictedRemainingDays <= 14;
       
       let alertLevel: 'ok' | 'warning' | 'critical' = 'ok';
       let alertMessage: string | null = null;
@@ -197,22 +229,23 @@ export function useProductUsagePrediction() {
       if (isLowStock || (isNearDepletionByUsage && predictedRemainingAppointments <= 2)) {
         alertLevel = 'critical';
         if (isLowStock && isNearDepletionByUsage) {
-          alertMessage = `Estoque baixo! Apenas ~${Math.round(predictedRemainingAppointments)} atendimentos restantes`;
+          alertMessage = `Estoque baixo! Compre mais: rende ainda ~${Math.round(predictedRemainingAppointments)} atendimento(s)`;
         } else if (isLowStock) {
-          alertMessage = `Estoque abaixo do mínimo (${product.min_stock_alert} ${product.unit})`;
+          alertMessage = `Estoque abaixo do mínimo (${product.min_stock_alert} ${product.unit}). Hora de comprar mais.`;
         } else {
-          alertMessage = `Produto próximo de acabar (~${Math.round(predictedRemainingAppointments)} atendimentos)`;
+          alertMessage = `Produto próximo de acabar (~${Math.round(predictedRemainingAppointments)} atendimento(s)). Compre mais.`;
         }
       } else if (isNearDepletionByUsage || isNearDepletionByTime || depletionPercentage >= 80) {
         alertLevel = 'warning';
         if (isNearDepletionByUsage) {
-          alertMessage = `Atenção: ~${Math.round(predictedRemainingAppointments)} atendimentos restantes`;
+          alertMessage = `Atenção: rende ainda ~${Math.round(predictedRemainingAppointments)} atendimento(s). Programe a compra.`;
         } else if (isNearDepletionByTime) {
-          alertMessage = `Atenção: ~${Math.round(predictedRemainingDays)} dias de uso restantes`;
+          alertMessage = `Atenção: o estoque deve durar ~${Math.round(predictedRemainingDays)} dia(s). Programe a compra.`;
         } else {
           alertMessage = `${Math.round(depletionPercentage)}% do produto utilizado`;
         }
       }
+
       
       // Calculate expiry information
       let daysUntilExpiry: number | null = null;

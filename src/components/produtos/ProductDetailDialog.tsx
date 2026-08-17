@@ -68,6 +68,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { convertQuantity, areUnitsCrossFamily } from '@/lib/productStock';
+import {
+  computeCycleClosure,
+  averageFromCycles,
+  projectStockDuration,
+  formatCycleQuantity,
+} from '@/lib/productCycleAnalytics';
+
 import { isProductExpired } from '@/lib/productExpiry';
 import { type Product, type ProductPurchase, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { useSuppliers, type Supplier } from '@/hooks/useSuppliers';
@@ -228,6 +235,9 @@ export function ProductDetailDialog({
   const [pendingStartDate, setPendingStartDate] = useState<string | null>(null);
   const [pendingEndDate, setPendingEndDate] = useState<string | null>(null);
   const [pendingRefill, setPendingRefill] = useState<{ remainingStock: number } | null>(null);
+  // Quantidade colocada em uso no ciclo (ex.: 100 das 600 unidades compradas)
+  const [cycleQtyInput, setCycleQtyInput] = useState<string>('');
+
   
   // Stock editing state
   const [isEditingStock, setIsEditingStock] = useState(false);
@@ -530,7 +540,47 @@ export function ProductDetailDialog({
       totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
     }
 
+    // Quantidade parcial colocada em uso (ex.: 100 das 600 unidades compradas).
+    // Quando informada, ela é a referência do ciclo — tanto para a baixa do
+    // estoque quanto para o cálculo da média por atendimento.
+    const cycleQuantity = Number(activePurchase?.cycle_quantity || 0);
+    if (cycleQuantity > 0) {
+      totalDeduction = Math.max(0, Math.min(stockBefore, cycleQuantity));
+    }
+
     const remainingStock = Math.max(0, stockBefore - totalDeduction);
+
+    // Métricas reais deste ciclo
+    const closure = computeCycleClosure({
+      cycleQuantity: cycleQuantity > 0 ? cycleQuantity : totalDeduction,
+      appointments: cycleApts.length,
+      days,
+    });
+
+    // Média histórica combinando ciclos anteriores + este ciclo
+    const combinedAverage = averageFromCycles([
+      ...productPurchases
+        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
+        .map(p => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+      {
+        cycle_quantity: cycleQuantity > 0 ? cycleQuantity : totalDeduction,
+        cycle_appointments: cycleApts.length,
+        started_using_at: cycleStart,
+        finished_at: pendingEndDate,
+      },
+    ]);
+
+    const forecast = projectStockDuration({
+      stockQuantity: remainingStock,
+      avgQuantityPerAppointment: combinedAverage.avgQuantityPerAppointment ?? closure.avgQuantityPerAppointment,
+      appointmentsPerDay: combinedAverage.appointmentsPerDay ?? closure.appointmentsPerDay,
+    });
+
     return {
       days,
       appointments: cycleApts.length,
@@ -543,26 +593,46 @@ export function ProductDetailDialog({
       activePurchase,
       cycleApts,
       usedCrossFamilyConversion,
+      cycleQuantity,
+      closure,
+      combinedAverage,
+      forecast,
     };
   }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
-  const runStartCycle = async (dateStr: string) => {
+  const runStartCycle = async (dateStr: string, cycleQty?: number | null) => {
     if (!product) return;
+    const qty = cycleQty && cycleQty > 0 ? cycleQty : null;
     const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
+    const active = productPurchases.find(p => p.started_using_at && !p.finished_at);
     if (pending && onUpdatePurchase) {
-      await onUpdatePurchase({ id: pending.id, started_using_at: dateStr });
+      await onUpdatePurchase({
+        id: pending.id,
+        started_using_at: dateStr,
+        cycle_quantity: qty,
+        cycle_appointments: null,
+        avg_quantity_per_appointment: null,
+      });
+    } else if (active && onUpdatePurchase && qty) {
+      await onUpdatePurchase({ id: active.id, cycle_quantity: qty });
     }
     await onUpdateProduct({
       id: product.id,
       started_using_at: dateStr,
       finished_at: null as any,
     });
-    toast.success('Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'));
+    toast.success(
+      qty
+        ? `Início do uso registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(qty)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} em uso.`
+        : 'Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'),
+    );
   };
+
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;
-    const { activePurchase, cycleApts, totalDeduction } = endCyclePreview;
+    const { activePurchase, cycleApts, totalDeduction, closure, forecast } = endCyclePreview;
+    const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label ?? '';
     // Persiste médias para vínculos estimados que tiveram uso
     for (const sp of productServiceLinks) {
       if (sp.tracking_method !== 'estimated') continue;
@@ -584,7 +654,7 @@ export function ProductDetailDialog({
 
     const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
 
-    // Fecha a compra ativa com o término informado
+    // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
       await onUpdatePurchase({
         id: activePurchase.id,
@@ -594,6 +664,12 @@ export function ProductDetailDialog({
           || product.started_using_at
           || activePurchase.purchase_date
           || dateStr,
+        cycle_quantity:
+          Number(activePurchase.cycle_quantity || 0) > 0
+            ? Number(activePurchase.cycle_quantity)
+            : totalDeduction,
+        cycle_appointments: cycleApts.length,
+        avg_quantity_per_appointment: closure.avgQuantityPerAppointment,
       });
     }
 
@@ -605,7 +681,18 @@ export function ProductDetailDialog({
     });
 
     toast.success(
-      `Ciclo encerrado: ${cycleApts.length} atend., ${totalDeduction.toFixed(2)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} descontado(s) do estoque.`,
+      `Ciclo encerrado: ${cycleApts.length} atendimento(s), ${formatCycleQuantity(totalDeduction)} ${unitLabel} usado(s).`,
+      {
+        description: [
+          closure.avgQuantityPerAppointment
+            ? `Média de ${formatCycleQuantity(closure.avgQuantityPerAppointment)} ${unitLabel} por atendimento.`
+            : null,
+          forecast.remainingAppointments !== null
+            ? `Estoque restante (${formatCycleQuantity(newStock)} ${unitLabel}) deve cobrir ~${forecast.remainingAppointments} atendimento(s)${forecast.remainingDays !== null ? ` / ~${forecast.remainingDays} dia(s)` : ''}.`
+            : null,
+        ].filter(Boolean).join(' '),
+        duration: 9000,
+      },
     );
 
     // Se ainda há estoque, oferece reabastecer o recipiente / iniciar novo ciclo
@@ -613,6 +700,7 @@ export function ProductDetailDialog({
       setPendingRefill({ remainingStock: newStock });
     }
   };
+
 
 
 
@@ -2224,6 +2312,28 @@ export function ProductDetailDialog({
                   {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
                 </p>
               )}
+              {product && (
+                <div className="space-y-1.5 rounded-md border bg-muted/30 p-2.5">
+                  <Label htmlFor="cycle-qty" className="text-xs">
+                    Quantidade que você colocou em uso agora ({PRODUCT_UNITS.find(u => u.value === product.unit)?.label})
+                  </Label>
+                  <Input
+                    id="cycle-qty"
+                    type="number"
+                    min={0}
+                    step="any"
+                    className="h-8"
+                    placeholder={`Ex.: 100 de ${Number(product.current_stock || 0)}`}
+                    value={cycleQtyInput}
+                    onChange={(e) => setCycleQtyInput(e.target.value)}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Se você não sabe quanto usa em cada atendimento, informe aqui só a parte que está usando.
+                    Ao registrar o término, mostraremos quantos atendimentos rendeu, a média por atendimento
+                    e quanto tempo o estoque total ainda deve durar. Deixe em branco para manter o cálculo pelos vínculos.
+                  </p>
+                </div>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -2232,10 +2342,13 @@ export function ProductDetailDialog({
           <AlertDialogAction
             onClick={async () => {
               const d = pendingStartDate!;
+              const qty = Number(String(cycleQtyInput).replace(',', '.'));
               setPendingStartDate(null);
-              await runStartCycle(d);
+              setCycleQtyInput('');
+              await runStartCycle(d, Number.isFinite(qty) && qty > 0 ? qty : null);
             }}
           >
+
             <Save className="h-4 w-4 mr-1" /> Salvar
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -2272,6 +2385,39 @@ export function ProductDetailDialog({
                     </strong>{' '}
                     (de {endCyclePreview.stockBefore} → {endCyclePreview.remainingStock}).
                   </div>
+                  {endCyclePreview.cycleQuantity > 0 && (
+                    <div className="text-muted-foreground">
+                      Quantidade em uso registrada no início:{' '}
+                      <strong>{formatCycleQuantity(endCyclePreview.cycleQuantity)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}</strong>
+                    </div>
+                  )}
+                  {endCyclePreview.closure.avgQuantityPerAppointment !== null && (
+                    <div className="rounded border border-primary/30 bg-primary/5 p-2 space-y-1">
+                      <div className="font-medium text-foreground">O que aprendemos com este ciclo</div>
+                      <div>
+                        Média por atendimento:{' '}
+                        <strong>
+                          {formatCycleQuantity(endCyclePreview.closure.avgQuantityPerAppointment)}{' '}
+                          {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                        </strong>
+                      </div>
+                      <div>
+                        Rendimento: <strong>{endCyclePreview.appointments} atendimento(s)</strong> em{' '}
+                        <strong>{endCyclePreview.days} dia(s)</strong>
+                      </div>
+                      {endCyclePreview.forecast.remainingAppointments !== null && (
+                        <div>
+                          Estoque restante ({formatCycleQuantity(endCyclePreview.remainingStock)}{' '}
+                          {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}) deve render ainda{' '}
+                          <strong>~{endCyclePreview.forecast.remainingAppointments} atendimento(s)</strong>
+                          {endCyclePreview.forecast.remainingDays !== null && (
+                            <> / <strong>~{endCyclePreview.forecast.remainingDays} dia(s)</strong></>
+                          )}.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {endCyclePreview.usedCrossFamilyConversion && (
                     <div className="text-amber-700 dark:text-amber-300">
                       ⚠️ A unidade do recipiente difere da unidade do estoque (ex.: ml × kg).
@@ -2331,11 +2477,14 @@ export function ProductDetailDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Apenas registrar fechamento</AlertDialogCancel>
           <AlertDialogAction
-            onClick={async () => {
+            onClick={() => {
               setPendingRefill(null);
-              await runStartCycle(format(new Date(), 'yyyy-MM-dd'));
+              setCycleQtyInput('');
+              // Abre o formulário de início para informar a quantidade colocada em uso
+              setPendingStartDate(format(new Date(), 'yyyy-MM-dd'));
             }}
           >
+
             <PlayCircle className="h-4 w-4 mr-1" /> Iniciar novo ciclo hoje
           </AlertDialogAction>
         </AlertDialogFooter>

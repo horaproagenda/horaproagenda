@@ -220,7 +220,8 @@ export function useProductUsagePrediction() {
       // Determine alert levels
       const isLowStock = product.current_stock <= (product.min_stock_alert || 0);
       const isNearDepletionByUsage = predictedRemainingAppointments >= 0 && predictedRemainingAppointments <= 5;
-      const isNearDepletionByTime = predictedRemainingDays >= 0 && predictedRemainingDays <= 7;
+      // Janela de recompra: avisa com 14 dias de antecedência para dar tempo de comprar
+      const isNearDepletionByTime = predictedRemainingDays >= 0 && predictedRemainingDays <= 14;
       
       let alertLevel: 'ok' | 'warning' | 'critical' = 'ok';
       let alertMessage: string | null = null;
@@ -228,21 +229,23 @@ export function useProductUsagePrediction() {
       if (isLowStock || (isNearDepletionByUsage && predictedRemainingAppointments <= 2)) {
         alertLevel = 'critical';
         if (isLowStock && isNearDepletionByUsage) {
-          alertMessage = `Estoque baixo! Apenas ~${Math.round(predictedRemainingAppointments)} atendimentos restantes`;
+          alertMessage = `Estoque baixo! Compre mais: rende ainda ~${Math.round(predictedRemainingAppointments)} atendimento(s)`;
         } else if (isLowStock) {
-          alertMessage = `Estoque abaixo do mínimo (${product.min_stock_alert} ${product.unit})`;
+          alertMessage = `Estoque abaixo do mínimo (${product.min_stock_alert} ${product.unit}). Hora de comprar mais.`;
         } else {
-          alertMessage = `Produto próximo de acabar (~${Math.round(predictedRemainingAppointments)} atendimentos)`;
+          alertMessage = `Produto próximo de acabar (~${Math.round(predictedRemainingAppointments)} atendimento(s)). Compre mais.`;
         }
       } else if (isNearDepletionByUsage || isNearDepletionByTime || depletionPercentage >= 80) {
         alertLevel = 'warning';
         if (isNearDepletionByUsage) {
-          alertMessage = `Atenção: ~${Math.round(predictedRemainingAppointments)} atendimentos restantes`;
+          alertMessage = `Atenção: rende ainda ~${Math.round(predictedRemainingAppointments)} atendimento(s). Programe a compra.`;
         } else if (isNearDepletionByTime) {
-          alertMessage = `Atenção: ~${Math.round(predictedRemainingDays)} dias de uso restantes`;
+          alertMessage = `Atenção: o estoque deve durar ~${Math.round(predictedRemainingDays)} dia(s). Programe a compra.`;
         } else {
           alertMessage = `${Math.round(depletionPercentage)}% do produto utilizado`;
         }
+      }
+
       }
       
       // Calculate expiry information

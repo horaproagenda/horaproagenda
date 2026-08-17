@@ -37,7 +37,7 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 
 export function AssinaturaSection() {
   const { user } = useAuth();
-  const { subscription } = useAccountSubscription();
+  const { subscription, isTrialing, trialDaysLeft, trialEligible } = useAccountSubscription();
   // Preços vindos do Stripe (fonte única da verdade), atualizados em tempo real.
   const { plans, periods, perSeatMonthlyBRL, cycleTotal } = usePricing();
 
@@ -140,6 +140,43 @@ export function AssinaturaSection() {
                 Você tem acesso ilimitado sem necessidade de assinatura.
               </p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isTrialing && !isGrandfathered && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Sparkles className="h-5 w-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="font-medium">
+                  Teste gratuito ativo · {trialDaysLeft}{" "}
+                  {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
+                </p>
+                <p className="text-sm text-muted-foreground truncate">
+                  {subscription?.seat_limit} usuário(s) liberados. Cobrança automática no
+                  cartão em{" "}
+                  {subscription?.trial_ends_at
+                    ? new Date(subscription.trial_ends_at).toLocaleDateString("pt-BR")
+                    : "—"}
+                  .
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handlePortal}
+              disabled={portalLoading}
+              className="w-full sm:w-auto"
+            >
+              {portalLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Settings2 className="h-4 w-4 mr-2" />
+              )}
+              Gerenciar cartão
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -251,6 +288,7 @@ export function AssinaturaSection() {
         cycleTotal={cycleTotal}
         billingMonths={billingMonths}
         isActive={isActive}
+        showTrial={trialEligible && !isTrialing}
         isLoading={isLoading}
         isPixLoading={isPixLoading}
         isBoletoLoading={isBoletoLoading}
@@ -381,6 +419,7 @@ interface SubscriptionSummaryProps {
   cycleTotal: (seats: number, months: number) => number;
   billingMonths: number;
   isActive: boolean | undefined;
+  showTrial: boolean;
   isLoading: boolean;
   isPixLoading: boolean;
   isBoletoLoading: boolean;
@@ -394,6 +433,7 @@ function SubscriptionSummary({
   cycleTotal,
   billingMonths,
   isActive,
+  showTrial,
   isLoading,
   isPixLoading,
   isBoletoLoading,
@@ -447,6 +487,20 @@ function SubscriptionSummary({
           </div>
         )}
 
+        {showTrial && (
+          <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+            <Sparkles className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+            <span>
+              <span className="font-semibold">30 dias grátis</span> para testar tudo. É
+              necessário salvar um cartão de crédito ou débito no checkout — nada é cobrado
+              agora. Ao fim dos 30 dias, cobramos automaticamente{" "}
+              <span className="font-semibold">{formatBRL(planTotal)}</span>{" "}
+              {isMonthly ? "por mês" : `a cada ${billingMonths} meses`}. Cancele antes e não
+              paga nada.
+            </span>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Button
             className="w-full"
@@ -463,9 +517,11 @@ function SubscriptionSummary({
                 <CreditCard className="mr-2 h-4 w-4" />
                 {isActive
                   ? "Trocar de plano (cartão)"
-                  : isMonthly
-                    ? "Assinar com cartão (renovação automática)"
-                    : `Assinar com cartão (${meta.short.toLowerCase()})`}
+                  : showTrial
+                    ? "Começar 30 dias grátis (cartão obrigatório)"
+                    : isMonthly
+                      ? "Assinar com cartão (renovação automática)"
+                      : `Assinar com cartão (${meta.short.toLowerCase()})`}
               </>
             )}
           </Button>
@@ -509,7 +565,8 @@ function SubscriptionSummary({
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
+            Pix e Boleto não incluem os 30 dias grátis (não permitem cobrança
+            automática). Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
             compensação. Sem renovação automática — você paga novamente ao fim do período.
           </p>
         </div>

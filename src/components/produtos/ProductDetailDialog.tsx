@@ -1364,12 +1364,30 @@ export function ProductDetailDialog({
                                 {isBulkProduct && (
                                   <li>
                                     <strong>Modo a granel:</strong> este produto não tem vínculo com serviços, pacotes nem recipiente.
-                                    Ao encerrar o ciclo, será descontada a <strong>quantidade total comprada</strong> do estoque.
+                                    Ao encerrar o ciclo, será descontada a{' '}
+                                    <strong>
+                                      {cycleSummary.activeCycleQuantity > 0
+                                        ? 'quantidade que você colocou em uso'
+                                        : 'quantidade da compra em uso'}
+                                    </strong>{' '}
+                                    do estoque total — nunca todo o histórico de compras.
                                   </li>
                                 )}
                                 <li>
-                                  <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                                  {cycleSummary.activeCycleQuantity > 0 ? (
+                                    <>
+                                      <strong>Quantidade em uso:</strong> {formatCycleQuantity(cycleSummary.activeCycleQuantity)}{' '}
+                                      {PRODUCT_UNITS.find(u => u.value === product.unit)?.label} de{' '}
+                                      {Number(product.current_stock || 0)} em estoque. O estoque total é reduzido somente
+                                      quando você registra o término deste ciclo.
+                                    </>
+                                  ) : (
+                                    <>
+                                      <strong>Estoque consumido:</strong> quantidade da compra ativa ({cycleSummary.initialQty}) − estoque atual ({Number(product.current_stock || 0)}) = {cycleSummary.currentConsumed.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}.
+                                    </>
+                                  )}
                                 </li>
+
                                 <li>
                                   <strong>Alerta de fim de ciclo:</strong> dispara quando dias, atendimentos ou consumo atingem ≥ 80% do ciclo anterior.
                                 </li>

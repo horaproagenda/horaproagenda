@@ -63,7 +63,9 @@ export default function AssinaturaStatus() {
         label: "Teste gratuito",
         variant: "success" as const,
         icon: Sparkles,
-        description: `Você tem ${trialDaysLeft} dia(s) de teste. Ao final, o cartão salvo é cobrado automaticamente.`,
+        description: subscription?.stripe_subscription_id
+          ? `Você tem ${trialDaysLeft} dia(s) de teste. Ao final, o cartão salvo é cobrado automaticamente.`
+          : `Você tem ${trialDaysLeft} dia(s) de teste gratuito, sem precisar cadastrar cartão. Escolha um plano antes do fim do teste para não perder o acesso.`,
       }
     : STATUS_MAP[statusKey] ?? STATUS_MAP.trial;
   const StatusIcon = visual.icon;

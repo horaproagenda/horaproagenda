@@ -246,7 +246,6 @@ export function useProductUsagePrediction() {
         }
       }
 
-      }
       
       // Calculate expiry information
       let daysUntilExpiry: number | null = null;

@@ -12,7 +12,9 @@ import { useActiveAccountGuard } from '@/hooks/useActiveAccountGuard';
 import { TrialBanner } from '@/components/TrialBanner';
 import { PaymentFailedGate } from '@/components/PaymentFailedGate';
 import { PaymentGraceBanner } from '@/components/PaymentGraceBanner';
+import { RenewalReminderBanner } from '@/components/RenewalReminderBanner';
 import { getBlockReason } from '@/lib/subscriptionAccess';
+
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

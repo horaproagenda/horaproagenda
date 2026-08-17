@@ -39,6 +39,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
@@ -159,6 +161,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const seatUsage = useSeatUsage();
+  const noSeats = isSeatCapacityReached(seatUsage);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -233,6 +237,21 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
     if (data.agenda_color && takenColorSet.has(data.agenda_color.toLowerCase())) {
       toast.error('Esta cor já está sendo usada por outro profissional. Escolha uma cor diferente.');
       return;
+    }
+    // Limite de assentos do plano: vale durante e depois do período de teste.
+    if (!editingId && noSeats) {
+      toast.error(
+        `Seu plano permite ${seatUsage?.seat_limit ?? 0} profissional(is) e todos já estão em uso. Faça upgrade do plano para cadastrar mais.`,
+      );
+      return;
+    }
+    // Reativar um profissional inativo também ocupa um assento.
+    if (editingId && data.is_active && noSeats) {
+      const current = professionals.find((p) => p.id === editingId);
+      if (current && !current.is_active) {
+        toast.error('Sem assentos disponíveis no plano para reativar este profissional. Faça upgrade ou inative outro.');
+        return;
+      }
     }
     setIsLoading(true);
 
@@ -419,12 +438,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                 {isAdmin && (
                   <Button
                     onClick={() => {
+                      if (noSeats) {
+                        toast.error(
+                          `Seu plano cobre ${seatUsage?.seat_limit ?? 0} profissional(is). Faça upgrade para adicionar mais.`,
+                        );
+                        return;
+                      }
                       const nextColor = pickNextAvailableColor(
                         professionals.map((p) => p.agenda_color),
                       );
                       form.setValue('agenda_color', nextColor);
                       setShowForm(true);
                     }}
+                    disabled={noSeats}
                     className="gap-2 btn-vibrant shrink-0"
                   >
                     <Plus className="h-4 w-4" />
@@ -433,6 +459,36 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   </Button>
                 )}
               </div>
+
+              {isAdmin && seatUsage && (
+                <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">Assentos do plano</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {seatUsage.is_grandfathered
+                          ? 'Conta com assentos ilimitados.'
+                          : `${seatUsage.used} em uso de ${seatUsage.seat_limit} contratado(s) — ${seatUsage.available} disponível(is).`}
+                      </p>
+                    </div>
+                    {!seatUsage.is_grandfathered && (
+                      <Badge variant={noSeats ? 'destructive' : 'secondary'} className="text-[10px] shrink-0">
+                        {seatUsage.used}/{seatUsage.seat_limit}
+                      </Badge>
+                    )}
+                  </div>
+                  {noSeats && (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-destructive">
+                        Limite atingido: inative um profissional ou aumente o plano para cadastrar novos.
+                      </p>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/assinatura')}>
+                        Mudar de plano
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {!isAdmin && (
                 <div className="rounded-md border bg-muted/40 p-2 text-[11px] text-muted-foreground">

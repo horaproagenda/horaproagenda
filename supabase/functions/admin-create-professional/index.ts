@@ -55,6 +55,28 @@ serve(async (req) => {
       .from('profiles').select('account_owner_id').eq('id', callerId).maybeSingle();
     const callerOwnerIdPre = (callerProfilePre as any)?.account_owner_id ?? callerId;
 
+    // Limite de assentos do plano: bloqueia criar/convidar profissionais acima do
+    // permitido — vale durante o período de teste e depois dele.
+    if (!professional_id) {
+      const { data: sub } = await supaAdmin
+        .from('account_subscriptions')
+        .select('seat_limit, status, is_grandfathered')
+        .eq('owner_user_id', callerOwnerIdPre)
+        .maybeSingle();
+      const grandfathered = (sub as any)?.is_grandfathered === true || (sub as any)?.status === 'grandfathered';
+      if (!grandfathered) {
+        const seatLimit = Number((sub as any)?.seat_limit ?? 0);
+        const { data: seatsUsed } = await supaAdmin.rpc('count_account_seats', { _owner: callerOwnerIdPre });
+        if (seatLimit > 0 && Number(seatsUsed ?? 0) >= seatLimit) {
+          return new Response(JSON.stringify({
+            success: false,
+            code: 'seat_limit_reached',
+            error: `Seu plano permite ${seatLimit} profissional(is) e todos já estão em uso. Faça upgrade do plano para cadastrar mais.`,
+          }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+    }
+
     // 1. Create or update auth user (seat-user metadata prevents self-account creation)
     let userId: string | null = null;
     const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({

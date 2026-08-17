@@ -530,25 +530,26 @@ export function ProductDetailDialog({
     }
     const estimatedDeduction = Array.from(containerDeductions.values()).reduce((s, x) => s + x, 0);
     const stockBefore = Number(product.current_stock || 0);
-    let totalDeduction = estimatedDeduction + exactDeduction;
-
-    if (isBulk) {
-      // Produto sem vínculo e sem recipiente: consome a quantidade total da compra ativa
-      // (papel toalha, álcool a granel, etc.). Se não houver compra ativa registrada,
-      // usa o estoque atual como referência.
-      const bulkQty = Number(activePurchase?.quantity ?? product.quantity_purchased ?? stockBefore);
-      totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
-    }
 
     // Quantidade parcial colocada em uso (ex.: 100 das 600 unidades compradas).
-    // Quando informada, ela é a referência do ciclo — tanto para a baixa do
-    // estoque quanto para o cálculo da média por atendimento.
-    const cycleQuantity = Number(activePurchase?.cycle_quantity || 0);
-    if (cycleQuantity > 0) {
-      totalDeduction = Math.max(0, Math.min(stockBefore, cycleQuantity));
-    }
+    // Guardada no produto (ciclo ativo) e também na compra em uso, para que o
+    // controle continue correto quando o mesmo lote passa por vários ciclos.
+    const cycleQuantity = Math.max(
+      Number((product as any).cycle_quantity || 0),
+      Number(activePurchase?.cycle_quantity || 0),
+    );
 
-    const remainingStock = Math.max(0, stockBefore - totalDeduction);
+    const totalDeduction = resolveCycleDeduction({
+      stockBefore,
+      cycleQuantity,
+      activePurchaseQuantity: activePurchase?.quantity ?? null,
+      estimatedDeduction,
+      exactDeduction,
+      isBulk,
+    });
+
+    const remainingStock = resolveStockAfterCycle(stockBefore, totalDeduction);
+
 
     // Métricas reais deste ciclo
     const closure = computeCycleClosure({

@@ -491,12 +491,11 @@ function SubscriptionSummary({
           <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
             <Sparkles className="h-4 w-4 shrink-0 text-primary mt-0.5" />
             <span>
-              <span className="font-semibold">30 dias grátis</span> para testar tudo. É
-              necessário salvar um cartão de crédito ou débito no checkout — nada é cobrado
-              agora. Ao fim dos 30 dias, cobramos automaticamente{" "}
-              <span className="font-semibold">{formatBRL(planTotal)}</span>{" "}
-              {isMonthly ? "por mês" : `a cada ${billingMonths} meses`}. Cancele antes e não
-              paga nada.
+              <span className="font-semibold">30 dias grátis</span> para testar tudo,{" "}
+              <span className="font-semibold">sem cadastrar cartão</span>. Escolha um plano
+              antes do fim do teste para continuar: {formatBRL(planTotal)}{" "}
+              {isMonthly ? "por mês" : `a cada ${billingMonths} meses`}. Ao assinar, a
+              cobrança é feita na hora.
             </span>
           </div>
         )}
@@ -517,14 +516,13 @@ function SubscriptionSummary({
                 <CreditCard className="mr-2 h-4 w-4" />
                 {isActive
                   ? "Trocar de plano (cartão)"
-                  : showTrial
-                    ? "Começar 30 dias grátis (cartão obrigatório)"
-                    : isMonthly
-                      ? "Assinar com cartão (renovação automática)"
-                      : `Assinar com cartão (${meta.short.toLowerCase()})`}
+                  : isMonthly
+                    ? "Assinar com cartão (renovação automática)"
+                    : `Assinar com cartão (${meta.short.toLowerCase()})`}
               </>
             )}
           </Button>
+
 
           <Button
             className="w-full"

@@ -124,13 +124,10 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
-    const trialEligible = await isTrialEligible(
-      supabaseAdmin,
-      stripe,
-      user.id,
-      user.email,
-      customerId,
-    );
+    // O teste gratuito de 30 dias é concedido no cadastro, dentro do próprio
+    // aplicativo, SEM cartão. Portanto o checkout nunca adiciona novo período
+    // de teste: ao escolher um plano a assinatura já começa cobrando.
+    const trialEligible = false;
 
     const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -150,23 +147,12 @@ serve(async (req) => {
       tax_id_collection: { enabled: true },
       // Exigido pelo Stripe quando tax_id_collection está ativo em um Customer existente.
       customer_update: customerId ? { name: 'auto', address: 'auto' } : undefined,
-      // Com teste gratuito o cartão é OBRIGATÓRIO: ele fica salvo e é cobrado
-      // automaticamente ao fim dos 30 dias.
-      payment_method_collection: 'always',
       subscription_data: {
-        ...(trialEligible
-          ? {
-              trial_period_days: TRIAL_DAYS,
-              trial_settings: {
-                end_behavior: { missing_payment_method: 'cancel' },
-              },
-            }
-          : {}),
         metadata: {
           user_id: user.id,
           billing_months: String(billingMonths),
           seats: String(seats),
-          trial_days: trialEligible ? String(TRIAL_DAYS) : '0',
+          trial_days: '0',
           kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
         },
       },
@@ -174,7 +160,7 @@ serve(async (req) => {
         user_id: user.id,
         billing_months: String(billingMonths),
         seats: String(seats),
-        trial_days: trialEligible ? String(TRIAL_DAYS) : '0',
+        trial_days: '0',
         kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
       },
       allow_promotion_codes: true,
@@ -184,7 +170,8 @@ serve(async (req) => {
       user: user.id, seats, billingMonths, trialEligible,
     });
 
-    return new Response(JSON.stringify({ url: session.url, trial_days: trialEligible ? TRIAL_DAYS : 0 }), {
+    return new Response(JSON.stringify({ url: session.url, trial_days: 0 }), {
+
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

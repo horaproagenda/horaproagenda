@@ -15,9 +15,10 @@ export function TrialBanner() {
   if (subscription.status === 'active' || subscription.status === 'grandfathered') return null;
 
   if (isTrialing) {
-    const chargeDate = subscription.trial_ends_at
+    const endDate = subscription.trial_ends_at
       ? new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')
       : null;
+    const hasCard = Boolean(subscription.stripe_subscription_id);
     return (
       <div
         role="status"
@@ -27,8 +28,13 @@ export function TrialBanner() {
         <Sparkles className="h-4 w-4" aria-hidden="true" />
         <span>
           Teste gratuito — {trialDaysLeft} {trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}
-          {chargeDate ? `. Cobrança automática no cartão em ${chargeDate}.` : '.'}
+          {endDate
+            ? hasCard
+              ? `. Cobrança automática em ${endDate}.`
+              : `. Sem cartão: escolha um plano até ${endDate}.`
+            : '.'}
         </span>
+
       </div>
     );
   }

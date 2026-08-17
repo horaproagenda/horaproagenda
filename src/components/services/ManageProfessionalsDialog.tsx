@@ -39,6 +39,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
@@ -159,6 +161,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const seatUsage = useSeatUsage();
+  const noSeats = isSeatCapacityReached(seatUsage);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);

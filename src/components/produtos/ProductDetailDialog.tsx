@@ -2477,11 +2477,14 @@ export function ProductDetailDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Apenas registrar fechamento</AlertDialogCancel>
           <AlertDialogAction
-            onClick={async () => {
+            onClick={() => {
               setPendingRefill(null);
-              await runStartCycle(format(new Date(), 'yyyy-MM-dd'));
+              setCycleQtyInput('');
+              // Abre o formulário de início para informar a quantidade colocada em uso
+              setPendingStartDate(format(new Date(), 'yyyy-MM-dd'));
             }}
           >
+
             <PlayCircle className="h-4 w-4 mr-1" /> Iniciar novo ciclo hoje
           </AlertDialogAction>
         </AlertDialogFooter>

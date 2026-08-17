@@ -317,7 +317,13 @@ export function ProductDetailDialog({
       return t >= startedUsing && t <= finishedUsing;
     };
 
-    const totalQuantityUsed = Math.max(0, (product.quantity_purchased || 0) - (product.current_stock || 0));
+    // Total já comprado = soma das compras registradas (o campo do produto pode
+    // ficar defasado se uma compra for editada ou excluída).
+    const totalPurchased = Math.max(
+      Number(product.quantity_purchased || 0),
+      productPurchases.reduce((s, p) => s + (Number(p.quantity) || 0), 0),
+    );
+    const totalQuantityUsed = Math.max(0, totalPurchased - (product.current_stock || 0));
     let totalAppointments = 0;
 
     const perService = productServiceLinks.map((sp: any) => {

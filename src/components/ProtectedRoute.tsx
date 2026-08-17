@@ -10,6 +10,8 @@ import { revalidateVersionAfterAuth } from '@/lib/bootVersionGuard';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useActiveAccountGuard } from '@/hooks/useActiveAccountGuard';
 import { TrialBanner } from '@/components/TrialBanner';
+import { PaymentFailedGate } from '@/components/PaymentFailedGate';
+import { getBlockReason } from '@/lib/subscriptionAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -85,8 +87,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Sem assinatura ativa → redireciona para tela de planos (somente admin paga).
   // Permite acesso às páginas /assinatura* (checkout, sucesso, cancelado).
   const isOnSubscriptionPage = location.pathname.startsWith('/assinatura');
+  const isAdmin = hasRole('admin');
+  // Pagamento recusado / assinatura interrompida pelo Stripe: bloqueio para
+  // TODOS os usuários da conta, com botão de atualizar pagamento só p/ admin.
+  const paymentFailed = getBlockReason(subscription) === 'payment_failed';
+
   if (subscription && !hasAccess && !isOnSubscriptionPage) {
-    if (hasRole('admin')) {
+    if (paymentFailed) {
+      return <PaymentFailedGate subscription={subscription} isAdmin={isAdmin} />;
+    }
+    if (isAdmin) {
       return <Navigate to="/assinatura" replace />;
     }
     return (

@@ -6,6 +6,12 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { fetchPricingFromStripe } from "../_shared/pricing.ts";
+import {
+  handlePaymentFailure,
+  notifyAccessSuspended,
+  formatBrl,
+} from "../_shared/paymentFailureNotify.ts";
+
 
 
 const corsHeaders = {
@@ -101,13 +107,33 @@ async function syncSubscription(sub: Stripe.Subscription) {
   else log("Synced subscription", { ownerId, status, seats, priceId });
 
   if (status === 'past_due') {
-    await sendAccountEmail(
+    // Cobrança recusada (inclui a do fim do teste): aplica carência e avisa
+    // administrador + equipe. Idempotente por ciclo de cobrança, então o
+    // evento de invoice e o de subscription não geram e-mails duplicados.
+    const isTrialCharge = !!sub.trial_end
+      && Date.now() - sub.trial_end * 1000 < 3 * 24 * 60 * 60 * 1000;
+    await handlePaymentFailure(
+      supabase,
       ownerId,
-      'past_due',
-      {},
-      `stripe-sub-past-due-${sub.id}-${subPeriodEnd(sub)?.getTime() ?? 0}`,
+      {
+        isTrialCharge,
+        idempotencyBase: `sub-${sub.id}-${subPeriodEnd(sub)?.getTime() ?? 0}`,
+      },
+      sendEmailTo,
+      log,
     );
   }
+
+  if (sub.status === 'unpaid') {
+    await notifyAccessSuspended(
+      supabase,
+      ownerId,
+      `sub-unpaid-${sub.id}`,
+      sendEmailTo,
+      'Todas as tentativas de cobrança automática foram recusadas.',
+    );
+  }
+
 }
 
 serve(async (req) => {
@@ -186,6 +212,14 @@ serve(async (req) => {
             .update({ status: 'canceled', stripe_subscription_id: sub.id })
             .eq('owner_user_id', ownerId);
           log("Subscription canceled", { ownerId });
+          await notifyAccessSuspended(
+            supabase,
+            ownerId,
+            `sub-deleted-${sub.id}`,
+            sendEmailTo,
+            'A assinatura foi encerrada no processador de pagamentos.',
+          );
+
         }
         break;
       }
@@ -222,16 +256,59 @@ serve(async (req) => {
         if (customerId) {
           const ownerId = await findOwnerByCustomer(customerId);
           if (ownerId) {
-            await supabase
-              .from('account_subscriptions')
-              .update({ status: 'past_due' })
-              .eq('owner_user_id', ownerId);
-            log("Marked past_due", { ownerId });
-            await sendAccountEmail(ownerId, 'payment_failed', {}, `stripe-invoice-failed-${invoice.id}`);
+            // A cobrança do fim do teste chega com billing_reason
+            // "subscription_cycle" logo após trial_end. Detectamos pelo
+            // trial_end da assinatura (até 3 dias atrás).
+            let isTrialCharge = false;
+            if (invoice.subscription) {
+              try {
+                const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+                const trialEndMs = sub.trial_end ? sub.trial_end * 1000 : 0;
+                isTrialCharge = !!trialEndMs
+                  && Date.now() - trialEndMs < 3 * 24 * 60 * 60 * 1000;
+              } catch (e) {
+                log('Falha ao ler assinatura da invoice', { e: e instanceof Error ? e.message : String(e) });
+              }
+            }
+            await handlePaymentFailure(
+              supabase,
+              ownerId,
+              {
+                isTrialCharge,
+                amount: formatBrl(invoice.amount_due, invoice.currency ?? 'brl'),
+                idempotencyBase: `invoice-${invoice.id}`,
+              },
+              sendEmailTo,
+              log,
+            );
           }
         }
         break;
       }
+
+      // Stripe desistiu das tentativas de cobrança → suspensão definitiva.
+      case "invoice.marked_uncollectible": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+        if (customerId) {
+          const ownerId = await findOwnerByCustomer(customerId);
+          if (ownerId) {
+            await supabase
+              .from('account_subscriptions')
+              .update({ status: 'past_due' })
+              .eq('owner_user_id', ownerId);
+            await notifyAccessSuspended(
+              supabase,
+              ownerId,
+              `invoice-uncollectible-${invoice.id}`,
+              sendEmailTo,
+              'A cobrança foi encerrada como não recebida pelo processador de pagamentos.',
+            );
+          }
+        }
+        break;
+      }
+
 
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
@@ -312,7 +389,32 @@ serve(async (req) => {
   }
 });
 
+/** Envia o template de status da conta para um e-mail específico. */
+async function sendEmailTo(
+  recipientEmail: string,
+  name: string | undefined,
+  templateData: Record<string, unknown>,
+  idempotencyKey: string,
+) {
+  try {
+    const { error } = await supabase.functions.invoke('send-transactional-email', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_EMAIL_SECRET') ?? '' },
+      body: {
+        templateName: 'account-status-update',
+        recipientEmail,
+        idempotencyKey,
+        templateData: { name, ...templateData },
+      },
+    });
+    if (error) log('Email send failed', { error: error.message, idempotencyKey });
+    else log('Email enqueued', { idempotencyKey });
+  } catch (e) {
+    log('Email threw', { idempotencyKey, e: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 async function sendAccountEmail(
+
   ownerUserId: string,
   kind: 'subscription_activated' | 'payment_failed' | 'past_due' | 'payment_recorded' | 'trial_extended' | 'lifetime_granted',
   data: Record<string, unknown>,

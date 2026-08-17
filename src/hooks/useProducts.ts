@@ -79,7 +79,14 @@ export interface ProductPurchase {
   started_using_at: string | null;
   finished_at: string | null;
   duration_days: number | null;
+  /** Quantidade colocada em uso neste ciclo (unidade do estoque). */
+  cycle_quantity: number | null;
+  /** Atendimentos concluídos durante o ciclo. */
+  cycle_appointments: number | null;
+  /** Média de consumo por atendimento apurada ao encerrar o ciclo. */
+  avg_quantity_per_appointment: number | null;
   notes: string | null;
+
   created_at: string;
   updated_at: string;
   created_by: string | null;

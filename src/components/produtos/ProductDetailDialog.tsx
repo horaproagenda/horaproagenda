@@ -228,6 +228,9 @@ export function ProductDetailDialog({
   const [pendingStartDate, setPendingStartDate] = useState<string | null>(null);
   const [pendingEndDate, setPendingEndDate] = useState<string | null>(null);
   const [pendingRefill, setPendingRefill] = useState<{ remainingStock: number } | null>(null);
+  // Quantidade colocada em uso no ciclo (ex.: 100 das 600 unidades compradas)
+  const [cycleQtyInput, setCycleQtyInput] = useState<string>('');
+
   
   // Stock editing state
   const [isEditingStock, setIsEditingStock] = useState(false);

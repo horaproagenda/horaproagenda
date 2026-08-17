@@ -34,6 +34,7 @@ import { DurationSelect } from '@/components/ui/duration-select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useServices } from '@/hooks/useServices';
@@ -106,6 +107,14 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       equipment: [],
     },
   });
+
+  // Profissional (não administrador) só pode criar pacotes vinculados a si mesmo.
+  const { professionalId: ownProfessionalId, isProfessional } = useCurrentProfessional();
+  useEffect(() => {
+    if (open && isProfessional && ownProfessionalId) {
+      form.setValue('professional_id', ownProfessionalId);
+    }
+  }, [open, isProfessional, ownProfessionalId, form]);
 
   const watchPrice = form.watch('price');
   const watchTotalSessions = form.watch('total_sessions');

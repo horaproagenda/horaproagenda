@@ -50,7 +50,7 @@ function daysUntil(iso: string | null): number | null {
 
 export default function AssinaturaStatus() {
   const { hasRole, signOut } = useAuth();
-  const { subscription, isLoading, hasAccess } = useAccountSubscription();
+  const { subscription, isLoading, hasAccess, isTrialing, trialDaysLeft } = useAccountSubscription();
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,13 +58,20 @@ export default function AssinaturaStatus() {
   if (!hasRole("admin")) return <Navigate to="/agenda" replace />;
 
   const statusKey = subscription?.status ?? "trial";
-  const visual = STATUS_MAP[statusKey] ?? STATUS_MAP.trial;
+  const visual = isTrialing
+    ? {
+        label: "Teste gratuito",
+        variant: "success" as const,
+        icon: Sparkles,
+        description: `Você tem ${trialDaysLeft} dia(s) de teste. Ao final, o cartão salvo é cobrado automaticamente.`,
+      }
+    : STATUS_MAP[statusKey] ?? STATUS_MAP.trial;
   const StatusIcon = visual.icon;
 
   const expiresAt = subscription?.current_period_end ?? subscription?.trial_ends_at ?? null;
   const daysLeft = daysUntil(expiresAt);
-  const isActiveOrGrand = statusKey === "active" || statusKey === "grandfathered";
-  const isCancelable = statusKey === "active" || statusKey === "past_due";
+  const isActiveOrGrand = statusKey === "active" || statusKey === "grandfathered" || isTrialing;
+  const isCancelable = statusKey === "active" || statusKey === "past_due" || isTrialing;
   const hasStripeCustomer = !!subscription?.stripe_customer_id;
 
   async function openPortal() {

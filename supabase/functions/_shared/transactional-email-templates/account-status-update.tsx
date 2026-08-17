@@ -82,13 +82,52 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
   },
   payment_failed: {
     title: 'Falha no pagamento da sua assinatura',
-    intro: () => 'Não conseguimos processar o pagamento da sua assinatura. Por favor, verifique seu meio de pagamento para evitar a suspensão do acesso.',
-    detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
+    intro: (p) =>
+      `Não conseguimos processar o pagamento da sua assinatura${p.amount ? ` no valor de ${p.amount}` : ''}. `
+      + (p.graceDays
+        ? `Seu acesso continua liberado por ${p.graceDays} dia(s)${p.graceDeadline ? `, até ${p.graceDeadline}` : ''}.`
+        : 'Regularize agora para não perder o acesso.'),
+    detail: (p) =>
+      `Administrador: abra o aplicativo em Assinatura → Gerenciar assinatura e atualize a forma de pagamento (cartão de crédito ou débito) para reativar a cobrança automática.`
+      + (p.graceDeadline ? ` Após ${p.graceDeadline} o acesso de todos os usuários da conta será suspenso.` : '')
+      + (p.reason ? ` ${p.reason}` : ''),
   },
   past_due: {
     title: 'Sua assinatura está em atraso',
-    intro: () => 'O pagamento da sua assinatura ficou pendente. Regularize para manter seu acesso ativo.',
-    detail: () => 'Acesse Assinatura → Gerenciar assinatura para atualizar o cartão ou tentar novamente.',
+    intro: (p) =>
+      'O pagamento da sua assinatura ficou pendente. '
+      + (p.graceDays
+        ? `Você está em período de carência: restam ${p.graceDays} dia(s)${p.graceDeadline ? ` (até ${p.graceDeadline})` : ''}.`
+        : 'Regularize para manter seu acesso ativo.'),
+    detail: () => 'Administrador: acesse Assinatura → Gerenciar assinatura para atualizar a forma de pagamento ou tentar a cobrança novamente.',
+  },
+  trial_charge_failed: {
+    title: 'A cobrança do fim do seu teste gratuito não foi aprovada',
+    intro: (p) =>
+      `Seu período de teste gratuito terminou e a cobrança automática${p.amount ? ` de ${p.amount}` : ''} foi recusada pelo emissor do cartão. `
+      + (p.graceDays
+        ? `Concedemos ${p.graceDays} dia(s) de carência${p.graceDeadline ? `, até ${p.graceDeadline}` : ''}, para você regularizar sem perder nada.`
+        : 'Regularize agora para continuar usando o Hora Pro.'),
+    detail: (p) =>
+      'Administrador: entre no aplicativo, abra Assinatura → Gerenciar assinatura e cadastre um novo cartão de crédito ou débito. A cobrança é reenviada automaticamente após a atualização.'
+      + (p.graceDeadline ? ` Se não houver pagamento até ${p.graceDeadline}, o acesso de toda a equipe será suspenso.` : ''),
+  },
+  payment_grace_staff: {
+    title: 'Atenção: pagamento da assinatura pendente',
+    intro: (p) =>
+      'O pagamento da assinatura do Hora Pro desta conta não foi aprovado. '
+      + (p.graceDays
+        ? `O acesso continua liberado por ${p.graceDays} dia(s)${p.graceDeadline ? `, até ${p.graceDeadline}` : ''}.`
+        : 'O acesso pode ser suspenso a qualquer momento.'),
+    detail: (p) =>
+      `Somente o administrador da conta${p.adminEmail ? ` (${p.adminEmail})` : ''} pode atualizar a forma de pagamento. Avise-o para evitar a interrupção do atendimento.`,
+  },
+  access_suspended: {
+    title: 'Acesso suspenso por falta de pagamento',
+    intro: (p) =>
+      'O período de carência terminou e o pagamento da assinatura continua pendente, por isso o acesso da conta foi suspenso.'
+      + (p.reason ? ` ${p.reason}` : ''),
+    detail: () => 'Administrador: atualize a forma de pagamento em Assinatura → Gerenciar assinatura. O acesso de todos os usuários é reativado automaticamente após a confirmação do pagamento.',
   },
   seats_near_limit: {
     title: 'Você está perto do limite de usuários',
@@ -101,6 +140,7 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
     detail: () => 'Faça upgrade do seu plano em Assinatura para liberar mais assentos e tentar novamente.',
   },
 }
+
 
 const Email = ({ kind = 'payment_recorded', name, ...rest }: Props) => {
   const c = COPY[kind]

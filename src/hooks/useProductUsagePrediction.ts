@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
+import { averageFromCycles, projectStockDuration } from '@/lib/productCycleAnalytics';
+
 
 export interface ProductUsageHistory {
   product_id: string;

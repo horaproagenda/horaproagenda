@@ -489,6 +489,9 @@ export function ProductDetailDialog({
       currentAppointments,
       currentConsumed,
       initialQty,
+      activeCycleQuantity,
+      historicAverage,
+
       activePurchase,
       nextPurchase,
       runningOutAlert,

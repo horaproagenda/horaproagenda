@@ -68,6 +68,86 @@ export function isEchoOfSystemMessage(body: string): boolean {
   return SYSTEM_MESSAGE_MARKERS.some((m) => text.includes(m));
 }
 
+// ===================== Regras de resposta automática =====================
+
+/** Horas após o convite em que uma resposta livre ainda é tratada como resposta. */
+export const CLARIFY_WINDOW_HOURS = 12;
+/** Horas em que uma intenção explícita (1/2) ainda é aceita. */
+export const INTENT_WINDOW_HOURS = 48;
+
+export interface ReplyCandidate {
+  id: string;
+  status: string;
+  start_time: string;
+  confirmation_token?: string | null;
+  /** momento do último convite de confirmação enviado (ISO) */
+  invited_at?: string | null;
+}
+
+export type ReplyDecision =
+  | { action: 'apply_intent'; appointmentId: string }
+  | { action: 'already_confirmed'; appointmentId: string }
+  | { action: 'ask_clarification'; appointmentId: string }
+  | { action: 'silent'; reason: 'no_pending_confirmation' | 'intent_unclear_silenced' | 'settled' };
+
+/** true quando o horário ainda aguarda a resposta do cliente. */
+export function isPendingConfirmation(status: string): boolean {
+  return String(status || '').toLowerCase() === 'scheduled';
+}
+
+/**
+ * Decide o que fazer com uma mensagem recebida.
+ *
+ * Regras:
+ *  - Intenção explícita (1/2) é aplicada em horários pendentes ou confirmados
+ *    dentro da janela de 48h; horário já confirmado que recebe "1" apenas
+ *    recebe um aviso curto.
+ *  - A pergunta "Não entendi sua resposta" só é enviada quando existe horário
+ *    PENDENTE com convite recente (12h) e ainda não foi perguntado antes.
+ *  - Horário confirmado/cancelado nunca gera pergunta automática.
+ */
+export function decideReplyAction(params: {
+  intent: ConfirmIntent | null;
+  candidates: ReplyCandidate[];
+  /** ids de agendamentos que já receberam a pergunta de esclarecimento */
+  alreadyClarifiedIds?: string[];
+  now?: number;
+}): ReplyDecision {
+  const now = params.now ?? Date.now();
+  const clarified = new Set(params.alreadyClarifiedIds ?? []);
+  const withinHours = (iso: string | null | undefined, hours: number) => {
+    if (!iso) return false;
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) && now - ms <= hours * 3600 * 1000;
+  };
+
+  const invitedIntent = params.candidates.filter((c) => withinHours(c.invited_at, INTENT_WINDOW_HOURS));
+  const pending = invitedIntent.filter((c) => isPendingConfirmation(c.status));
+  const confirmed = invitedIntent.filter((c) => String(c.status).toLowerCase() === 'confirmed');
+
+  if (params.intent) {
+    const target = pending[0];
+    if (target) return { action: 'apply_intent', appointmentId: target.id };
+    const conf = confirmed[0];
+    if (conf) {
+      return params.intent === 'confirm'
+        ? { action: 'already_confirmed', appointmentId: conf.id }
+        : { action: 'apply_intent', appointmentId: conf.id };
+    }
+    return { action: 'silent', reason: 'no_pending_confirmation' };
+  }
+
+  const clarifyTarget = pending.find((c) => withinHours(c.invited_at, CLARIFY_WINDOW_HOURS));
+  if (!clarifyTarget) {
+    return { action: 'silent', reason: pending.length || confirmed.length ? 'settled' : 'no_pending_confirmation' };
+  }
+  if (clarified.has(clarifyTarget.id)) {
+    return { action: 'silent', reason: 'intent_unclear_silenced' };
+  }
+  return { action: 'ask_clarification', appointmentId: clarifyTarget.id };
+}
+
+
 
 /** Só os dígitos de um telefone/JID. */
 export function onlyDigits(value: string): string {

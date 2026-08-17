@@ -405,11 +405,24 @@ serve(async (req) => {
           const resolved = await resolveWhatsapp(supabase, professionalId);
           if (resolved.source === 'professional') {
             await whatsappSendText(resolved, { to: normalizePhone(phone), body: reply });
+            // Registra a pergunta de esclarecimento para nunca repetir no mesmo horário.
+            if (outcome === 'intent_unclear' && ownerId) {
+              await supabase.from('whatsapp_messages').insert({
+                account_owner_id: ownerId,
+                direction: 'out',
+                from_number: instanceId || null,
+                to_number: normalizePhone(phone),
+                body: reply.slice(0, 2000),
+                status: 'clarification_sent',
+                provider_payload: { appointment_id: target?.id ?? null, kind: 'confirmation_clarification' },
+              });
+            }
           }
         } catch (e) {
           console.warn('[whatsapp-webhook] reply failed', (e as any)?.message);
         }
       }
+
     }
 
 

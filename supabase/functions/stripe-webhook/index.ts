@@ -107,13 +107,33 @@ async function syncSubscription(sub: Stripe.Subscription) {
   else log("Synced subscription", { ownerId, status, seats, priceId });
 
   if (status === 'past_due') {
-    await sendAccountEmail(
+    // Cobrança recusada (inclui a do fim do teste): aplica carência e avisa
+    // administrador + equipe. Idempotente por ciclo de cobrança, então o
+    // evento de invoice e o de subscription não geram e-mails duplicados.
+    const isTrialCharge = !!sub.trial_end
+      && Date.now() - sub.trial_end * 1000 < 3 * 24 * 60 * 60 * 1000;
+    await handlePaymentFailure(
+      supabase,
       ownerId,
-      'past_due',
-      {},
-      `stripe-sub-past-due-${sub.id}-${subPeriodEnd(sub)?.getTime() ?? 0}`,
+      {
+        isTrialCharge,
+        idempotencyBase: `sub-${sub.id}-${subPeriodEnd(sub)?.getTime() ?? 0}`,
+      },
+      sendEmailTo,
+      log,
     );
   }
+
+  if (sub.status === 'unpaid') {
+    await notifyAccessSuspended(
+      supabase,
+      ownerId,
+      `sub-unpaid-${sub.id}`,
+      sendEmailTo,
+      'Todas as tentativas de cobrança automática foram recusadas.',
+    );
+  }
+
 }
 
 serve(async (req) => {

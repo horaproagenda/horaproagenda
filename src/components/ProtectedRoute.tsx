@@ -132,8 +132,5 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       {children}
     </>
   );
-
-      {children}
-    </>
-  );
 }
+

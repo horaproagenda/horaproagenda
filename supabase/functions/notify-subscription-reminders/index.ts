@@ -14,8 +14,9 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret, x-cron-secret",
 };
+
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REMINDER_DAYS = [7, 3, 1];

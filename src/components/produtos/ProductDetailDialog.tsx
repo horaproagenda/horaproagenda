@@ -533,7 +533,47 @@ export function ProductDetailDialog({
       totalDeduction = Math.max(0, Math.min(stockBefore, bulkQty));
     }
 
+    // Quantidade parcial colocada em uso (ex.: 100 das 600 unidades compradas).
+    // Quando informada, ela é a referência do ciclo — tanto para a baixa do
+    // estoque quanto para o cálculo da média por atendimento.
+    const cycleQuantity = Number(activePurchase?.cycle_quantity || 0);
+    if (cycleQuantity > 0) {
+      totalDeduction = Math.max(0, Math.min(stockBefore, cycleQuantity));
+    }
+
     const remainingStock = Math.max(0, stockBefore - totalDeduction);
+
+    // Métricas reais deste ciclo
+    const closure = computeCycleClosure({
+      cycleQuantity: cycleQuantity > 0 ? cycleQuantity : totalDeduction,
+      appointments: cycleApts.length,
+      days,
+    });
+
+    // Média histórica combinando ciclos anteriores + este ciclo
+    const combinedAverage = averageFromCycles([
+      ...productPurchases
+        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
+        .map(p => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+      {
+        cycle_quantity: cycleQuantity > 0 ? cycleQuantity : totalDeduction,
+        cycle_appointments: cycleApts.length,
+        started_using_at: cycleStart,
+        finished_at: pendingEndDate,
+      },
+    ]);
+
+    const forecast = projectStockDuration({
+      stockQuantity: remainingStock,
+      avgQuantityPerAppointment: combinedAverage.avgQuantityPerAppointment ?? closure.avgQuantityPerAppointment,
+      appointmentsPerDay: combinedAverage.appointmentsPerDay ?? closure.appointmentsPerDay,
+    });
+
     return {
       days,
       appointments: cycleApts.length,
@@ -546,22 +586,41 @@ export function ProductDetailDialog({
       activePurchase,
       cycleApts,
       usedCrossFamilyConversion,
+      cycleQuantity,
+      closure,
+      combinedAverage,
+      forecast,
     };
   }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
-  const runStartCycle = async (dateStr: string) => {
+  const runStartCycle = async (dateStr: string, cycleQty?: number | null) => {
     if (!product) return;
+    const qty = cycleQty && cycleQty > 0 ? cycleQty : null;
     const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
+    const active = productPurchases.find(p => p.started_using_at && !p.finished_at);
     if (pending && onUpdatePurchase) {
-      await onUpdatePurchase({ id: pending.id, started_using_at: dateStr });
+      await onUpdatePurchase({
+        id: pending.id,
+        started_using_at: dateStr,
+        cycle_quantity: qty,
+        cycle_appointments: null,
+        avg_quantity_per_appointment: null,
+      });
+    } else if (active && onUpdatePurchase && qty) {
+      await onUpdatePurchase({ id: active.id, cycle_quantity: qty });
     }
     await onUpdateProduct({
       id: product.id,
       started_using_at: dateStr,
       finished_at: null as any,
     });
-    toast.success('Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'));
+    toast.success(
+      qty
+        ? `Início do uso registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(qty)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} em uso.`
+        : 'Início do uso registrado em ' + format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy'),
+    );
   };
+
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;

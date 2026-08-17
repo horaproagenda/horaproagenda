@@ -160,8 +160,13 @@ const Email = ({ kind = 'payment_recorded', name, ...rest }: Props) => {
             </Section>
           )}
           <Section style={{ textAlign: 'center', margin: '28px 0 8px' }}>
-            <Button href={APP_URL} style={btn}>Abrir o {SITE_NAME}</Button>
+            {PAYMENT_KINDS.has(kind) ? (
+              <Button href={`${APP_URL}/assinatura`} style={btn}>Atualizar forma de pagamento</Button>
+            ) : (
+              <Button href={APP_URL} style={btn}>Abrir o {SITE_NAME}</Button>
+            )}
           </Section>
+
           <Text style={footer}>
             Se você não esperava este e-mail, entre em contato com nosso suporte.
           </Text>

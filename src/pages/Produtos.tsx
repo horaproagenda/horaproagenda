@@ -361,10 +361,14 @@ export default function Produtos() {
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
 
-      // Se promovendo agora, substitui o estoque pela nova quantidade (não soma)
+      // A compra SEMPRE soma ao estoque total (o saldo remanescente não pode ser perdido).
       await updateProduct.mutateAsync({
         id: product.id,
-        current_stock: promoteNow ? purchaseForm.quantity : product.current_stock + purchaseForm.quantity,
+        current_stock: resolveStockAfterPurchase({
+          currentStock: product.current_stock,
+          purchaseQuantity: purchaseForm.quantity,
+        }),
+
         quantity_purchased: newQuantityPurchased,
         total_price: newTotalPrice,
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,

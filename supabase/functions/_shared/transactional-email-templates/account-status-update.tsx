@@ -60,7 +60,14 @@ interface Props {
   adminEmail?: string
   /** true quando o destinatário é o administrador (mostra a ação de pagamento) */
   isAdmin?: boolean
+  /** avisos antecipados: dias restantes até a data limite */
+  daysLeft?: number
+  /** avisos antecipados: data limite em dd/mm/aaaa */
+  dueDate?: string
+  /** ciclo da assinatura: mensal, semestral, anual */
+  cycleLabel?: string
 }
+
 
 
 const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: (p: Props) => string }> = {

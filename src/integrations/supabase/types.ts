@@ -2919,8 +2919,11 @@ export type Database = {
       product_purchases: {
         Row: {
           account_owner_id: string
+          avg_quantity_per_appointment: number | null
           created_at: string
           created_by: string | null
+          cycle_appointments: number | null
+          cycle_quantity: number | null
           duration_days: number | null
           finished_at: string | null
           id: string
@@ -2938,8 +2941,11 @@ export type Database = {
         }
         Insert: {
           account_owner_id?: string
+          avg_quantity_per_appointment?: number | null
           created_at?: string
           created_by?: string | null
+          cycle_appointments?: number | null
+          cycle_quantity?: number | null
           duration_days?: number | null
           finished_at?: string | null
           id?: string
@@ -2957,8 +2963,11 @@ export type Database = {
         }
         Update: {
           account_owner_id?: string
+          avg_quantity_per_appointment?: number | null
           created_at?: string
           created_by?: string | null
+          cycle_appointments?: number | null
+          cycle_quantity?: number | null
           duration_days?: number | null
           finished_at?: string | null
           id?: string

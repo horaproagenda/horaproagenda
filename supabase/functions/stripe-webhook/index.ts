@@ -192,6 +192,14 @@ serve(async (req) => {
             .update({ status: 'canceled', stripe_subscription_id: sub.id })
             .eq('owner_user_id', ownerId);
           log("Subscription canceled", { ownerId });
+          await notifyAccessSuspended(
+            supabase,
+            ownerId,
+            `sub-deleted-${sub.id}`,
+            sendEmailTo,
+            'A assinatura foi encerrada no processador de pagamentos.',
+          );
+
         }
         break;
       }

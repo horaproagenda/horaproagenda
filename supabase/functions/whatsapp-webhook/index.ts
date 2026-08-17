@@ -267,15 +267,15 @@ serve(async (req) => {
             .order('start_time', { ascending: true })
             .limit(20);
 
-          const candidates = (appts || []);
+          const rows = (appts || []) as any[];
 
-          // Só vale como resposta se existir um convite de confirmação enviado
-          // nas últimas 48h para aquele horário.
-          const invitedSince = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-          let invitedIds: string[] = [];
-          if (candidates.length) {
-            const ids = candidates.map((a: any) => a.id);
-            const [{ data: logs }, { data: queued }] = await Promise.all([
+          // Momento do último convite de confirmação enviado para cada horário.
+          const invitedSince = new Date(Date.now() - INTENT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+          const invitedAt = new Map<string, string>();
+          let clarifiedIds: string[] = [];
+          if (rows.length) {
+            const ids = rows.map((a) => a.id);
+            const [{ data: logs }, { data: queued }, { data: sentAsks }] = await Promise.all([
               supabase
                 .from('appointment_reminder_log')
                 .select('appointment_id, sent_at')
@@ -288,48 +288,88 @@ serve(async (req) => {
                 .in('appointment_id', ids)
                 .gte('created_at', invitedSince)
                 .order('created_at', { ascending: false }),
+              // Pergunta de esclarecimento já enviada para este horário?
+              supabase
+                .from('whatsapp_messages')
+                .select('provider_payload')
+                .eq('account_owner_id', ownerId)
+                .eq('direction', 'out')
+                .eq('status', 'clarification_sent')
+                .gte('created_at', invitedSince)
+                .limit(200),
             ]);
-            invitedIds = [
-              ...((logs || []) as any[]).map((l) => l.appointment_id),
-              ...((queued || []) as any[]).map((q) => q.appointment_id),
-            ].filter(Boolean);
+            const note = (id?: string | null, at?: string | null) => {
+              if (!id || !at) return;
+              const prev = invitedAt.get(id);
+              if (!prev || new Date(at).getTime() > new Date(prev).getTime()) invitedAt.set(id, at);
+            };
+            for (const l of (logs || []) as any[]) note(l.appointment_id, l.sent_at);
+            for (const q of (queued || []) as any[]) note(q.appointment_id, q.created_at);
+            clarifiedIds = ((sentAsks || []) as any[])
+              .map((m) => m?.provider_payload?.appointment_id)
+              .filter(Boolean);
           }
 
-          // Prioriza o agendamento cuja confirmação foi enviada mais recentemente.
-          const invited = candidates.filter((a: any) => invitedIds.includes(a.id));
-          target = invited.find((a: any) => a.id === invitedIds[0]) || invited[0] || null;
+          const candidates: ReplyCandidate[] = rows.map((a) => ({
+            id: a.id,
+            status: a.status,
+            start_time: a.start_time,
+            confirmation_token: a.confirmation_token,
+            invited_at: invitedAt.get(a.id) ?? null,
+          }));
 
-          if (!target) {
-            outcome = 'no_pending_confirmation';
-            outcomeDetail = 'Nenhuma confirmação pendente para este cliente — mensagem apenas registrada.';
-          } else if (!intent) {
+          const decision = decideReplyAction({ intent, candidates, alreadyClarifiedIds: clarifiedIds });
+          const pick = (id: string) => rows.find((a) => a.id === id) || null;
+
+          if (decision.action === 'silent') {
+            outcome = decision.reason === 'intent_unclear_silenced'
+              ? 'intent_unclear_silenced'
+              : decision.reason === 'settled'
+                ? 'settled_conversation'
+                : 'no_pending_confirmation';
+            outcomeDetail = decision.reason === 'intent_unclear_silenced'
+              ? 'Pergunta de confirmação já enviada antes — mensagem apenas registrada.'
+              : decision.reason === 'settled'
+                ? 'Horário já confirmado ou cancelado — conversa livre, sem resposta automática.'
+                : 'Nenhuma confirmação pendente para este cliente — mensagem apenas registrada.';
+          } else if (decision.action === 'ask_clarification') {
+            target = pick(decision.appointmentId);
             outcome = 'intent_unclear';
-            outcomeDetail = 'Resposta não compreendida.';
-            reply = `Não entendi sua resposta 🙂\n\nResponda *1* para *confirmar* o horário de ${formatWhen(target.start_time)} ou *2* para *cancelar*.`;
-          } else if (!target?.confirmation_token) {
-            outcome = 'appointment_not_found';
-            outcomeDetail = 'Agendamento sem código de confirmação.';
+            outcomeDetail = 'Resposta não compreendida — pergunta enviada uma única vez.';
+            reply = `Não entendi sua resposta 🙂\n\nResponda *1* para *confirmar* o horário de ${formatWhen(target?.start_time)} ou *2* para *cancelar*.`;
+          } else if (decision.action === 'already_confirmed') {
+            target = pick(decision.appointmentId);
+            outcome = 'already_confirmed';
+            outcomeDetail = 'Horário já estava confirmado.';
+            reply = `Seu horário de *${formatWhen(target?.start_time)}* já está confirmado. ✅\n\nSe precisar de algo, é só escrever por aqui. 🙏`;
           } else {
-            const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('confirm_appointment_by_token', {
-              p_token: target.confirmation_token,
-              p_action: intent,
-            });
-            if (rpcErr || !rpcRes?.success) {
-              outcome = rpcRes?.reason === 'cancelled' ? 'already_cancelled' : 'error';
-              outcomeDetail = rpcErr?.message || rpcRes?.error || 'Falha ao registrar a resposta.';
-              if (rpcRes?.reason === 'cancelled') {
-                reply = 'Este horário está cancelado e não pode ser confirmado por aqui. Para reagendar, é só nos chamar. 🙏';
-              }
+            target = pick(decision.appointmentId);
+            if (!target?.confirmation_token) {
+              outcome = 'appointment_not_found';
+              outcomeDetail = 'Agendamento sem código de confirmação.';
             } else {
-              outcome = rpcRes.status === 'confirmed' ? 'confirmed' : 'cancelled';
-              const when = formatWhen(target.start_time);
-              reply = rpcRes.status === 'confirmed'
-                ? `Presença confirmada! ✅\n\nSeu horário: *${when}*.\nAté breve! ✨`
-                : `Horário de *${when}* cancelado. ❌\n\nQuando quiser reagendar, é só nos chamar por aqui. 🙏`;
+              const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('confirm_appointment_by_token', {
+                p_token: target.confirmation_token,
+                p_action: intent,
+              });
+              if (rpcErr || !rpcRes?.success) {
+                outcome = rpcRes?.reason === 'cancelled' ? 'already_cancelled' : 'error';
+                outcomeDetail = rpcErr?.message || rpcRes?.error || 'Falha ao registrar a resposta.';
+                if (rpcRes?.reason === 'cancelled') {
+                  reply = 'Este horário está cancelado e não pode ser confirmado por aqui. Para reagendar, é só nos chamar. 🙏';
+                }
+              } else {
+                outcome = rpcRes.status === 'confirmed' ? 'confirmed' : 'cancelled';
+                const when = formatWhen(target.start_time);
+                reply = rpcRes.status === 'confirmed'
+                  ? `Presença confirmada! ✅\n\nSeu horário: *${when}*.\nAté breve! ✨`
+                  : `Horário de *${when}* cancelado. ❌\n\nQuando quiser reagendar, é só nos chamar por aqui. 🙏`;
+              }
             }
             console.log('[whatsapp-webhook] intent applied', { phone, intent, outcome, detail: outcomeDetail });
           }
         }
+
         }
       }
 

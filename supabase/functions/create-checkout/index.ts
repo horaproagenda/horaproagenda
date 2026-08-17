@@ -11,9 +11,72 @@ const corsHeaders = {
 // Seats permitidos (mantém sincronizado com src/lib/plans.ts).
 const ALLOWED_SEATS = new Set<number>([1, 3, 6, 10, 15, 20, 25, 30]);
 
+/** Dias de teste gratuito para quem nunca usou o teste nem pagou. */
+const TRIAL_DAYS = 30;
+
 // Os price IDs NÃO são fixos em código: são resolvidos no Stripe pelas
 // lookup keys (horapro_seat_monthly / _semiannual / _annual). Para mudar o
 // valor, cria-se um preço novo no Stripe transferindo a lookup key.
+
+/**
+ * Elegibilidade ao teste de 30 dias — decidida SEMPRE no servidor.
+ * Não recebe teste quem: já assinou/pagou antes, já usou o teste,
+ * tem acesso vitalício, ou está em bloqueio de exclusão recente.
+ */
+async function isTrialEligible(
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any,
+  stripe: Stripe,
+  userId: string,
+  email: string,
+  customerId?: string,
+): Promise<boolean> {
+  try {
+    const { data: sub } = await supabaseAdmin
+      .from("account_subscriptions")
+      .select("status, is_grandfathered, stripe_subscription_id, trial_ends_at")
+      .eq("owner_user_id", userId)
+      .maybeSingle();
+
+    if (sub?.is_grandfathered || sub?.status === "grandfathered") return false;
+    if (sub?.stripe_subscription_id) return false;
+
+    const { data: reg } = await supabaseAdmin
+      .from("trial_registrations")
+      .select("has_paid, trial_started_at")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+    if (reg?.has_paid) return false;
+
+    const { data: blocked } = await supabaseAdmin
+      .from("deleted_account_blocklist")
+      .select("id")
+      .limit(1);
+    // Bloqueio detalhado é avaliado por RPC no cadastro; aqui só evitamos
+    // conceder teste quando o próprio e-mail está na lista.
+    if (Array.isArray(blocked) && blocked.length > 0) {
+      const { data: blockedSelf } = await supabaseAdmin
+        .rpc("is_identifier_blocked", { p_email: email, p_cpf: null, p_cnpj: null, p_phone: null });
+      if (blockedSelf && (blockedSelf as { blocked?: boolean }).blocked) return false;
+    }
+
+    // Já teve qualquer assinatura no Stripe (inclusive cancelada)? Sem novo teste.
+    if (customerId) {
+      const previous = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 1,
+      });
+      if (previous.data.length > 0) return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.warn("[create-checkout] falha ao avaliar elegibilidade de teste:", e);
+    return false; // em dúvida, cobra normalmente
+  }
+}
+
 
 
 
@@ -61,6 +124,14 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://horaproagenda.app";
 
+    const trialEligible = await isTrialEligible(
+      supabaseAdmin,
+      stripe,
+      user.id,
+      user.email,
+      customerId,
+    );
+
     const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -79,11 +150,23 @@ serve(async (req) => {
       tax_id_collection: { enabled: true },
       // Exigido pelo Stripe quando tax_id_collection está ativo em um Customer existente.
       customer_update: customerId ? { name: 'auto', address: 'auto' } : undefined,
+      // Com teste gratuito o cartão é OBRIGATÓRIO: ele fica salvo e é cobrado
+      // automaticamente ao fim dos 30 dias.
+      payment_method_collection: 'always',
       subscription_data: {
+        ...(trialEligible
+          ? {
+              trial_period_days: TRIAL_DAYS,
+              trial_settings: {
+                end_behavior: { missing_payment_method: 'cancel' },
+              },
+            }
+          : {}),
         metadata: {
           user_id: user.id,
           billing_months: String(billingMonths),
           seats: String(seats),
+          trial_days: trialEligible ? String(TRIAL_DAYS) : '0',
           kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
         },
       },
@@ -91,16 +174,21 @@ serve(async (req) => {
         user_id: user.id,
         billing_months: String(billingMonths),
         seats: String(seats),
+        trial_days: trialEligible ? String(TRIAL_DAYS) : '0',
         kind: billingMonths === 1 ? 'recurring_monthly' : 'recurring_multi_month',
       },
       allow_promotion_codes: true,
     });
 
+    console.log("[create-checkout] sessão criada", {
+      user: user.id, seats, billingMonths, trialEligible,
+    });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: session.url, trial_days: trialEligible ? TRIAL_DAYS : 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[create-checkout] error:", message);

@@ -74,9 +74,13 @@ async function syncSubscription(sub: Stripe.Subscription) {
   const seats = item?.quantity ?? 0;
 
   let status: 'active' | 'past_due' | 'canceled' | 'trial' = 'active';
-  if (sub.status === 'active' || sub.status === 'trialing') status = 'active';
+  if (sub.status === 'trialing') status = 'trial';
+  else if (sub.status === 'active') status = 'active';
   else if (sub.status === 'past_due' || sub.status === 'unpaid') status = 'past_due';
   else if (['canceled', 'incomplete_expired'].includes(sub.status)) status = 'canceled';
+
+  // Fim do teste gratuito (cartão já salvo → cobrança automática nesta data).
+  const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
 
   const { error } = await supabase
     .from('account_subscriptions')
@@ -87,9 +91,11 @@ async function syncSubscription(sub: Stripe.Subscription) {
       stripe_price_id: priceId,
       plan_tier: seats,
       seat_limit: seats,
+      ...(trialEnd ? { trial_ends_at: trialEnd.toISOString() } : {}),
       ...(subPeriodEnd(sub) ? { current_period_end: subPeriodEnd(sub)!.toISOString() } : {}),
     })
     .eq('owner_user_id', ownerId);
+
 
   if (error) log("Update failed", { error: error.message, ownerId });
   else log("Synced subscription", { ownerId, status, seats, priceId });

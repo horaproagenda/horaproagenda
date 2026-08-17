@@ -157,18 +157,28 @@ serve(async (req) => {
 
     logStep("Subscription found", { status: sub.status, productId, priceId, seats });
 
+    // Assinatura em teste gratuito: mantemos o status 'trial' com a data em que
+    // o cartão salvo será cobrado automaticamente.
+    const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+    const localStatus = sub.status === 'past_due'
+      ? 'past_due'
+      : sub.status === 'trialing' ? 'trial' : 'active';
+
     await saveSubscription(user.id, {
-      status: sub.status === 'past_due' ? 'past_due' : 'active',
+      status: localStatus,
       stripe_customer_id: customerId,
       stripe_subscription_id: sub.id,
       stripe_price_id: priceId,
       plan_tier: seats,
       seat_limit: seats,
+      ...(trialEnd ? { trial_ends_at: trialEnd } : {}),
       ...(currentPeriodEnd ? { current_period_end: currentPeriodEnd } : {}),
     });
 
     return new Response(JSON.stringify({
       subscribed: sub.status !== 'past_due',
+      trialing: sub.status === 'trialing',
+      trial_end: trialEnd,
       product_id: productId,
       price_id: priceId,
       seats,

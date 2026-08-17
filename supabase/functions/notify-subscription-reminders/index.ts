@@ -65,11 +65,15 @@ serve(async (req) => {
   }
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const internalSecret = Deno.env.get("INTERNAL_EMAIL_SECRET") ?? "";
+  const internalSecret = (Deno.env.get("INTERNAL_EMAIL_SECRET") ?? "").trim();
+  const cronSecret = (Deno.env.get("CRON_SECRET") ?? "").trim();
   const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
-  const provided = req.headers.get("x-internal-secret") ?? "";
+  const provided = (req.headers.get("x-internal-secret") ?? "").trim();
+  const cronProvided = (req.headers.get("x-cron-secret") ?? "").trim();
   const authorized = (serviceKey && token === serviceKey)
-    || (internalSecret && provided === internalSecret);
+    || (internalSecret && provided === internalSecret)
+    || (cronSecret && cronProvided === cronSecret);
+
   if (!authorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,

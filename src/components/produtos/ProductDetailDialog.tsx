@@ -631,7 +631,8 @@ export function ProductDetailDialog({
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;
-    const { activePurchase, cycleApts, totalDeduction } = endCyclePreview;
+    const { activePurchase, cycleApts, totalDeduction, closure, forecast } = endCyclePreview;
+    const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label ?? '';
     // Persiste médias para vínculos estimados que tiveram uso
     for (const sp of productServiceLinks) {
       if (sp.tracking_method !== 'estimated') continue;
@@ -653,7 +654,7 @@ export function ProductDetailDialog({
 
     const newStock = Math.max(0, (Number(product.current_stock) || 0) - totalDeduction);
 
-    // Fecha a compra ativa com o término informado
+    // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
       await onUpdatePurchase({
         id: activePurchase.id,
@@ -663,6 +664,12 @@ export function ProductDetailDialog({
           || product.started_using_at
           || activePurchase.purchase_date
           || dateStr,
+        cycle_quantity:
+          Number(activePurchase.cycle_quantity || 0) > 0
+            ? Number(activePurchase.cycle_quantity)
+            : totalDeduction,
+        cycle_appointments: cycleApts.length,
+        avg_quantity_per_appointment: closure.avgQuantityPerAppointment,
       });
     }
 
@@ -674,7 +681,18 @@ export function ProductDetailDialog({
     });
 
     toast.success(
-      `Ciclo encerrado: ${cycleApts.length} atend., ${totalDeduction.toFixed(2)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} descontado(s) do estoque.`,
+      `Ciclo encerrado: ${cycleApts.length} atendimento(s), ${formatCycleQuantity(totalDeduction)} ${unitLabel} usado(s).`,
+      {
+        description: [
+          closure.avgQuantityPerAppointment
+            ? `Média de ${formatCycleQuantity(closure.avgQuantityPerAppointment)} ${unitLabel} por atendimento.`
+            : null,
+          forecast.remainingAppointments !== null
+            ? `Estoque restante (${formatCycleQuantity(newStock)} ${unitLabel}) deve cobrir ~${forecast.remainingAppointments} atendimento(s)${forecast.remainingDays !== null ? ` / ~${forecast.remainingDays} dia(s)` : ''}.`
+            : null,
+        ].filter(Boolean).join(' '),
+        duration: 9000,
+      },
     );
 
     // Se ainda há estoque, oferece reabastecer o recipiente / iniciar novo ciclo
@@ -682,6 +700,7 @@ export function ProductDetailDialog({
       setPendingRefill({ remainingStock: newStock });
     }
   };
+
 
 
 

@@ -5498,6 +5498,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      professional_permission: { Args: { _key: string }; Returns: boolean }
       purge_inactive_client_package_artifacts: {
         Args: { _account_owner_id?: string; _client_id?: string }
         Returns: Json

@@ -158,11 +158,15 @@ serve(async (req) => {
       if (updErr) throw updErr;
     }
 
-    // 3. Ensure professional role assigned
+    // 3. Ensure professional role assigned (account_owner_id is mandatory)
     const { data: existingRole } = await supaAdmin.from('user_roles').select('id').eq('user_id', userId).eq('role', 'professional').maybeSingle();
     if (!existingRole) {
-      await supaAdmin.from('user_roles').insert({ user_id: userId, role: 'professional' });
+      const { error: roleErr } = await supaAdmin
+        .from('user_roles')
+        .insert({ user_id: userId, role: 'professional', account_owner_id: callerOwnerId });
+      if (roleErr) throw roleErr;
     }
+
 
     // 4. Save credentials record (force-change flag only — plaintext password never stored)
     await supaAdmin.from('professional_credentials').upsert({

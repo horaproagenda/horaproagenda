@@ -148,13 +148,29 @@ export function useProductUsagePrediction() {
         }
       });
       
-      const avgAppointmentsPerUnit = totalUnitsConsumed > 0 
-        ? totalHistoricalAppointments / totalUnitsConsumed 
-        : 0;
-      
-      const avgDaysPerUnit = totalUnitsConsumed > 0 
-        ? totalDaysUsed / totalUnitsConsumed 
-        : 0;
+      // Médias reais medidas em ciclos com quantidade parcial em uso
+      // (ex.: 100 das 600 unidades). Quando existem, têm prioridade — são
+      // medições diretas de quanto o produto rende por atendimento.
+      const cycleAverage = averageFromCycles(
+        completedPurchases.map((p: any) => ({
+          cycle_quantity: p.cycle_quantity,
+          cycle_appointments: p.cycle_appointments,
+          started_using_at: p.started_using_at,
+          finished_at: p.finished_at,
+        })),
+      );
+
+      const avgAppointmentsPerUnit = cycleAverage.avgQuantityPerAppointment
+        ? 1 / cycleAverage.avgQuantityPerAppointment
+        : totalUnitsConsumed > 0
+          ? totalHistoricalAppointments / totalUnitsConsumed
+          : 0;
+
+      const avgDaysPerUnit = cycleAverage.daysPerUnit
+        ? cycleAverage.daysPerUnit
+        : totalUnitsConsumed > 0
+          ? totalDaysUsed / totalUnitsConsumed
+          : 0;
       
       // Calculate current usage (since last purchase or started_using_at)
       const currentStartDate = product.started_using_at 
@@ -169,13 +185,26 @@ export function useProductUsagePrediction() {
       const currentDays = differenceInDays(new Date(), currentStartDate);
       
       // Predict remaining usage
-      const predictedRemainingAppointments = avgAppointmentsPerUnit > 0
-        ? Math.max(0, (product.current_stock * avgAppointmentsPerUnit) - currentAppointments)
-        : -1; // -1 means no historical data
+      const cycleForecast = cycleAverage.avgQuantityPerAppointment
+        ? projectStockDuration({
+            stockQuantity: Number(product.current_stock || 0),
+            avgQuantityPerAppointment: cycleAverage.avgQuantityPerAppointment,
+            appointmentsPerDay: cycleAverage.appointmentsPerDay,
+          })
+        : null;
+
+      const predictedRemainingAppointments = cycleForecast?.remainingAppointments != null
+        ? cycleForecast.remainingAppointments
+        : avgAppointmentsPerUnit > 0
+          ? Math.max(0, (product.current_stock * avgAppointmentsPerUnit) - currentAppointments)
+          : -1; // -1 means no historical data
       
-      const predictedRemainingDays = avgDaysPerUnit > 0
-        ? Math.max(0, (product.current_stock * avgDaysPerUnit) - currentDays)
-        : -1;
+      const predictedRemainingDays = cycleForecast?.remainingDays != null
+        ? cycleForecast.remainingDays
+        : avgDaysPerUnit > 0
+          ? Math.max(0, (product.current_stock * avgDaysPerUnit) - currentDays)
+          : -1;
+
       
       // Calculate depletion percentage based on usage pattern
       let depletionPercentage = 0;

@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { SUBSCRIPTION_SYNC_KEY } from '@/lib/stripeCheckout';
+import { getGraceDaysLeft, getPaymentPhase, hasSubscriptionAccess } from '@/lib/subscriptionAccess';
+
 
 
 

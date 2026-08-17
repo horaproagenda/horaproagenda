@@ -150,6 +150,35 @@ const COPY: Record<Kind, { title: string; intro: (p: Props) => string; detail?: 
     intro: (p) => `Uma tentativa de cadastro${p.attemptedEmail ? ` (${p.attemptedEmail})` : ''} foi bloqueada porque sua conta atingiu o limite de ${p.seatLimit ?? 0} usuário(s).`,
     detail: () => 'Faça upgrade do seu plano em Assinatura para liberar mais assentos e tentar novamente.',
   },
+  renewal_reminder: {
+    title: 'Sua assinatura será renovada em breve',
+    intro: (p) =>
+      `Faltam ${p.daysLeft ?? 0} dia(s) para a renovação${p.cycleLabel ? ` ${p.cycleLabel}` : ''} da sua assinatura do Hora Pro`
+      + `${p.dueDate ? `, prevista para ${p.dueDate}` : ''}`
+      + `${p.amount ? `, no valor de ${p.amount}` : ''}.`,
+    detail: () =>
+      'A cobrança é automática no cartão salvo. Para trocar o cartão ou revisar os dados de pagamento, '
+      + 'abra o aplicativo em Assinatura → Gerenciar assinatura e atualize a forma de pagamento antes da data da cobrança.',
+  },
+  trial_charge_reminder: {
+    title: 'Seu teste gratuito termina em breve',
+    intro: (p) =>
+      `Faltam ${p.daysLeft ?? 0} dia(s) para o fim do seu teste gratuito`
+      + `${p.dueDate ? ` (${p.dueDate})` : ''}. Na data, a primeira cobrança`
+      + `${p.cycleLabel ? ` ${p.cycleLabel}` : ''}${p.amount ? ` de ${p.amount}` : ''} será feita automaticamente no cartão salvo.`,
+    detail: () =>
+      'Confirme se o cartão cadastrado está válido para não perder o acesso: abra o aplicativo em '
+      + 'Assinatura → Gerenciar assinatura e atualize a forma de pagamento (crédito ou débito).',
+  },
+  grace_ending_reminder: {
+    title: 'Sua carência termina em breve',
+    intro: (p) =>
+      `O pagamento da sua assinatura continua pendente e restam apenas ${p.daysLeft ?? 0} dia(s) de carência`
+      + `${p.dueDate ? `, até ${p.dueDate}` : ''}.`,
+    detail: () =>
+      'Administrador: atualize a forma de pagamento agora em Assinatura → Gerenciar assinatura. '
+      + 'Após o fim da carência, o acesso de todos os usuários da conta será suspenso automaticamente.',
+  },
 }
 
 
@@ -159,7 +188,11 @@ const PAYMENT_KINDS = new Set<Kind>([
   'trial_charge_failed',
   'payment_grace_staff',
   'access_suspended',
+  'renewal_reminder',
+  'trial_charge_reminder',
+  'grace_ending_reminder',
 ])
+
 
 const Email = ({ kind = 'payment_recorded', name, ...rest }: Props) => {
 

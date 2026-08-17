@@ -118,6 +118,17 @@ export function useAccountSubscription() {
     ? Math.max(0, Math.ceil((trialEndsMs - now) / (1000 * 60 * 60 * 24)))
     : 0;
   const trialExpired = sub?.status === 'trial' && trialEndsMs < now;
+  /** Teste gratuito em andamento (cartão já salvo, cobrança automática ao final). */
+  const isTrialing = sub?.status === 'trial' && trialEndsMs > now;
+  /**
+   * Ainda pode iniciar os 30 dias grátis: nunca teve assinatura no Stripe,
+   * não é conta vitalícia e não está com assinatura ativa.
+   */
+  const trialEligible = !!sub
+    && !sub.is_grandfathered
+    && sub.status !== 'grandfathered'
+    && sub.status !== 'active'
+    && !sub.stripe_subscription_id;
   const hasAccess = !sub
     ? true // ainda carregando — não bloqueia
     : sub.is_grandfathered
@@ -125,5 +136,14 @@ export function useAccountSubscription() {
       || sub.status === 'grandfathered'
       || (sub.status === 'trial' && !trialExpired);
 
-  return { subscription: sub, trialDaysLeft, trialExpired, hasAccess, isLoading: query.isLoading };
+  return {
+    subscription: sub,
+    trialDaysLeft,
+    trialExpired,
+    isTrialing,
+    trialEligible,
+    hasAccess,
+    isLoading: query.isLoading,
+  };
 }
+

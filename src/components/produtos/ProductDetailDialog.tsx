@@ -357,7 +357,7 @@ export function ProductDetailDialog({
 
     const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
     return { totalAppointments, avgPerAppointment, byService };
-  }, [product, productServiceLinks, appointments, activeServices]);
+  }, [product, productServiceLinks, productPurchases, appointments, activeServices]);
 
   // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark.
   // Funciona para TODOS os produtos — com ou sem vínculo a serviços. Quando o produto não

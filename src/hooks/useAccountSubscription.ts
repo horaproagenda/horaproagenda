@@ -129,12 +129,10 @@ export function useAccountSubscription() {
     && sub.status !== 'grandfathered'
     && sub.status !== 'active'
     && !sub.stripe_subscription_id;
-  const hasAccess = !sub
-    ? true // ainda carregando — não bloqueia
-    : sub.is_grandfathered
-      || sub.status === 'active'
-      || sub.status === 'grandfathered'
-      || (sub.status === 'trial' && !trialExpired);
+  // Fase de cobrança recusada (carência antes da suspensão).
+  const paymentPhase = getPaymentPhase(sub, now);
+  const graceDaysLeft = getGraceDaysLeft(sub, now);
+  const hasAccess = hasSubscriptionAccess(sub, now);
 
   return {
     subscription: sub,
@@ -143,7 +141,12 @@ export function useAccountSubscription() {
     isTrialing,
     trialEligible,
     hasAccess,
+    /** 'ok' | 'grace' | 'suspended' */
+    paymentPhase,
+    inGracePeriod: paymentPhase === 'grace',
+    graceDaysLeft,
     isLoading: query.isLoading,
   };
 }
+
 

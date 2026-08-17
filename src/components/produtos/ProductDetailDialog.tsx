@@ -618,11 +618,15 @@ export function ProductDetailDialog({
     } else if (active && onUpdatePurchase && qty) {
       await onUpdatePurchase({ id: active.id, cycle_quantity: qty });
     }
+    // A quantidade em uso também fica no produto: assim o ciclo continua correto
+    // mesmo quando o mesmo lote passa por vários ciclos (sem compra nova).
     await onUpdateProduct({
       id: product.id,
       started_using_at: dateStr,
       finished_at: null as any,
+      cycle_quantity: qty as any,
     });
+
     toast.success(
       qty
         ? `Início do uso registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(qty)} ${PRODUCT_UNITS.find(u => u.value === product.unit)?.label} em uso.`

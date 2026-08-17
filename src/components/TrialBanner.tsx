@@ -1,15 +1,37 @@
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Sparkles } from 'lucide-react';
 
 /**
- * Banner persistente exibido no topo da app quando a assinatura está pendente.
- * O redirecionamento para /assinatura é feito pelo ProtectedRoute — não repetimos link aqui.
+ * Banner persistente no topo da app.
+ * - Teste gratuito em andamento: informa dias restantes e a data da cobrança
+ *   automática no cartão salvo.
+ * - Assinatura pendente/atrasada: alerta. O redirecionamento para /assinatura é
+ *   feito pelo ProtectedRoute — não repetimos link aqui.
  */
 export function TrialBanner() {
-  const { subscription } = useAccountSubscription();
+  const { subscription, isTrialing, trialDaysLeft } = useAccountSubscription();
 
   if (!subscription) return null;
   if (subscription.status === 'active' || subscription.status === 'grandfathered') return null;
+
+  if (isTrialing) {
+    const chargeDate = subscription.trial_ends_at
+      ? new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')
+      : null;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="w-full px-4 py-2 text-sm flex items-center justify-center gap-2 bg-primary/10 text-primary"
+      >
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
+        <span>
+          Teste gratuito — {trialDaysLeft} {trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}
+          {chargeDate ? `. Cobrança automática no cartão em ${chargeDate}.` : '.'}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -22,4 +44,3 @@ export function TrialBanner() {
     </div>
   );
 }
-

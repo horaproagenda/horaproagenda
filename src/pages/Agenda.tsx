@@ -1700,6 +1700,8 @@ const Agenda = () => {
             onAbsenceClick={handleAbsenceClick}
             mobileView={mobileView}
             onDateSelect={handleMobileDateSelect}
+            hideSunday={hideSunday}
+
           />
         </div>
       </div>

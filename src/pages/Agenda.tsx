@@ -304,37 +304,10 @@ const Agenda = () => {
     });
   }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
-  const weekDays = useMemo(() => {
-    const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-    if (hideSunday) {
-      return allDays.filter(day => getDay(day) !== 0); // 0 = Sunday
-    }
-    return allDays;
-  }, [weekStart, hideSunday]);
+  const weekDays = useMemo(() => buildWeekDays(weekStart, hideSunday), [weekStart, hideSunday]);
 
-  const monthDays = useMemo(() => {
-    const start = startOfMonth(monthStart);
-    const end = endOfMonth(monthStart);
-    const days = eachDayOfInterval({ start, end });
-    
-    const firstDayOfMonth = getDay(start);
-    const daysFromPrevMonth = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-    const prevMonthDays = Array.from({ length: daysFromPrevMonth }, (_, i) => 
-      addDays(start, -(daysFromPrevMonth - i))
-    );
-    
-    const lastDayOfMonth = getDay(end);
-    const daysFromNextMonth = lastDayOfMonth === 0 ? 0 : 7 - lastDayOfMonth;
-    const nextMonthDays = Array.from({ length: daysFromNextMonth }, (_, i) => 
-      addDays(end, i + 1)
-    );
-    
-    let allDays = [...prevMonthDays, ...days, ...nextMonthDays];
-    if (hideSunday) {
-      allDays = allDays.filter(day => getDay(day) !== 0);
-    }
-    return allDays;
-  }, [monthStart, hideSunday]);
+  const monthDays = useMemo(() => buildMonthGridDays(monthStart, hideSunday), [monthStart, hideSunday]);
+
 
   // Filter appointments by search, professional, room, status and payment
   // Keep package-linked sessions visible even when their appointment status was marked as rescheduled,

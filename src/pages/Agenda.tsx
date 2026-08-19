@@ -17,6 +17,8 @@ import {
 } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ptBR } from 'date-fns/locale';
+import { buildWeekDays, buildMonthGridDays, weekdayLabels, gridColumnsStyle, weekGridColumnsStyle } from '@/lib/agendaGrid';
+
 import {
   ChevronLeft, 
   ChevronRight, 
@@ -304,37 +306,10 @@ const Agenda = () => {
     });
   }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
-  const weekDays = useMemo(() => {
-    const allDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-    if (hideSunday) {
-      return allDays.filter(day => getDay(day) !== 0); // 0 = Sunday
-    }
-    return allDays;
-  }, [weekStart, hideSunday]);
+  const weekDays = useMemo(() => buildWeekDays(weekStart, hideSunday), [weekStart, hideSunday]);
 
-  const monthDays = useMemo(() => {
-    const start = startOfMonth(monthStart);
-    const end = endOfMonth(monthStart);
-    const days = eachDayOfInterval({ start, end });
-    
-    const firstDayOfMonth = getDay(start);
-    const daysFromPrevMonth = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-    const prevMonthDays = Array.from({ length: daysFromPrevMonth }, (_, i) => 
-      addDays(start, -(daysFromPrevMonth - i))
-    );
-    
-    const lastDayOfMonth = getDay(end);
-    const daysFromNextMonth = lastDayOfMonth === 0 ? 0 : 7 - lastDayOfMonth;
-    const nextMonthDays = Array.from({ length: daysFromNextMonth }, (_, i) => 
-      addDays(end, i + 1)
-    );
-    
-    let allDays = [...prevMonthDays, ...days, ...nextMonthDays];
-    if (hideSunday) {
-      allDays = allDays.filter(day => getDay(day) !== 0);
-    }
-    return allDays;
-  }, [monthStart, hideSunday]);
+  const monthDays = useMemo(() => buildMonthGridDays(monthStart, hideSunday), [monthStart, hideSunday]);
+
 
   // Filter appointments by search, professional, room, status and payment
   // Keep package-linked sessions visible even when their appointment status was marked as rescheduled,
@@ -1252,7 +1227,7 @@ const Agenda = () => {
   const renderWeekView = () => (
     <div className="space-y-2 sm:space-y-4 overflow-x-auto">
       {/* Week days header - Scrollable on mobile */}
-      <div className={cn("grid gap-0.5 min-w-[600px] sm:min-w-0", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
+      <div className="grid gap-0.5 min-w-[600px] sm:min-w-0" style={weekGridColumnsStyle(weekDays.length)}>
         <div className="w-10 sm:w-14 flex-shrink-0" /> {/* Empty space for time column */}
         {weekDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
@@ -1317,7 +1292,7 @@ const Agenda = () => {
 
         <div className="space-y-0.5 min-w-[600px] sm:min-w-0">
           {timeSlots.map(time => (
-            <div key={time} className={cn("grid gap-0.5 min-h-[26px]", hideSunday ? "grid-cols-7" : "grid-cols-8")}>
+            <div key={time} className="grid gap-0.5 min-h-[26px]" style={weekGridColumnsStyle(weekDays.length)}>
               <div className="w-10 sm:w-14 flex items-center justify-center text-[9px] sm:text-[10px] font-medium text-muted-foreground flex-shrink-0">
                 {time}
               </div>
@@ -1395,8 +1370,8 @@ const Agenda = () => {
   const renderMonthView = () => (
     <div className="space-y-4">
       {/* Week days header */}
-      <div className={cn("grid gap-1", hideSunday ? "grid-cols-6" : "grid-cols-7")}>
-        {(hideSunday ? ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] : ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']).map(day => (
+      <div className="grid gap-1" style={gridColumnsStyle(hideSunday ? 6 : 7)}>
+        {weekdayLabels(hideSunday).map(day => (
           <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
             {day}
           </div>
@@ -1404,7 +1379,7 @@ const Agenda = () => {
       </div>
 
       {/* Calendar grid */}
-      <div className={cn("grid gap-1", hideSunday ? "grid-cols-6" : "grid-cols-7")}>
+      <div className="grid gap-1" style={gridColumnsStyle(hideSunday ? 6 : 7)}>
         {monthDays.map(day => {
           const isSelected = isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());
@@ -1725,6 +1700,8 @@ const Agenda = () => {
             onAbsenceClick={handleAbsenceClick}
             mobileView={mobileView}
             onDateSelect={handleMobileDateSelect}
+            hideSunday={hideSunday}
+
           />
         </div>
       </div>

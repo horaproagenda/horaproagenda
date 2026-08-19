@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, isSameDay, isSameMonth, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
+import { format, isSameDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Clock,
@@ -17,6 +17,7 @@ import { getAppointmentStatusConfig } from '@/lib/appointmentStatus';
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
 import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { buildMonthGridDays, buildWeekDays, gridColumnsStyle, weekdayLabels } from '@/lib/agendaGrid';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];
@@ -27,6 +28,8 @@ interface MobileAgendaListProps {
   onAbsenceClick?: (absence: ProfessionalAbsence) => void;
   mobileView: MobileViewType;
   onDateSelect: (date: Date) => void;
+  /** Quando ligado, domingos não aparecem nas visões semana e mês. */
+  hideSunday?: boolean;
 }
 
 const paymentConfig = {
@@ -84,6 +87,7 @@ export function MobileAgendaList({
   onAbsenceClick,
   mobileView,
   onDateSelect,
+  hideSunday = false,
 }: MobileAgendaListProps) {
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
@@ -95,6 +99,7 @@ export function MobileAgendaList({
         absences={absences}
         professionals={professionals}
         onDateSelect={onDateSelect}
+        hideSunday={hideSunday}
       />
     );
   }
@@ -110,6 +115,7 @@ export function MobileAgendaList({
         onAbsenceClick={onAbsenceClick}
         onDateSelect={onDateSelect}
         packageSequenceMap={packageSequenceMap}
+        hideSunday={hideSunday}
       />
     );
   }
@@ -198,7 +204,7 @@ function MobileDayView({ selectedDate, appointments, absences, professionals, on
 }
 
 // ─── Week View ──────────────────────────────────────────
-function MobileWeekView({ selectedDate, appointments, absences, professionals, onAppointmentClick, onAbsenceClick, onDateSelect, packageSequenceMap }: {
+function MobileWeekView({ selectedDate, appointments, absences, professionals, onAppointmentClick, onAbsenceClick, onDateSelect, packageSequenceMap, hideSunday }: {
   selectedDate: Date;
   appointments: Appointment[];
   absences: ProfessionalAbsence[];
@@ -207,9 +213,9 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
   onAbsenceClick?: (a: ProfessionalAbsence) => void;
   onDateSelect: (date: Date) => void;
   packageSequenceMap: Map<string, number>;
+  hideSunday: boolean;
 }) {
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekDays = useMemo(() => buildWeekDays(selectedDate, hideSunday), [selectedDate, hideSunday]);
 
   return (
     <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
@@ -272,39 +278,29 @@ function MobileWeekView({ selectedDate, appointments, absences, professionals, o
 }
 
 // ─── Month View ─────────────────────────────────────────
-function MobileMonthView({ selectedDate, appointments, absences, onDateSelect }: {
+function MobileMonthView({ selectedDate, appointments, absences, onDateSelect, hideSunday }: {
   selectedDate: Date;
   appointments: Appointment[];
   absences: ProfessionalAbsence[];
   professionals: Professional[];
   onDateSelect: (date: Date) => void;
+  hideSunday: boolean;
 }) {
-  const monthStart = startOfMonth(selectedDate);
-  const monthEnd = endOfMonth(selectedDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  const firstDayOfMonth = getDay(monthStart);
-  const padStart = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-  const prevDays = Array.from({ length: padStart }, (_, i) => addDays(monthStart, -(padStart - i)));
-
-  const lastDay = getDay(monthEnd);
-  const padEnd = lastDay === 0 ? 0 : 7 - lastDay;
-  const nextDays = Array.from({ length: padEnd }, (_, i) => addDays(monthEnd, i + 1));
-
-  const allDays = [...prevDays, ...days, ...nextDays];
+  const columns = hideSunday ? 6 : 7;
+  const allDays = useMemo(() => buildMonthGridDays(selectedDate, hideSunday), [selectedDate, hideSunday]);
 
   return (
     <ScrollArea className="h-[calc(100dvh-210px-env(safe-area-inset-bottom,0px))]">
       <div className="px-4 pl-safe pr-safe pb-4 pt-1">
-        <div className="grid grid-cols-7 mb-1">
-          {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((d) => (
+        <div className="grid mb-1" style={gridColumnsStyle(columns)}>
+          {weekdayLabels(hideSunday).map((d) => (
             <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground uppercase py-1">
               {d}
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-0.5">
+        <div className="grid gap-0.5" style={gridColumnsStyle(columns)}>
           {allDays.map((day) => {
             const isCurrentMonth = isSameMonth(day, selectedDate);
             const isSelected = isSameDay(day, selectedDate);

@@ -17,6 +17,8 @@ import {
 } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ptBR } from 'date-fns/locale';
+import { buildWeekDays, buildMonthGridDays, weekdayLabels, gridColumnsStyle, weekGridColumnsStyle } from '@/lib/agendaGrid';
+
 import {
   ChevronLeft, 
   ChevronRight, 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, isSameDay, isSameMonth, startOfWeek, addDays, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
+import { format, isSameDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Clock,

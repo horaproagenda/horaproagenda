@@ -111,12 +111,20 @@ describe('regressão: mensagens de erro humanizadas', () => {
     expect(toast).toMatch(/humanize/i);
   });
 
-  it('componentes importam toast de @/lib/toast (não do sonner direto)', () => {
+  // O alias do Vite manda 'sonner' para o wrapper humanizado; o pacote real é
+  // 'sonner-original'. Se o alias cair, toda notificação volta a ser crua.
+  it('o alias sonner → src/lib/toast continua configurado no Vite', () => {
+    const vite = read('vite.config.ts');
+    expect(vite).toMatch(/sonner-original/);
+    expect(vite).toMatch(/sonner['"]?\s*:/);
+    expect(vite).toMatch(/lib\/toast/);
+  });
+
+  it('nenhum arquivo do app importa sonner-original direto (só o wrapper)', () => {
     const offenders = sources
       .filter(s => !s.file.startsWith('src/lib/toast'))
-      .filter(s => !s.file.includes('components/ui/'))
-      .filter(s => /from\s+['"]sonner['"]/.test(s.code))
+      .filter(s => /from\s+['"]sonner-original['"]/.test(s.code))
       .map(s => s.file);
-    expect(offenders, `Importam sonner direto: ${offenders.join(', ')}`).toEqual([]);
+    expect(offenders, `Importam sonner-original direto: ${offenders.join(', ')}`).toEqual([]);
   });
 });

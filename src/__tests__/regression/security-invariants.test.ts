@@ -116,7 +116,7 @@ describe('regressão: mensagens de erro humanizadas', () => {
   it('o alias sonner → src/lib/toast continua configurado no Vite', () => {
     const vite = read('vite.config.ts');
     expect(vite).toMatch(/sonner-original/);
-    expect(vite).toMatch(/sonner['"]?\s*:/);
+    expect(vite).toMatch(/\^sonner\$/);
     expect(vite).toMatch(/lib\/toast/);
   });
 

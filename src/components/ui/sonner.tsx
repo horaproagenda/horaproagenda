@@ -10,7 +10,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Respeita a barra de gestos / safe-area inferior do iPhone.
+      style={{ ["--offset-bottom" as string]: "calc(1rem + env(safe-area-inset-bottom, 0px))", ["--offset-top" as string]: "calc(1rem + env(safe-area-inset-top, 0px))" }}
       closeButton
+
       toastOptions={{
         classNames: {
           toast:

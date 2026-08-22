@@ -73,8 +73,8 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         // Safe-area é reservada dentro do layout via .pt-safe/.pb-safe nos
         // filhos, para NÃO subtrair da altura total (isso deixava faixa em
         // branco no rodapé em notebooks/desktop).
-        height: '100dvh',
-        maxHeight: '100dvh',
+        height: 'calc(100dvh - var(--kb-inset, 0px))',
+        maxHeight: 'calc(100dvh - var(--kb-inset, 0px))',
       }}
     >
 

@@ -231,7 +231,7 @@ const Ajuda = () => {
   return (
     <AppLayout title="Central de Ajuda" subtitle="Guia completo do sistema">
       <PageTransition>
-        <ScrollArea className="h-[calc(100vh-120px)]">
+        <ScrollArea className="h-[calc(100dvh-120px)]">
           <div className="space-y-4 pr-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <div className="flex items-center justify-between mb-2 px-1">

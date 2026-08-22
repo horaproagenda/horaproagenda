@@ -1790,7 +1790,7 @@ const Agenda = () => {
         <Sheet open={showMobileAbsencePanel} onOpenChange={setShowMobileAbsencePanel}>
           <SheetContent
             side="bottom"
-            className="h-[100dvh] max-h-[100dvh] w-screen p-0 rounded-none flex flex-col"
+            className="h-[calc(100dvh-var(--kb-inset,0px))] max-h-[calc(100dvh-var(--kb-inset,0px))] w-screen p-0 rounded-none flex flex-col"
           >
             <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/50 shrink-0">
               <SheetTitle className="flex items-center gap-2 text-base">
@@ -1819,7 +1819,7 @@ const Agenda = () => {
         <Sheet open={showAutomationsSheet} onOpenChange={setShowAutomationsSheet}>
           <SheetContent
             side="bottom"
-            className="h-[100dvh] max-h-[100dvh] w-screen p-0 rounded-none flex flex-col"
+            className="h-[calc(100dvh-var(--kb-inset,0px))] max-h-[calc(100dvh-var(--kb-inset,0px))] w-screen p-0 rounded-none flex flex-col"
           >
             <SheetHeader className="px-4 pt-4 pb-3 border-b border-border/50 shrink-0">
               <SheetTitle className="flex items-center gap-2 text-base">

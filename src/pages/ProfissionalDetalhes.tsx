@@ -478,7 +478,7 @@ export default function ProfissionalDetalhes() {
       subtitle="Detalhes do profissional"
     >
       <PageTransition>
-        <ScrollArea className="h-[calc(100vh-120px)]">
+        <ScrollArea className="h-[calc(100dvh-120px)]">
           <div className="space-y-6 pr-4">
             {/* Back button and header */}
             <div className="flex items-center justify-between">

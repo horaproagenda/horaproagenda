@@ -159,29 +159,103 @@ export function ServiceProductsDialog() {
     );
   }, [products]);
 
-  // Calculate usage per appointment from date-based tracking
-  const calculatedUsagePerAppointment = useMemo(() => {
-    if (knowsQuantity === 'yes' || !selectedProductData || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-    return normalizedContainer / estimatedAppointments;
-  }, [knowsQuantity, selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+  // Modo de cálculo: 'manual' = sei o consumo | 'auto' = o app calcula
+  const calcMode: UsageCalcMode = knowsQuantity === 'yes' ? 'manual' : 'auto';
 
-  // Calculate total appointments possible with total stock
-  const totalAppointmentsPossible = useMemo(() => {
-    if (!selectedProductData || !containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    const totalStock = selectedProductData.current_stock;
-    // Convert container unit to stock unit if different
-    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-    if (normalizedContainer <= 0) return null;
-    const containersFromStock = totalStock / normalizedContainer;
-    return Math.floor(containersFromStock * estimatedAppointments);
-  }, [selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+  // Serviços considerados na contagem de atendimentos (aba de serviços ou
+  // serviços das etapas dos modelos de pacote selecionados).
+  const templateServiceIds = useMemo(() => {
+    const ids = new Set<string>();
+    selectedTemplates.forEach(id => {
+      const t: any = packageTemplates.find((tpl: any) => tpl.id === id);
+      (t?.steps || []).forEach((s: any) => { if (s?.service_id) ids.add(s.service_id); });
+    });
+    return Array.from(ids);
+  }, [selectedTemplates, packageTemplates]);
 
-  // Calculate days of usage from dates
+  const countedServiceIds = activeTab === 'packages' ? templateServiceIds : selectedServices;
+
+  // Atendimentos já contados em outros frascos do mesmo produto
+  const alreadyCountedAppointmentIds = useMemo(
+    () => usedAppointmentIds(selectedProduct || undefined),
+    [usageRecords, selectedProduct],
+  );
+
+  // Atendimentos válidos do período (datas inclusivas, sem cancelados/faltas/duplicados)
+  const periodAppointments = useMemo(() => {
+    if (!usageStartDate || !usageEndDate || usageEndDate < usageStartDate) return [];
+    return findAppointmentsInPeriod({
+      appointments: appointments as any,
+      serviceIds: countedServiceIds,
+      startDate: usageStartDate,
+      endDate: usageEndDate,
+      excludeAppointmentIds: alreadyCountedAppointmentIds,
+    });
+  }, [appointments, countedServiceIds, usageStartDate, usageEndDate, alreadyCountedAppointmentIds]);
+
+  const usage = useMemo(() => {
+    if (!selectedProductData) return null;
+    return computeUsage({
+      mode: calcMode,
+      containerAmount,
+      containerUnit: containerUnit || selectedProductData.unit,
+      quantityPerAppointment: quantityPerUse,
+      quantityUnit: selectedUnit || selectedProductData.unit,
+      appointmentsCounted: periodAppointments.length,
+      stockQuantity: selectedProductData.current_stock,
+      stockUnit: selectedProductData.unit,
+    });
+  }, [calcMode, containerAmount, containerUnit, quantityPerUse, selectedUnit, periodAppointments.length, selectedProductData]);
+
+  const validationErrors = useMemo(() => {
+    if (!selectedProductData) return [];
+    return validateUsage({
+      mode: calcMode,
+      containerAmount,
+      containerUnit: containerUnit || selectedProductData.unit,
+      quantityPerAppointment: quantityPerUse,
+      quantityUnit: selectedUnit || selectedProductData.unit,
+      startDate: usageStartDate,
+      endDate: usageEndDate,
+      serviceIds: activeTab === 'packages' ? selectedTemplates : selectedServices,
+      appointmentsCounted: periodAppointments.length,
+      stockUnit: selectedProductData.unit,
+    });
+  }, [calcMode, containerAmount, containerUnit, quantityPerUse, selectedUnit, usageStartDate, usageEndDate, activeTab, selectedTemplates, selectedServices, periodAppointments.length, selectedProductData]);
+
+  // Calculate days of usage from dates (inclusivo)
   const usageDays = useMemo(() => {
     if (!usageStartDate || !usageEndDate) return null;
-    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00'));
+    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00')) + 1;
   }, [usageStartDate, usageEndDate]);
+
+  /** Consumo por atendimento na unidade do estoque, para gravar no vínculo. */
+  const perUseInStockUnit = useMemo(() => {
+    if (!selectedProductData || !usage?.perAppointment) return 0;
+    return convertWithinFamily(usage.perAppointment, containerUnit || selectedProductData.unit, selectedProductData.unit)
+      ?? usage.perAppointment;
+  }, [usage, containerUnit, selectedProductData]);
+
+  const saveUsageRecord = async (target: { serviceId?: string; templateId?: string }) => {
+    if (!selectedProductData || !usage) return;
+    await createUsageRecord.mutateAsync({
+      product_id: selectedProduct,
+      service_id: target.serviceId ?? null,
+      package_template_id: target.templateId ?? null,
+      calc_mode: calcMode,
+      container_amount: containerAmount,
+      container_unit: containerUnit || selectedProductData.unit,
+      quantity_per_appointment: calcMode === 'manual' ? usage.perAppointment : null,
+      avg_quantity_per_appointment: calcMode === 'auto' ? usage.perAppointment : null,
+      start_date: usageStartDate,
+      end_date: usageEndDate,
+      appointments_counted: periodAppointments.length,
+      appointment_ids: periodAppointments.map(a => a.id),
+      total_consumed: usage.totalConsumed,
+      container_yield: usage.containerYield,
+    } as any);
+  };
+
 
   const handleAddToService = async () => {
     if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;

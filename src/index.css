@@ -1439,3 +1439,96 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .rich-document-view td,
 .rich-document-view th { border: 1px solid hsl(var(--border)); padding: 0.25rem 0.5rem; }
 .rich-document-view a { text-decoration: underline; }
+
+/* ===========================================================
+   MOBILE HARDENING (iPhone/Android) — revisão completa
+   =========================================================== */
+
+/* 1) Quebra de palavras: nenhum texto longo (e-mail, URL, nome
+      composto) pode estourar a largura da tela. */
+body,
+p, span, li, td, th, dd, dt, label, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 2) Nenhuma mídia pode ultrapassar o container. */
+img, svg, video, canvas, iframe {
+  max-width: 100%;
+}
+
+/* 3) Campo focado nunca colado no topo/rodapé ao rolar. */
+input:focus, textarea:focus, select:focus, [contenteditable]:focus {
+  scroll-margin-top: 96px;
+  scroll-margin-bottom: 120px;
+}
+
+/* 4) Alvos de toque mínimos em telas com dedo (pointer: coarse).
+      Elementos densos podem optar por sair via [data-no-touch-target]. */
+@media (pointer: coarse) {
+  button:not([data-no-touch-target]):not([data-slot="agenda-block"]),
+  [role="tab"]:not([data-no-touch-target]),
+  [role="menuitem"]:not([data-no-touch-target]),
+  [role="option"]:not([data-no-touch-target]),
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"] {
+    min-height: 34px;
+  }
+  /* Ícones isolados também precisam de área clicável quadrada. */
+  button.h-6:not([data-no-touch-target]),
+  button.h-7:not([data-no-touch-target]),
+  button.h-8:not([data-no-touch-target]) {
+    min-width: 34px;
+  }
+}
+
+/* 5) Container principal do app: respeita teclado virtual e safe-area
+      inferior do iPhone (barra de gestos). */
+[data-testid="app-main-scroll"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px));
+}
+
+/* 6) Diálogos e sheets: rolagem interna suave e rodapé acima do
+      teclado/safe-area. Nunca cortam os botões de ação. */
+[data-radix-dialog-content],
+[role="dialog"] {
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 767px) {
+  [role="dialog"] {
+    scroll-padding-bottom: 96px;
+  }
+}
+
+/* 7) Tabelas em telas pequenas: rolagem horizontal por toque, com a
+      rolagem vertical da página preservada. */
+@media (max-width: 767px) {
+  [data-table-wrapper],
+  .table-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+  }
+  /* Impede que colunas fiquem "espremidas" — melhor rolar. */
+  [data-table-wrapper] table,
+  .table-scroll-container table {
+    min-width: max-content;
+  }
+}
+
+/* 8) Grades densas viram coluna única em telas muito estreitas. */
+@media (max-width: 359px) {
+  .grid.grid-cols-2 > * {
+    min-width: 0;
+  }
+}
+
+/* 9) Modo paisagem em celular: diálogos usam quase toda a altura. */
+@media (max-height: 460px) and (orientation: landscape) {
+  [data-radix-dialog-content] {
+    max-height: calc(100dvh - 0.75rem);
+  }
+}

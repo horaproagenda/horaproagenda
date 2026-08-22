@@ -15,6 +15,7 @@
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "test:pipeline": "tsc --noEmit && playwright test e2e/regression-utils.spec.ts && vitest run",
     "test:regression": "bun run lint && bun run typecheck && bun run test:unit && bun run build && bun run test",
+    "test:prepublish": "bun run test:regression && bun run test:smoke",
     "preview": "vite preview"
   },
   "dependencies": {

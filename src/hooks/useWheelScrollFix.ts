@@ -29,8 +29,13 @@ const getScrollableParent = (start: EventTarget | null, deltaY: number, deltaX: 
 
 export function useWheelScrollFix() {
   useEffect(() => {
+    // Em telas de toque (Android/iOS) o navegador já resolve a rolagem;
+    // interceptar eventos aqui só cria disputa de gesto.
+    if (window.matchMedia?.('(pointer: coarse)').matches) return;
+
     const handleWheel = (event: WheelEvent) => {
       if (event.ctrlKey || event.defaultPrevented) return;
+
 
       const scroller = getScrollableParent(event.target, event.deltaY, event.deltaX);
       if (!scroller) return;

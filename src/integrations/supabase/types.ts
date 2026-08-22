@@ -2436,6 +2436,8 @@ export type Database = {
           template_id: string
           tracking_method: string | null
           updated_at: string
+          usage_end_date: string | null
+          usage_start_date: string | null
         }
         Insert: {
           account_owner_id?: string
@@ -2450,6 +2452,8 @@ export type Database = {
           template_id: string
           tracking_method?: string | null
           updated_at?: string
+          usage_end_date?: string | null
+          usage_start_date?: string | null
         }
         Update: {
           account_owner_id?: string
@@ -2464,6 +2468,8 @@ export type Database = {
           template_id?: string
           tracking_method?: string | null
           updated_at?: string
+          usage_end_date?: string | null
+          usage_start_date?: string | null
         }
         Relationships: [
           {
@@ -2996,6 +3002,94 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_usage_records: {
+        Row: {
+          account_owner_id: string
+          appointment_ids: string[]
+          appointments_counted: number
+          avg_quantity_per_appointment: number | null
+          calc_mode: string
+          container_amount: number
+          container_unit: string
+          container_yield: number | null
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          package_template_id: string | null
+          product_id: string
+          quantity_per_appointment: number | null
+          service_id: string | null
+          start_date: string
+          total_consumed: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id?: string
+          appointment_ids?: string[]
+          appointments_counted?: number
+          avg_quantity_per_appointment?: number | null
+          calc_mode?: string
+          container_amount: number
+          container_unit: string
+          container_yield?: number | null
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          package_template_id?: string | null
+          product_id: string
+          quantity_per_appointment?: number | null
+          service_id?: string | null
+          start_date: string
+          total_consumed?: number | null
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          appointment_ids?: string[]
+          appointments_counted?: number
+          avg_quantity_per_appointment?: number | null
+          calc_mode?: string
+          container_amount?: number
+          container_unit?: string
+          container_yield?: number | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          package_template_id?: string | null
+          product_id?: string
+          quantity_per_appointment?: number | null
+          service_id?: string | null
+          start_date?: string
+          total_consumed?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_usage_records_package_template_id_fkey"
+            columns: ["package_template_id"]
+            isOneToOne: false
+            referencedRelation: "package_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_usage_records_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_usage_records_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -3900,6 +3994,8 @@ export type Database = {
           service_id: string
           tracking_method: string | null
           updated_at: string
+          usage_end_date: string | null
+          usage_start_date: string | null
         }
         Insert: {
           account_owner_id?: string
@@ -3914,6 +4010,8 @@ export type Database = {
           service_id: string
           tracking_method?: string | null
           updated_at?: string
+          usage_end_date?: string | null
+          usage_start_date?: string | null
         }
         Update: {
           account_owner_id?: string
@@ -3928,6 +4026,8 @@ export type Database = {
           service_id?: string
           tracking_method?: string | null
           updated_at?: string
+          usage_end_date?: string | null
+          usage_start_date?: string | null
         }
         Relationships: [
           {

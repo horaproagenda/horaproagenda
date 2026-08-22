@@ -16,6 +16,8 @@ export interface ServiceProduct {
   container_amount: number | null;
   container_unit: string | null;
   tracking_method: TrackingMethod;
+  usage_start_date?: string | null;
+  usage_end_date?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -81,6 +83,8 @@ export function useServiceProducts(serviceId?: string) {
       container_amount?: number | null;
       container_unit?: string | null;
       tracking_method?: TrackingMethod;
+      usage_start_date?: string | null;
+      usage_end_date?: string | null;
       notes?: string | null;
     }) => {
       const { data, error } = await supabase
@@ -93,6 +97,8 @@ export function useServiceProducts(serviceId?: string) {
           container_amount: serviceProduct.container_amount ?? null,
           container_unit: serviceProduct.container_unit ?? null,
           tracking_method: serviceProduct.tracking_method ?? 'exact',
+          usage_start_date: serviceProduct.usage_start_date ?? null,
+          usage_end_date: serviceProduct.usage_end_date ?? null,
           notes: serviceProduct.notes ?? null,
         })
         .select()

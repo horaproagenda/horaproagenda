@@ -52,6 +52,16 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { convertQuantity } from '@/lib/productStock';
+import {
+  computeUsage,
+  containerEquivalents,
+  convertWithinFamily,
+  findAppointmentsInPeriod,
+  formatQuantity,
+  validateUsage,
+  type UsageCalcMode,
+} from '@/lib/productUsageCalc';
+import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -86,6 +96,7 @@ export function ServiceProductsDialog() {
   const { products, activeProducts, updateProduct } = useProducts();
   const { services } = useServices();
   const { appointments } = useAppointments();
+  const { usageRecords, createUsageRecord, usedAppointmentIds } = useProductUsageRecords();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
@@ -159,39 +170,109 @@ export function ServiceProductsDialog() {
     );
   }, [products]);
 
-  // Calculate usage per appointment from date-based tracking
-  const calculatedUsagePerAppointment = useMemo(() => {
-    if (knowsQuantity === 'yes' || !selectedProductData || !containerAmount || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-    return normalizedContainer / estimatedAppointments;
-  }, [knowsQuantity, selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+  // Modo de cálculo: 'manual' = sei o consumo | 'auto' = o app calcula
+  const calcMode: UsageCalcMode = knowsQuantity === 'yes' ? 'manual' : 'auto';
 
-  // Calculate total appointments possible with total stock
-  const totalAppointmentsPossible = useMemo(() => {
-    if (!selectedProductData || !containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0) return null;
-    const totalStock = selectedProductData.current_stock;
-    // Convert container unit to stock unit if different
-    const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-    if (normalizedContainer <= 0) return null;
-    const containersFromStock = totalStock / normalizedContainer;
-    return Math.floor(containersFromStock * estimatedAppointments);
-  }, [selectedProductData, containerAmount, containerUnit, estimatedAppointments]);
+  // Serviços considerados na contagem de atendimentos (aba de serviços ou
+  // serviços das etapas dos modelos de pacote selecionados).
+  const templateServiceIds = useMemo(() => {
+    const ids = new Set<string>();
+    selectedTemplates.forEach(id => {
+      const t: any = packageTemplates.find((tpl: any) => tpl.id === id);
+      (t?.steps || []).forEach((s: any) => { if (s?.service_id) ids.add(s.service_id); });
+    });
+    return Array.from(ids);
+  }, [selectedTemplates, packageTemplates]);
 
-  // Calculate days of usage from dates
+  const countedServiceIds = activeTab === 'packages' ? templateServiceIds : selectedServices;
+
+  // Atendimentos já contados em outros frascos do mesmo produto
+  const alreadyCountedAppointmentIds = useMemo(
+    () => usedAppointmentIds(selectedProduct || undefined),
+    [usageRecords, selectedProduct],
+  );
+
+  // Atendimentos válidos do período (datas inclusivas, sem cancelados/faltas/duplicados)
+  const periodAppointments = useMemo(() => {
+    if (!usageStartDate || !usageEndDate || usageEndDate < usageStartDate) return [];
+    return findAppointmentsInPeriod({
+      appointments: appointments as any,
+      serviceIds: countedServiceIds,
+      startDate: usageStartDate,
+      endDate: usageEndDate,
+      excludeAppointmentIds: alreadyCountedAppointmentIds,
+    });
+  }, [appointments, countedServiceIds, usageStartDate, usageEndDate, alreadyCountedAppointmentIds]);
+
+  const usage = useMemo(() => {
+    if (!selectedProductData) return null;
+    return computeUsage({
+      mode: calcMode,
+      containerAmount,
+      containerUnit: containerUnit || selectedProductData.unit,
+      quantityPerAppointment: quantityPerUse,
+      quantityUnit: selectedUnit || selectedProductData.unit,
+      appointmentsCounted: periodAppointments.length,
+      stockQuantity: selectedProductData.current_stock,
+      stockUnit: selectedProductData.unit,
+    });
+  }, [calcMode, containerAmount, containerUnit, quantityPerUse, selectedUnit, periodAppointments.length, selectedProductData]);
+
+  const validationErrors = useMemo(() => {
+    if (!selectedProductData) return [];
+    return validateUsage({
+      mode: calcMode,
+      containerAmount,
+      containerUnit: containerUnit || selectedProductData.unit,
+      quantityPerAppointment: quantityPerUse,
+      quantityUnit: selectedUnit || selectedProductData.unit,
+      startDate: usageStartDate,
+      endDate: usageEndDate,
+      serviceIds: activeTab === 'packages' ? selectedTemplates : selectedServices,
+      appointmentsCounted: periodAppointments.length,
+      stockUnit: selectedProductData.unit,
+    });
+  }, [calcMode, containerAmount, containerUnit, quantityPerUse, selectedUnit, usageStartDate, usageEndDate, activeTab, selectedTemplates, selectedServices, periodAppointments.length, selectedProductData]);
+
+  // Calculate days of usage from dates (inclusivo)
   const usageDays = useMemo(() => {
     if (!usageStartDate || !usageEndDate) return null;
-    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00'));
+    return differenceInDays(new Date(usageEndDate + 'T12:00:00'), new Date(usageStartDate + 'T12:00:00')) + 1;
   }, [usageStartDate, usageEndDate]);
 
-  const handleAddToService = async () => {
-    if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
+  /** Consumo por atendimento na unidade do estoque, para gravar no vínculo. */
+  const perUseInStockUnit = useMemo(() => {
+    if (!selectedProductData || !usage?.perAppointment) return 0;
+    return convertWithinFamily(usage.perAppointment, containerUnit || selectedProductData.unit, selectedProductData.unit)
+      ?? usage.perAppointment;
+  }, [usage, containerUnit, selectedProductData]);
 
-    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
-      toast.error('Informe uma quantidade por uso maior que zero.');
-      return;
-    }
-    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
-      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+  const saveUsageRecord = async (target: { serviceId?: string; templateId?: string }) => {
+    if (!selectedProductData || !usage) return;
+    await createUsageRecord.mutateAsync({
+      product_id: selectedProduct,
+      service_id: target.serviceId ?? null,
+      package_template_id: target.templateId ?? null,
+      calc_mode: calcMode,
+      container_amount: containerAmount,
+      container_unit: containerUnit || selectedProductData.unit,
+      quantity_per_appointment: calcMode === 'manual' ? usage.perAppointment : null,
+      avg_quantity_per_appointment: calcMode === 'auto' ? usage.perAppointment : null,
+      start_date: usageStartDate,
+      end_date: usageEndDate,
+      appointments_counted: periodAppointments.length,
+      appointment_ids: periodAppointments.map(a => a.id),
+      total_consumed: usage.totalConsumed,
+      container_yield: usage.containerYield,
+    } as any);
+  };
+
+
+  const handleAddToService = async () => {
+    if (!selectedProduct || !selectedProductData || !usage) return;
+
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
       return;
     }
 
@@ -209,47 +290,32 @@ export function ServiceProductsDialog() {
     }
     if (servicesToLink.length === 0) return;
 
-    if (knowsQuantity === 'yes') {
-      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
-        service_id: serviceId,
-        product_id: selectedProduct,
-        quantity_per_use: normalizedQuantity,
-        tracking_method: 'exact',
-        notes: null,
-      })));
-    } else {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
-        ? normalizedContainer / estimatedAppointments 
-        : 0;
-      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
-        service_id: serviceId,
-        product_id: selectedProduct,
-        quantity_per_use: calcQty,
-        estimated_appointments: estimatedAppointments || null,
-        container_amount: containerAmount || null,
-        container_unit: containerUnit || selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: usageStartDate && usageEndDate 
-          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
-          : null,
-      })));
-    }
+    await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+      service_id: serviceId,
+      product_id: selectedProduct,
+      quantity_per_use: perUseInStockUnit,
+      estimated_appointments: calcMode === 'auto' ? periodAppointments.length : null,
+      container_amount: containerAmount || null,
+      container_unit: containerUnit || selectedProductData.unit,
+      tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
+      usage_start_date: usageStartDate,
+      usage_end_date: usageEndDate,
+      notes: calcMode === 'auto'
+        ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
+        : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
+    })));
+
+    await Promise.all(servicesToLink.map(serviceId => saveUsageRecord({ serviceId })));
 
     toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
     resetForm();
   };
 
   const handleAddToTemplate = async () => {
-    if (selectedTemplates.length === 0 || !selectedProduct || !selectedProductData) return;
+    if (!selectedProduct || !selectedProductData || !usage) return;
 
-    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
-      toast.error('Informe uma quantidade por uso maior que zero.');
-      return;
-    }
-    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
-      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
       return;
     }
 
@@ -267,37 +333,27 @@ export function ServiceProductsDialog() {
     }
     if (templatesToLink.length === 0) return;
 
-    if (knowsQuantity === 'yes') {
-      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
-        template_id: templateId,
-        product_id: selectedProduct,
-        quantity_per_use: normalizedQuantity,
-        tracking_method: 'exact',
-        notes: null,
-      })));
-    } else {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
-        ? normalizedContainer / estimatedAppointments 
-        : 0;
-      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
-        template_id: templateId,
-        product_id: selectedProduct,
-        quantity_per_use: calcQty,
-        estimated_appointments: estimatedAppointments || null,
-        container_amount: containerAmount || null,
-        container_unit: containerUnit || selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: usageStartDate && usageEndDate 
-          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
-          : null,
-      })));
-    }
+    await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+      template_id: templateId,
+      product_id: selectedProduct,
+      quantity_per_use: perUseInStockUnit,
+      estimated_appointments: calcMode === 'auto' ? periodAppointments.length : null,
+      container_amount: containerAmount || null,
+      container_unit: containerUnit || selectedProductData.unit,
+      tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
+      usage_start_date: usageStartDate,
+      usage_end_date: usageEndDate,
+      notes: calcMode === 'auto'
+        ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
+        : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
+    })));
+
+    await Promise.all(templatesToLink.map(templateId => saveUsageRecord({ templateId })));
 
     toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
     resetForm();
   };
+
 
   const resetForm = () => {
     setSelectedProduct('');
@@ -555,43 +611,41 @@ export function ServiceProductsDialog() {
               </Badge>
             </div>
 
-            {/* Do you know the quantity per use? */}
+            {/* Modo de cálculo do consumo */}
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Você sabe a quantidade que gasta por atendimento?</Label>
+              <Label className="text-xs font-medium">Como você quer informar o consumo por atendimento?</Label>
               <RadioGroup 
                 value={knowsQuantity} 
                 onValueChange={(v) => setKnowsQuantity(v as 'yes' | 'no')}
-                className="flex gap-4"
+                className="flex flex-col gap-2 sm:flex-row sm:gap-4"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="knows-yes" />
-                  <Label htmlFor="knows-yes" className="text-sm cursor-pointer">Sim, eu sei</Label>
+                  <Label htmlFor="knows-yes" className="text-sm cursor-pointer">Sei a quantidade exata por atendimento</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="no" id="knows-no" />
-                  <Label htmlFor="knows-no" className="text-sm cursor-pointer">Não sei, quero calcular</Label>
+                  <Label htmlFor="knows-no" className="text-sm cursor-pointer">Não sei — o aplicativo calcula</Label>
                 </div>
               </RadioGroup>
             </div>
 
-            {knowsQuantity === 'yes' ? (
-              /* EXACT MODE - knows quantity */
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Quantidade por atendimento</Label>
+            {/* Frasco em uso (os dois modos) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Quantidade do frasco em uso</Label>
+                <div className="flex gap-2">
                   <Input
                     type="number"
-                    value={quantityPerUse || ''}
-                    onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                    value={containerAmount || ''}
+                    onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
                     min="0.01"
                     step="0.01"
-                    placeholder="Ex: 50"
+                    className="flex-1"
+                    placeholder="Ex: 500"
                   />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Unidade</Label>
-                  <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-                    <SelectTrigger>
+                  <Select value={containerUnit} onValueChange={setContainerUnit}>
+                    <SelectTrigger className="w-24">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -601,149 +655,181 @@ export function ServiceProductsDialog() {
                     </SelectContent>
                   </Select>
                 </div>
-                {quantityPerUse > 0 && (
-                  <div className="col-span-2 p-2 rounded-md bg-muted/50 text-xs space-y-1">
-                    <div className="flex items-center gap-1">
-                      <Info className="h-3 w-3 text-primary" />
-                      <span className="font-medium">Projeção:</span>
-                    </div>
-                    <p>
-                      Com o estoque atual de {selectedProductData.current_stock} {PRODUCT_UNITS[selectedProductData.unit]}, 
-                      você consegue fazer aproximadamente{' '}
-                      <strong>{Math.floor(selectedProductData.current_stock / (convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse))} atendimentos</strong>
-                    </p>
-                  </div>
-                )}
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Quantidade colocada em uso agora (ex.: 500 g de um total de 25 kg).
+                </p>
               </div>
-            ) : (
-              /* ESTIMATED MODE - doesn't know quantity, will calculate */
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Quantidade no recipiente</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        value={containerAmount || ''}
-                        onChange={(e) => setContainerAmount(parseFloat(e.target.value) || 0)}
-                        min="0.01"
-                        step="0.01"
-                        className="flex-1"
-                        placeholder="Ex: 500"
-                      />
-                      <Select value={containerUnit} onValueChange={setContainerUnit}>
-                        <SelectTrigger className="w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableUnits.map(u => (
-                            <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Ex: 500ml do recipiente que você usa
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Atendimentos com esse recipiente</Label>
+
+              {knowsQuantity === 'yes' ? (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Quantidade consumida por atendimento</Label>
+                  <div className="flex gap-2">
                     <Input
                       type="number"
-                      value={estimatedAppointments || ''}
-                      onChange={(e) => setEstimatedAppointments(parseInt(e.target.value) || 0)}
-                      min="0"
-                      placeholder="Deixe 0 se não souber"
+                      value={quantityPerUse || ''}
+                      onChange={(e) => setQuantityPerUse(parseFloat(e.target.value) || 0)}
+                      min="0.01"
+                      step="0.01"
+                      className="flex-1"
+                      placeholder="Ex: 100"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Quantos atendimentos fez com essa quantidade
+                    <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableUnits.map(u => (
+                          <SelectItem key={u} value={u}>{PRODUCT_UNITS[u] || u}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Valor informado por você.</p>
+                </div>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground flex items-start gap-2">
+                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <p>
+                    Neste modo você não precisa informar a quantidade por atendimento: o aplicativo conta os
+                    atendimentos do período e divide a quantidade do frasco por eles.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Período de uso (os dois modos, datas inclusivas) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Data de início do uso
+                </Label>
+                <Input
+                  type="date"
+                  value={usageStartDate}
+                  onChange={(e) => setUsageStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Data de término do uso
+                </Label>
+                <Input
+                  type="date"
+                  value={usageEndDate}
+                  min={usageStartDate || undefined}
+                  onChange={(e) => setUsageEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Resultado dos cálculos */}
+            {usage && containerAmount > 0 && (
+              <div className="p-3 rounded-md bg-primary/5 border border-primary/20 text-xs space-y-2">
+                <div className="flex items-center gap-1 font-medium text-primary">
+                  <Info className="h-3.5 w-3.5" />
+                  {calcMode === 'manual' ? 'Cálculo com o consumo informado' : 'Cálculo automático pelo aplicativo'}
+                  <Badge variant="outline" className="ml-auto text-[9px]">
+                    {calcMode === 'manual' ? 'Informado manualmente' : 'Estimado pelo rendimento do frasco'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div>
+                    <span className="text-muted-foreground">Comprado / estoque atual:</span>
+                    <p className="font-semibold">
+                      {formatQuantity(selectedProductData.current_stock, PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit)}
                     </p>
                   </div>
-                </div>
-
-                {/* Date range for tracking */}
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Data início de uso
-                    </Label>
-                    <Input
-                      type="date"
-                      value={usageStartDate}
-                      onChange={(e) => setUsageStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Data fim de uso
-                    </Label>
-                    <Input
-                      type="date"
-                      value={usageEndDate}
-                      onChange={(e) => setUsageEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Auto-calculated projections */}
-                {(containerAmount > 0 && estimatedAppointments > 0) && (
-                  <div className="p-3 rounded-md bg-primary/5 border border-primary/20 text-xs space-y-2">
-                    <div className="flex items-center gap-1 font-medium text-primary">
-                      <Info className="h-3.5 w-3.5" />
-                      Cálculos automáticos
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-muted-foreground">Consumo por atendimento:</span>
-                        <p className="font-semibold">
-                          {(calculatedUsagePerAppointment ?? 0).toFixed(2)} {PRODUCT_UNITS[selectedProductData.unit] || selectedProductData.unit}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Atend. com estoque total:</span>
-                        <p className="font-semibold">
-                          {totalAppointmentsPossible ?? '—'} atendimentos
-                        </p>
-                      </div>
-                      {usageDays && usageDays > 0 && (
-                        <>
-                          <div>
-                            <span className="text-muted-foreground">Dias de uso:</span>
-                            <p className="font-semibold">{usageDays} dias</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Atend./dia (média):</span>
-                            <p className="font-semibold">
-                              {(estimatedAppointments / usageDays).toFixed(1)}
-                            </p>
-                          </div>
-                        </>
+                    <span className="text-muted-foreground">Normalizado em {containerUnit || selectedProductData.unit}:</span>
+                    <p className="font-semibold">
+                      {formatQuantity(
+                        convertWithinFamily(selectedProductData.current_stock, selectedProductData.unit, containerUnit || selectedProductData.unit),
+                        PRODUCT_UNITS[containerUnit] || containerUnit,
                       )}
-                    </div>
+                    </p>
                   </div>
-                )}
+                  <div>
+                    <span className="text-muted-foreground">Frascos equivalentes:</span>
+                    <p className="font-semibold">{usage.containersInStock ?? '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      {calcMode === 'manual' ? 'Consumo informado:' : 'Consumo médio calculado:'}
+                    </span>
+                    <p className={`font-semibold ${calcMode === 'manual' ? 'text-foreground' : 'text-primary'}`}>
+                      {formatQuantity(usage.perAppointment, PRODUCT_UNITS[containerUnit] || containerUnit)} / atendimento
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Atendimentos encontrados:</span>
+                    <p className="font-semibold">{periodAppointments.length}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Rendimento do frasco:</span>
+                    <p className="font-semibold">{usage.containerYield ?? '—'} atendimento(s)</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Atendimentos com estoque total:</span>
+                    <p className="font-semibold">{usage.totalStockAppointments ?? '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Quantidade consumida:</span>
+                    <p className="font-semibold">
+                      {formatQuantity(usage.totalConsumed, PRODUCT_UNITS[containerUnit] || containerUnit)}
+                    </p>
+                  </div>
+                  {usageDays && usageDays > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Período:</span>
+                      <p className="font-semibold">{usageDays} dia(s)</p>
+                    </div>
+                  )}
+                </div>
 
-                {estimatedAppointments === 0 && containerAmount > 0 && (
-                  <div className="p-2 rounded-md bg-muted/50 text-xs text-muted-foreground flex items-start gap-2">
-                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <p>Preencha a data de início e fim de uso, e a quantidade de atendimentos realizados com esse recipiente. O sistema calculará automaticamente o consumo por atendimento.</p>
+                {periodAppointments.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <p className="text-muted-foreground mb-1">Atendimentos considerados:</p>
+                    <ScrollArea className="max-h-24">
+                      <ul className="space-y-0.5">
+                        {periodAppointments.map(apt => (
+                          <li key={apt.id} className="flex items-center gap-2">
+                            <span>{format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                            <span className="text-muted-foreground truncate">
+                              {services.find(s => s.id === apt.service_id)?.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
                   </div>
                 )}
               </div>
+            )}
+
+            {validationErrors.length > 0 && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700 dark:text-amber-400 text-xs">
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {validationErrors.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         )}
 
         <Button 
           onClick={isForTemplate ? handleAddToTemplate : handleAddToService}
-          disabled={isDisabled || !selectedProduct || (isForTemplate ? createTemplateProduct.isPending : createServiceProduct.isPending)}
+          disabled={isDisabled || !selectedProduct || validationErrors.length > 0 || (isForTemplate ? createTemplateProduct.isPending : createServiceProduct.isPending)}
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-1" />
           Vincular Produto ao {isForTemplate ? 'Modelo de Pacote' : 'Serviço'}
         </Button>
+
       </div>
     );
   };

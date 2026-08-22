@@ -1532,3 +1532,16 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
     max-height: calc(100dvh - 0.75rem);
   }
 }
+
+/* 10) Utilitários de altura de tela sempre em dvh.
+   Regressão histórica: `h-screen` / `min-h-screen` (100vh) deixavam conteúdo
+   escondido atrás da barra do Safari no iPhone. O fallback em vh permanece
+   para navegadores antigos e o dvh vence quando suportado. */
+.min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.h-screen {
+  height: 100vh;
+  height: 100dvh;
+}

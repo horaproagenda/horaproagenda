@@ -8,10 +8,14 @@ import { restoreUrlIfNeeded, scheduleFormRestore } from "./lib/preReloadState";
 import { logVersionEvent } from "./lib/appVersionLog";
 import { bootVersionGuard } from "./lib/bootVersionGuard";
 import { installChunkErrorRecovery } from "./lib/chunkErrorRecovery";
+import { initKeyboardInsetTracking } from "./lib/keyboardInset";
 
 // Recupera de chunks obsoletos após deploy (clicar em rota e carregar
 // chunk antigo do cache): força um reload único quando detecta o erro.
 installChunkErrorRecovery();
+
+// Teclado virtual (iOS/Android): expõe --kb-inset para os containers de rolagem.
+initKeyboardInsetTracking();
 
 // Guarda de versão de boot: detecta bundle obsoleto (cache de CDN, SW antigo,
 // novo navegador/login com cache local antigo) e força purge + reload ANTES

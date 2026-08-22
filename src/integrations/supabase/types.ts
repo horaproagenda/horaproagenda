@@ -1257,12 +1257,14 @@ export type Database = {
           file_url: string | null
           filled_variables: Json | null
           id: string
+          owner_professional_id: string | null
           signed_at: string | null
           signed_by: string | null
           template_id: string | null
           title: string
           type: Database["public"]["Enums"]["document_type"]
           updated_at: string
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -1274,12 +1276,14 @@ export type Database = {
           file_url?: string | null
           filled_variables?: Json | null
           id?: string
+          owner_professional_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
           template_id?: string | null
           title: string
           type: Database["public"]["Enums"]["document_type"]
           updated_at?: string
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -1291,12 +1295,14 @@ export type Database = {
           file_url?: string | null
           filled_variables?: Json | null
           id?: string
+          owner_professional_id?: string | null
           signed_at?: string | null
           signed_by?: string | null
           template_id?: string | null
           title?: string
           type?: Database["public"]["Enums"]["document_type"]
           updated_at?: string
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [
           {
@@ -1478,11 +1484,13 @@ export type Database = {
           is_active: boolean
           name: string
           notes: string | null
+          owner_professional_id: string | null
           phone: string
           referral_source: string | null
           registration_source: string | null
           updated_at: string
           updated_by: string | null
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -1506,11 +1514,13 @@ export type Database = {
           is_active?: boolean
           name: string
           notes?: string | null
+          owner_professional_id?: string | null
           phone: string
           referral_source?: string | null
           registration_source?: string | null
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -1534,11 +1544,13 @@ export type Database = {
           is_active?: boolean
           name?: string
           notes?: string | null
+          owner_professional_id?: string | null
           phone?: string
           referral_source?: string | null
           registration_source?: string | null
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [
           {
@@ -1782,10 +1794,12 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          owner_professional_id: string | null
           title: string
           updated_at: string
           updated_by: string | null
           variables: string[] | null
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -1795,10 +1809,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          owner_professional_id?: string | null
           title: string
           updated_at?: string
           updated_by?: string | null
           variables?: string[] | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -1808,10 +1824,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          owner_professional_id?: string | null
           title?: string
           updated_at?: string
           updated_by?: string | null
           variables?: string[] | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: []
       }
@@ -2533,6 +2551,7 @@ export type Database = {
           interval_days: number | null
           is_active: boolean
           name: string
+          owner_professional_id: string | null
           package_type: string
           payment_type: string | null
           price: number
@@ -2541,6 +2560,7 @@ export type Database = {
           room_id: string | null
           total_sessions: number
           updated_at: string
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -2553,6 +2573,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name: string
+          owner_professional_id?: string | null
           package_type?: string
           payment_type?: string | null
           price: number
@@ -2561,6 +2582,7 @@ export type Database = {
           room_id?: string | null
           total_sessions?: number
           updated_at?: string
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -2573,6 +2595,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name?: string
+          owner_professional_id?: string | null
           package_type?: string
           payment_type?: string | null
           price?: number
@@ -2581,6 +2604,7 @@ export type Database = {
           room_id?: string | null
           total_sessions?: number
           updated_at?: string
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [
           {
@@ -3112,6 +3136,7 @@ export type Database = {
           min_stock_alert: number | null
           name: string
           notes: string | null
+          owner_professional_id: string | null
           product_type: string
           purchase_date: string | null
           quantity_purchased: number
@@ -3124,6 +3149,7 @@ export type Database = {
           unit_price: number
           updated_at: string
           updated_by: string | null
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -3142,6 +3168,7 @@ export type Database = {
           min_stock_alert?: number | null
           name: string
           notes?: string | null
+          owner_professional_id?: string | null
           product_type?: string
           purchase_date?: string | null
           quantity_purchased?: number
@@ -3154,6 +3181,7 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -3172,6 +3200,7 @@ export type Database = {
           min_stock_alert?: number | null
           name?: string
           notes?: string | null
+          owner_professional_id?: string | null
           product_type?: string
           purchase_date?: string | null
           quantity_purchased?: number
@@ -3184,6 +3213,7 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [
           {
@@ -3865,6 +3895,7 @@ export type Database = {
           interval_days: number | null
           is_active: boolean
           name: string
+          owner_professional_id: string | null
           package_type: string
           payment_method: string | null
           payment_methods: string[] | null
@@ -3880,6 +3911,7 @@ export type Database = {
           total_sessions: number
           updated_at: string
           updated_by: string | null
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
           whatsapp_reminder: boolean
         }
         Insert: {
@@ -3895,6 +3927,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name: string
+          owner_professional_id?: string | null
           package_type?: string
           payment_method?: string | null
           payment_methods?: string[] | null
@@ -3910,6 +3943,7 @@ export type Database = {
           total_sessions?: number
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
           whatsapp_reminder?: boolean
         }
         Update: {
@@ -3925,6 +3959,7 @@ export type Database = {
           interval_days?: number | null
           is_active?: boolean
           name?: string
+          owner_professional_id?: string | null
           package_type?: string
           payment_method?: string | null
           payment_methods?: string[] | null
@@ -3940,6 +3975,7 @@ export type Database = {
           total_sessions?: number
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
           whatsapp_reminder?: boolean
         }
         Relationships: [
@@ -4058,6 +4094,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          owner_professional_id: string | null
           price: number
           professional_id: string | null
           return_days: number | null
@@ -4065,6 +4102,7 @@ export type Database = {
           service_components: Json
           updated_at: string
           updated_by: string | null
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
           account_owner_id?: string
@@ -4077,6 +4115,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          owner_professional_id?: string | null
           price: number
           professional_id?: string | null
           return_days?: number | null
@@ -4084,6 +4123,7 @@ export type Database = {
           service_components?: Json
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
           account_owner_id?: string
@@ -4096,6 +4136,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          owner_professional_id?: string | null
           price?: number
           professional_id?: string | null
           return_days?: number | null
@@ -4103,6 +4144,7 @@ export type Database = {
           service_components?: Json
           updated_at?: string
           updated_by?: string | null
+          visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [
           {
@@ -4598,9 +4640,17 @@ export type Database = {
         Row: {
           can_create: boolean
           can_delete: boolean
+          can_delete_others: boolean
           can_edit: boolean
+          can_edit_others: boolean
+          can_export: boolean
+          can_print: boolean
+          can_share: boolean
           can_view: boolean
+          can_view_others: boolean
+          can_view_values: boolean
           created_at: string
+          data_scope: string
           id: string
           module: Database["public"]["Enums"]["app_module"]
           updated_at: string
@@ -4609,9 +4659,17 @@ export type Database = {
         Insert: {
           can_create?: boolean
           can_delete?: boolean
+          can_delete_others?: boolean
           can_edit?: boolean
+          can_edit_others?: boolean
+          can_export?: boolean
+          can_print?: boolean
+          can_share?: boolean
           can_view?: boolean
+          can_view_others?: boolean
+          can_view_values?: boolean
           created_at?: string
+          data_scope?: string
           id?: string
           module: Database["public"]["Enums"]["app_module"]
           updated_at?: string
@@ -4620,9 +4678,17 @@ export type Database = {
         Update: {
           can_create?: boolean
           can_delete?: boolean
+          can_delete_others?: boolean
           can_edit?: boolean
+          can_edit_others?: boolean
+          can_export?: boolean
+          can_print?: boolean
+          can_share?: boolean
           can_view?: boolean
+          can_view_others?: boolean
+          can_view_values?: boolean
           created_at?: string
+          data_scope?: string
           id?: string
           module?: Database["public"]["Enums"]["app_module"]
           updated_at?: string
@@ -5210,8 +5276,20 @@ export type Database = {
         Args: { _package_appointment_id: string }
         Returns: boolean
       }
+      can_see_record: {
+        Args: {
+          _module: string
+          _owner: string
+          _visibility: Database["public"]["Enums"]["data_visibility"]
+        }
+        Returns: boolean
+      }
       can_upload_client_storage_object: {
         Args: { _bucket_id: string; _object_name: string }
+        Returns: boolean
+      }
+      can_write_record: {
+        Args: { _action: string; _module: string; _owner: string }
         Returns: boolean
       }
       cascade_package_intervals_after_anchor: {
@@ -5295,12 +5373,14 @@ export type Database = {
           file_url: string | null
           filled_variables: Json | null
           id: string
+          owner_professional_id: string | null
           signed_at: string | null
           signed_by: string | null
           template_id: string | null
           title: string
           type: Database["public"]["Enums"]["document_type"]
           updated_at: string
+          visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         SetofOptions: {
           from: "*"
@@ -5517,6 +5597,7 @@ export type Database = {
       }
       heal_phantom_package_sessions: { Args: never; Returns: number }
       is_account_active: { Args: { _user_id: string }; Returns: boolean }
+      is_account_admin: { Args: { _user_id?: string }; Returns: boolean }
       is_boleto_installment_sale: {
         Args: { _sale_id: string }
         Returns: boolean
@@ -5581,6 +5662,8 @@ export type Database = {
       }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }
+      perm: { Args: { _action: string; _module: string }; Returns: boolean }
+      perm_scope: { Args: { _module: string }; Returns: string }
       preview_package_appointment_cascade: {
         Args: { _appointment_id: string; _new_start: string }
         Returns: Json
@@ -5820,6 +5903,8 @@ export type Database = {
         | "configuracoes"
         | "auditoria"
         | "assinatura"
+        | "unidades"
+        | "salas_compartilhadas"
       app_role: "admin" | "receptionist" | "professional" | "super_admin"
       appointment_status:
         | "scheduled"
@@ -5828,6 +5913,7 @@ export type Database = {
         | "cancelled"
         | "missed"
         | "rescheduled"
+      data_visibility: "private" | "shared" | "clinic"
       document_type:
         | "anamnese"
         | "contract"
@@ -5978,6 +6064,8 @@ export const Constants = {
         "configuracoes",
         "auditoria",
         "assinatura",
+        "unidades",
+        "salas_compartilhadas",
       ],
       app_role: ["admin", "receptionist", "professional", "super_admin"],
       appointment_status: [
@@ -5988,6 +6076,7 @@ export const Constants = {
         "missed",
         "rescheduled",
       ],
+      data_visibility: ["private", "shared", "clinic"],
       document_type: [
         "anamnese",
         "contract",

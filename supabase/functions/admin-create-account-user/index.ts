@@ -45,7 +45,7 @@ serve(async (req) => {
       email: string;
       password: string;
       full_name: string;
-      permissions: Array<{ module: string; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean }>;
+      permissions: Array<Record<string, unknown>>;
       must_change_password?: boolean;
     };
 

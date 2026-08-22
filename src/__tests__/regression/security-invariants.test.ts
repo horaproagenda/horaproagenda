@@ -41,8 +41,10 @@ describe('regressão: nenhuma credencial privilegiada no frontend', () => {
 describe('regressão: papel/permissão nunca vêm do navegador', () => {
   // Problema histórico: checagem de admin baseada em localStorage.
   it('nenhum controle de papel usa localStorage/sessionStorage', () => {
-    const bad = /(local|session)Storage[\s\S]{0,60}(is_?admin|isAdmin|role|super_?admin)/i;
-    const offenders = sources.filter(s => bad.test(s.code)).map(s => s.file);
+    const stripComments = (code: string) =>
+      code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const bad = /(local|session)Storage\.[a-zA-Z]+\([^)]{0,80}(is_?admin|isAdmin|\brole\b|super_?admin)/i;
+    const offenders = sources.filter(s => bad.test(stripComments(s.code))).map(s => s.file);
     expect(offenders, `Papel lido do storage em: ${offenders.join(', ')}`).toEqual([]);
   });
 

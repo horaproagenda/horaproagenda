@@ -170,7 +170,9 @@ test('recalcula exibição das aplicações por data sem alterar registros origi
 
   const sequence = buildAppointmentPackageSequenceMap(appointments);
   expect(getAppointmentPackageApplicationLabel(appointments[0], sequence.get('apt-10'))).toBe('Aplicação 3/10');
-  expect(getAppointmentPackageApplicationLabel(appointments[2], sequence.get('apt-3-cancelled'))).toBe('Aplicação 4/10');
+  // Cancelada sai da sequência visível (o slot é liberado), mas mantém o número original no histórico.
+  expect(sequence.get('apt-3-cancelled')).toBeUndefined();
+  expect(getAppointmentPackageApplicationLabel(appointments[2], sequence.get('apt-3-cancelled'))).toBe('Aplicação 3/10');
   expect(appointments[0].package_appointment.original_session_number).toBe(10);
 
   const sessionSequence = buildPackageSessionSequenceMap([

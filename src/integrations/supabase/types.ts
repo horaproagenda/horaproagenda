@@ -3337,6 +3337,15 @@ export type Database = {
           reminder_hours_before: number[] | null
           saturday_closing_time: string | null
           saturday_opening_time: string | null
+          shared_room_mode: string
+          shared_room_see_client: boolean
+          shared_room_see_documents: boolean
+          shared_room_see_financial: boolean
+          shared_room_see_notes: boolean
+          shared_room_see_professional: boolean
+          shared_room_see_service: boolean
+          shared_room_see_status: boolean
+          shared_room_see_value: boolean
           slot_interval: number | null
           sunday_closing_time: string | null
           sunday_opening_time: string | null
@@ -3366,6 +3375,15 @@ export type Database = {
           reminder_hours_before?: number[] | null
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
+          shared_room_mode?: string
+          shared_room_see_client?: boolean
+          shared_room_see_documents?: boolean
+          shared_room_see_financial?: boolean
+          shared_room_see_notes?: boolean
+          shared_room_see_professional?: boolean
+          shared_room_see_service?: boolean
+          shared_room_see_status?: boolean
+          shared_room_see_value?: boolean
           slot_interval?: number | null
           sunday_closing_time?: string | null
           sunday_opening_time?: string | null
@@ -3395,6 +3413,15 @@ export type Database = {
           reminder_hours_before?: number[] | null
           saturday_closing_time?: string | null
           saturday_opening_time?: string | null
+          shared_room_mode?: string
+          shared_room_see_client?: boolean
+          shared_room_see_documents?: boolean
+          shared_room_see_financial?: boolean
+          shared_room_see_notes?: boolean
+          shared_room_see_professional?: boolean
+          shared_room_see_service?: boolean
+          shared_room_see_status?: boolean
+          shared_room_see_value?: boolean
           slot_interval?: number | null
           sunday_closing_time?: string | null
           sunday_opening_time?: string | null
@@ -5276,6 +5303,10 @@ export type Database = {
         Args: { _package_appointment_id: string }
         Returns: boolean
       }
+      can_see_appointment_row: {
+        Args: { _professional_id: string }
+        Returns: boolean
+      }
       can_see_record: {
         Args: {
           _module: string
@@ -5532,6 +5563,22 @@ export type Database = {
         Returns: {
           clinic_cnpj: string
           twilio_from_number: string
+        }[]
+      }
+      get_shared_room_bookings: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          amount: number
+          client_name: string
+          end_time: string
+          id: string
+          notes: string
+          professional_name: string
+          room_id: string
+          room_name: string
+          service_name: string
+          start_time: string
+          status: string
         }[]
       }
       get_ultramsg_pool_assigned: {

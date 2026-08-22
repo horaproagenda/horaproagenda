@@ -71,7 +71,7 @@ export default function Unsubscribe() {
           {state === 'valid' && (
             <>
               <p className="text-sm">Confirme para parar de receber e-mails do Hora Pro.</p>
-              <Button onClick={confirm} className="w-full">Confirmar cancelamento</Button>
+              <Button onClick={confirm} disabled={state !== 'valid'} className="w-full">Confirmar cancelamento</Button>
             </>
           )}
           {state === 'submitting' && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Processando…</div>}

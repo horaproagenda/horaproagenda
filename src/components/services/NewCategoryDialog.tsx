@@ -97,8 +97,8 @@ export function NewCategoryDialog({ existingCategories, onCategoryCreated, child
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Criar Categoria
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Criando...' : 'Criar Categoria'}
               </Button>
             </div>
           </form>

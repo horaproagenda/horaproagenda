@@ -153,7 +153,7 @@ const Documentos = () => {
   return (
     <AppLayout title="Anamnese e Contratos" subtitle="Modelos de documentos editáveis para clínica estética">
       <PageTransition>
-        <ScrollArea className="h-[calc(100vh-140px)]">
+        <ScrollArea className="h-[calc(100dvh-140px)]">
           <div className="space-y-4 pr-4">
             {/* Header Actions */}
             <Card className="card-hover">

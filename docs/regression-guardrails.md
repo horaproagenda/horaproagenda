@@ -42,3 +42,22 @@ bun run test:regression
 
 Executa lint → typecheck → unit → build → e2e regression. Falha em
 qualquer etapa aborta a sequência.
+
+## Suítes de regressão dedicadas (2026-08)
+
+| Suíte | Protege |
+| ----- | ------- |
+| `src/lib/__tests__/permissions.regression.test.ts` | permissões por módulo/ação/escopo, clientes/serviços/pacotes/produtos privados, ocultação de valores, presets |
+| `src/__tests__/regression/mobile-invariants.test.ts` | viewport iOS, `100dvh`, `--kb-inset`, safe-areas, rolagem vertical e horizontal |
+| `src/__tests__/regression/security-invariants.test.ts` | sem `service_role` no frontend, papel nunca vindo do navegador, rotas protegidas, RPC de salas compartilhadas, alias de toast humanizado |
+| `tests/smoke/rls-anon-lockdown.smoke.test.ts` | RLS: anônimo não lê 37 tabelas sensíveis (roda sem credenciais) |
+
+## Antes de publicar
+
+```bash
+bun run test:prepublish
+```
+
+lint → typecheck → unit → build → e2e → smoke. Passo a passo completo e
+rollback: `docs/release-runbook.md`. Lista de comportamentos que não podem
+quebrar: `docs/protected-behaviors.md`. Log de versões: `docs/release-log.md`.

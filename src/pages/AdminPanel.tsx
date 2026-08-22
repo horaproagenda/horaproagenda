@@ -383,7 +383,7 @@ export default function AdminPanel() {
                 ) : filteredLogs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground text-sm">Nenhum registro encontrado.</div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="max-w-full">
                     <Table>
                       <TableHeader>
                         <TableRow>

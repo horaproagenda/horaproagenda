@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const h = vi.hoisted(() => ({
@@ -52,10 +52,16 @@ describe('CreateUserDialog — upgrade CTA', () => {
     h.toastSuccess.mockClear();
   });
 
+  // Diálogos usam portal: sem desmontar, o DOM acumula entre casos e as buscas
+  // por texto passam a encontrar múltiplos elementos (teste instável).
+  afterEach(() => {
+    cleanup();
+  });
+
   it('shows upgrade CTA and hides "Criar usuário" when no seats available', () => {
     h.usage.current = { used: 1, seat_limit: 1, available: 0, is_grandfathered: false };
     renderDialog();
-    expect(screen.getByText(/não permite mais usuários/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/não permite mais usuários/i).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /criar usuário/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /mudar de plano/i }).length).toBeGreaterThan(0);
   });

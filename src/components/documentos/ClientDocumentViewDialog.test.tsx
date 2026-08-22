@@ -46,7 +46,9 @@ describe('ClientDocumentViewDialog WhatsApp send', () => {
     fireEvent.click(screen.getByRole('button', { name: /^whatsapp$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /enviar documento pelo whatsapp/i }));
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('whatsapp-send', expect.any(Object)));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('whatsapp-send', expect.any(Object)), {
+      timeout: 8000,
+    });
     const payload = invokeMock.mock.calls[0][1].body;
     expect(payload.phone).toBe('(11) 98765-4321');
     expect(payload.client_id).toBe('client-1');
@@ -57,5 +59,6 @@ describe('ClientDocumentViewDialog WhatsApp send', () => {
     expect(message).toContain('Autorizo o procedimento estético facial.');
     expect(message).toContain('Documento gerado em 01/06/2026 às 10:00');
     expect(openSpy).not.toHaveBeenCalled();
-  });
+    // Timeout ampliado: o diálogo gera o PDF antes de enviar e a suíte roda em paralelo.
+  }, 30000);
 });

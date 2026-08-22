@@ -72,12 +72,15 @@ export function DoubleScroll({ children }: PropsWithChildren) {
       <div
         ref={bottomRef}
         onScroll={isCoarsePointer ? undefined : onScroll('bottom')}
-        className="overflow-x-auto"
+        data-table-wrapper=""
+        className="overflow-x-auto max-w-full"
+        style={{ touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}
       >
         <div ref={innerRef} className="inline-block min-w-full align-top">
           {children}
         </div>
       </div>
+
     </div>
   );
 }

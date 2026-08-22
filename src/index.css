@@ -1063,12 +1063,20 @@ table::-webkit-scrollbar-track {
   border: 2px solid transparent;
 }
 
-/* Tabelas: garantir scroll horizontal + vertical com mouse wheel */
+/* Tabelas: o WRAPPER é o container de rolagem — nunca o <table>.
+   Aplicar overflow/touch-action no próprio <table> fazia o Android
+   Chrome engolir o gesto (travava a rolagem vertical da página E a
+   rolagem horizontal da tabela). */
 .table-scroll-container,
-[data-table-wrapper],
-table {
-  overflow: auto;
+[data-table-wrapper] {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
 }
+table {
+  overflow: visible;
+}
+
 
 /* Garante rolagem por mouse wheel em containers com overflow:
    browsers às vezes não fazem scroll quando overflow:hidden está
@@ -1161,12 +1169,14 @@ form .scroll-section,
    garantido em qualquer tela ou formulário. O wrapper Table
    já usa .overflow-auto, mas reforçamos touch-action e
    altura máxima opcional via .table-scroll-y */
+/* Tabelas: rolagem horizontal independente no wrapper.
+   O <table> NÃO recebe touch-action próprio, para que o gesto
+   vertical suba para o <main> e o horizontal fique na tabela. */
 .table-scroll-container,
-[data-table-wrapper],
-div:has(> table),
-table {
+[data-table-wrapper] {
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .table-scroll-y {
@@ -1183,6 +1193,24 @@ table {
   touch-action: pan-x pan-y;
   overscroll-behavior: contain;
 }
+
+/* Rolagem vertical da tela inteira: o <main> é o único scroller
+   vertical da página. pan-y evita disputa de gesto no Android. */
+main[data-testid="app-main-scroll"] {
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile: tabelas largas devem transbordar e rolar no wrapper em vez
+   de espremer colunas (texto sobreposto/cortado). */
+@media (max-width: 767px) {
+  [data-table-wrapper] > table,
+  .table-scroll-container > table {
+    min-width: max-content;
+  }
+}
+
 
 /* Disable all animations and transitions when user opts out */
 html.no-animations *,

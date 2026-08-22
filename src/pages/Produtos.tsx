@@ -854,7 +854,7 @@ export default function Produtos() {
         {/* Products Table */}
         <Card className="card-hover">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="max-w-full">
               <Table className="text-[11px]">
                 <TableHeader>
                   <TableRow className="h-7">

@@ -96,3 +96,29 @@ safe-areas, alvos de toque, rolagem de tabelas) cobertos por 12 testes automatiz
 
 2026-08-22 — 513 testes unitários + 37 smoke de RLS + build OK.
 Ponto de rollback registrado em `docs/release-log.md`.
+
+## Achados adicionais desta rodada
+
+8. **Checklist de pré-publicação estava inutilizável.** `test:prepublish` começava por
+   `eslint` bloqueante, e o projeto tem 1242 erros históricos (quase todos
+   `no-explicit-any`). Resultado: o comando falhava sempre, então a proteção contra
+   regressões nunca podia ser executada de verdade.
+   *Correção:* nova guarda `scripts/lint-baseline.mjs` (`bun run lint:guard`) usada no
+   lugar do lint cru: mantém o lint rodando e **bloqueia qualquer novo erro** acima da
+   linha de base gravada em `.lint-baseline.json` (hoje 1242), reduzindo a base
+   automaticamente quando a dívida diminui.
+9. **Dois testes instáveis (falso alarme na suíte).** `CreateUserDialog.test.tsx` (DOM de
+   portal não desmontado entre casos) e `ClientDocumentViewDialog.test.tsx` (geração de
+   PDF estourando o tempo padrão sob execução paralela). Ambos corrigidos e validados em
+   execuções repetidas.
+
+## Pendência aberta (precisa de decisão sua)
+
+`e2e/regression-utils.spec.ts` → "recalcula exibição das aplicações por data sem alterar
+registros originais" **falha** hoje: um agendamento **cancelado** de 14/05 é rotulado como
+"Aplicação 3/10", enquanto o teste espera "Aplicação 4/10". Ou seja, sessões canceladas
+estão sendo puladas na numeração cronológica exibida. Isso é anterior às correções desta
+auditoria e é uma regra de negócio, não um bug óbvio: preciso saber qual comportamento é o
+correto para você — sessão cancelada **ocupa** o número da aplicação (fica 4/10, como o
+teste espera) ou **não ocupa** (fica 3/10, como o código faz hoje). Assim que você
+confirmar, ajusto o lado certo (código ou teste) e o `test:prepublish` fecha verde.

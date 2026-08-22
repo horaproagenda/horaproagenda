@@ -33,17 +33,20 @@ export function useOnboardingStatus() {
         .from('services')
         .select('id', { count: 'exact', head: true });
 
+      const clinicName = ((settings as any)?.clinic_name ?? '').trim();
       const completed = !!(settings as any)?.onboarding_completed_at;
-      const hasInitialData = (profCount ?? 0) > 0 && (svcCount ?? 0) > 0;
+      // Conta antiga/já configurada: clínica nomeada ou dados operacionais existentes
+      const alreadyConfigured =
+        !!clinicName || ((profCount ?? 0) > 0 && (svcCount ?? 0) > 0);
 
       return {
         settingsId: settings?.id ?? null,
         completed,
-        // Esconde wizard se já há dados (conta antiga) — marca como concluído implicitamente
-        shouldShow: !completed && !hasInitialData,
-        clinicName: (settings as any)?.clinic_name ?? '',
+        shouldShow: !completed && !alreadyConfigured,
+        clinicName,
       };
     },
+
     staleTime: 1000 * 60 * 5,
   });
 

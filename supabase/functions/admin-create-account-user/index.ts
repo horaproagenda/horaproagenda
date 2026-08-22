@@ -135,16 +135,26 @@ serve(async (req) => {
 
     // Insere permissões
     if (Array.isArray(permissions) && permissions.length > 0) {
-      const rows = permissions.map(p => ({
+      const ALLOWED_SCOPES = ["own", "shared", "unit", "all"];
+      const rows = (permissions as Array<Record<string, unknown>>).map(p => ({
         user_id: newUserId,
-        module: p.module,
+        module: String(p.module),
         can_view: !!p.can_view,
         can_create: !!p.can_create,
         can_edit: !!p.can_edit,
         can_delete: !!p.can_delete,
+        can_edit_others: !!p.can_edit_others,
+        can_delete_others: !!p.can_delete_others,
+        can_export: !!p.can_export,
+        can_print: !!p.can_print,
+        can_view_values: !!p.can_view_values,
+        can_view_others: !!p.can_view_others,
+        can_share: !!p.can_share,
+        data_scope: ALLOWED_SCOPES.includes(String(p.data_scope)) ? String(p.data_scope) : "own",
       }));
       await supaAdmin.from("user_permissions").upsert(rows, { onConflict: "user_id,module" });
     }
+
 
     return new Response(JSON.stringify({ success: true, user_id: newUserId }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

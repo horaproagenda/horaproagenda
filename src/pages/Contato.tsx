@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Helmet } from "react-helmet-async";
 import { BRAND } from "@/content/brand";
 
@@ -40,7 +40,7 @@ export default function Contato() {
                 Fale com a gente
               </span>
             </div>
-            <CardTitle className="text-2xl font-display">Contato</CardTitle>
+            <h1 className="text-2xl font-display font-semibold leading-none tracking-tight">Contato</h1>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>

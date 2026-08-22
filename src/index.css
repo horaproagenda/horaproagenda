@@ -1063,12 +1063,20 @@ table::-webkit-scrollbar-track {
   border: 2px solid transparent;
 }
 
-/* Tabelas: garantir scroll horizontal + vertical com mouse wheel */
+/* Tabelas: o WRAPPER é o container de rolagem — nunca o <table>.
+   Aplicar overflow/touch-action no próprio <table> fazia o Android
+   Chrome engolir o gesto (travava a rolagem vertical da página E a
+   rolagem horizontal da tabela). */
 .table-scroll-container,
-[data-table-wrapper],
-table {
-  overflow: auto;
+[data-table-wrapper] {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
 }
+table {
+  overflow: visible;
+}
+
 
 /* Garante rolagem por mouse wheel em containers com overflow:
    browsers às vezes não fazem scroll quando overflow:hidden está

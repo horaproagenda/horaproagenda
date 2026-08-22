@@ -52,6 +52,16 @@ import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { convertQuantity } from '@/lib/productStock';
+import {
+  computeUsage,
+  containerEquivalents,
+  convertWithinFamily,
+  findAppointmentsInPeriod,
+  formatQuantity,
+  validateUsage,
+  type UsageCalcMode,
+} from '@/lib/productUsageCalc';
+import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -86,6 +96,7 @@ export function ServiceProductsDialog() {
   const { products, activeProducts, updateProduct } = useProducts();
   const { services } = useServices();
   const { appointments } = useAppointments();
+  const { usageRecords, createUsageRecord, usedAppointmentIds } = useProductUsageRecords();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');

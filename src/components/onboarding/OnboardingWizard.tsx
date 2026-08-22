@@ -4,43 +4,44 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
-import {
-  AGENDA_COLOR_PALETTE,
-  DEFAULT_AGENDA_COLOR,
-  pickNextAvailableColor,
-  getAgendaColorLabel,
-} from '@/lib/agendaColors';
-import { parseBrazilianCurrency } from '@/lib/utils';
+import { Loader2, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface Props {
   open: boolean;
 }
 
+const TIMEZONES = [
+  { value: 'America/Sao_Paulo', label: 'Brasília / São Paulo (UTC-3)' },
+  { value: 'America/Manaus', label: 'Manaus (UTC-4)' },
+  { value: 'America/Rio_Branco', label: 'Rio Branco (UTC-5)' },
+  { value: 'America/Belem', label: 'Belém (UTC-3)' },
+  { value: 'America/Fortaleza', label: 'Fortaleza (UTC-3)' },
+  { value: 'America/Bahia', label: 'Salvador (UTC-3)' },
+];
 
-function formatCpfMask(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  return digits
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-}
+const CURRENCIES = [
+  { value: 'BRL', label: 'Real brasileiro (R$)' },
+  { value: 'USD', label: 'Dólar americano (US$)' },
+  { value: 'EUR', label: 'Euro (€)' },
+];
 
 function formatPhoneMask(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 10) {
-    return digits
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{4})(\d)/, '$1-$2');
+    return digits.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
   }
-  return digits
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2');
+  return digits.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
 }
 
 export function OnboardingWizard({ open }: Props) {
@@ -50,20 +51,25 @@ export function OnboardingWizard({ open }: Props) {
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [professionalId, setProfessionalId] = useState<string | null>(null);
-  const [takenColors, setTakenColors] = useState<string[]>([]);
-
-  // Campos pré-preenchidos a partir do cadastro
-  const [name, setName] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [birthdate, setBirthdate] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [agendaColor, setAgendaColor] = useState<string>(DEFAULT_AGENDA_COLOR);
-  const [specialty, setSpecialty] = useState('');
-  const [isCommission, setIsCommission] = useState(false);
-  const [commissionPct, setCommissionPct] = useState<string>('');
+  const [settingsId, setSettingsId] = useState<string | null>(null);
+  const [isPrimaryAdmin, setIsPrimaryAdmin] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Identidade herdada da conta autenticada (somente leitura)
+  const adminName = profile?.full_name || user?.email?.split('@')[0] || '';
+  const adminEmail = profile?.email || user?.email || '';
+
+  // Dados que ainda faltam: configurações da clínica
+  const [clinicName, setClinicName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [unitName, setUnitName] = useState('');
+  const [clinicPhone, setClinicPhone] = useState('');
+  const [clinicStreet, setClinicStreet] = useState('');
+  const [clinicNumber, setClinicNumber] = useState('');
+  const [clinicCity, setClinicCity] = useState('');
+  const [clinicState, setClinicState] = useState('');
+  const [timezone, setTimezone] = useState('America/Sao_Paulo');
+  const [currency, setCurrency] = useState('BRL');
 
   useEffect(() => {
     if (!open || !user) return;
@@ -71,42 +77,36 @@ export function OnboardingWizard({ open }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const [{ data }, { data: allProfs }] = await Promise.all([
-          supabase
-            .from('professionals')
-            .select('id, name, cpf, birthdate, phone, agenda_color, specialties, is_commission_based, commission_percentage')
-            .eq('user_id', user.id)
-            .maybeSingle(),
-          supabase.from('professionals').select('id, agenda_color'),
-        ]);
+        // Reconhece o usuário autenticado como Administrador principal (validado no backend)
+        const { data: setupData, error: setupError } = await supabase.rpc('ensure_primary_admin_setup');
+        if (setupError) {
+          console.warn('ensure_primary_admin_setup:', setupError.message);
+        }
+        if (cancelled) return;
+        const setup: any = setupData || {};
+        setIsPrimaryAdmin(Boolean(setup?.is_primary_admin));
+
+        const { data: settings } = await supabase
+          .from('business_settings')
+          .select(
+            'id, clinic_name, clinic_logo_url, clinic_phone, clinic_street, clinic_number, clinic_city, clinic_state, timezone, currency, professional_name'
+          )
+          .limit(1)
+          .maybeSingle();
         if (cancelled) return;
 
-        const fallbackName = profile?.full_name || user.email?.split('@')[0] || '';
-        const fallbackPhone = profile?.phone || '';
-
-        const meId = (data as any)?.id ?? null;
-        const otherColors = (allProfs || [])
-          .filter((p: any) => p.id !== meId)
-          .map((p: any) => (p.agenda_color || '').toLowerCase())
-          .filter(Boolean);
-        setTakenColors(otherColors);
-
-        const existingColor = (data as any)?.agenda_color as string | null;
-        const initialColor =
-          existingColor || pickNextAvailableColor(otherColors);
-
-        setProfessionalId(meId);
-        setName(((data as any)?.name as string) || fallbackName);
-        setCpf(formatCpfMask(((data as any)?.cpf as string) || ''));
-        setBirthdate(((data as any)?.birthdate as string) || '');
-        setWhatsapp(formatPhoneMask(((data as any)?.phone as string) || fallbackPhone));
-        setAgendaColor(initialColor);
-        const specs = ((data as any)?.specialties as string[]) || [];
-        setSpecialty(specs[0] || '');
-        setIsCommission(Boolean((data as any)?.is_commission_based));
-        const pct = (data as any)?.commission_percentage;
-        setCommissionPct(pct != null ? String(pct) : '');
-
+        const s: any = settings || {};
+        setSettingsId(s.id ?? setup?.settings_id ?? null);
+        setClinicName(s.clinic_name || '');
+        setLogoUrl(s.clinic_logo_url || '');
+        setUnitName(s.professional_name || '');
+        setClinicPhone(formatPhoneMask(s.clinic_phone || ''));
+        setClinicStreet(s.clinic_street || '');
+        setClinicNumber(s.clinic_number || '');
+        setClinicCity(s.clinic_city || '');
+        setClinicState(s.clinic_state || '');
+        setTimezone(s.timezone || 'America/Sao_Paulo');
+        setCurrency(s.currency || 'BRL');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -114,69 +114,54 @@ export function OnboardingWizard({ open }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, user, profile]);
+  }, [open, user]);
 
   const handleSkip = async () => {
     setSaving(true);
     try {
       await markCompleted();
-      toast.success('Sem problemas! Você pode completar seu cadastro em Profissionais a qualquer momento.');
+      toast.success('Sem problemas! Você pode ajustar as configurações da clínica a qualquer momento.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleFinish = async () => {
-    if (!name.trim()) {
-      toast.error('Informe o nome do profissional.');
-      return;
-    }
-    if (takenColors.includes((agendaColor || '').toLowerCase())) {
-      toast.error('Esta cor já está em uso por outro profissional. Escolha outra.');
+    if (!clinicName.trim()) {
+      toast.error('Informe o nome da clínica.');
       return;
     }
     setSaving(true);
-
     try {
-      const cpfDigits = cpf.replace(/\D/g, '') || null;
-      const phoneDigits = whatsapp.replace(/\D/g, '') || null;
-      const pctNum = commissionPct.trim() ? parseBrazilianCurrency(commissionPct) : null;
-
       const payload: any = {
-        name: name.trim(),
-        cpf: cpfDigits,
-        birthdate: birthdate || null,
-        phone: phoneDigits,
-        agenda_color: agendaColor,
-        specialties: specialty.trim() ? [specialty.trim()] : null,
-        is_commission_based: isCommission,
-        commission_percentage: isCommission ? (pctNum ?? null) : null,
+        clinic_name: clinicName.trim(),
+        clinic_logo_url: logoUrl.trim() || null,
+        professional_name: unitName.trim() || clinicName.trim(),
+        clinic_phone: clinicPhone.replace(/\D/g, '') || null,
+        clinic_street: clinicStreet.trim() || null,
+        clinic_number: clinicNumber.trim() || null,
+        clinic_city: clinicCity.trim() || null,
+        clinic_state: clinicState.trim() || null,
+        timezone,
+        currency,
       };
 
-      if (professionalId) {
-        const { error } = await supabase
-          .from('professionals')
-          .update(payload)
-          .eq('id', professionalId);
+      if (settingsId) {
+        const { error } = await supabase.from('business_settings').update(payload).eq('id', settingsId);
         if (error) {
-          toast.error('Erro ao salvar profissional: ' + error.message);
+          toast.error('Não foi possível salvar as configurações da clínica.');
           return;
         }
       } else {
-        const { error } = await supabase.from('professionals').insert({
-          ...payload,
-          email: profile?.email ?? user?.email ?? null,
-          user_id: user?.id ?? null,
-          is_active: true,
-        } as any);
+        const { error } = await supabase.from('business_settings').insert(payload);
         if (error) {
-          toast.error('Erro ao cadastrar profissional: ' + error.message);
+          toast.error('Não foi possível salvar as configurações da clínica.');
           return;
         }
       }
 
       await markCompleted();
-      toast.success('Cadastro concluído! Bem-vindo ao Hora Pro.');
+      toast.success('Configuração inicial concluída! Bem-vindo ao Hora Pro.');
       setShowSuccess(true);
     } finally {
       setSaving(false);
@@ -195,19 +180,16 @@ export function OnboardingWizard({ open }: Props) {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <DialogTitle className="text-center">Cadastro concluído!</DialogTitle>
+            <DialogTitle className="text-center">Clínica configurada!</DialogTitle>
             <DialogDescription className="text-center space-y-3 pt-2">
               <span className="block">
-                Seu cadastro foi finalizado com sucesso. Em poucos minutos, o
-                login do <strong>WhatsApp</strong> será liberado para o seu perfil.
+                Sua clínica está configurada e sua conta já é a do{' '}
+                <strong>Administrador principal</strong>, com acesso total.
               </span>
               <span className="block">
-                Nossa equipe foi notificada automaticamente sobre o seu cadastro
-                e providenciará a disponibilização da sua instância de WhatsApp
-                assim que possível.
-              </span>
-              <span className="block text-xs">
-                Você já pode começar a explorar a agenda enquanto isso.
+                Agora você pode cadastrar os demais profissionais na página{' '}
+                <strong>Profissionais</strong>, definindo perfil, unidade, permissões e nível de
+                visualização de cada um.
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -233,10 +215,10 @@ export function OnboardingWizard({ open }: Props) {
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </div>
-          <DialogTitle className="text-center">Bem-vindo ao Hora Pro</DialogTitle>
+          <DialogTitle className="text-center">Configuração inicial da clínica</DialogTitle>
           <DialogDescription className="text-center">
-            Confirme os dados do seu cadastro como profissional administrador.
-            Para alterar e-mail ou senha, use Configurações (com verificação por código).
+            Só precisamos dos dados da clínica. Seus dados pessoais já foram herdados do seu
+            cadastro.
           </DialogDescription>
         </DialogHeader>
 
@@ -246,114 +228,132 @@ export function OnboardingWizard({ open }: Props) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="ob-name">Nome *</Label>
-              <Input id="ob-name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="ob-cpf">CPF</Label>
-                <Input
-                  id="ob-cpf"
-                  value={cpf}
-                  onChange={(e) => setCpf(formatCpfMask(e.target.value))}
-                  placeholder="000.000.000-00"
-                />
-              </div>
-              <div>
-                <Label htmlFor="ob-birth">Data de nascimento</Label>
-                <Input
-                  id="ob-birth"
-                  type="date"
-                  value={birthdate}
-                  onChange={(e) => setBirthdate(e.target.value)}
-                />
-              </div>
+            <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
+              <ShieldCheck className="mt-0.5 h-4 w-4 text-primary shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Você está configurando sua clínica com a conta do{' '}
+                {isPrimaryAdmin ? 'Administrador principal' : 'usuário administrador'}:{' '}
+                <strong className="text-foreground">{adminName}</strong> ({adminEmail}). Nome, e-mail
+                e senha não são solicitados novamente.
+              </p>
             </div>
 
             <div>
-              <Label htmlFor="ob-wpp">WhatsApp</Label>
+              <Label htmlFor="ob-clinic">Nome da clínica *</Label>
               <Input
-                id="ob-wpp"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(formatPhoneMask(e.target.value))}
+                id="ob-clinic"
+                value={clinicName}
+                onChange={(e) => setClinicName(e.target.value)}
+                placeholder="Ex: Studio Bella Estética"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ob-logo">Logo da clínica (URL, opcional)</Label>
+              <Input
+                id="ob-logo"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ob-unit">Primeira unidade</Label>
+              <Input
+                id="ob-unit"
+                value={unitName}
+                onChange={(e) => setUnitName(e.target.value)}
+                placeholder="Ex: Unidade Centro"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ob-phone">Telefone comercial (opcional)</Label>
+              <Input
+                id="ob-phone"
+                value={clinicPhone}
+                onChange={(e) => setClinicPhone(formatPhoneMask(e.target.value))}
                 placeholder="(11) 99999-9999"
               />
             </div>
 
-            <div>
-              <Label>Cor na agenda</Label>
-              <p className="text-[11px] text-muted-foreground mb-2">
-                Cada profissional tem uma cor única. Cores em uso ficam indisponíveis.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {AGENDA_COLOR_PALETTE.map((c) => {
-                  const isTaken =
-                    takenColors.includes(c.value.toLowerCase()) &&
-                    c.value.toLowerCase() !== agendaColor.toLowerCase();
-                  const isSelected = agendaColor.toLowerCase() === c.value.toLowerCase();
-                  return (
-                    <button
-                      key={c.value}
-                      type="button"
-                      disabled={isTaken}
-                      onClick={() => setAgendaColor(c.value)}
-                      title={isTaken ? `${c.label} (em uso)` : c.label}
-                      className={`relative h-8 w-8 rounded-full border-2 transition ${
-                        isSelected ? 'border-foreground scale-110' : 'border-transparent'
-                      } ${isTaken ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105'}`}
-                      style={{ backgroundColor: c.value }}
-                      aria-label={`${c.label}${isTaken ? ' (em uso)' : ''}`}
-                    >
-                      {isTaken && (
-                        <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
-                          ✕
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label htmlFor="ob-street">Endereço da unidade (opcional)</Label>
+                <Input
+                  id="ob-street"
+                  value={clinicStreet}
+                  onChange={(e) => setClinicStreet(e.target.value)}
+                  placeholder="Rua / Avenida"
+                />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2">
-                Selecionada: <strong>{getAgendaColorLabel(agendaColor)}</strong>
-              </p>
-            </div>
-
-
-            <div>
-              <Label htmlFor="ob-spec">Especialidade</Label>
-              <Input
-                id="ob-spec"
-                value={specialty}
-                onChange={(e) => setSpecialty(e.target.value)}
-                placeholder="Ex: Esteticista, Cabeleireira, Fisioterapeuta"
-              />
-            </div>
-
-            <div className="rounded-md border p-3 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Label className="text-sm">Recebe por comissão</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Ative se este profissional ganha % por atendimento.
-                  </p>
-                </div>
-                <Switch checked={isCommission} onCheckedChange={setIsCommission} />
+              <div>
+                <Label htmlFor="ob-number">Número</Label>
+                <Input
+                  id="ob-number"
+                  value={clinicNumber}
+                  onChange={(e) => setClinicNumber(e.target.value)}
+                />
               </div>
-              {isCommission && (
-                <div>
-                  <Label htmlFor="ob-pct" className="text-xs">Percentual de comissão (%)</Label>
-                  <Input
-                    id="ob-pct"
-                    inputMode="decimal"
-                    value={commissionPct}
-                    onChange={(e) => setCommissionPct(e.target.value)}
-                    placeholder="Ex: 40"
-                  />
-                </div>
-              )}
             </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label htmlFor="ob-city">Cidade</Label>
+                <Input
+                  id="ob-city"
+                  value={clinicCity}
+                  onChange={(e) => setClinicCity(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ob-state">UF</Label>
+                <Input
+                  id="ob-state"
+                  value={clinicState}
+                  maxLength={2}
+                  onChange={(e) => setClinicState(e.target.value.toUpperCase())}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Fuso horário</Label>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Moeda</Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Depois de concluir, cadastre os demais profissionais em <strong>Profissionais</strong>.
+            </p>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Helmet } from "react-helmet-async";
 
 export default function PoliticaDePrivacidade() {
@@ -36,9 +36,9 @@ export default function PoliticaDePrivacidade() {
                 Documento legal
               </span>
             </div>
-            <CardTitle className="text-2xl font-display">
+            <h1 className="text-2xl font-display font-semibold leading-none tracking-tight">
               Política de Privacidade
-            </CardTitle>
+            </h1>
             <p className="text-sm text-muted-foreground">
               Última atualização: {new Date().toLocaleDateString("pt-BR")}
             </p>

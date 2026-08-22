@@ -1,3 +1,4 @@
+import { useActionGuard } from '@/hooks/useActionGuard';
 import { useState, useMemo } from 'react';
 import { format, parseISO, isAfter, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,8 @@ import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
+  const submitGuard = useActionGuard();
+  const paymentGuard = useActionGuard();
   const { expenseCategories } = useFinancialCategories();
   const { activePaymentMethods: allPaymentMethods } = usePaymentMethods();
   // Exclude "Crédito ao Cliente" — não se aplica a contas a pagar da empresa
@@ -730,8 +733,12 @@ export function ContasAPagar() {
                       />
                     </div>
                   </div>
-                  <Button onClick={handleSubmit} className="w-full">
-                    Adicionar
+                  <Button
+                    onClick={() => submitGuard.run(handleSubmit)}
+                    disabled={submitGuard.running}
+                    className="w-full"
+                  >
+                    {submitGuard.running ? 'Salvando...' : 'Adicionar'}
                   </Button>
                 </div>
               </ScrollArea>
@@ -1060,9 +1067,13 @@ export function ContasAPagar() {
                 <Button variant="outline" onClick={() => setConfirmationStep(false)}>
                   Voltar
                 </Button>
-                <Button onClick={handleConfirmPayment} className="bg-primary hover:bg-primary">
+                <Button
+                  onClick={() => paymentGuard.run(handleConfirmPayment)}
+                  disabled={paymentGuard.running}
+                  className="bg-primary hover:bg-primary"
+                >
                   <Check className="h-4 w-4 mr-2" />
-                  Confirmar Pagamento
+                  {paymentGuard.running ? 'Registrando...' : 'Confirmar Pagamento'}
                 </Button>
               </div>
             </div>
@@ -1168,9 +1179,13 @@ export function ContasAPagar() {
                   Cancelar
                 </Button>
                 {isEditingPayment ? (
-                  <Button onClick={handleConfirmPayment} className="bg-primary hover:bg-primary">
+                  <Button
+                    onClick={() => paymentGuard.run(handleConfirmPayment)}
+                    disabled={paymentGuard.running}
+                    className="bg-primary hover:bg-primary"
+                  >
                     <Check className="h-4 w-4 mr-2" />
-                    Salvar Alterações
+                    {paymentGuard.running ? 'Salvando...' : 'Salvar Alterações'}
                   </Button>
                 ) : (
                   <Button onClick={handleGoToConfirmation} className="bg-primary hover:bg-primary">

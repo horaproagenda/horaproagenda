@@ -134,6 +134,9 @@ export function useBoletoInstallments(saleId?: string) {
       invalidateAll(queryClient);
       toast.success('Parcela marcada como paga!');
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível marcar a parcela como paga: ' + (error?.message ?? ''));
+    },
   });
 
   const cancelInstallment = useMutation({
@@ -153,6 +156,9 @@ export function useBoletoInstallments(saleId?: string) {
     onSuccess: () => {
       invalidateAll(queryClient);
       toast.success('Parcela cancelada!');
+    },
+    onError: (error: any) => {
+      toast.error('Não foi possível cancelar a parcela: ' + (error?.message ?? ''));
     },
   });
 
@@ -276,6 +282,9 @@ export function useAllBoletoInstallments() {
       invalidateAll(queryClient);
       toast.success('Parcela marcada como paga!');
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível marcar a parcela como paga: ' + (error?.message ?? ''));
+    },
   });
 
   const batchMarkAsPaid = useMutation({
@@ -377,6 +386,9 @@ export function useAllBoletoInstallments() {
     onSuccess: () => {
       invalidateAll(queryClient);
       toast.success('Parcela cancelada!');
+    },
+    onError: (error: any) => {
+      toast.error('Não foi possível cancelar a parcela: ' + (error?.message ?? ''));
     },
   });
 

@@ -140,6 +140,9 @@ export function useWaitlist() {
       broadcastDataChange();
       toast.success('Removido da lista de espera');
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível remover da lista de espera: ' + (error?.message ?? ''));
+    },
   });
 
   const updateWaitlistStatus = useMutation({
@@ -154,6 +157,9 @@ export function useWaitlist() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitlist'] });
       broadcastDataChange();
+    },
+    onError: (error: any) => {
+      toast.error('Não foi possível atualizar o status na lista de espera: ' + (error?.message ?? ''));
     },
   });
 

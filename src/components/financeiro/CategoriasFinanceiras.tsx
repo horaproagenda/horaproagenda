@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useActionGuard } from '@/hooks/useActionGuard';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -125,6 +126,8 @@ export function CategoriasFinanceiras() {
   // nenhuma categoria do tipo (income/expense). A flag local + índice único
   // (lower(name), type) no banco evitam duplicatas em race-condition.
   const [seededDefaults, setSeededDefaults] = useState(false);
+  const categoryGuard = useActionGuard();
+  const entryGuard = useActionGuard();
   useEffect(() => {
     if (seededDefaults) return;
     // Aguarda o fetch inicial antes de decidir — evita seed duplicado enquanto categories=[] por loading
@@ -546,8 +549,14 @@ export function CategoriasFinanceiras() {
                   <Switch checked={form.is_active} onCheckedChange={(checked) => setForm({ ...form, is_active: checked })} />
                   <Label>Ativo</Label>
                 </div>
-                <Button onClick={handleSubmit} className="w-full">
-                  {editingCat ? 'Salvar' : 'Criar Categoria'}
+                <Button
+                  onClick={() => categoryGuard.run(handleSubmit)}
+                  disabled={categoryGuard.running}
+                  className="w-full"
+                >
+                  {categoryGuard.running
+                    ? 'Salvando...'
+                    : editingCat ? 'Salvar' : 'Criar Categoria'}
                 </Button>
               </div>
             </ScrollArea>
@@ -671,8 +680,14 @@ export function CategoriasFinanceiras() {
                     </p>
                   </div>
                 )}
-                <Button onClick={handleCreateEntry} className="w-full">
-                  {isIncome ? 'Criar Receita' : 'Criar Despesa'}
+                <Button
+                  onClick={() => entryGuard.run(handleCreateEntry)}
+                  disabled={entryGuard.running}
+                  className="w-full"
+                >
+                  {entryGuard.running
+                    ? 'Salvando...'
+                    : isIncome ? 'Criar Receita' : 'Criar Despesa'}
                 </Button>
               </div>
             </ScrollArea>

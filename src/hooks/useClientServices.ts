@@ -154,6 +154,9 @@ export function useClientServices(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível marcar o serviço como utilizado: ' + (error?.message ?? ''));
+    },
   });
 
   return {

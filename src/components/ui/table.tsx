@@ -68,11 +68,17 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         <div
           ref={bottomScrollRef}
           onScroll={isCoarsePointer ? undefined : onScroll("bottom")}
-          className="relative w-full overflow-auto scrollbar-visible"
-          style={{ touchAction: "pan-x pan-y", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+          data-table-wrapper=""
+          className="relative w-full max-w-full overflow-x-auto scrollbar-visible"
+          style={{
+            touchAction: "pan-x pan-y",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehaviorX: "contain",
+          }}
         >
           <table ref={tableRef} className={cn("w-full caption-bottom text-xs sm:text-sm", className)} {...props} />
         </div>
+
       </div>
     );
   },

@@ -269,14 +269,10 @@ export function ServiceProductsDialog() {
 
 
   const handleAddToService = async () => {
-    if (selectedServices.length === 0 || !selectedProduct || !selectedProductData) return;
+    if (!selectedProduct || !selectedProductData || !usage) return;
 
-    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
-      toast.error('Informe uma quantidade por uso maior que zero.');
-      return;
-    }
-    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
-      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
       return;
     }
 
@@ -294,47 +290,32 @@ export function ServiceProductsDialog() {
     }
     if (servicesToLink.length === 0) return;
 
-    if (knowsQuantity === 'yes') {
-      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
-        service_id: serviceId,
-        product_id: selectedProduct,
-        quantity_per_use: normalizedQuantity,
-        tracking_method: 'exact',
-        notes: null,
-      })));
-    } else {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
-        ? normalizedContainer / estimatedAppointments 
-        : 0;
-      await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
-        service_id: serviceId,
-        product_id: selectedProduct,
-        quantity_per_use: calcQty,
-        estimated_appointments: estimatedAppointments || null,
-        container_amount: containerAmount || null,
-        container_unit: containerUnit || selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: usageStartDate && usageEndDate 
-          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
-          : null,
-      })));
-    }
+    await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+      service_id: serviceId,
+      product_id: selectedProduct,
+      quantity_per_use: perUseInStockUnit,
+      estimated_appointments: calcMode === 'auto' ? periodAppointments.length : null,
+      container_amount: containerAmount || null,
+      container_unit: containerUnit || selectedProductData.unit,
+      tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
+      usage_start_date: usageStartDate,
+      usage_end_date: usageEndDate,
+      notes: calcMode === 'auto'
+        ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
+        : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
+    })));
+
+    await Promise.all(servicesToLink.map(serviceId => saveUsageRecord({ serviceId })));
 
     toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
     resetForm();
   };
 
   const handleAddToTemplate = async () => {
-    if (selectedTemplates.length === 0 || !selectedProduct || !selectedProductData) return;
+    if (!selectedProduct || !selectedProductData || !usage) return;
 
-    if (knowsQuantity === 'yes' && (!quantityPerUse || quantityPerUse <= 0)) {
-      toast.error('Informe uma quantidade por uso maior que zero.');
-      return;
-    }
-    if (knowsQuantity === 'no' && (!containerAmount || containerAmount <= 0 || !estimatedAppointments || estimatedAppointments <= 0)) {
-      toast.error('Para o modo estimado, preencha o tamanho do recipiente e a quantidade estimada de atendimentos (ambos maiores que zero).');
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
       return;
     }
 
@@ -352,37 +333,27 @@ export function ServiceProductsDialog() {
     }
     if (templatesToLink.length === 0) return;
 
-    if (knowsQuantity === 'yes') {
-      const normalizedQuantity = convertQuantity(quantityPerUse, selectedUnit, selectedProductData.unit) ?? quantityPerUse;
-      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
-        template_id: templateId,
-        product_id: selectedProduct,
-        quantity_per_use: normalizedQuantity,
-        tracking_method: 'exact',
-        notes: null,
-      })));
-    } else {
-      const normalizedContainer = convertQuantity(containerAmount, containerUnit, selectedProductData.unit) ?? containerAmount;
-      const calcQty = normalizedContainer > 0 && estimatedAppointments > 0 
-        ? normalizedContainer / estimatedAppointments 
-        : 0;
-      await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
-        template_id: templateId,
-        product_id: selectedProduct,
-        quantity_per_use: calcQty,
-        estimated_appointments: estimatedAppointments || null,
-        container_amount: containerAmount || null,
-        container_unit: containerUnit || selectedProductData.unit,
-        tracking_method: 'estimated',
-        notes: usageStartDate && usageEndDate 
-          ? `Período de uso: ${usageStartDate} a ${usageEndDate}` 
-          : null,
-      })));
-    }
+    await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+      template_id: templateId,
+      product_id: selectedProduct,
+      quantity_per_use: perUseInStockUnit,
+      estimated_appointments: calcMode === 'auto' ? periodAppointments.length : null,
+      container_amount: containerAmount || null,
+      container_unit: containerUnit || selectedProductData.unit,
+      tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
+      usage_start_date: usageStartDate,
+      usage_end_date: usageEndDate,
+      notes: calcMode === 'auto'
+        ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
+        : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
+    })));
+
+    await Promise.all(templatesToLink.map(templateId => saveUsageRecord({ templateId })));
 
     toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
     resetForm();
   };
+
 
   const resetForm = () => {
     setSelectedProduct('');

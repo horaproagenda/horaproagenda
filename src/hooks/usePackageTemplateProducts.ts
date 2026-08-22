@@ -15,6 +15,8 @@ export interface PackageTemplateProduct {
   container_amount: number | null;
   container_unit: string | null;
   tracking_method: TrackingMethod;
+  usage_start_date?: string | null;
+  usage_end_date?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -69,6 +71,8 @@ export function usePackageTemplateProducts(templateId?: string) {
       container_amount?: number | null;
       container_unit?: string | null;
       tracking_method?: TrackingMethod;
+      usage_start_date?: string | null;
+      usage_end_date?: string | null;
       notes?: string | null;
     }) => {
       const { data, error } = await supabase

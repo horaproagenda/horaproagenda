@@ -12,17 +12,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Users, ShieldCheck, ShieldOff, Crown } from 'lucide-react';
 import { toast } from 'sonner';
-import { APP_MODULES, type AppModuleKey } from '@/lib/plans';
+import { PERMISSION_MODULES, normalizeRow, presetPermissions, type PermissionRow } from '@/lib/permissions';
+import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useSeatUsage } from '@/hooks/useSeatUsage';
 
-type PermRow = { module: AppModuleKey; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean };
+type PermRow = PermissionRow;
 
 function emptyPermissions(): PermRow[] {
-  // Novos usuários iniciam com acesso total a todos os módulos.
-  // O administrador pode restringir depois, se desejar.
-  return APP_MODULES.map(m => ({ module: m.key, can_view: true, can_create: true, can_edit: true, can_delete: true }));
+  // Novo usuário começa como Profissional (somente os próprios dados).
+  // O administrador amplia depois, se desejar.
+  return presetPermissions('professional');
 }
+
 
 export function UsuariosContaSection() {
   const { user, hasRole } = useAuth();

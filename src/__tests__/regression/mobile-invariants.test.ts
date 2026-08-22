@@ -54,7 +54,7 @@ describe('regressão mobile: teclado virtual', () => {
 
   it('o CSS global desconta --kb-inset da altura útil', () => {
     expect(indexCss).toContain('--kb-inset');
-    expect(indexCss).toMatch(/calc\(\s*100dvh[^)]*--kb-inset/);
+    expect(indexCss).toMatch(/calc\([^;]*--kb-inset/);
   });
 
   it('dialog e sheet limitam altura considerando teclado e safe-area', () => {

@@ -812,6 +812,7 @@ export type Database = {
           clinic_cnpj: string | null
           clinic_complement: string | null
           clinic_email: string | null
+          clinic_logo_url: string | null
           clinic_name: string | null
           clinic_neighborhood: string | null
           clinic_number: string | null
@@ -820,6 +821,7 @@ export type Database = {
           clinic_street: string | null
           closing_time: string
           created_at: string
+          currency: string
           drag_and_drop_enabled: boolean
           id: string
           onboarding_completed_at: string | null
@@ -855,6 +857,7 @@ export type Database = {
           clinic_cnpj?: string | null
           clinic_complement?: string | null
           clinic_email?: string | null
+          clinic_logo_url?: string | null
           clinic_name?: string | null
           clinic_neighborhood?: string | null
           clinic_number?: string | null
@@ -863,6 +866,7 @@ export type Database = {
           clinic_street?: string | null
           closing_time?: string
           created_at?: string
+          currency?: string
           drag_and_drop_enabled?: boolean
           id?: string
           onboarding_completed_at?: string | null
@@ -898,6 +902,7 @@ export type Database = {
           clinic_cnpj?: string | null
           clinic_complement?: string | null
           clinic_email?: string | null
+          clinic_logo_url?: string | null
           clinic_name?: string | null
           clinic_neighborhood?: string | null
           clinic_number?: string | null
@@ -906,6 +911,7 @@ export type Database = {
           clinic_street?: string | null
           closing_time?: string
           created_at?: string
+          currency?: string
           drag_and_drop_enabled?: boolean
           id?: string
           onboarding_completed_at?: string | null
@@ -5470,6 +5476,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      ensure_primary_admin_setup: { Args: never; Returns: Json }
       expire_old_temp_passwords: { Args: never; Returns: undefined }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
       force_delete_professional: {

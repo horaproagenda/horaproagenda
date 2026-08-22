@@ -85,6 +85,8 @@ export function usePackageTemplateProducts(templateId?: string) {
           container_amount: templateProduct.container_amount ?? null,
           container_unit: templateProduct.container_unit ?? null,
           tracking_method: templateProduct.tracking_method ?? 'exact',
+          usage_start_date: templateProduct.usage_start_date ?? null,
+          usage_end_date: templateProduct.usage_end_date ?? null,
           notes: templateProduct.notes ?? null,
         })
         .select()

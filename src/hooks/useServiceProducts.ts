@@ -97,6 +97,8 @@ export function useServiceProducts(serviceId?: string) {
           container_amount: serviceProduct.container_amount ?? null,
           container_unit: serviceProduct.container_unit ?? null,
           tracking_method: serviceProduct.tracking_method ?? 'exact',
+          usage_start_date: serviceProduct.usage_start_date ?? null,
+          usage_end_date: serviceProduct.usage_end_date ?? null,
           notes: serviceProduct.notes ?? null,
         })
         .select()

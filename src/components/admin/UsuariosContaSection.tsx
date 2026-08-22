@@ -12,17 +12,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Users, ShieldCheck, ShieldOff, Crown } from 'lucide-react';
 import { toast } from 'sonner';
-import { APP_MODULES, type AppModuleKey } from '@/lib/plans';
+import { PERMISSION_MODULES, normalizeRow, presetPermissions, type PermissionRow } from '@/lib/permissions';
+import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useSeatUsage } from '@/hooks/useSeatUsage';
 
-type PermRow = { module: AppModuleKey; can_view: boolean; can_create: boolean; can_edit: boolean; can_delete: boolean };
+type PermRow = PermissionRow;
 
 function emptyPermissions(): PermRow[] {
-  // Novos usuários iniciam com acesso total a todos os módulos.
-  // O administrador pode restringir depois, se desejar.
-  return APP_MODULES.map(m => ({ module: m.key, can_view: true, can_create: true, can_edit: true, can_delete: true }));
+  // Novo usuário começa como Profissional (somente os próprios dados).
+  // O administrador amplia depois, se desejar.
+  return presetPermissions('professional');
 }
+
 
 export function UsuariosContaSection() {
   const { user, hasRole } = useAuth();
@@ -275,38 +277,33 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
 
 function PermissionsDialog({ userId, userName, onClose }: { userId: string; userName: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const { data: existing } = useQuery({
+  const { data: existing, isLoading } = useQuery({
     queryKey: ['perms-of', userId],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any).from('user_permissions').select('*').eq('user_id', userId);
-      return data ?? [];
+      return (data ?? []) as Array<Partial<PermRow> & { module: string }>;
     },
   });
-  const initial: PermRow[] = APP_MODULES.map(m => {
-    const found = (existing || []).find((p: { module: string }) => p.module === m.key);
-    // Sem registro salvo => tudo ativo por padrão (novos módulos entram liberados).
-    return {
-      module: m.key,
-      can_view: found ? !!found.can_view : true,
-      can_create: found ? !!found.can_create : true,
-      can_edit: found ? !!found.can_edit : true,
-      can_delete: found ? !!found.can_delete : true,
-    };
-  });
-  const [perms, setPerms] = useState<PermRow[]>(initial);
+
+  const [perms, setPerms] = useState<PermRow[] | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const rows: PermRow[] = perms ?? PERMISSION_MODULES.map(m =>
+    normalizeRow(m.key, (existing || []).find(p => p.module === m.key)),
+  );
 
   const save = async () => {
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-set-user-permissions', {
-        body: { user_id: userId, permissions: perms },
+        body: { user_id: userId, permissions: rows },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success('Permissões atualizadas.');
       qc.invalidateQueries({ queryKey: ['perms-of', userId] });
+      qc.invalidateQueries({ queryKey: ['user-permissions'] });
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao salvar.');
@@ -315,12 +312,18 @@ function PermissionsDialog({ userId, userName, onClose }: { userId: string; user
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Permissões — {userName}</DialogTitle>
-          <DialogDescription>Marque o que este usuário pode fazer em cada área.</DialogDescription>
+          <DialogDescription>
+            Defina, por módulo, o que este usuário pode fazer, se vê valores e quais dados alcança.
+          </DialogDescription>
         </DialogHeader>
-        <PermissionsMatrix value={perms} onChange={setPerms} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        ) : (
+          <PermissionsMatrix value={rows} onChange={setPerms} />
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={save} disabled={saving}>
@@ -332,41 +335,3 @@ function PermissionsDialog({ userId, userName, onClose }: { userId: string; user
   );
 }
 
-function PermissionsMatrix({ value, onChange }: { value: PermRow[]; onChange: (v: PermRow[]) => void }) {
-  const update = (idx: number, key: keyof PermRow, val: boolean) => {
-    const copy = [...value];
-    // @ts-expect-error generic
-    copy[idx][key] = val;
-    if (val && (key === 'can_create' || key === 'can_edit' || key === 'can_delete')) {
-      copy[idx].can_view = true;
-    }
-    onChange(copy);
-  };
-  return (
-    <div className="border rounded-lg overflow-hidden mt-2">
-      <table className="w-full text-xs">
-        <thead className="bg-muted">
-          <tr>
-            <th className="text-left p-2 text-[11px] font-semibold">Módulo</th>
-            <th className="text-center p-2 text-[11px] font-semibold">Ver</th>
-            <th className="text-center p-2 text-[11px] font-semibold">Criar</th>
-            <th className="text-center p-2 text-[11px] font-semibold">Editar</th>
-            <th className="text-center p-2 text-[11px] font-semibold">Excluir</th>
-          </tr>
-        </thead>
-        <tbody>
-          {value.map((row, idx) => (
-            <tr key={row.module} className="border-t">
-              <td className="p-2">{APP_MODULES.find(m => m.key === row.module)?.label}</td>
-              {(['can_view','can_create','can_edit','can_delete'] as const).map(key => (
-                <td key={key} className="text-center p-2">
-                  <Switch checked={row[key]} onCheckedChange={(b) => update(idx, key, b)} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}

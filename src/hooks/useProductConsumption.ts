@@ -81,6 +81,9 @@ export function useProductConsumption(startDate?: Date, endDate?: Date) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível registrar o consumo do produto: ' + (error?.message ?? ''));
+    },
   });
 
   // Generate consumption report grouped by product

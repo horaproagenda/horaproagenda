@@ -89,6 +89,9 @@ export function useProductUsageRecords(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
       toast.success('Registro de uso removido.');
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível remover o registro de uso: ' + (error?.message ?? ''));
+    },
   });
 
   /** IDs de atendimentos já contabilizados em outros frascos do mesmo produto. */

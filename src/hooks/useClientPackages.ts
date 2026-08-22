@@ -316,6 +316,9 @@ export function useClientPackages(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
     },
+    onError: (error: any) => {
+      toast.error('Não foi possível vincular a sessão do pacote ao agendamento: ' + (error?.message ?? ''));
+    },
   });
 
 

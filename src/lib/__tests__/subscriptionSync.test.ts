@@ -8,16 +8,17 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 const { waitForSubscriptionAccess, grantsAppAccess } = await import('../subscriptionSync');
+type Sub = Awaited<ReturnType<typeof waitForSubscriptionAccess>>;
 
-const trial = {
+const trial: NonNullable<Sub> = {
   id: 'sub-1',
   is_grandfathered: false,
   stripe_customer_id: null,
   stripe_subscription_id: null,
-  status: 'trial',
+  status: 'trial' as const,
   trial_ends_at: new Date(Date.now() + 30 * 864e5).toISOString(),
 };
-const active = { id: 'sub-1', status: 'active', trial_ends_at: trial.trial_ends_at };
+const active: NonNullable<Sub> = { ...trial, status: 'active' };
 
 beforeEach(() => {
   rpc.mockReset();

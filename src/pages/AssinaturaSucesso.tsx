@@ -26,8 +26,12 @@ export default function AssinaturaSucesso() {
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
+      // O retorno do Stripe aqui é sempre de um pagamento (plano ou Pix). Como a
+      // conta já nasce em teste gratuito, é obrigatório exigir status pago para
+      // não confirmar "teste gratuito" a quem acabou de pagar o plano.
       const sub = await waitForSubscriptionAccess({
         timeoutMs: 30_000,
+        requirePaid: true,
         isCancelled: () => cancelled,
       });
       if (cancelled) return;
@@ -52,8 +56,6 @@ export default function AssinaturaSucesso() {
     };
   }, [sessionId, user?.id, qc, navigate, returnPath]);
 
-  const isTrial = granted?.status === "trial";
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="max-w-md w-full text-center">
@@ -68,20 +70,16 @@ export default function AssinaturaSucesso() {
           <CardTitle className="text-2xl">
             {confirming
               ? "Confirmando pagamento..."
-              : isTrial
-                ? "Cartão salvo com sucesso!"
-                : granted
-                  ? "Pagamento confirmado!"
-                  : "Pagamento recebido"}
+              : granted
+                ? "Pagamento confirmado!"
+                : "Pagamento recebido"}
           </CardTitle>
           <CardDescription>
             {confirming
               ? "Aguarde enquanto liberamos seu acesso."
-              : isTrial
-                ? "Seu teste gratuito de 30 dias começou. Abrindo o aplicativo..."
-                : granted
-                  ? "Sua assinatura foi ativada. Abrindo o aplicativo..."
-                  : "A confirmação pode levar alguns instantes. Você pode entrar no aplicativo e tentar novamente em seguida."}
+              : granted
+                ? "Sua assinatura foi ativada. Abrindo o aplicativo..."
+                : "Recebemos seu pagamento e a ativação está sendo processada. Você já pode entrar no aplicativo; não é necessário pagar novamente."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -59,6 +59,13 @@ interface WaitOptions {
   intervalMs?: number;
   /** Cancelamento externo (desmontagem do componente). */
   isCancelled?: () => boolean;
+  /**
+   * Quando true, um teste gratuito vigente NÃO conta como liberação: só resolve
+   * com assinatura paga (active/grandfathered). Usado no retorno do checkout
+   * pago, onde a conta já nasce em teste e a leitura do registro antigo daria
+   * um falso "teste gratuito começou".
+   */
+  requirePaid?: boolean;
 }
 
 /**
@@ -68,23 +75,25 @@ interface WaitOptions {
 export async function waitForSubscriptionAccess(
   options: WaitOptions = {},
 ): Promise<SyncedSubscription | null> {
-  const { timeoutMs = 30_000, intervalMs = 1_500, isCancelled } = options;
+  const { timeoutMs = 30_000, intervalMs = 1_500, isCancelled, requirePaid = false } = options;
   const deadline = Date.now() + timeoutMs;
+  const isResolved = (candidate: SyncedSubscription | null) =>
+    grantsAppAccess(candidate) && (!requirePaid || candidate?.status !== 'trial');
 
   // Primeira leitura: talvez o webhook já tenha ativado a conta.
   let sub = await fetchMySubscription();
-  if (grantsAppAccess(sub)) return sub;
+  if (isResolved(sub)) return sub;
 
   await syncSubscriptionWithStripe();
 
   while (!isCancelled?.() && Date.now() < deadline) {
     sub = await fetchMySubscription();
-    if (grantsAppAccess(sub)) return sub;
+    if (isResolved(sub)) return sub;
     await new Promise((r) => setTimeout(r, intervalMs));
     if (isCancelled?.()) break;
     await syncSubscriptionWithStripe();
   }
 
   sub = await fetchMySubscription();
-  return grantsAppAccess(sub) ? sub : null;
+  return isResolved(sub) ? sub : null;
 }

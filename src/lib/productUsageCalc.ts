@@ -21,6 +21,9 @@ const BASE_FACTORS: Record<string, { base: string; factor: number }> = {
   ml: { base: 'ml', factor: 1 },
   l: { base: 'ml', factor: 1000 },
   un: { base: 'un', factor: 1 },
+  // Unidade "Outros": família própria (só converte com ela mesma). Sem isso,
+  // produtos cadastrados como "Outros" salvavam consumo zerado.
+  other: { base: 'other', factor: 1 },
 };
 
 export function getBaseUnit(unit: string | null | undefined): string | null {

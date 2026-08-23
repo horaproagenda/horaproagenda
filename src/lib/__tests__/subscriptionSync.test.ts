@@ -11,6 +11,9 @@ const { waitForSubscriptionAccess, grantsAppAccess } = await import('../subscrip
 
 const trial = {
   id: 'sub-1',
+  is_grandfathered: false,
+  stripe_customer_id: null,
+  stripe_subscription_id: null,
   status: 'trial',
   trial_ends_at: new Date(Date.now() + 30 * 864e5).toISOString(),
 };

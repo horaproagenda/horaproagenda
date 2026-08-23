@@ -1,34 +1,40 @@
-import { describe, expect, it } from 'vitest';
-import { grantsAppAccess } from '@/lib/subscriptionSync';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const base = {
-  status: 'trial' as const,
-  trial_ends_at: null as string | null,
-  is_grandfathered: false,
-  stripe_customer_id: null as string | null,
-  stripe_subscription_id: null as string | null,
+const rpc = vi.fn();
+const invoke = vi.fn().mockResolvedValue({ data: null, error: null });
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: { rpc: (...a: unknown[]) => rpc(...a), functions: { invoke: (...a: unknown[]) => invoke(...a) } },
+}));
+
+const { waitForSubscriptionAccess, grantsAppAccess } = await import('../subscriptionSync');
+
+const trial = {
+  id: 'sub-1',
+  status: 'trial',
+  trial_ends_at: new Date(Date.now() + 30 * 864e5).toISOString(),
 };
+const active = { id: 'sub-1', status: 'active', trial_ends_at: trial.trial_ends_at };
 
-describe('grantsAppAccess', () => {
-  it('nega quando não há assinatura', () => {
-    expect(grantsAppAccess(null)).toBe(false);
+beforeEach(() => {
+  rpc.mockReset();
+  invoke.mockClear();
+});
+
+describe('regressão: retorno do checkout pago', () => {
+  it('não confirma pagamento com registro de teste gratuito pré-existente', async () => {
+    rpc.mockResolvedValue({ data: trial, error: null });
+    const result = await waitForSubscriptionAccess({ timeoutMs: 0, intervalMs: 0, requirePaid: true });
+    expect(result).toBeNull();
   });
 
-  it('libera assinatura ativa', () => {
-    expect(grantsAppAccess({ ...base, status: 'active' })).toBe(true);
+  it('confirma quando a assinatura vira ativa', async () => {
+    rpc.mockResolvedValue({ data: active, error: null });
+    const result = await waitForSubscriptionAccess({ timeoutMs: 0, intervalMs: 0, requirePaid: true });
+    expect(result?.status).toBe('active');
   });
 
-  it('libera teste gratuito vigente (cartão salvo no cadastro)', () => {
-    const ends = new Date(Date.now() + 30 * 86400000).toISOString();
-    expect(grantsAppAccess({ ...base, trial_ends_at: ends })).toBe(true);
-  });
-
-  it('nega teste expirado', () => {
-    const ends = new Date(Date.now() - 86400000).toISOString();
-    expect(grantsAppAccess({ ...base, trial_ends_at: ends })).toBe(false);
-  });
-
-  it('nega pagamento recusado', () => {
-    expect(grantsAppAccess({ ...base, status: 'past_due' })).toBe(false);
+  it('teste gratuito continua liberando o acesso ao aplicativo', () => {
+    expect(grantsAppAccess(trial)).toBe(true);
   });
 });

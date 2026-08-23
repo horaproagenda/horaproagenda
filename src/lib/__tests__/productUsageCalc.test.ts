@@ -205,3 +205,41 @@ describe('contagem de atendimentos do período', () => {
     expect(second.map((a) => a.id)).toEqual(['a3']);
   });
 });
+
+describe('regressão: unidade "Outros"', () => {
+  it('converte dentro da própria família e não zera o consumo informado', () => {
+    expect(convertWithinFamily(3, 'other', 'other')).toBe(3);
+    expect(convertWithinFamily(3, 'other', 'g')).toBeNull();
+
+    const usage = computeUsage({
+      mode: 'manual',
+      containerAmount: 100,
+      containerUnit: 'other',
+      quantityPerAppointment: 3,
+      quantityUnit: 'other',
+      appointmentsCounted: 5,
+      stockQuantity: 600,
+      stockUnit: 'other',
+    });
+    expect(usage.perAppointment).toBe(3);
+    expect(usage.totalConsumed).toBe(15);
+    expect(usage.containerYield).toBe(33);
+  });
+
+  it('não gera erro de validação para produto em "Outros"', () => {
+    expect(
+      validateUsage({
+        mode: 'manual',
+        containerAmount: 100,
+        containerUnit: 'other',
+        quantityPerAppointment: 3,
+        quantityUnit: 'other',
+        startDate: '2026-08-01',
+        endDate: '2026-08-10',
+        serviceIds: ['svc-1'],
+        appointmentsCounted: 5,
+        stockUnit: 'other',
+      }),
+    ).toEqual([]);
+  });
+});

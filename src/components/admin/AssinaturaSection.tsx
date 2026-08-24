@@ -75,68 +75,59 @@ export function AssinaturaSection() {
     [periods],
   );
 
-  const [isPixLoading, setIsPixLoading] = useState(false);
-  const [isBoletoLoading, setIsBoletoLoading] = useState(false);
+  // CPF/CNPJ: exigido pelo Asaas para emitir a cobrança.
+  const [documentOpen, setDocumentOpen] = useState(false);
+  const [documentValue, setDocumentValue] = useState("");
 
-  const handleCheckout = async () => {
+  /** Abre a assinatura no Asaas (o cliente escolhe Pix, cartão ou boleto). */
+  const startCheckout = async (cpfCnpj?: string) => {
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
     }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { seats: selectedSeats, billingMonths },
+      const result = await startAsaasSubscription({
+        seats: selectedSeats,
+        billingMonths,
+        cpfCnpj,
       });
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar checkout";
-      toast.error(msg);
+      if (result.redirected) return;
+      if (result.needDocument) {
+        setDocumentOpen(true);
+        return;
+      }
+      toast.error(result.error ?? "Não foi possível iniciar o pagamento");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePrepayCheckout = async (methods: ("pix" | "boleto")[]) => {
-    if (!user) {
-      toast.error("Você precisa estar logado");
+  const handleCheckout = () => startCheckout();
+
+  const handleConfirmDocument = async () => {
+    const digits = documentValue.replace(/\D+/g, "");
+    if (digits.length !== 11 && digits.length !== 14) {
+      toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido");
       return;
     }
-    const isBoleto = methods[0] === "boleto";
-    const setLoading = isBoleto ? setIsBoletoLoading : setIsPixLoading;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-pix-checkout", {
-        body: { seats: selectedSeats, billingMonths, methods },
-      });
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    setDocumentOpen(false);
+    await startCheckout(digits);
   };
 
-  const handlePixCheckout = () => handlePrepayCheckout(["pix"]);
-  const handleBoletoCheckout = () => handlePrepayCheckout(["boleto"]);
-
+  /** Abre a fatura em aberto no Asaas (pagar agora / atualizar pagamento). */
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao abrir portal";
-      toast.error(msg);
+      const result = await openAsaasInvoice();
+      if (!result.redirected) {
+        toast.error(result.error ?? "Nenhuma fatura em aberto no momento");
+      }
     } finally {
       setPortalLoading(false);
     }
   };
+
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">

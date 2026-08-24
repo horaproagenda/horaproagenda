@@ -541,73 +541,33 @@ function SubscriptionSummary({
             className="w-full"
             size="lg"
             onClick={onCheckout}
-            disabled={anyLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
                 {isActive
-                  ? "Trocar de plano (cartão)"
-                  : isMonthly
-                    ? "Assinar com cartão (renovação automática)"
-                    : `Assinar com cartão (${meta.short.toLowerCase()})`}
-              </>
-            )}
-          </Button>
-
-
-          <Button
-            className="w-full"
-            size="lg"
-            variant="outline"
-            onClick={onPixCheckout}
-            disabled={anyLoading}
-          >
-            {isPixLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando Pix...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Pagar com Pix ({formatBRL(planTotal)})
-              </>
-            )}
-          </Button>
-
-          <Button
-            className="w-full"
-            size="lg"
-            variant="outline"
-            onClick={onBoletoCheckout}
-            disabled={anyLoading}
-          >
-            {isBoletoLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando boleto...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pagar com Boleto ({formatBRL(planTotal)})
+                  ? `Trocar de plano (${meta.short.toLowerCase()})`
+                  : `Assinar ${meta.short.toLowerCase()} · ${formatBRL(planTotal)}`}
               </>
             )}
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Pix e Boleto não incluem os 30 dias grátis (não permitem cobrança
-            automática). Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
-            compensação. Sem renovação automática — você paga novamente ao fim do período.
+            Na tela de pagamento você escolhe <span className="font-medium">Pix</span>,{" "}
+            <span className="font-medium">cartão</span> ou{" "}
+            <span className="font-medium">boleto</span>. Pix e cartão liberam o acesso em
+            tempo real; boleto libera após a compensação (1–2 dias úteis).
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
           <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3" /> Pagamento seguro Stripe
+            <ShieldCheck className="h-3 w-3" /> Pagamento seguro via Asaas
           </span>
           <span className="inline-flex items-center gap-1">
             <Sparkles className="h-3 w-3" /> Cancele quando quiser
@@ -616,8 +576,9 @@ function SubscriptionSummary({
 
         <p className="text-[11px] text-muted-foreground text-center border-t pt-3">
           Renovação automática {isMonthly ? "todo mês" : `a cada ${billingMonths} meses`}
-          . Gerencie tudo pelo portal do cliente.
+          . As faturas ficam disponíveis em "Ver fatura".
         </p>
+
       </CardContent>
     </Card>
   );

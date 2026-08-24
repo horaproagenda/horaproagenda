@@ -70,11 +70,15 @@ export type Database = {
       }
       account_subscriptions: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
           created_at: string
           current_period_end: string | null
           id: string
           is_grandfathered: boolean
           owner_user_id: string
+          payment_provider: string
           plan_tier: number | null
           seat_limit: number
           status: string
@@ -85,11 +89,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
           created_at?: string
           current_period_end?: string | null
           id?: string
           is_grandfathered?: boolean
           owner_user_id: string
+          payment_provider?: string
           plan_tier?: number | null
           seat_limit?: number
           status?: string
@@ -100,11 +108,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
           created_at?: string
           current_period_end?: string | null
           id?: string
           is_grandfathered?: boolean
           owner_user_id?: string
+          payment_provider?: string
           plan_tier?: number | null
           seat_limit?: number
           status?: string
@@ -2857,6 +2869,30 @@ export type Database = {
         }
         Relationships: []
       }
+      processed_asaas_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: []
+      }
       processed_stripe_events: {
         Row: {
           event_id: string
@@ -5513,11 +5549,15 @@ export type Database = {
       get_my_subscription: {
         Args: never
         Returns: {
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
           created_at: string
           current_period_end: string | null
           id: string
           is_grandfathered: boolean
           owner_user_id: string
+          payment_provider: string
           plan_tier: number | null
           seat_limit: number
           status: string

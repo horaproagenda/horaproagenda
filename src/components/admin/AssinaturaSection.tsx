@@ -4,7 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL } from "@/lib/plans";
 import { usePricing } from "@/hooks/usePricing";
-import { goToStripe } from "@/lib/stripeCheckout";
+import { openAsaasInvoice, startAsaasSubscription } from "@/lib/asaasCheckout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

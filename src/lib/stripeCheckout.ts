@@ -1,4 +1,4 @@
-// Fluxo de retorno do Stripe Checkout / Portal.
+// Fluxo de retorno do checkout de assinatura (Asaas).
 //
 // Regra: o checkout abre na MESMA aba. Abrir em nova aba deixava o app antigo
 // preso num estado desatualizado (assinatura inativa) enquanto o pagamento era
@@ -8,8 +8,8 @@
 const RETURN_KEY = 'horapro:checkout-return';
 export const SUBSCRIPTION_SYNC_KEY = 'horapro:subscription-updated';
 
-/** Navega para o Stripe na mesma aba, memorizando a rota de origem. */
-export function goToStripe(url: string) {
+/** Navega para a fatura/checkout na mesma aba, memorizando a rota de origem. */
+export function goToCheckout(url: string) {
   try {
     const from = `${window.location.pathname}${window.location.search}`;
     // Não memoriza as páginas de retorno do próprio checkout.
@@ -21,6 +21,10 @@ export function goToStripe(url: string) {
   }
   window.location.assign(url);
 }
+
+/** @deprecated nome legado do Stripe — use goToCheckout. */
+export const goToStripe = goToCheckout;
+
 
 /** Rota para onde voltar após o Stripe (padrão: dashboard). */
 export function consumeCheckoutReturnPath(fallback = '/agenda'): string {

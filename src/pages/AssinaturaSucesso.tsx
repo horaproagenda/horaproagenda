@@ -16,17 +16,17 @@ export default function AssinaturaSucesso() {
   const { user } = useAuth();
   const [confirming, setConfirming] = useState(true);
   const [granted, setGranted] = useState<SyncedSubscription | null>(null);
-  // Rota de origem (memorizada antes de ir ao Stripe) — resolvida uma única vez.
+  // Rota de origem (memorizada antes de ir ao checkout) — resolvida uma única vez.
   const [returnPath] = useState(() => consumeCheckoutReturnPath("/agenda"));
 
-  // Após o retorno do Stripe, sincroniza direto com o Stripe (não depende do
+  // Após o retorno do Asaas, confere direto no Asaas (não depende do
   // webhook) até que a conta libere o acesso — vale tanto para assinatura paga
   // quanto para o cadastro com cartão salvo (teste gratuito de 30 dias).
   useEffect(() => {
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;
     const run = async () => {
-      // O retorno do Stripe aqui é sempre de um pagamento (plano ou Pix). Como a
+      // O retorno do Asaas aqui é sempre de um pagamento (Pix, cartão ou boleto). Como a
       // conta já nasce em teste gratuito, é obrigatório exigir status pago para
       // não confirmar "teste gratuito" a quem acabou de pagar o plano.
       const sub = await waitForSubscriptionAccess({

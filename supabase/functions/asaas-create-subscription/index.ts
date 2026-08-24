@@ -144,7 +144,6 @@ serve(async (req) => {
           billingMonths === 1 ? "mensal" : billingMonths === 6 ? "semestral" : "anual"
         }`,
         externalReference,
-challenge: undefined,
         callback: {
           successUrl: `${origin}/assinatura/sucesso?provider=asaas`,
           autoRedirect: true,

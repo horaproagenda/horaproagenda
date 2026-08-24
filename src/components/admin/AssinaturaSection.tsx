@@ -291,12 +291,47 @@ export function AssinaturaSection() {
         isActive={isActive}
         showTrial={trialEligible && !isTrialing}
         isLoading={isLoading}
-        isPixLoading={isPixLoading}
-        isBoletoLoading={isBoletoLoading}
         onCheckout={handleCheckout}
-        onPixCheckout={handlePixCheckout}
-        onBoletoCheckout={handleBoletoCheckout}
       />
+
+      {/* CPF/CNPJ do assinante — exigido pelo Asaas para emitir a cobrança */}
+      <Dialog open={documentOpen} onOpenChange={setDocumentOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>CPF ou CNPJ do responsável</DialogTitle>
+            <DialogDescription>
+              Precisamos do documento do titular para emitir a cobrança e a nota da
+              assinatura.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="assinatura-documento">CPF ou CNPJ</Label>
+            <Input
+              id="assinatura-documento"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              value={documentValue}
+              onChange={(e) => setDocumentValue(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDocumentOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmDocument} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
+                </>
+              ) : (
+                "Continuar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

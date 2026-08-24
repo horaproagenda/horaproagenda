@@ -35,7 +35,7 @@ export function PaymentGraceBanner({ subscription, isAdmin }: PaymentGraceBanner
   const openPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
       if (error) throw error;
       if (data?.url) {
         goToStripe(data.url);
@@ -52,7 +52,7 @@ export function PaymentGraceBanner({ subscription, isAdmin }: PaymentGraceBanner
   const check = async () => {
     setChecking(true);
     try {
-      await supabase.functions.invoke('check-subscription');
+      await supabase.functions.invoke('asaas-check-subscription');
       qc.invalidateQueries({ queryKey: ['account-subscription', user?.id] });
       qc.invalidateQueries({ queryKey: ['seat-usage', user?.id] });
       toast.success('Status do pagamento atualizado.');

@@ -99,7 +99,7 @@ export default function Assinatura() {
             <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Pagamento seguro</p>
-              <p className="text-muted-foreground text-xs mt-0.5">Processado pela Stripe, com criptografia bancária.</p>
+              <p className="text-muted-foreground text-xs mt-0.5">Processado pelo Asaas, com criptografia bancária.</p>
             </div>
           </div>
           <div className="flex gap-3">

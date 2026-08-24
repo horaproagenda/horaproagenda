@@ -64,7 +64,7 @@ export function usePricing() {
       //    servidor) e atualiza `pricing_cache`. Chamamos sempre para que uma
       //    alteração de valor no painel do Stripe reflita no app em minutos,
       //    mesmo sem os eventos `price.*` do webhook configurados.
-      const { data: fn, error: fnErr } = await supabase.functions.invoke('get-pricing');
+      const { data: fn, error: fnErr } = await supabase.functions.invoke('asaas-get-pricing');
       if (!fnErr && Array.isArray(fn?.cycles) && fn.cycles.length > 0) {
         const rows = (fn.cycles as Array<{
           lookup_key: string;

@@ -17,7 +17,7 @@ export interface SyncedSubscription extends SubscriptionAccessLike {
 /** Chama check-subscription ignorando falhas (rede/edge fora do ar). */
 export async function syncSubscriptionWithStripe(): Promise<void> {
   try {
-    await supabase.functions.invoke('check-subscription');
+    await supabase.functions.invoke('asaas-check-subscription');
   } catch (e) {
     console.warn('[subscriptionSync] check-subscription falhou:', e);
   }

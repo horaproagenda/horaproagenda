@@ -43,7 +43,7 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
     syncing.current = true;
     if (manual) setChecking(true);
     try {
-      await supabase.functions.invoke('check-subscription');
+      await supabase.functions.invoke('asaas-check-subscription');
       revalidate();
       if (manual) toast.success('Status do pagamento atualizado.');
     } catch (e) {
@@ -73,7 +73,7 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
   const openPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
       if (error) throw error;
       if (data?.url) {
         goToStripe(data.url);

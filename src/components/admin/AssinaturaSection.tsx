@@ -4,7 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL } from "@/lib/plans";
 import { usePricing } from "@/hooks/usePricing";
-import { goToStripe } from "@/lib/stripeCheckout";
+import { openAsaasInvoice, startAsaasSubscription } from "@/lib/asaasCheckout";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,68 +75,59 @@ export function AssinaturaSection() {
     [periods],
   );
 
-  const [isPixLoading, setIsPixLoading] = useState(false);
-  const [isBoletoLoading, setIsBoletoLoading] = useState(false);
+  // CPF/CNPJ: exigido pelo Asaas para emitir a cobrança.
+  const [documentOpen, setDocumentOpen] = useState(false);
+  const [documentValue, setDocumentValue] = useState("");
 
-  const handleCheckout = async () => {
+  /** Abre a assinatura no Asaas (o cliente escolhe Pix, cartão ou boleto). */
+  const startCheckout = async (cpfCnpj?: string) => {
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
     }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { seats: selectedSeats, billingMonths },
+      const result = await startAsaasSubscription({
+        seats: selectedSeats,
+        billingMonths,
+        cpfCnpj,
       });
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar checkout";
-      toast.error(msg);
+      if (result.redirected) return;
+      if (result.needDocument) {
+        setDocumentOpen(true);
+        return;
+      }
+      toast.error(result.error ?? "Não foi possível iniciar o pagamento");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePrepayCheckout = async (methods: ("pix" | "boleto")[]) => {
-    if (!user) {
-      toast.error("Você precisa estar logado");
+  const handleCheckout = () => startCheckout();
+
+  const handleConfirmDocument = async () => {
+    const digits = documentValue.replace(/\D+/g, "");
+    if (digits.length !== 11 && digits.length !== 14) {
+      toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido");
       return;
     }
-    const isBoleto = methods[0] === "boleto";
-    const setLoading = isBoleto ? setIsBoletoLoading : setIsPixLoading;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-pix-checkout", {
-        body: { seats: selectedSeats, billingMonths, methods },
-      });
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao iniciar pagamento";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    setDocumentOpen(false);
+    await startCheckout(digits);
   };
 
-  const handlePixCheckout = () => handlePrepayCheckout(["pix"]);
-  const handleBoletoCheckout = () => handlePrepayCheckout(["boleto"]);
-
+  /** Abre a fatura em aberto no Asaas (pagar agora / atualizar pagamento). */
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao abrir portal";
-      toast.error(msg);
+      const result = await openAsaasInvoice();
+      if (!result.redirected) {
+        toast.error(result.error ?? "Nenhuma fatura em aberto no momento");
+      }
     } finally {
       setPortalLoading(false);
     }
   };
+
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -155,8 +156,7 @@ export function AssinaturaSection() {
                   {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
                 </p>
                 <p className="text-sm text-muted-foreground truncate">
-                  {subscription?.seat_limit} usuário(s) liberados. Cobrança automática no
-                  cartão em{" "}
+                  {subscription?.seat_limit} usuário(s) liberados. Escolha um plano até{" "}
                   {subscription?.trial_ends_at
                     ? new Date(subscription.trial_ends_at).toLocaleDateString("pt-BR")
                     : "—"}
@@ -175,7 +175,7 @@ export function AssinaturaSection() {
               ) : (
                 <Settings2 className="h-4 w-4 mr-2" />
               )}
-              Gerenciar cartão
+              Ver fatura
             </Button>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export function AssinaturaSection() {
               ) : (
                 <Settings2 className="h-4 w-4 mr-2" />
               )}
-              Gerenciar assinatura
+              Ver fatura
             </Button>
           </CardContent>
         </Card>
@@ -290,12 +290,47 @@ export function AssinaturaSection() {
         isActive={isActive}
         showTrial={trialEligible && !isTrialing}
         isLoading={isLoading}
-        isPixLoading={isPixLoading}
-        isBoletoLoading={isBoletoLoading}
         onCheckout={handleCheckout}
-        onPixCheckout={handlePixCheckout}
-        onBoletoCheckout={handleBoletoCheckout}
       />
+
+      {/* CPF/CNPJ do assinante — exigido pelo Asaas para emitir a cobrança */}
+      <Dialog open={documentOpen} onOpenChange={setDocumentOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>CPF ou CNPJ do responsável</DialogTitle>
+            <DialogDescription>
+              Precisamos do documento do titular para emitir a cobrança e a nota da
+              assinatura.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="assinatura-documento">CPF ou CNPJ</Label>
+            <Input
+              id="assinatura-documento"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              value={documentValue}
+              onChange={(e) => setDocumentValue(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDocumentOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmDocument} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
+                </>
+              ) : (
+                "Continuar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -421,11 +456,7 @@ interface SubscriptionSummaryProps {
   isActive: boolean | undefined;
   showTrial: boolean;
   isLoading: boolean;
-  isPixLoading: boolean;
-  isBoletoLoading: boolean;
   onCheckout: () => void;
-  onPixCheckout: () => void;
-  onBoletoCheckout: () => void;
 }
 
 function SubscriptionSummary({
@@ -435,18 +466,14 @@ function SubscriptionSummary({
   isActive,
   showTrial,
   isLoading,
-  isPixLoading,
-  isBoletoLoading,
   onCheckout,
-  onPixCheckout,
-  onBoletoCheckout,
 }: SubscriptionSummaryProps) {
   const meta = CYCLE_META[billingMonths];
   const planTotal = cycleTotal(plan.seats, billingMonths);
   const fullPrice = plan.priceBRL * billingMonths;
   const saved = fullPrice - planTotal;
   const isMonthly = billingMonths === 1;
-  const anyLoading = isLoading || isPixLoading || isBoletoLoading;
+
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-card to-primary/5">
@@ -505,73 +532,33 @@ function SubscriptionSummary({
             className="w-full"
             size="lg"
             onClick={onCheckout}
-            disabled={anyLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
                 {isActive
-                  ? "Trocar de plano (cartão)"
-                  : isMonthly
-                    ? "Assinar com cartão (renovação automática)"
-                    : `Assinar com cartão (${meta.short.toLowerCase()})`}
-              </>
-            )}
-          </Button>
-
-
-          <Button
-            className="w-full"
-            size="lg"
-            variant="outline"
-            onClick={onPixCheckout}
-            disabled={anyLoading}
-          >
-            {isPixLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando Pix...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Pagar com Pix ({formatBRL(planTotal)})
-              </>
-            )}
-          </Button>
-
-          <Button
-            className="w-full"
-            size="lg"
-            variant="outline"
-            onClick={onBoletoCheckout}
-            disabled={anyLoading}
-          >
-            {isBoletoLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando boleto...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pagar com Boleto ({formatBRL(planTotal)})
+                  ? `Trocar de plano (${meta.short.toLowerCase()})`
+                  : `Assinar ${meta.short.toLowerCase()} · ${formatBRL(planTotal)}`}
               </>
             )}
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Pix e Boleto não incluem os 30 dias grátis (não permitem cobrança
-            automática). Pix: liberação em tempo real. Boleto: liberação em 1–2 dias úteis após
-            compensação. Sem renovação automática — você paga novamente ao fim do período.
+            Na tela de pagamento você escolhe <span className="font-medium">Pix</span>,{" "}
+            <span className="font-medium">cartão</span> ou{" "}
+            <span className="font-medium">boleto</span>. Pix e cartão liberam o acesso em
+            tempo real; boleto libera após a compensação (1–2 dias úteis).
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-1">
           <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3" /> Pagamento seguro Stripe
+            <ShieldCheck className="h-3 w-3" /> Pagamento seguro via Asaas
           </span>
           <span className="inline-flex items-center gap-1">
             <Sparkles className="h-3 w-3" /> Cancele quando quiser
@@ -580,8 +567,9 @@ function SubscriptionSummary({
 
         <p className="text-[11px] text-muted-foreground text-center border-t pt-3">
           Renovação automática {isMonthly ? "todo mês" : `a cada ${billingMonths} meses`}
-          . Gerencie tudo pelo portal do cliente.
+          . As faturas ficam disponíveis em "Ver fatura".
         </p>
+
       </CardContent>
     </Card>
   );

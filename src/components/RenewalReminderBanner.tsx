@@ -32,7 +32,7 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
   const openPortal = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
       if (error) throw error;
       if (data?.url) {
         goToStripe(data.url);

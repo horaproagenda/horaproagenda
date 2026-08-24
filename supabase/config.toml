@@ -77,3 +77,15 @@ project_id = "nsgcllrbswodjoadybsj"
   [functions.asaas-webhook]
     verify_jwt = false
 
+
+  # Asaas — preços públicos (lidos dos Links de Pagamento).
+  [functions.asaas-get-pricing]
+    verify_jwt = false
+
+  # Asaas — assinatura, fatura e conferência: o JWT é validado no código.
+  [functions.asaas-create-subscription]
+    verify_jwt = false
+  [functions.asaas-invoice-url]
+    verify_jwt = false
+  [functions.asaas-check-subscription]
+    verify_jwt = false

@@ -79,7 +79,7 @@ export default function AssinaturaStatus() {
   async function openPortal() {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("asaas-invoice-url");
       if (error) throw error;
       if (data?.url) goToStripe(data.url);
       else throw new Error("Portal indisponível");
@@ -94,7 +94,7 @@ export default function AssinaturaStatus() {
   async function refreshStatus() {
     setRefreshing(true);
     try {
-      const { error } = await supabase.functions.invoke("check-subscription");
+      const { error } = await supabase.functions.invoke("asaas-check-subscription");
       if (error) throw error;
       toast.success("Status atualizado");
       // O realtime do hook reinvalida a query automaticamente.

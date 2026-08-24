@@ -156,8 +156,7 @@ export function AssinaturaSection() {
                   {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
                 </p>
                 <p className="text-sm text-muted-foreground truncate">
-                  {subscription?.seat_limit} usuário(s) liberados. Cobrança automática no
-                  cartão em{" "}
+                  {subscription?.seat_limit} usuário(s) liberados. Escolha um plano até{" "}
                   {subscription?.trial_ends_at
                     ? new Date(subscription.trial_ends_at).toLocaleDateString("pt-BR")
                     : "—"}
@@ -176,7 +175,7 @@ export function AssinaturaSection() {
               ) : (
                 <Settings2 className="h-4 w-4 mr-2" />
               )}
-              Gerenciar cartão
+              Ver fatura
             </Button>
           </CardContent>
         </Card>
@@ -210,7 +209,7 @@ export function AssinaturaSection() {
               ) : (
                 <Settings2 className="h-4 w-4 mr-2" />
               )}
-              Gerenciar assinatura
+              Ver fatura
             </Button>
           </CardContent>
         </Card>

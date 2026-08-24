@@ -72,3 +72,8 @@ project_id = "nsgcllrbswodjoadybsj"
 
   [functions.notify-subscription-reminders]
     verify_jwt = false
+
+  # Asaas — webhook público (autenticado pelo cabeçalho asaas-access-token).
+  [functions.asaas-webhook]
+    verify_jwt = false
+

@@ -3,8 +3,7 @@ import { AlertCircle, Sparkles } from 'lucide-react';
 
 /**
  * Banner persistente no topo da app.
- * - Teste gratuito em andamento: informa dias restantes e a data da cobrança
- *   automática no cartão salvo.
+ * - Teste gratuito em andamento: informa dias restantes para escolher um plano.
  * - Assinatura pendente/atrasada: alerta. O redirecionamento para /assinatura é
  *   feito pelo ProtectedRoute — não repetimos link aqui.
  */

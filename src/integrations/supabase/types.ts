@@ -68,62 +68,145 @@ export type Database = {
         }
         Relationships: []
       }
+      account_payment_methods: {
+        Row: {
+          brand: string | null
+          created_at: string
+          expiration_month: string | null
+          expiration_year: string | null
+          gateway: string
+          holder_name: string | null
+          id: string
+          is_default: boolean
+          last_four_digits: string | null
+          owner_user_id: string
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          expiration_month?: string | null
+          expiration_year?: string | null
+          gateway?: string
+          holder_name?: string | null
+          id?: string
+          is_default?: boolean
+          last_four_digits?: string | null
+          owner_user_id: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          expiration_month?: string | null
+          expiration_year?: string | null
+          gateway?: string
+          holder_name?: string | null
+          id?: string
+          is_default?: boolean
+          last_four_digits?: string | null
+          owner_user_id?: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_payment_methods_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "account_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_subscriptions: {
         Row: {
           asaas_customer_id: string | null
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
+          billing_cycle: string
           created_at: string
           current_period_end: string | null
+          discount_percentage: number
+          final_price: number | null
+          grace_ends_at: string | null
           id: string
           is_grandfathered: boolean
+          monthly_price: number | null
+          next_billing_at: string | null
           owner_user_id: string
           payment_provider: string
           plan_tier: number | null
+          reactivated_at: string | null
           seat_limit: number
           status: string
           stripe_customer_id: string | null
           stripe_price_id: string | null
           stripe_subscription_id: string | null
+          suspended_at: string | null
           trial_ends_at: string | null
+          trial_start_at: string | null
           updated_at: string
         }
         Insert: {
           asaas_customer_id?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          discount_percentage?: number
+          final_price?: number | null
+          grace_ends_at?: string | null
           id?: string
           is_grandfathered?: boolean
+          monthly_price?: number | null
+          next_billing_at?: string | null
           owner_user_id: string
           payment_provider?: string
           plan_tier?: number | null
+          reactivated_at?: string | null
           seat_limit?: number
           status?: string
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          suspended_at?: string | null
           trial_ends_at?: string | null
+          trial_start_at?: string | null
           updated_at?: string
         }
         Update: {
           asaas_customer_id?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          discount_percentage?: number
+          final_price?: number | null
+          grace_ends_at?: string | null
           id?: string
           is_grandfathered?: boolean
+          monthly_price?: number | null
+          next_billing_at?: string | null
           owner_user_id?: string
           payment_provider?: string
           plan_tier?: number | null
+          reactivated_at?: string | null
           seat_limit?: number
           status?: string
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          suspended_at?: string | null
           trial_ends_at?: string | null
+          trial_start_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2322,6 +2405,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          owner_user_id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          owner_user_id: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          owner_user_id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       package_appointment_history: {
         Row: {
           account_owner_id: string
@@ -2688,6 +2804,116 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      payment_webhook_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          gateway: string
+          gateway_event_id: string
+          id: string
+          payload_hash: string | null
+          processed: boolean
+          processed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          gateway?: string
+          gateway_event_id: string
+          id?: string
+          payload_hash?: string | null
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          gateway?: string
+          gateway_event_id?: string
+          id?: string
+          payload_hash?: string | null
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          billing_cycle: string | null
+          created_at: string
+          discount_amount: number
+          due_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          final_amount: number | null
+          gateway_payment_id: string | null
+          id: string
+          owner_user_id: string
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          plan_users: number | null
+          retry_count: number
+          status: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: string | null
+          created_at?: string
+          discount_amount?: number
+          due_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          final_amount?: number | null
+          gateway_payment_id?: string | null
+          id?: string
+          owner_user_id: string
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan_users?: number | null
+          retry_count?: number
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: string | null
+          created_at?: string
+          discount_amount?: number
+          due_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          final_amount?: number | null
+          gateway_payment_id?: string | null
+          id?: string
+          owner_user_id?: string
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          plan_users?: number | null
+          retry_count?: number
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "account_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments_audit: {
         Row: {
@@ -5552,19 +5778,28 @@ export type Database = {
           asaas_customer_id: string | null
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
+          billing_cycle: string
           created_at: string
           current_period_end: string | null
+          discount_percentage: number
+          final_price: number | null
+          grace_ends_at: string | null
           id: string
           is_grandfathered: boolean
+          monthly_price: number | null
+          next_billing_at: string | null
           owner_user_id: string
           payment_provider: string
           plan_tier: number | null
+          reactivated_at: string | null
           seat_limit: number
           status: string
           stripe_customer_id: string | null
           stripe_price_id: string | null
           stripe_subscription_id: string | null
+          suspended_at: string | null
           trial_ends_at: string | null
+          trial_start_at: string | null
           updated_at: string
         }
         SetofOptions: {
@@ -5973,6 +6208,7 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: Json
       }
+      suspend_overdue_subscriptions: { Args: never; Returns: number }
       sync_appointments_with_paid_sale: {
         Args: { _sale_id: string }
         Returns: number

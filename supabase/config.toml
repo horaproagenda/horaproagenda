@@ -85,6 +85,8 @@ project_id = "nsgcllrbswodjoadybsj"
   # Asaas — assinatura, fatura e conferência: o JWT é validado no código.
   [functions.asaas-create-subscription]
     verify_jwt = false
+  [functions.asaas-update-card]
+    verify_jwt = false
   [functions.asaas-invoice-url]
     verify_jwt = false
   [functions.asaas-check-subscription]

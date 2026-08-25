@@ -1,9 +1,11 @@
-// Preços vigentes da assinatura Hora Pro, lidos dos Links de Pagamento do Asaas
-// (fonte única da verdade) e gravados em public.pricing_cache.
-// Público: usado pela landing e pela tela de assinatura.
+// Preços vigentes da assinatura Hora Pro.
+//
+// A fonte única da verdade é a tabela do backend (_shared/billingPlans.ts):
+// 8 pacotes por quantidade de usuários e ciclos mensal/semestral/anual com
+// descontos de 10%/20%. Público (landing e tela de assinatura); a validação
+// real acontece sempre no servidor na hora de criar a cobrança.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { fetchAsaasPricing } from "../_shared/asaasPricing.ts";
+import { BILLING_CYCLES, BILLING_PLANS, GRACE_DAYS, TRIAL_DAYS } from "../_shared/billingPlans.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,14 +16,22 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } },
-    );
-    const cycles = await fetchAsaasPricing(admin);
+    const payload = {
+      plans: BILLING_PLANS.map((p) => ({
+        seats: p.seats,
+        monthly_brl: p.monthlyCents / 100,
+      })),
+      cycles: BILLING_CYCLES.map((c) => ({
+        months: c.months,
+        key: c.key,
+        label: c.label,
+        discount: c.discount,
+      })),
+      trial_days: TRIAL_DAYS,
+      grace_days: GRACE_DAYS,
+    };
 
-    return new Response(JSON.stringify({ cycles }), {
+    return new Response(JSON.stringify(payload), {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/json",

@@ -1,35 +1,35 @@
 // Planos do Hora Pro.
-// Modelo simplificado: existe UM produto no Stripe (Hora Pro - Assinatura) com
-// um price recorrente por ciclo. A cobrança é `quantity × price do ciclo`,
-// onde `quantity` é o número de usuários (seats) escolhido pelo cliente.
+// Modelo simplificado: existe uma assinatura Hora Pro por ciclo no Asaas.
+// A cobrança é `usuários × preço do ciclo`, onde o número de usuários (seats)
+// é escolhido pelo cliente.
 //
-// IMPORTANTE — FONTE ÚNICA DA VERDADE DOS VALORES: o STRIPE.
+// IMPORTANTE — FONTE ÚNICA DA VERDADE DOS VALORES: o ASAAS.
 // Os valores abaixo são apenas FALLBACK (últimos valores conhecidos) usados
-// enquanto o app carrega ou se o Stripe estiver indisponível. Os preços reais
-// são resolvidos pelas lookup keys do Stripe e expostos por `usePricing()`
+// enquanto o app carrega ou se o Asaas estiver indisponível. Os preços reais
+// são resolvidos pelo cache alimentado pelo Asaas e expostos por `usePricing()`
 // (frontend) e `_shared/pricing.ts` (edge functions).
-// Para mudar o preço: crie um preço novo no Stripe transferindo a lookup key.
+// Para mudar o preço: altere os Links de Pagamento no painel do Asaas.
 export interface Plan {
   seats: number;
   priceBRL: number; // preço mensal em reais (referência para exibição)
   name: string;
 }
 
-/** Lookup keys fixas no Stripe, por ciclo (meses). */
+/** Lookup keys fixas no cache de preços, por ciclo (meses). */
 export const PRICE_LOOKUP_KEYS: Record<number, string> = {
   1: 'horapro_seat_monthly',
   6: 'horapro_seat_semiannual',
   12: 'horapro_seat_annual',
 };
 
-/** FALLBACK — valor por usuário em cada ciclo (R$). Real vem do Stripe. */
+/** FALLBACK — valor por usuário em cada ciclo (R$). Real vem do Asaas. */
 export const FALLBACK_PER_SEAT_CYCLE_BRL: Record<number, number> = {
   1: 110,
   6: 645.62,
   12: 1276.86,
 };
 
-/** FALLBACK do preço base por usuário/mês (R$). Real vem do Stripe. */
+/** FALLBACK do preço base por usuário/mês (R$). Real vem do Asaas. */
 export const PER_SEAT_MONTHLY_BRL = FALLBACK_PER_SEAT_CYCLE_BRL[1];
 
 export const PLANS: Plan[] = [
@@ -51,7 +51,7 @@ export const formatBRL = (v: number) =>
 
 // Períodos de cobrança recorrente disponíveis: mensal, semestral e anual.
 // Os descontos são recalculados em tempo real por `usePricing()` a partir dos
-// preços reais do Stripe; os valores abaixo são apenas fallback de exibição.
+// preços reais do Asaas; os valores abaixo são apenas fallback de exibição.
 export interface BillingPeriod {
   months: number;
   discount: number; // 0..1 — aplicado ao total do ciclo (seats × mensal × meses)

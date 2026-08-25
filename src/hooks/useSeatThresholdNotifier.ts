@@ -8,7 +8,7 @@ import { shouldSuggestUpgrade } from '@/lib/seatUsage';
 /**
  * Dispara toast (e e-mail opcional) SOMENTE quando a conta está acima do
  * limite contratado (`used > seat_limit`) — cenário típico de downgrade ou
- * remoção de assentos via Stripe que deixou colaboradores excedentes.
+ * remoção de assentos no plano que deixou colaboradores excedentes.
  *
  * Regra explícita do produto (2026-07): não sugerir upgrade quando o usuário
  * pago está DENTRO do seu seat_limit correto, mesmo estando exatamente no

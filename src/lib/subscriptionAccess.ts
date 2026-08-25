@@ -3,7 +3,7 @@
  *
  * Diferencia dois cenários de "sem acesso":
  *  - PAGAMENTO RECUSADO (`payment_failed`): já existiu cobrança/assinatura no
- *    Stripe e ela falhou ou foi interrompida. Bloqueia todos os usuários da
+ *    provedor de pagamento e ela falhou ou foi interrompida. Bloqueia todos os usuários da
  *    conta; só o administrador vê o botão de atualizar forma de pagamento.
  *  - SEM PLANO (`no_plan`): nunca assinou. O administrador é levado à tela de
  *    planos; os demais usuários veem aviso para procurar o administrador.
@@ -15,6 +15,9 @@ export interface SubscriptionAccessLike {
   is_grandfathered: boolean;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  asaas_customer_id?: string | null;
+  asaas_subscription_id?: string | null;
+  payment_provider?: string | null;
   current_period_end?: string | null;
 }
 
@@ -39,6 +42,15 @@ function isRegular(sub: SubscriptionAccessLike, now: number): boolean {
   return false;
 }
 
+function hasPaymentProvider(sub: SubscriptionAccessLike): boolean {
+  return Boolean(
+    sub.asaas_customer_id ||
+    sub.asaas_subscription_id ||
+    sub.stripe_customer_id ||
+    sub.stripe_subscription_id,
+  );
+}
+
 /** Motivo do bloqueio ignorando carência (usado internamente e na UI). */
 export function getBlockReason(
   sub: SubscriptionAccessLike | null | undefined,
@@ -47,9 +59,9 @@ export function getBlockReason(
   if (!sub) return null;
   if (isRegular(sub, now)) return null;
   if (sub.status === 'past_due') return 'payment_failed';
-  if (sub.status === 'canceled' && !!sub.stripe_customer_id) return 'payment_failed';
-  // Teste encerrado com assinatura já criada no Stripe = cobrança não aprovada.
-  if (sub.status === 'trial' && !!sub.stripe_subscription_id) return 'payment_failed';
+  if (sub.status === 'canceled' && hasPaymentProvider(sub)) return 'payment_failed';
+  // Teste encerrado com cobrança já criada = pagamento não aprovado.
+  if (sub.status === 'trial' && hasPaymentProvider(sub)) return 'payment_failed';
   return 'no_plan';
 }
 

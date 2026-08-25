@@ -18,7 +18,7 @@ export const RENEWAL_BANNER_DAYS = 7;
 
 export type BillingInterval = 'mensal' | 'semestral' | 'anual' | 'trimestral' | null;
 
-/** Rótulo do ciclo a partir do intervalo do preço no Stripe. */
+/** Rótulo do ciclo a partir do intervalo de cobrança. */
 export function billingIntervalLabel(
   interval?: string | null,
   intervalCount?: number | null,

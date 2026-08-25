@@ -91,7 +91,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Permite acesso às páginas /assinatura* (checkout, sucesso, cancelado).
   const isOnSubscriptionPage = location.pathname.startsWith('/assinatura');
   const isAdmin = hasRole('admin');
-  // Pagamento recusado / assinatura interrompida pelo Stripe: bloqueio para
+  // Pagamento recusado / assinatura interrompida pelo Asaas: bloqueio para
   // TODOS os usuários da conta, com botão de atualizar pagamento só p/ admin.
   const paymentFailed = getBlockReason(subscription) === 'payment_failed';
 

@@ -6,6 +6,7 @@
 // ASAAS_WEBHOOK_TOKEN (campo "Token de autenticação" no painel do Asaas).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { corsHeaders as baseCorsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
   asaasFetch,
   MONTHS_BY_CYCLE,
@@ -13,9 +14,9 @@ import {
 } from "../_shared/asaas.ts";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  ...baseCorsHeaders,
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, asaas-access-token",
+    "authorization, x-client-info, apikey, content-type, asaas-access-token, x-asaas-access-token, access-token",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -23,6 +24,42 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
     status,
   });
+
+function cleanToken(value?: string | null): string {
+  return (value ?? "").replace(/^Bearer\s+/i, "").trim();
+}
+
+function tokenCandidates(req: Request): string[] {
+  return [
+    req.headers.get("asaas-access-token"),
+    req.headers.get("x-asaas-access-token"),
+    req.headers.get("access-token"),
+    req.headers.get("Authorization"),
+  ]
+    .map(cleanToken)
+    .filter((value) => value.length > 0);
+}
+
+function tokensMatch(expected: string, received: string): boolean {
+  if (expected.length === 0 || received.length === 0) return false;
+  if (expected.length !== received.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    diff |= expected.charCodeAt(i) ^ received.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function isAuthorizedAsaasWebhook(req: Request): { ok: boolean; reason?: string } {
+  const expected = cleanToken(Deno.env.get("ASAAS_WEBHOOK_TOKEN"));
+  if (!expected) return { ok: false, reason: "missing_secret" };
+  const candidates = tokenCandidates(req);
+  if (candidates.length === 0) return { ok: false, reason: "missing_token" };
+  if (!candidates.some((candidate) => tokensMatch(expected, candidate))) {
+    return { ok: false, reason: "token_mismatch" };
+  }
+  return { ok: true };
+}
 
 /** Eventos que liberam o acesso. */
 const PAID_EVENTS = new Set([
@@ -58,10 +95,12 @@ interface AsaasPayment {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const expected = Deno.env.get("ASAAS_WEBHOOK_TOKEN");
-  const received = req.headers.get("asaas-access-token");
-  if (!expected || received !== expected) {
-    console.warn("[asaas-webhook] token inválido");
+  const auth = isAuthorizedAsaasWebhook(req);
+  if (!auth.ok) {
+    console.warn("[asaas-webhook] acesso negado", { reason: auth.reason });
+    if (auth.reason === "missing_secret") {
+      return json({ error: "webhook_not_configured" }, 500);
+    }
     return json({ error: "unauthorized" }, 401);
   }
 

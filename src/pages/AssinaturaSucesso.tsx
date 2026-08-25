@@ -20,8 +20,7 @@ export default function AssinaturaSucesso() {
   const [returnPath] = useState(() => consumeCheckoutReturnPath("/agenda"));
 
   // Após o retorno do Asaas, confere direto no Asaas (não depende do
-  // webhook) até que a conta libere o acesso — vale tanto para assinatura paga
-  // quanto para o cadastro com cartão salvo (teste gratuito de 30 dias).
+  // webhook) até que a conta libere o acesso da assinatura paga.
   useEffect(() => {
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;

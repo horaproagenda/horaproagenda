@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { goToStripe } from '@/lib/stripeCheckout';
+import { openAsaasInvoice } from '@/lib/asaasCheckout';
 import { getGraceDaysLeft, getGraceEndsAt } from '@/lib/subscriptionAccess';
 import type { AccountSubscription } from '@/hooks/useAccountSubscription';
 
@@ -19,7 +19,7 @@ interface PaymentGraceBannerProps {
 /**
  * Aviso fixo no topo do aplicativo durante o período de carência: a cobrança
  * automática (inclusive a do fim do teste) foi recusada, mas o acesso continua
- * liberado por alguns dias. Só o administrador vê a ação de atualizar cartão.
+ * liberado por alguns dias. Só o administrador vê a ação de abrir a fatura.
  */
 export function PaymentGraceBanner({ subscription, isAdmin }: PaymentGraceBannerProps) {
   const { user } = useAuth();
@@ -35,12 +35,8 @@ export function PaymentGraceBanner({ subscription, isAdmin }: PaymentGraceBanner
   const openPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
-      if (error) throw error;
-      if (data?.url) {
-        goToStripe(data.url);
-        return;
-      }
+      const result = await openAsaasInvoice();
+      if (result.redirected) return;
       navigate('/assinatura');
     } catch {
       navigate('/assinatura');
@@ -82,7 +78,7 @@ export function PaymentGraceBanner({ subscription, isAdmin }: PaymentGraceBanner
           {portalLoading
             ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
             : <CreditCard className="mr-1 h-3.5 w-3.5" />}
-          Atualizar forma de pagamento
+          Abrir fatura
         </Button>
       )}
       <Button size="sm" variant="outline" onClick={check} disabled={checking}>

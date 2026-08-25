@@ -10,7 +10,7 @@ export interface SeatUsage {
   is_grandfathered: boolean;
 }
 
-/** Uso atual de assentos da conta (vinculado ao plano comprado no Stripe). */
+/** Uso atual de assentos da conta (vinculado ao plano contratado no Asaas). */
 export function useSeatUsage() {
   const { user } = useAuth();
   const qc = useQueryClient();

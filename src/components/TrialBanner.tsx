@@ -18,7 +18,6 @@ export function TrialBanner() {
     const endDate = subscription.trial_ends_at
       ? new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')
       : null;
-    const hasCard = Boolean(subscription.stripe_subscription_id);
     return (
       <div
         role="status"
@@ -29,9 +28,7 @@ export function TrialBanner() {
         <span>
           Teste gratuito — {trialDaysLeft} {trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}
           {endDate
-            ? hasCard
-              ? `. Cobrança automática em ${endDate}.`
-              : `. Sem cartão: escolha um plano até ${endDate}.`
+            ? `. Escolha um plano até ${endDate}.`
             : '.'}
         </span>
 

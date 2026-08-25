@@ -20,6 +20,10 @@ export interface AccountSubscription {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
+  asaas_customer_id: string | null;
+  asaas_subscription_id: string | null;
+  asaas_payment_id: string | null;
+  payment_provider: string | null;
   current_period_end: string | null;
 }
 
@@ -59,7 +63,7 @@ export function useAccountSubscription() {
   }, [user?.id, qc]);
 
   // Revalida ao voltar o foco e quando outra aba avisa que a assinatura mudou
-  // (retorno do Stripe Checkout / Portal em outra aba).
+  // (retorno do checkout/fatura em outra aba).
   useEffect(() => {
     if (!user?.id) return;
     const refresh = () => {
@@ -80,10 +84,10 @@ export function useAccountSubscription() {
     };
   }, [user?.id, qc]);
 
-  // Auto-heal: o webhook do Stripe pode não estar entregando eventos. Se a
-  // assinatura local não estiver ativa, sincronizamos direto com o Stripe via
-  // check-subscription (throttle de 60s) e revalidamos. Assim, quem já pagou
-  // deixa de ver a cobrança sem precisar de nenhuma ação manual.
+  // Auto-heal: o webhook do Asaas pode não estar entregando eventos. Se a
+  // assinatura local não estiver ativa, sincronizamos direto com o Asaas via
+  // asaas-check-subscription e revalidamos. Assim, quem já pagou deixa de ver
+  // a cobrança sem precisar de nenhuma ação manual.
   const lastSyncRef = useRef(0);
   useEffect(() => {
     if (!user?.id) return;
@@ -102,9 +106,9 @@ export function useAccountSubscription() {
     lastSyncRef.current = now;
     void (async () => {
       try {
-        await supabase.functions.invoke('check-subscription');
+        await supabase.functions.invoke('asaas-check-subscription');
       } catch (e) {
-        console.warn('[useAccountSubscription] check-subscription falhou:', e);
+        console.warn('[useAccountSubscription] asaas-check-subscription falhou:', e);
         return;
       }
       qc.invalidateQueries({ queryKey: ['account-subscription', user.id] });
@@ -123,14 +127,15 @@ export function useAccountSubscription() {
   /** Teste gratuito em andamento (cartão já salvo, cobrança automática ao final). */
   const isTrialing = sub?.status === 'trial' && trialEndsMs > now;
   /**
-   * Ainda pode iniciar os 30 dias grátis: nunca teve assinatura no Stripe,
+   * Ainda pode iniciar os 30 dias grátis: nunca teve assinatura/cobrança,
    * não é conta vitalícia e não está com assinatura ativa.
    */
   const trialEligible = !!sub
     && !sub.is_grandfathered
     && sub.status !== 'grandfathered'
     && sub.status !== 'active'
-    && !sub.stripe_subscription_id;
+    && !sub.stripe_subscription_id
+    && !sub.asaas_subscription_id;
   // Fase de cobrança recusada (carência antes da suspensão).
   const paymentPhase = getPaymentPhase(sub, now);
   const graceDaysLeft = getGraceDaysLeft(sub, now);

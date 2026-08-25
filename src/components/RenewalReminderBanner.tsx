@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { goToStripe } from '@/lib/stripeCheckout';
+import { openAsaasInvoice } from '@/lib/asaasCheckout';
 import { getRenewalNotice } from '@/lib/subscriptionReminders';
 import type { AccountSubscription } from '@/hooks/useAccountSubscription';
 
@@ -17,7 +16,7 @@ interface RenewalReminderBannerProps {
  * Faixa de aviso exibida nos dias que antecedem a renovação da assinatura
  * (mensal, semestral ou anual) ou a cobrança automática do fim do teste.
  * Informa quantos dias faltam e, para o administrador, oferece o atalho para
- * atualizar a forma de pagamento no Stripe.
+ * abrir a fatura segura no Asaas.
  */
 export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminderBannerProps) {
   const navigate = useNavigate();
@@ -32,12 +31,8 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
   const openPortal = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
-      if (error) throw error;
-      if (data?.url) {
-        goToStripe(data.url);
-        return;
-      }
+      const result = await openAsaasInvoice();
+      if (result.redirected) return;
       navigate('/assinatura');
     } catch {
       navigate('/assinatura');
@@ -55,9 +50,7 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
       <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="text-center">
         {notice.kind === 'trial_charge'
-          ? subscription.stripe_subscription_id
-            ? `Seu teste gratuito termina em ${dias} (${date}). A cobrança será feita automaticamente no cartão salvo.`
-            : `Seu teste gratuito termina em ${dias} (${date}). Escolha um plano para continuar usando o aplicativo.`
+          ? `Seu teste gratuito termina em ${dias} (${date}). Escolha um plano para continuar usando o aplicativo.`
           : `Sua assinatura será renovada em ${dias} (${date}). Confirme se o cartão cadastrado está válido.`}
       </span>
       {isAdmin && (
@@ -65,7 +58,7 @@ export function RenewalReminderBanner({ subscription, isAdmin }: RenewalReminder
           {loading
             ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
             : <CreditCard className="mr-1 h-3.5 w-3.5" />}
-          {subscription.stripe_subscription_id ? 'Atualizar forma de pagamento' : 'Escolher plano'}
+          {subscription.asaas_subscription_id ? 'Abrir fatura' : 'Escolher plano'}
         </Button>
       )}
     </div>

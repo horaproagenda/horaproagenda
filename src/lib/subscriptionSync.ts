@@ -1,8 +1,7 @@
 /**
- * Sincronização de assinatura após o retorno do Stripe.
+ * Sincronização de assinatura após o retorno do Asaas.
  *
- * Usado nas telas de retorno (checkout de plano, cadastro com cartão para o
- * teste gratuito e portal do cliente) para liberar o aplicativo automaticamente
+ * Usado nas telas de retorno (checkout de plano e fatura) para liberar o aplicativo automaticamente
  * assim que o pagamento / cartão é registrado, sem depender do webhook.
  */
 import { supabase } from '@/integrations/supabase/client';
@@ -14,14 +13,17 @@ export interface SyncedSubscription extends SubscriptionAccessLike {
   plan_tier?: number | null;
 }
 
-/** Chama check-subscription ignorando falhas (rede/edge fora do ar). */
-export async function syncSubscriptionWithStripe(): Promise<void> {
+/** Chama asaas-check-subscription ignorando falhas (rede/edge fora do ar). */
+export async function syncSubscriptionWithAsaas(): Promise<void> {
   try {
     await supabase.functions.invoke('asaas-check-subscription');
   } catch (e) {
-    console.warn('[subscriptionSync] check-subscription falhou:', e);
+    console.warn('[subscriptionSync] asaas-check-subscription falhou:', e);
   }
 }
+
+/** @deprecated nome legado mantido para compatibilidade interna. */
+export const syncSubscriptionWithStripe = syncSubscriptionWithAsaas;
 
 /** Lê a assinatura atual da conta do usuário logado. */
 export async function fetchMySubscription(): Promise<SyncedSubscription | null> {
@@ -37,7 +39,7 @@ export async function fetchMySubscription(): Promise<SyncedSubscription | null> 
 
 /**
  * true quando a assinatura já libera o aplicativo:
- * ativa, vitalícia ou em teste gratuito vigente (cartão salvo no cadastro).
+ * ativa, vitalícia ou em teste gratuito vigente.
  */
 export function grantsAppAccess(
   sub: SyncedSubscription | null | undefined,
@@ -70,7 +72,7 @@ interface WaitOptions {
 
 /**
  * Aguarda até que a assinatura libere o acesso, forçando a sincronização com o
- * Stripe a cada tentativa. Resolve com a assinatura liberada ou `null`.
+ * Asaas a cada tentativa. Resolve com a assinatura liberada ou `null`.
  */
 export async function waitForSubscriptionAccess(
   options: WaitOptions = {},
@@ -84,14 +86,14 @@ export async function waitForSubscriptionAccess(
   let sub = await fetchMySubscription();
   if (isResolved(sub)) return sub;
 
-  await syncSubscriptionWithStripe();
+  await syncSubscriptionWithAsaas();
 
   while (!isCancelled?.() && Date.now() < deadline) {
     sub = await fetchMySubscription();
     if (isResolved(sub)) return sub;
     await new Promise((r) => setTimeout(r, intervalMs));
     if (isCancelled?.()) break;
-    await syncSubscriptionWithStripe();
+    await syncSubscriptionWithAsaas();
   }
 
   sub = await fetchMySubscription();

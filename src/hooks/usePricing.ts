@@ -47,12 +47,12 @@ function buildCycles(rows: PricingRow[] | null): Record<number, CyclePricing> {
 }
 
 /**
- * Preços da assinatura vindos do Stripe (fonte única da verdade).
+ * Preços da assinatura vindos do Asaas (fonte única da verdade).
  *
  * Leitura direta de `pricing_cache` (leitura pública) + Realtime: quando o
- * preço muda no Stripe, o webhook atualiza a tabela e a tela reflete em
- * segundos, sem deploy. Se o cache estiver vazio, chama `get-pricing`, que
- * consulta o Stripe e popula a tabela.
+ * preço muda no Asaas, a função de preços atualiza a tabela e a tela reflete em
+ * segundos, sem deploy. Se o cache estiver vazio, chama `asaas-get-pricing`, que
+ * consulta o Asaas e popula a tabela.
  */
 export function usePricing() {
   const qc = useQueryClient();
@@ -60,9 +60,9 @@ export function usePricing() {
   const query = useQuery({
     queryKey: ['pricing-cache'],
     queryFn: async (): Promise<Record<number, CyclePricing>> => {
-      // 1) Fonte da verdade: get-pricing consulta o Stripe (com cache curto no
+      // 1) Fonte da verdade: asaas-get-pricing consulta o Asaas (com cache curto no
       //    servidor) e atualiza `pricing_cache`. Chamamos sempre para que uma
-      //    alteração de valor no painel do Stripe reflita no app em minutos,
+      //    alteração de valor no painel do Asaas reflita no app em minutos,
       //    mesmo sem os eventos `price.*` do webhook configurados.
       const { data: fn, error: fnErr } = await supabase.functions.invoke('asaas-get-pricing');
       if (!fnErr && Array.isArray(fn?.cycles) && fn.cycles.length > 0) {
@@ -81,9 +81,9 @@ export function usePricing() {
         })) as PricingRow[];
         return buildCycles(rows);
       }
-      if (fnErr) console.warn('[usePricing] get-pricing failed:', fnErr.message);
+      if (fnErr) console.warn('[usePricing] asaas-get-pricing failed:', fnErr.message);
 
-      // 2) Stripe indisponível: usa a última leitura válida do cache.
+      // 2) Asaas indisponível: usa a última leitura válida do cache.
       const { data, error } = await supabase
         .from('pricing_cache')
         .select('lookup_key, price_id, unit_amount, currency, interval_months')
@@ -100,7 +100,7 @@ export function usePricing() {
 
 
 
-  // Realtime: preço alterado no Stripe → webhook grava no cache → refetch.
+  // Realtime: preço alterado no Asaas → cache atualizado → refetch.
   useEffect(() => {
     const channel = supabase
       .channel('pricing-cache-changes')
@@ -130,7 +130,7 @@ export function usePricing() {
   /** Planos com preço mensal dinâmico. */
   const plans: Plan[] = PLANS.map((p) => ({ ...p, priceBRL: monthlyTotal(p.seats) }));
 
-  /** Ciclos com desconto calculado a partir dos preços reais do Stripe. */
+    /** Ciclos com desconto calculado a partir dos preços reais do Asaas. */
   const periods: BillingPeriod[] = BILLING_PERIODS.map((p) => {
     const full = perSeatMonthlyBRL * p.months;
     const real = cycles[p.months]?.perSeatBRL ?? full;

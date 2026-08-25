@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { goToStripe } from '@/lib/stripeCheckout';
+import { openAsaasInvoice } from '@/lib/asaasCheckout';
 import type { AccountSubscription } from '@/hooks/useAccountSubscription';
 
 interface PaymentFailedGateProps {
@@ -20,8 +20,8 @@ interface PaymentFailedGateProps {
  * Tela de bloqueio exibida a TODOS os usuários da conta quando o pagamento da
  * assinatura não foi bem-sucedido (past_due / canceled).
  *
- * - O botão "Atualizar forma de pagamento" aparece SOMENTE para o administrador.
- * - Enquanto a tela está aberta, sincronizamos com o Stripe periodicamente:
+ * - O botão "Abrir fatura" aparece SOMENTE para o administrador.
+ * - Enquanto a tela está aberta, sincronizamos com o Asaas periodicamente:
  *   assim que o pagamento é confirmado, o app abre automaticamente (o hook de
  *   assinatura revalida e o ProtectedRoute libera o acesso).
  */
@@ -55,7 +55,7 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
   };
 
   // Sincronização automática a cada 20s enquanto o acesso está bloqueado, e
-  // também ao voltar o foco para a aba (retorno do portal do Stripe).
+  // também ao voltar o foco para a aba (retorno da fatura do Asaas).
   useEffect(() => {
     void sync();
     const id = window.setInterval(() => void sync(), 20_000);
@@ -73,13 +73,9 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
   const openPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('asaas-invoice-url');
-      if (error) throw error;
-      if (data?.url) {
-        goToStripe(data.url);
-        return;
-      }
-      // Sem cliente no Stripe ainda → manda escolher um plano.
+      const result = await openAsaasInvoice();
+      if (result.redirected) return;
+      // Sem fatura aberta ainda → manda escolher um plano.
       navigate('/assinatura');
     } catch {
       navigate('/assinatura');
@@ -105,8 +101,8 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
               ? `A cobrança com vencimento em ${dueDate} não foi aprovada. `
               : 'A cobrança da sua assinatura não foi aprovada. '}
             {isAdmin
-              ? 'Para voltar a ter acesso ao aplicativo, atualize a forma de pagamento.'
-              : 'O acesso está bloqueado para todos os usuários desta conta até que o administrador atualize a forma de pagamento.'}
+              ? 'Para voltar a ter acesso ao aplicativo, pague a fatura em aberto.'
+              : 'O acesso está bloqueado para todos os usuários desta conta até que o administrador regularize a fatura.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -115,7 +111,7 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
               {portalLoading
                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 : <CreditCard className="mr-2 h-4 w-4" />}
-              Atualizar forma de pagamento
+              Abrir fatura
             </Button>
           )}
           <Button variant="outline" className="w-full" onClick={() => void sync(true)} disabled={checking}>

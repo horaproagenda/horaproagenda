@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { toast } from "sonner";
-import { goToStripe } from "@/lib/stripeCheckout";
+import { openAsaasInvoice } from "@/lib/asaasCheckout";
 import {
   CheckCircle2, AlertCircle, XCircle, Clock, Sparkles, FileText,
   RefreshCw, CreditCard, ArrowLeft, LogOut, Calendar, Users, Loader2,
@@ -63,9 +63,7 @@ export default function AssinaturaStatus() {
         label: "Teste gratuito",
         variant: "success" as const,
         icon: Sparkles,
-        description: subscription?.stripe_subscription_id
-          ? `Você tem ${trialDaysLeft} dia(s) de teste. Ao final, o cartão salvo é cobrado automaticamente.`
-          : `Você tem ${trialDaysLeft} dia(s) de teste gratuito, sem precisar cadastrar cartão. Escolha um plano antes do fim do teste para não perder o acesso.`,
+        description: `Você tem ${trialDaysLeft} dia(s) de teste gratuito, sem precisar cadastrar cartão. Escolha um plano antes do fim do teste para não perder o acesso.`,
       }
     : STATUS_MAP[statusKey] ?? STATUS_MAP.trial;
   const StatusIcon = visual.icon;
@@ -74,15 +72,13 @@ export default function AssinaturaStatus() {
   const daysLeft = daysUntil(expiresAt);
   const isActiveOrGrand = statusKey === "active" || statusKey === "grandfathered" || isTrialing;
   const isCancelable = statusKey === "active" || statusKey === "past_due" || isTrialing;
-  const hasStripeCustomer = !!subscription?.stripe_customer_id;
+  const hasAsaasCustomer = !!subscription?.asaas_customer_id || !!subscription?.asaas_subscription_id;
 
   async function openPortal() {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("asaas-invoice-url");
-      if (error) throw error;
-      if (data?.url) goToStripe(data.url);
-      else throw new Error("Portal indisponível");
+      const result = await openAsaasInvoice();
+      if (!result.redirected) throw new Error(result.error || "Fatura indisponível");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao abrir portal";
       toast.error(msg);
@@ -179,7 +175,7 @@ export default function AssinaturaStatus() {
               <InfoTile
                 icon={CreditCard}
                 label="Ciclo"
-                value={subscription?.stripe_price_id ? "Assinatura Stripe" : "—"}
+                value={subscription?.payment_provider === "asaas" || hasAsaasCustomer ? "Assinatura Asaas" : "—"}
               />
             </div>
           </CardContent>
@@ -194,18 +190,18 @@ export default function AssinaturaStatus() {
                 Faturas e recibos
               </CardTitle>
               <CardDescription>
-                Baixe faturas, veja o histórico de cobranças e atualize seu cartão no portal seguro da Stripe.
+                Abra a fatura segura do Asaas para pagar por Pix, cartão ou boleto.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" onClick={openPortal} disabled={portalLoading || !hasStripeCustomer}>
+              <Button className="w-full" onClick={openPortal} disabled={portalLoading || !hasAsaasCustomer}>
                 {portalLoading ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Abrindo...</>
                 ) : (
                   <><FileText className="h-4 w-4 mr-2" /> Ver faturas e recibos</>
                 )}
               </Button>
-              {!hasStripeCustomer && (
+              {!hasAsaasCustomer && (
                 <p className="text-xs text-muted-foreground mt-2">
                   Disponível após a primeira cobrança aprovada.
                 </p>

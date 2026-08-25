@@ -3,14 +3,28 @@
  *
  * Diferencia dois cenários de "sem acesso":
  *  - PAGAMENTO RECUSADO (`payment_failed`): já existiu cobrança/assinatura no
- *    provedor de pagamento e ela falhou ou foi interrompida. Bloqueia todos os usuários da
- *    conta; só o administrador vê o botão de atualizar forma de pagamento.
+ *    provedor de pagamento e ela falhou ou foi interrompida. Bloqueia todos os
+ *    usuários da conta; só o administrador vê o botão de atualizar forma de
+ *    pagamento.
  *  - SEM PLANO (`no_plan`): nunca assinou. O administrador é levado à tela de
  *    planos; os demais usuários veem aviso para procurar o administrador.
+ *
+ * Status possíveis da assinatura: pending, trial, active, past_due, overdue,
+ * failed, suspended, canceled, refunded, chargeback, grandfathered.
  */
 
 export interface SubscriptionAccessLike {
-  status: 'trial' | 'active' | 'past_due' | 'canceled' | 'grandfathered';
+  status:
+    | 'pending'
+    | 'trial'
+    | 'active'
+    | 'past_due'
+    | 'overdue'
+    | 'failed'
+    | 'suspended'
+    | 'canceled'
+    | 'grandfathered'
+    | string;
   trial_ends_at: string | null;
   is_grandfathered: boolean;
   stripe_customer_id: string | null;
@@ -19,17 +33,20 @@ export interface SubscriptionAccessLike {
   asaas_subscription_id?: string | null;
   payment_provider?: string | null;
   current_period_end?: string | null;
+  /** Fim da carência calculado no servidor (prevalece sobre o cálculo local). */
+  grace_ends_at?: string | null;
+  updated_at?: string | null;
 }
 
 export type BlockReason = 'payment_failed' | 'no_plan' | null;
 
 /**
- * Dias de carência após a cobrança recusada (inclusive a cobrança automática do
- * fim do teste). Durante a carência o usuário continua usando o aplicativo, mas
- * recebe avisos com a ação de atualizar a forma de pagamento. Depois disso o
- * acesso é suspenso.
+ * Dias de carência após a cobrança recusada (inclusive a cobrança automática
+ * do fim do teste). Durante a carência o usuário continua usando o aplicativo,
+ * mas recebe avisos com a ação de atualizar a forma de pagamento. Depois
+ * disso o acesso é suspenso — sem excluir nenhum dado.
  */
-export const PAYMENT_GRACE_DAYS = 5;
+export const PAYMENT_GRACE_DAYS = 2;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** true quando o plano está regular (ativo, vitalício ou teste vigente). */
@@ -51,6 +68,9 @@ function hasPaymentProvider(sub: SubscriptionAccessLike): boolean {
   );
 }
 
+/** Status que indicam cobrança com problema (carência/bloqueio). */
+const PAYMENT_TROUBLE_STATUSES = new Set(['past_due', 'overdue', 'failed', 'suspended']);
+
 /** Motivo do bloqueio ignorando carência (usado internamente e na UI). */
 export function getBlockReason(
   sub: SubscriptionAccessLike | null | undefined,
@@ -58,17 +78,19 @@ export function getBlockReason(
 ): BlockReason {
   if (!sub) return null;
   if (isRegular(sub, now)) return null;
-  if (sub.status === 'past_due') return 'payment_failed';
+  if (PAYMENT_TROUBLE_STATUSES.has(sub.status)) return 'payment_failed';
   if (sub.status === 'canceled' && hasPaymentProvider(sub)) return 'payment_failed';
   // Teste encerrado com cobrança já criada = pagamento não aprovado.
   if (sub.status === 'trial' && hasPaymentProvider(sub)) return 'payment_failed';
+  // Cobrança em processamento (conta com assinatura criada aguardando baixa).
+  if (sub.status === 'pending' && hasPaymentProvider(sub)) return 'payment_failed';
   return 'no_plan';
 }
 
 /** Momento em que a cobrança falhou (fim do período pago ou fim do teste). */
 export function getPaymentFailureAt(sub: SubscriptionAccessLike | null | undefined): number | null {
   if (!sub) return null;
-  const ref = sub.current_period_end || sub.trial_ends_at;
+  const ref = sub.current_period_end || sub.trial_ends_at || sub.updated_at;
   if (!ref) return null;
   const ms = new Date(ref).getTime();
   return Number.isFinite(ms) ? ms : null;
@@ -80,6 +102,11 @@ export function getGraceEndsAt(
   now: number = Date.now(),
 ): number | null {
   if (getBlockReason(sub, now) !== 'payment_failed') return null;
+  // O servidor calcula o fim da carência (2 dias corridos após o vencimento).
+  if (sub?.grace_ends_at) {
+    const ms = new Date(sub.grace_ends_at).getTime();
+    if (Number.isFinite(ms)) return ms;
+  }
   const failedAt = getPaymentFailureAt(sub);
   if (failedAt === null) return null;
   return failedAt + PAYMENT_GRACE_DAYS * DAY_MS;
@@ -98,6 +125,9 @@ export function getPaymentPhase(
   now: number = Date.now(),
 ): PaymentPhase {
   if (getBlockReason(sub, now) !== 'payment_failed') return 'ok';
+  // Suspensão decidida no servidor bloqueia na hora, mesmo se a carência
+  // local ainda parecer vigente.
+  if (sub?.status === 'suspended') return 'suspended';
   const graceEnds = getGraceEndsAt(sub, now);
   if (graceEnds === null) return 'suspended';
   return graceEnds > now ? 'grace' : 'suspended';
@@ -119,7 +149,6 @@ export function hasSubscriptionAccess(
 ): boolean {
   if (!sub) return true; // ainda carregando — não bloqueia
   if (isRegular(sub, now)) return true;
-  // Cobrança recusada mantém o acesso durante a carência.
+  // Cobrança recusada mantém o acesso durante a carência (2 dias corridos).
   return getPaymentPhase(sub, now) === 'grace';
 }
-

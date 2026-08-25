@@ -621,13 +621,18 @@ input[type="number"] {
     font-size: 0.75rem !important;
   }
 
-  /* Inputs, selects — APENAS densidade vertical.
+  /* Inputs, selects — densidade vertical APENAS via padding.
      NÃO sobrescrever padding horizontal aqui: quebra os ícones internos
      (Search, Clock, R$) que dependem das classes pl-9 / pl-10 / pl-12.
      Regressão histórica: usar shorthand `padding` com !important fazia o
-     ícone ficar em cima do texto digitado em <480px. NÃO REINTRODUZIR. */
+     ícone ficar em cima do texto digitado em <480px. NÃO REINTRODUZIR.
+
+     ZOOM iOS — NÃO REDUZIR A FONTE: font-size PRECISA ficar em 16px.
+     Qualquer valor < 16px faz o Safari/PWA ampliar a tela ao focar o
+     campo e a tela NÃO retorna ao normal depois. A densidade visual
+     vem do padding/altura, nunca da fonte do campo. */
   input, select, textarea {
-    font-size: 0.8rem !important;
+    font-size: 16px !important;
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
   }
@@ -752,8 +757,9 @@ input[type="number"] {
     white-space: nowrap;
   }
 
-  /* Inputs */
-  input, select, textarea { font-size: 0.85rem !important; }
+  /* Inputs — 16px fixos: abaixo disso o iOS aplica zoom automático
+     ao focar (válido também para o PWA instalado). NÃO REDUZIR. */
+  input, select, textarea { font-size: 16px !important; }
 
   /* Tabs */
   [role="tab"] { font-size: 0.78rem !important; padding: 0.3rem 0.6rem !important; }
@@ -914,10 +920,12 @@ input[type="number"] {
     font-size: 0.72rem !important;
     margin-bottom: 0.125rem !important;
   }
+  /* Campos em diálogos/drawers: 16px fixos (anti-zoom iOS). A densidade
+     é dada pela altura de 2.25rem abaixo, NUNCA por fonte < 16px. */
   [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
   [role="dialog"] textarea,
   [role="dialog"] [role="combobox"] {
-    font-size: 0.78rem !important;
+    font-size: 16px !important;
   }
   [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
   [role="dialog"] [role="combobox"] {
@@ -1246,7 +1254,17 @@ table { font-feature-settings: "tnum"; }
 [data-filters] button, [data-filters] input, [data-filters] [role="combobox"],
 .filters-bar button, .filters-bar input, .filters-bar [role="combobox"] {
   height: 32px !important;
+}
+/* Botões/comboboxes da barra de filtros podem ser compactos… */
+[data-filters] button, [data-filters] [role="combobox"],
+.filters-bar button, .filters-bar [role="combobox"] {
   font-size: 12px !important;
+}
+/* …mas campos de texto (busca) ficam em 16px: abaixo disso o iOS
+   aplica zoom automático ao focar e a tela não retorna. NÃO REDUZIR. */
+[data-filters] input, [data-filters] textarea, [data-filters] select,
+.filters-bar input, .filters-bar textarea, .filters-bar select {
+  font-size: 16px !important;
 }
 
 /* Cards: reduce internal padding on mobile */
@@ -1330,9 +1348,11 @@ table thead th {
 .settings-page label,
 .settings-page .text-xs   { font-size: 0.7rem;    line-height: 1rem; }
 .settings-page .text-\[10px\] { font-size: 0.6rem; line-height: 0.85rem; }
+/* Campos de texto em Configurações: 16px fixos (anti-zoom iOS).
+   Botões e gatilhos de combobox (não editáveis) podem ser compactos. */
 .settings-page input,
 .settings-page select,
-.settings-page textarea,
+.settings-page textarea { font-size: 16px; }
 .settings-page button,
 .settings-page [role="combobox"] { font-size: 0.75rem; }
 .settings-page input:not([type="checkbox"]):not([type="radio"]),
@@ -1375,13 +1395,14 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   height: 1rem;
 }
 
-/* Em mobile, ainda mais espaço para evitar sobreposição com o valor digitado */
+/* Em mobile, ainda mais espaço para evitar sobreposição com o valor digitado.
+   font-size permanece 16px (regra global anti-zoom iOS) — NÃO REDUZIR. */
 @media (max-width: 480px) {
   input[type="time"],
   input[type="date"],
   input[type="datetime-local"] {
     padding-right: 2.25rem;
-    font-size: 0.85rem;
+    font-size: 16px;
   }
 }
 
@@ -1544,4 +1565,30 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
 .h-screen {
   height: 100vh;
   height: 100dvh;
+}
+
+/* ============================================================
+   11) ANTI-ZOOM iOS — AUTORIDADE FINAL (NÃO ALTERAR)
+   ============================================================
+   O Safari (e o PWA instalado) amplia a tela ao focar qualquer campo
+   de texto cuja fonte computada seja < 16px — e NÃO desfaz o zoom ao
+   sair do campo. Esta regra é a autoridade final: em dispositivos de
+   toque (iPhone, iPad, Android) e telas estreitas, TODO campo de texto
+   computa pelo menos 16px, inclusive em foco, dentro de modais,
+   drawers, popovers, barras de filtro e páginas compactas.
+
+   - NÃO usar user-scalable=no nem maximum-scale=1 (proibido: quebra a
+     acessibilidade de zoom manual do usuário).
+   - Densidade visual deve vir de padding/altura, NUNCA de fonte < 16px.
+   - max(16px, 1em) preserva fontes maiores quando já definidas.
+   Coberto por teste: src/__tests__/regression/mobile-invariants.test.ts
+   ============================================================ */
+@media (pointer: coarse), (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""]:not([contenteditable="false"]) {
+    font-size: max(16px, 1em) !important;
+  }
 }

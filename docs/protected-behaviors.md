@@ -65,7 +65,7 @@ Legenda de cobertura:
 | 34 | Responsividade: sem overflow horizontal da página (320px → desktop) | `unit` `mobile-invariants.test.ts` + `e2e` visual |
 | 35 | Rolagem vertical sempre funciona no mobile | `unit` `mobile-invariants.test.ts` |
 | 36 | Rolagem horizontal só dentro de `[data-table-wrapper]` | `unit` `mobile-invariants.test.ts` |
-| 37 | iPhone: `100dvh` (nunca `100vh` puro), safe-areas, sem auto-zoom (input ≥16px) | `unit` `mobile-invariants.test.ts` + `manual` (runbook §7) |
+| 37 | iPhone: `100dvh` (nunca `100vh` puro), safe-areas, sem auto-zoom (TODA fonte de campo ≥16px, regra final `max(16px,1em)` em telas de toque; proibido `user-scalable=no`/`maximum-scale=1`) | `unit` `mobile-invariants.test.ts` + `manual` (runbook §7) |
 | 38 | Android: teclado virtual não cobre campos/botões (`--kb-inset`) | `unit` `mobile-invariants.test.ts` + `manual` (runbook §8) |
 | 39 | Desktop: nenhuma faixa branca de safe-area duplicada; sidebar e tabelas intactas | `e2e` `agenda-layout-visual.spec.ts` + `manual` (runbook §9) |
 | 40 | Menu mobile navega para todos os módulos autorizados | `e2e` `sidebar-mobile-nav.spec.ts` |

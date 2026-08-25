@@ -25,6 +25,7 @@ interface ClientRequest {
   address_neighborhood?: string;
   address_city?: string;
   address_state?: string;
+  visibility?: string;
 }
 
 // CNPJ format validation (14 digits)
@@ -283,6 +284,28 @@ serve(async (req) => {
       }
     }
 
+    // 5c. Visibilidade do cadastro: só admin ou quem tem a permissão
+    // "Compartilhar" no módulo Clientes pode definir visibilidade ampla.
+    // Sem permissão (ou sem o campo), enviamos null e o gatilho do banco
+    // aplica o padrão privado.
+    let visibility: string | null = null;
+    const requestedVisibility = typeof body.visibility === 'string' ? body.visibility : null;
+    if (requestedVisibility && ['private', 'shared', 'clinic'].includes(requestedVisibility)) {
+      let canShare = roles.includes('admin');
+      if (!canShare) {
+        const { data: sharePerm, error: shareErr } = await supabase.rpc('has_permission', {
+          _user_id: userId,
+          _module: 'clientes',
+          _action: 'share',
+        });
+        if (shareErr) {
+          console.error('has_permission check failed:', shareErr);
+        }
+        canShare = sharePerm === true;
+      }
+      if (canShare) visibility = requestedVisibility;
+    }
+
     // 6. Create the client
     const { data: client, error: insertError } = await supabase
       .from('clients')
@@ -305,6 +328,7 @@ serve(async (req) => {
         address_neighborhood: body.address_neighborhood?.trim() || null,
         address_city: body.address_city?.trim() || null,
         address_state: body.address_state ? body.address_state.trim().toUpperCase() : null,
+        visibility,
       })
       .select()
       .single();

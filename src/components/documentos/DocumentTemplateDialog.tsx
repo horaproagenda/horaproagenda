@@ -26,6 +26,8 @@ import { Info, CheckSquare, Type, HelpCircle, User, Building2, Calendar } from '
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
 import { RichTextEditor, type RichTextEditorHandle } from './RichTextEditor';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 
 const templateSchema = z.object({
   title: z.string().trim().min(2, 'Título obrigatório').max(100),
@@ -145,6 +147,7 @@ function VariableGroup({
 
 export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }: DocumentTemplateDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const recordVis = useRecordVisibility('documentos');
   const editorRef = useRef<RichTextEditorHandle | null>(null);
 
   const form = useForm<FormData>({
@@ -169,6 +172,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         is_active: template.is_active,
         category: (template.category as 'anamnese' | 'contract' | 'consent') || 'anamnese',
       });
+      recordVis.setVisibility(((template as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       return;
     }
 
@@ -180,6 +184,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
       is_active: true,
       category: 'anamnese',
     });
+    recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
   }, [template, open, form]);
 
   const handleSubmit = async (data: FormData) => {
@@ -196,6 +201,7 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
         variables: variablesArray,
         is_active: data.is_active,
         category: data.category,
+        ...(recordVis.canShare ? { visibility: recordVis.visibility } : {}),
       });
     } finally {
       setIsLoading(false);
@@ -407,6 +413,13 @@ export function DocumentTemplateDialog({ open, onOpenChange, template, onSave }:
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+
+                <VisibilitySelect
+                  module="documentos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                  disabled={isLoading}
                 />
 
               </form>

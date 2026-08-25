@@ -42,6 +42,8 @@ import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { NewCategoryDialog } from './NewCategoryDialog';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -78,6 +80,7 @@ const DEFAULT_CATEGORIES = [
 export function NewPackageDialog({ onPackageCreated, children, initialType = 'standard', lockType = false }: NewPackageDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const recordVis = useRecordVisibility('servicos');
   const { professionals } = useProfessionals();
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
@@ -204,6 +207,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
           room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
           equipment: data.equipment && data.equipment.length > 0 ? data.equipment : null,
           is_active: true,
+          ...recordVis.visibilityField,
         })
         .select()
         .single();
@@ -226,6 +230,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       toast.success('Pacote cadastrado!');
       form.reset();
       setPackageType('standard');
+      recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
       setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
       setPriceManuallyEdited(false);
       setOpen(false);
@@ -631,6 +636,13 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   <FormMessage className="text-[10px]" />
                 </FormItem>
               )}
+            />
+
+            <VisibilitySelect
+              module="servicos"
+              value={recordVis.visibility}
+              onChange={recordVis.setVisibility}
+              disabled={isLoading}
             />
 
             {/* Actions */}

@@ -12,6 +12,8 @@ export interface TemplateFormData {
   variables?: string[];
   is_active?: boolean;
   category?: TemplateCategory;
+  /** Privacidade do modelo (private/shared/clinic). */
+  visibility?: 'private' | 'shared' | 'clinic';
 }
 
 export function useDocumentTemplatesManagement() {
@@ -41,6 +43,9 @@ export function useDocumentTemplatesManagement() {
           variables: data.variables || [],
           is_active: data.is_active ?? true,
           category: data.category ?? 'anamnese',
+          // Só envia visibilidade quando o usuário pôde escolher (permissão de
+          // compartilhar); sem o campo o banco aplica o padrão privado.
+          ...(data.visibility ? { visibility: data.visibility } : {}),
         } as any)
         .select()
         .single();
@@ -69,6 +74,7 @@ export function useDocumentTemplatesManagement() {
           variables: data.variables || [],
           is_active: data.is_active ?? true,
           ...(data.category ? { category: data.category } : {}),
+          ...(data.visibility ? { visibility: data.visibility } : {}),
         } as any)
         .eq('id', id);
       
@@ -114,6 +120,7 @@ export function useDocumentTemplatesManagement() {
           variables: template.variables || [],
           is_active: true,
           category: (template as any).category ?? 'anamnese',
+          ...((template as any).visibility ? { visibility: (template as any).visibility } : {}),
         } as any)
         .select()
         .single();

@@ -42,6 +42,8 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { DurationSelect } from '@/components/ui/duration-select';
 import { formatCurrency } from '@/lib/utils';
 import { formatDurationClock } from '@/lib/duration';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 
 const templateSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -60,6 +62,7 @@ export function ManagePackageTemplatesDialog() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PackageTemplate | null>(null);
+  const recordVis = useRecordVisibility('servicos');
   
   const { templates, refetch } = usePackageTemplates();
   const { professionals } = useProfessionals();
@@ -91,6 +94,7 @@ export function ManagePackageTemplatesDialog() {
       room_id: '_none',
     });
     setEditingTemplate(null);
+    recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
   };
 
   const handleEdit = (template: PackageTemplate) => {
@@ -105,6 +109,7 @@ export function ManagePackageTemplatesDialog() {
       professional_id: template.professional_id || '_none',
       room_id: template.room_id || '_none',
     });
+    recordVis.setVisibility(((template as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
   };
 
   const handleDelete = async (id: string) => {
@@ -135,6 +140,7 @@ export function ManagePackageTemplatesDialog() {
         interval_days: data.interval_days,
         professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
         room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
+        ...recordVis.visibilityField,
       };
 
       if (editingTemplate) {
@@ -328,6 +334,13 @@ export function ManagePackageTemplatesDialog() {
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+
+                <VisibilitySelect
+                  module="servicos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                  disabled={isLoading}
                 />
 
                 <div className="flex gap-2 pt-2">

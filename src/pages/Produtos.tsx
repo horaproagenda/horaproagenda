@@ -5,6 +5,8 @@ import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -209,6 +211,7 @@ export default function Produtos() {
 
   // ── Novo Produto form ───────────────────────────────────
   const [productForm, setProductForm] = useState(createEmptyProductForm);
+  const productVis = useRecordVisibility('produtos');
 
   // ── Nova Compra form ────────────────────────────────────
   const [purchaseForm, setPurchaseForm] = useState(createEmptyPurchaseForm);
@@ -297,9 +300,11 @@ export default function Produtos() {
         is_active: true,
         is_for_sale: productForm.is_for_sale,
         sale_price: normalizeBrazilianCurrency(productForm.sale_price),
+        ...productVis.visibilityField,
       });
       setProductDialogOpen(false);
       setProductForm(createEmptyProductForm());
+      productVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
     } catch {
       // toast already shown by mutation
     }
@@ -764,6 +769,12 @@ export default function Produtos() {
                         <CurrencyInput value={productForm.sale_price} onValueChange={(value) => setProductForm({ ...productForm, sale_price: value })} className="h-7 text-xs" />
                       </div>
                     )}
+                    <VisibilitySelect
+                      module="produtos"
+                      value={productVis.visibility}
+                      onChange={productVis.setVisibility}
+                      disabled={createProduct.isPending}
+                    />
                     <div className="flex justify-end gap-2 pt-2">
                       <Button variant="outline" size="sm" onClick={() => setProductDialogOpen(false)}>Cancelar</Button>
                       <Button size="sm" className="btn-vibrant" onClick={handleProductSubmit} disabled={!productForm.name.trim() || createProduct.isPending}>

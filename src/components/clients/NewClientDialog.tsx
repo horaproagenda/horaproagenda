@@ -38,6 +38,8 @@ import { DuplicateClientAlert } from './DuplicateClientAlert';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { validateCNPJ } from '@/lib/validationSchemas';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,6 +114,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
   const open = openProp !== undefined ? openProp : internalOpen;
   const setOpen = (v: boolean) => { onOpenChange ? onOpenChange(v) : setInternalOpen(v); };
   const [isLoading, setIsLoading] = useState(false);
+  const recordVis = useRecordVisibility('clientes');
   const [cepLoading, setCepLoading] = useState(false);
   const { clients } = useClients();
   const { professionalId, isProfessional } = useCurrentProfessional();
@@ -284,6 +287,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             address_neighborhood: data.address_neighborhood || null,
             address_city: data.address_city || null,
             address_state: data.address_state ? data.address_state.toUpperCase() : null,
+            ...recordVis.visibilityField,
           }),
         }
       );
@@ -296,6 +300,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
 
       toast.success('Cliente cadastrado com sucesso!');
       form.reset();
+      recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
       setOpen(false);
       onClientCreated?.();
     } catch (error: any) {
@@ -717,6 +722,13 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
               )}
             />
             
+            <VisibilitySelect
+              module="clientes"
+              value={recordVis.visibility}
+              onChange={recordVis.setVisibility}
+              disabled={isLoading}
+            />
+
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancelar

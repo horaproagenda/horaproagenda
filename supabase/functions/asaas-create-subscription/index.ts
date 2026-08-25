@@ -14,7 +14,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 import { asaasFetch, onlyDigits } from "../_shared/asaas.ts";
-import { response } from "../_shared/responses.ts";
+import { response } from "../_shared/response.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   BILLING_CYCLES,

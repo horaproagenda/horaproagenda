@@ -444,7 +444,7 @@ function AuthInner() {
       const uid = sessionData?.user?.id ?? null;
       if (uid) await recordTermsAcceptance(email, uid);
 
-      toast({ title: 'Bem-vindo(a) ao Hora Pro!', description: 'Você tem 30 dias grátis para explorar a plataforma. Aproveite!' });
+      toast({ title: 'Bem-vindo(a) ao Hora Pro!', description: 'Para ativar seus 20 dias de teste grátis, escolha um plano e cadastre um cartão na tela de assinatura.' });
 
       // Navegação explícita — não dependemos apenas do useEffect.
       navigate(postLoginTarget, { replace: true });

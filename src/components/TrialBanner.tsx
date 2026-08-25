@@ -1,9 +1,11 @@
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
+import { formatBRL } from '@/lib/plans';
 import { AlertCircle, Sparkles } from 'lucide-react';
 
 /**
  * Banner persistente no topo da app.
- * - Teste gratuito em andamento: informa dias restantes para escolher um plano.
+ * - Teste gratuito em andamento: informa dias restantes e a primeira cobrança
+ *   (data + valor) que será feita automaticamente no cartão cadastrado.
  * - Assinatura pendente/atrasada: alerta. O redirecionamento para /assinatura é
  *   feito pelo ProtectedRoute — não repetimos link aqui.
  */
@@ -14,9 +16,9 @@ export function TrialBanner() {
   if (subscription.status === 'active' || subscription.status === 'grandfathered') return null;
 
   if (isTrialing) {
-    const endDate = subscription.trial_ends_at
-      ? new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')
-      : null;
+    const nextBilling = subscription.next_billing_at ?? subscription.trial_ends_at;
+    const endDate = nextBilling ? new Date(nextBilling).toLocaleDateString('pt-BR') : null;
+    const amount = subscription.final_price ? formatBRL(subscription.final_price) : null;
     return (
       <div
         role="status"
@@ -27,7 +29,7 @@ export function TrialBanner() {
         <span>
           Teste gratuito — {trialDaysLeft} {trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}
           {endDate
-            ? `. Escolha um plano até ${endDate}.`
+            ? `. Primeira cobrança${amount ? ` de ${amount}` : ''} em ${endDate}, no cartão cadastrado.`
             : '.'}
         </span>
 

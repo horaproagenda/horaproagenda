@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CreditCard, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2, RefreshCw, QrCode } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { openAsaasInvoice } from '@/lib/asaasCheckout';
+import { openAsaasInvoice, updateAsaasCard, type CreditCardInput } from '@/lib/asaasCheckout';
+import { CreditCardDialog } from '@/components/billing/CreditCardDialog';
+import { formatBRL } from '@/lib/plans';
 import type { AccountSubscription } from '@/hooks/useAccountSubscription';
 
 interface PaymentFailedGateProps {
@@ -18,12 +20,12 @@ interface PaymentFailedGateProps {
 
 /**
  * Tela de bloqueio exibida a TODOS os usuários da conta quando o pagamento da
- * assinatura não foi bem-sucedido (past_due / canceled).
+ * assinatura não foi bem-sucedido (past_due / suspended / canceled).
  *
- * - O botão "Abrir fatura" aparece SOMENTE para o administrador.
+ * - As ações de pagamento aparecem SOMENTE para o administrador.
+ * - Nenhum dado é excluído: a conta fica restrita a esta tela até a baixa.
  * - Enquanto a tela está aberta, sincronizamos com o Asaas periodicamente:
- *   assim que o pagamento é confirmado, o app abre automaticamente (o hook de
- *   assinatura revalida e o ProtectedRoute libera o acesso).
+ *   assim que o pagamento é confirmado, o app abre automaticamente.
  */
 export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGateProps) {
   const { signOut, user } = useAuth();
@@ -31,6 +33,8 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
   const qc = useQueryClient();
   const [portalLoading, setPortalLoading] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardSaving, setCardSaving] = useState(false);
   const syncing = useRef(false);
 
   const revalidate = () => {
@@ -75,7 +79,6 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
     try {
       const result = await openAsaasInvoice();
       if (result.redirected) return;
-      // Sem fatura aberta ainda → manda escolher um plano.
       navigate('/assinatura');
     } catch {
       navigate('/assinatura');
@@ -84,9 +87,32 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
     }
   };
 
+  const handleUpdateCard = async (card: CreditCardInput) => {
+    setCardSaving(true);
+    try {
+      const result = await updateAsaasCard(card);
+      if (!result.ok) {
+        toast.error(result.error ?? 'Não foi possível atualizar o cartão');
+        return;
+      }
+      setCardOpen(false);
+      revalidate();
+      toast.success(
+        result.accessRestored
+          ? 'Pagamento aprovado no novo cartão. Acesso restaurado!'
+          : 'Cartão salvo. Estamos tentando o pagamento novamente.',
+      );
+      void sync();
+    } finally {
+      setCardSaving(false);
+    }
+  };
+
   const dueDate = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString('pt-BR')
     : null;
+  const amount = subscription?.final_price ? formatBRL(subscription.final_price) : null;
+  const isSuspended = subscription?.status === 'suspended';
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
@@ -95,24 +121,37 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertTriangle className="h-6 w-6 text-destructive" aria-hidden="true" />
           </div>
-          <CardTitle>Pagamento não foi bem-sucedido</CardTitle>
+          <CardTitle>
+            {isSuspended ? 'Acesso suspenso por falta de pagamento' : 'Pagamento não foi bem-sucedido'}
+          </CardTitle>
           <CardDescription>
             {dueDate
-              ? `A cobrança com vencimento em ${dueDate} não foi aprovada. `
-              : 'A cobrança da sua assinatura não foi aprovada. '}
+              ? `A cobrança${amount ? ` de ${amount}` : ''} com vencimento em ${dueDate} não foi aprovada. `
+              : `A cobrança${amount ? ` de ${amount}` : ''} da sua assinatura não foi aprovada. `}
             {isAdmin
-              ? 'Para voltar a ter acesso ao aplicativo, pague a fatura em aberto.'
-              : 'O acesso está bloqueado para todos os usuários desta conta até que o administrador regularize a fatura.'}
+              ? 'Atualize o cartão para tentar o pagamento novamente — seus dados continuam salvos e o acesso volta assim que o pagamento for confirmado.'
+              : 'O acesso está bloqueado para todos os usuários desta conta até que o administrador regularize o pagamento.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isAdmin && (
-            <Button className="w-full" size="lg" onClick={openPortal} disabled={portalLoading}>
-              {portalLoading
-                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                : <CreditCard className="mr-2 h-4 w-4" />}
-              Abrir fatura
-            </Button>
+            <>
+              <Button className="w-full" size="lg" onClick={() => setCardOpen(true)}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Atualizar cartão e tentar novamente
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={openPortal}
+                disabled={portalLoading}
+              >
+                {portalLoading
+                  ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  : <QrCode className="mr-2 h-4 w-4" />}
+                Pagar por Pix ou boleto
+              </Button>
+            </>
           )}
           <Button variant="outline" className="w-full" onClick={() => void sync(true)} disabled={checking}>
             {checking
@@ -126,6 +165,16 @@ export function PaymentFailedGate({ subscription, isAdmin }: PaymentFailedGatePr
           <Button variant="ghost" className="w-full" onClick={() => signOut()}>Sair</Button>
         </CardContent>
       </Card>
+
+      <CreditCardDialog
+        open={cardOpen}
+        onOpenChange={setCardOpen}
+        onSubmit={handleUpdateCard}
+        loading={cardSaving}
+        title="Atualizar cartão"
+        description="Informe o novo cartão. Tentamos quitar a fatura em aberto automaticamente."
+        submitLabel="Salvar cartão e tentar pagamento"
+      />
     </div>
   );
 }

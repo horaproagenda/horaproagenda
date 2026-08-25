@@ -56,6 +56,7 @@ Legenda de cobertura:
 | 31 | Notificações: nunca exibir código/constraint de banco ao usuário | `unit` `humanError.test.ts`, `edgeFunctionError.test.ts` |
 | 32 | WhatsApp: preview antes do envio; confirmação/cancelamento lidos corretamente; sem loop de "não entendi" | `unit` `whatsappIntent.test.ts`, `whatsappReplyDecision.test.ts` + `e2e` `whatsapp-document-send.spec.ts` |
 | 33 | Sincronização em tempo real (Realtime) sem duplicidade | `smoke` `realtime.smoke.test.ts` + `e2e` `cross-device-sync.spec.ts` |
+| 34 | Privacidade: quem pode compartilhar escolhe a visibilidade no cadastro (padrão "Geral da clínica"); quem não pode segue privado | `unit` `recordVisibility.test.ts` |
 
 ## Layout e dispositivos
 

@@ -50,6 +50,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 
 function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
   if (!comps.length) return null;
@@ -94,6 +96,7 @@ interface NewServiceDialogProps {
 export function NewServiceDialog({ onServiceCreated, children, lockType }: NewServiceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const recordVis = useRecordVisibility('servicos');
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
@@ -171,6 +174,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
         equipment: data.equipment || [],
         return_days: isKit ? null : (data.return_days || null),
         is_active: data.is_active,
+        ...recordVis.visibilityField,
         component_service_ids: components.map(c => c.service_id),
         service_components: components,
       } as any).select('id').single();
@@ -191,6 +195,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
       form.reset();
       setCommissionOverride(defaultCommissionOverride);
       setComponents([]);
+      recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
       setOpen(false);
       onServiceCreated?.();
     } catch (error: any) {
@@ -593,6 +598,13 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                   </FormControl>
                 </FormItem>
               )}
+            />
+
+            <VisibilitySelect
+              module="servicos"
+              value={recordVis.visibility}
+              onChange={recordVis.setVisibility}
+              disabled={isLoading}
             />
 
             {/* Actions */}

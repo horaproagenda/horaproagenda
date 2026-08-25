@@ -69,6 +69,8 @@ export interface Product {
   updated_at: string;
   created_by: string | null;
   updated_by: string | null;
+  /** Privacidade do cadastro (private/shared/clinic). */
+  visibility?: 'private' | 'shared' | 'clinic' | null;
 }
 
 export interface ProductPurchase {

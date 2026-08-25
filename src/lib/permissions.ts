@@ -65,6 +65,15 @@ export const DATA_VISIBILITIES = [
 
 export type DataVisibility = typeof DATA_VISIBILITIES[number]['key'];
 
+/**
+ * Visibilidade padrão de registros novos quando o criador tem permissão de
+ * compartilhar. 'clinic' reproduz o comportamento histórico do sistema
+ * (toda a equipe enxerga); quem quiser privacidade escolhe 'private' no
+ * seletor Visibilidade do formulário. Quem NÃO tem permissão de compartilhar
+ * não vê o seletor e o banco força 'private' (gatilho tg_autofill_owner_visibility).
+ */
+export const DEFAULT_RECORD_VISIBILITY: DataVisibility = 'clinic';
+
 export interface PermissionRow {
   module: PermissionModuleKey;
   data_scope: DataScope;

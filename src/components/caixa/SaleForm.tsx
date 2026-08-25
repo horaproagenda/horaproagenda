@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
+import { useRecordVisibility } from '@/components/shared/VisibilitySelect';
 
 interface SaleItem {
   id: string;
@@ -72,6 +73,9 @@ export function SaleForm() {
   const { activeCardBrands } = useCardBrands();
   const { activeBanks } = useBanks();
   const { currentOpenRegister } = useCashRegisters();
+  // Pacotes vendidos precisam ficar visíveis para a equipe operar a agenda;
+  // quem tem permissão de compartilhar grava 'clinic', senão o banco aplica o padrão.
+  const saleVis = useRecordVisibility('servicos');
 
   // Client selection
   const [clientSearch, setClientSearch] = useState('');
@@ -563,6 +567,7 @@ export function SaleForm() {
                 payment_methods: [paymentMethod.name],
                 sessions_scheduled: 0,
                 is_active: true,
+                ...saleVis.visibilityField,
               })
               .select()
               .single();

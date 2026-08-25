@@ -3,12 +3,15 @@ import { Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { toast } from "sonner";
-import { openAsaasInvoice } from "@/lib/asaasCheckout";
+import { openAsaasInvoice, updateAsaasCard, type CreditCardInput } from "@/lib/asaasCheckout";
+import { CreditCardDialog } from "@/components/billing/CreditCardDialog";
+import { formatBRL } from "@/lib/plans";
 import {
   CheckCircle2, AlertCircle, XCircle, Clock, Sparkles, FileText,
   RefreshCw, CreditCard, ArrowLeft, LogOut, Calendar, Users, Loader2,
@@ -24,8 +27,11 @@ type StatusVisual = {
 const STATUS_MAP: Record<string, StatusVisual> = {
   active:        { label: "Ativa",        variant: "success", icon: CheckCircle2, description: "Sua assinatura está em dia. Aproveite todos os recursos do Hora Pro." },
   grandfathered: { label: "Vitalícia",    variant: "success", icon: Sparkles,     description: "Você tem acesso ilimitado, sem cobrança recorrente." },
-  trial:         { label: "Pendente",     variant: "warning", icon: Clock,        description: "Assinatura pendente. Escolha um plano para liberar o acesso." },
-  past_due:      { label: "Em atraso",    variant: "warning", icon: AlertCircle,  description: "O pagamento da última fatura falhou. Atualize seu método de pagamento." },
+  pending:       { label: "Pendente",     variant: "warning", icon: Clock,        description: "Assinatura pendente. Escolha um plano e cadastre o cartão para liberar o acesso." },
+  trial:         { label: "Teste encerrado", variant: "warning", icon: Clock,     description: "O teste gratuito terminou e a cobrança no cartão não foi confirmada. Atualize a forma de pagamento para continuar." },
+  past_due:      { label: "Em atraso",    variant: "warning", icon: AlertCircle,  description: "O pagamento da última fatura falhou. Você tem 2 dias corridos de tolerância para atualizar o cartão." },
+  overdue:       { label: "Em atraso",    variant: "warning", icon: AlertCircle,  description: "O pagamento da última fatura falhou. Você tem 2 dias corridos de tolerância para atualizar o cartão." },
+  suspended:     { label: "Suspensa",     variant: "danger",  icon: XCircle,      description: "O prazo de tolerância terminou e o acesso foi suspenso. Nenhum dado foi apagado — atualize o pagamento para reativar." },
   canceled:      { label: "Cancelada",    variant: "danger",  icon: XCircle,      description: "Sua assinatura foi cancelada. Assine novamente para retomar o acesso." },
 };
 
@@ -52,8 +58,11 @@ export default function AssinaturaStatus() {
   const { hasRole, signOut } = useAuth();
   const { subscription, isLoading, hasAccess, isTrialing, trialDaysLeft } = useAccountSubscription();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [portalLoading, setPortalLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardSaving, setCardSaving] = useState(false);
 
   if (!hasRole("admin")) return <Navigate to="/agenda" replace />;
 
@@ -63,12 +72,12 @@ export default function AssinaturaStatus() {
         label: "Teste gratuito",
         variant: "success" as const,
         icon: Sparkles,
-        description: `Você tem ${trialDaysLeft} dia(s) de teste gratuito, sem precisar cadastrar cartão. Escolha um plano antes do fim do teste para não perder o acesso.`,
+        description: `Você tem ${trialDaysLeft} dia(s) de teste gratuito. A primeira cobrança acontece automaticamente no cartão cadastrado ao fim do teste.`,
       }
     : STATUS_MAP[statusKey] ?? STATUS_MAP.trial;
   const StatusIcon = visual.icon;
 
-  const expiresAt = subscription?.current_period_end ?? subscription?.trial_ends_at ?? null;
+  const expiresAt = subscription?.next_billing_at ?? subscription?.current_period_end ?? subscription?.trial_ends_at ?? null;
   const daysLeft = daysUntil(expiresAt);
   const isActiveOrGrand = statusKey === "active" || statusKey === "grandfathered" || isTrialing;
   const isCancelable = statusKey === "active" || statusKey === "past_due" || isTrialing;
@@ -99,6 +108,26 @@ export default function AssinaturaStatus() {
       toast.error(msg);
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function handleUpdateCard(card: CreditCardInput) {
+    setCardSaving(true);
+    try {
+      const result = await updateAsaasCard(card);
+      if (!result.ok) throw new Error(result.error || "Não foi possível atualizar o cartão");
+      toast.success(
+        result.accessRestored
+          ? "Pagamento aprovado no novo cartão. Acesso restaurado!"
+          : "Cartão atualizado com sucesso",
+      );
+      setCardOpen(false);
+      qc.invalidateQueries({ queryKey: ["account-subscription"] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao atualizar cartão";
+      toast.error(msg);
+    } finally {
+      setCardSaving(false);
     }
   }
 
@@ -175,7 +204,18 @@ export default function AssinaturaStatus() {
               <InfoTile
                 icon={CreditCard}
                 label="Ciclo"
-                value={subscription?.payment_provider === "asaas" || hasAsaasCustomer ? "Assinatura Asaas" : "—"}
+                value={
+                  subscription?.billing_cycle === "monthly"
+                    ? "Mensal"
+                    : subscription?.billing_cycle === "semiannual"
+                      ? "Semestral"
+                      : subscription?.billing_cycle === "annual"
+                        ? "Anual"
+                        : subscription?.payment_provider === "asaas" || hasAsaasCustomer
+                          ? "Assinatura Asaas"
+                          : "—"
+                }
+                hint={subscription?.final_price ? `${formatBRL(subscription.final_price)} por ciclo` : undefined}
               />
             </div>
           </CardContent>
@@ -223,12 +263,17 @@ export default function AssinaturaStatus() {
                   : "Escolha um plano para liberar o acesso completo ao sistema."}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
               <Button variant={isActiveOrGrand ? "outline" : "default"} className="w-full" asChild>
                 <Link to="/assinatura">
                   {isActiveOrGrand ? "Alterar plano" : "Escolher plano"}
                 </Link>
               </Button>
+              {hasAsaasCustomer && (
+                <Button variant="outline" className="w-full" onClick={() => setCardOpen(true)}>
+                  <CreditCard className="h-4 w-4 mr-2" /> Atualizar cartão
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -249,6 +294,16 @@ export default function AssinaturaStatus() {
           </Card>
         )}
       </main>
+
+      <CreditCardDialog
+        open={cardOpen}
+        onOpenChange={setCardOpen}
+        onSubmit={handleUpdateCard}
+        loading={cardSaving}
+        title="Atualizar cartão"
+        description="Informe o novo cartão. Se houver fatura em aberto, tentamos o pagamento automaticamente."
+        submitLabel="Salvar cartão e tentar pagamento"
+      />
     </div>
   );
 }

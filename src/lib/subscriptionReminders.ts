@@ -50,9 +50,20 @@ export function isReminderDay(daysLeft: number | null): boolean {
 }
 
 export interface RenewalNoticeInput {
-  status: 'trial' | 'active' | 'past_due' | 'canceled' | 'grandfathered';
+  status:
+    | 'pending'
+    | 'trial'
+    | 'active'
+    | 'past_due'
+    | 'overdue'
+    | 'failed'
+    | 'suspended'
+    | 'canceled'
+    | 'grandfathered';
   is_grandfathered: boolean;
   current_period_end: string | null;
+  /** Próxima cobrança (preferida sobre current_period_end quando presente). */
+  next_billing_at?: string | null;
   trial_ends_at: string | null;
 }
 
@@ -81,7 +92,8 @@ export function getRenewalNotice(
   }
 
   if (sub.status !== 'active') return null;
-  const daysLeft = daysUntil(sub.current_period_end, now);
+  const renewAt = sub.next_billing_at ?? sub.current_period_end;
+  const daysLeft = daysUntil(renewAt, now);
   if (daysLeft === null || daysLeft === 0 || daysLeft > windowDays) return null;
-  return { kind: 'renewal', daysLeft, date: sub.current_period_end as string };
+  return { kind: 'renewal', daysLeft, date: renewAt as string };
 }

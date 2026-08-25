@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';
 import { useSubscriptionNotifier } from '@/hooks/useSubscriptionNotifier';
 import { useSeatThresholdNotifier } from '@/hooks/useSeatThresholdNotifier';
+import { useBillingNotifications } from '@/hooks/useBillingNotifications';
 import { useLocation } from 'react-router-dom';
 import { hydrateDismissalsFromDb } from '@/lib/notificationDismissal';
 import { useLayoutWatchdog } from '@/hooks/useLayoutWatchdog';
@@ -31,6 +32,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   useReminderNotifications();
   useSubscriptionNotifier();
   useSeatThresholdNotifier();
+  useBillingNotifications();
   useLayoutWatchdog();
 
   // Pull saved notification dismissals from the database on app start

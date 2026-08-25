@@ -12,7 +12,17 @@ import { getGraceDaysLeft, getPaymentPhase, hasSubscriptionAccess } from '@/lib/
 export interface AccountSubscription {
   id: string;
   owner_user_id: string;
-  status: 'trial' | 'active' | 'past_due' | 'canceled' | 'grandfathered';
+  status:
+    | 'pending'
+    | 'trial'
+    | 'active'
+    | 'past_due'
+    | 'overdue'
+    | 'failed'
+    | 'suspended'
+    | 'canceled'
+    | 'grandfathered';
+  trial_start_at: string | null;
   trial_ends_at: string | null;
   plan_tier: number | null;
   seat_limit: number;
@@ -24,7 +34,16 @@ export interface AccountSubscription {
   asaas_subscription_id: string | null;
   asaas_payment_id: string | null;
   payment_provider: string | null;
+  billing_cycle: 'monthly' | 'semiannual' | 'annual' | null;
+  monthly_price: number | null;
+  discount_percentage: number | null;
+  final_price: number | null;
+  current_period_start: string | null;
   current_period_end: string | null;
+  next_billing_at: string | null;
+  grace_ends_at: string | null;
+  suspended_at: string | null;
+  updated_at: string | null;
 }
 
 export function useAccountSubscription() {
@@ -101,6 +120,14 @@ export function useAccountSubscription() {
         sub.status !== 'active' &&
         !(sub.status === 'trial' && trialEnds > Date.now()));
     if (!looksInactive) return;
+    // Conta recém-criada (pendente) ainda sem cobrança no provedor: não há o
+    // que sincronizar no Asaas — o acesso é liberado ao cadastrar o cartão.
+    const hasProviderRef = !!(
+      sub?.asaas_subscription_id ||
+      sub?.asaas_customer_id ||
+      sub?.stripe_subscription_id
+    );
+    if (!hasProviderRef && sub?.status !== 'suspended') return;
     const now = Date.now();
     if (now - lastSyncRef.current < 15_000) return;
     lastSyncRef.current = now;
@@ -124,16 +151,16 @@ export function useAccountSubscription() {
     ? Math.max(0, Math.ceil((trialEndsMs - now) / (1000 * 60 * 60 * 24)))
     : 0;
   const trialExpired = sub?.status === 'trial' && trialEndsMs < now;
-  /** Teste gratuito em andamento (cartão já salvo, cobrança automática ao final). */
+  /** Teste gratuito em andamento (cartão salvo, cobrança automática ao final). */
   const isTrialing = sub?.status === 'trial' && trialEndsMs > now;
   /**
-   * Ainda pode iniciar os 30 dias grátis: nunca teve assinatura/cobrança,
-   * não é conta vitalícia e não está com assinatura ativa.
+   * Ainda pode iniciar os 20 dias grátis: conta recém-criada (pendente) que
+   * nunca cadastrou cartão nem teve assinatura/cobrança.
    */
   const trialEligible = !!sub
     && !sub.is_grandfathered
-    && sub.status !== 'grandfathered'
-    && sub.status !== 'active'
+    && sub.status === 'pending'
+    && !sub.trial_start_at
     && !sub.stripe_subscription_id
     && !sub.asaas_subscription_id;
   // Fase de cobrança recusada (carência antes da suspensão).

@@ -36,3 +36,11 @@ Rollback (se aplicado):
 - **Validação em produção:** — (preencher após publicar: login, agenda,
   financeiro, documento)
 - **Rollback:** não aplicado.
+
+## 2026-08-25 — Cobrança Asaas: plano+cartão no cadastro, trial 20 dias, carência 2 dias
+
+- Cadastro de conta fica pendente até escolher plano e cadastrar cartão; trial de 20 dias inicia só com cartão salvo (asaas-create-subscription).
+- Tabela fixa de planos (1-30 usuários) em supabase/functions/_shared/billingPlans.ts espelhada em src/lib/plans.ts; ciclos mensal/semestral(-10%)/anual(-20%).
+- Webhook asaas-webhook idempotente (payment_webhook_events) com trilha em payments, e-mails transacionais e notificações in-app (notifications + Realtime).
+- Falha de cobrança: e-mail ao admin + banner de carência (2 dias); sem regularização, suspend_overdue_subscriptions marca suspended; ações de pagamento só para admin (PaymentGraceBanner/PaymentFailedGate).
+- asaas-update-card troca o cartão e retenta a fatura na hora; confirmação de pagamento reativa o acesso automaticamente.

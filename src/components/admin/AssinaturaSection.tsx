@@ -1,20 +1,16 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useAccountSubscription } from "@/hooks/useAccountSubscription";
 import { PLANS, formatBRL } from "@/lib/plans";
 import { usePricing } from "@/hooks/usePricing";
-import { openAsaasInvoice, startAsaasSubscription } from "@/lib/asaasCheckout";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  openAsaasInvoice,
+  startAsaasSubscription,
+  updateAsaasCard,
+  type CreditCardInput,
+} from "@/lib/asaasCheckout";
+import { CreditCardDialog } from "@/components/billing/CreditCardDialog";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Check,
   Users,
@@ -47,9 +43,10 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 
 export function AssinaturaSection() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { subscription, isTrialing, trialDaysLeft, trialEligible } = useAccountSubscription();
-  // Preços vindos do Asaas (fonte única da verdade), atualizados em tempo real.
-  const { plans, periods, perSeatMonthlyBRL, cycleTotal } = usePricing();
+  // Preços oficiais do backend (tabela de planos), com espelho local de fallback.
+  const { plans, periods, cycleTotal, trialDays } = usePricing();
 
   // Ciclo padrão: o de maior economia (anual).
   const [billingMonths, setBillingMonths] = useState<number>(12);
@@ -58,6 +55,7 @@ export function AssinaturaSection() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [cardDialog, setCardDialog] = useState<null | "subscribe" | "update">(null);
 
   const currentSeats = subscription?.seat_limit ?? null;
   const isActive = subscription?.status === "active";
@@ -75,12 +73,13 @@ export function AssinaturaSection() {
     [periods],
   );
 
-  // CPF/CNPJ: exigido pelo Asaas para emitir a cobrança.
-  const [documentOpen, setDocumentOpen] = useState(false);
-  const [documentValue, setDocumentValue] = useState("");
+  const revalidate = () => {
+    qc.invalidateQueries({ queryKey: ["account-subscription", user?.id] });
+    qc.invalidateQueries({ queryKey: ["seat-usage", user?.id] });
+  };
 
-  /** Abre a assinatura no Asaas (o cliente escolhe Pix, cartão ou boleto). */
-  const startCheckout = async (cpfCnpj?: string) => {
+  /** Cria a assinatura com o cartão (teste de 20 dias no primeiro cadastro). */
+  const handleSubscribe = async (card: CreditCardInput) => {
     if (!user) {
       toast.error("Você precisa estar logado");
       return;
@@ -90,32 +89,49 @@ export function AssinaturaSection() {
       const result = await startAsaasSubscription({
         seats: selectedSeats,
         billingMonths,
-        cpfCnpj,
+        card,
       });
-      if (result.redirected) return;
-      if (result.needDocument) {
-        setDocumentOpen(true);
+      if (result.error) {
+        toast.error(result.error);
         return;
       }
-      toast.error(result.error ?? "Não foi possível iniciar o pagamento");
+      setCardDialog(null);
+      revalidate();
+      const total = result.value ?? cycleTotal(selectedSeats, billingMonths);
+      if (result.trialing && result.trialEndsAt) {
+        toast.success(
+          `Teste gratuito de ${trialDays} dias iniciado! A primeira cobrança de ${formatBRL(total)} acontece em ${new Date(result.trialEndsAt).toLocaleDateString("pt-BR")}, no cartão cadastrado.`,
+        );
+      } else {
+        toast.success("Assinatura criada! A cobrança está sendo processada no cartão cadastrado.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCheckout = () => startCheckout();
-
-  const handleConfirmDocument = async () => {
-    const digits = documentValue.replace(/\D+/g, "");
-    if (digits.length !== 11 && digits.length !== 14) {
-      toast.error("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido");
-      return;
+  /** Troca o cartão da assinatura e tenta quitar a fatura em aberto. */
+  const handleUpdateCard = async (card: CreditCardInput) => {
+    setIsLoading(true);
+    try {
+      const result = await updateAsaasCard(card);
+      if (!result.ok) {
+        toast.error(result.error ?? "Não foi possível atualizar o cartão");
+        return;
+      }
+      setCardDialog(null);
+      revalidate();
+      toast.success(
+        result.accessRestored
+          ? "Pagamento aprovado no novo cartão. Acesso restaurado!"
+          : "Cartão atualizado com sucesso.",
+      );
+    } finally {
+      setIsLoading(false);
     }
-    setDocumentOpen(false);
-    await startCheckout(digits);
   };
 
-  /** Abre a fatura em aberto no Asaas (pagar agora / atualizar pagamento). */
+  /** Abre a fatura em aberto no Asaas (alternativa: Pix ou boleto). */
   const handlePortal = async () => {
     setPortalLoading(true);
     try {
@@ -156,11 +172,14 @@ export function AssinaturaSection() {
                   {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
                 </p>
                 <p className="text-sm text-muted-foreground truncate">
-                  {subscription?.seat_limit} usuário(s) liberados. Escolha um plano até{" "}
-                  {subscription?.trial_ends_at
-                    ? new Date(subscription.trial_ends_at).toLocaleDateString("pt-BR")
-                    : "—"}
-                  .
+                  {subscription?.seat_limit} usuário(s) liberados. Primeira cobrança
+                  {subscription?.final_price ? ` de ${formatBRL(subscription.final_price)}` : ""} em{" "}
+                  {subscription?.next_billing_at ?? subscription?.trial_ends_at
+                    ? new Date(
+                        (subscription?.next_billing_at ?? subscription?.trial_ends_at) as string,
+                      ).toLocaleDateString("pt-BR")
+                    : "—"}{" "}
+                  no cartão cadastrado.
                 </p>
               </div>
             </div>
@@ -198,19 +217,29 @@ export function AssinaturaSection() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handlePortal}
-              disabled={portalLoading}
-              className="w-full sm:w-auto"
-            >
-              {portalLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Settings2 className="h-4 w-4 mr-2" />
-              )}
-              Ver fatura
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setCardDialog("update")}
+                className="w-full sm:w-auto"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Atualizar cartão
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handlePortal}
+                disabled={portalLoading}
+                className="w-full sm:w-auto"
+              >
+                {portalLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Settings2 className="h-4 w-4 mr-2" />
+                )}
+                Ver fatura
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -244,11 +273,12 @@ export function AssinaturaSection() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Base:{" "}
+              Mensal:{" "}
               <span className="font-medium text-foreground">
-                {formatBRL(perSeatMonthlyBRL)}
+                {formatBRL(selectedPlan.priceBRL)}
               </span>{" "}
-              por usuário/mês.
+              para {selectedPlan.seats}{" "}
+              {selectedPlan.seats === 1 ? "usuário" : "usuários"}.
             </p>
           </div>
         </CardContent>
@@ -289,47 +319,38 @@ export function AssinaturaSection() {
         billingMonths={billingMonths}
         isActive={isActive}
         showTrial={trialEligible && !isTrialing}
+        trialDays={trialDays}
         isLoading={isLoading}
-        onCheckout={handleCheckout}
+        onCheckout={() => setCardDialog("subscribe")}
       />
 
-      {/* CPF/CNPJ do assinante — exigido pelo Asaas para emitir a cobrança */}
-      <Dialog open={documentOpen} onOpenChange={setDocumentOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>CPF ou CNPJ do responsável</DialogTitle>
-            <DialogDescription>
-              Precisamos do documento do titular para emitir a cobrança e a nota da
-              assinatura.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="assinatura-documento">CPF ou CNPJ</Label>
-            <Input
-              id="assinatura-documento"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="000.000.000-00"
-              value={documentValue}
-              onChange={(e) => setDocumentValue(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDocumentOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmDocument} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
-                </>
-              ) : (
-                "Continuar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Cartão — tokenizado pelo Asaas (nunca salvo no aplicativo) */}
+      <CreditCardDialog
+        open={cardDialog === "subscribe"}
+        onOpenChange={(o) => !o && setCardDialog(null)}
+        onSubmit={handleSubscribe}
+        loading={isLoading}
+        title="Cadastrar cartão"
+        description={
+          trialEligible
+            ? `Seu teste gratuito de ${trialDays} dias começa ao salvar o cartão — nenhuma cobrança é feita antes do fim do teste.`
+            : "Os dados do cartão são criptografados e enviados diretamente ao gateway (Asaas); nada fica salvo no aplicativo."
+        }
+        submitLabel={
+          trialEligible
+            ? `Iniciar teste grátis de ${trialDays} dias`
+            : "Confirmar assinatura"
+        }
+      />
+      <CreditCardDialog
+        open={cardDialog === "update"}
+        onOpenChange={(o) => !o && setCardDialog(null)}
+        onSubmit={handleUpdateCard}
+        loading={isLoading}
+        title="Atualizar cartão"
+        description="Informe o novo cartão. Se houver fatura em aberto, tentamos o pagamento automaticamente."
+        submitLabel="Salvar cartão e tentar pagamento"
+      />
 
     </div>
   );
@@ -455,6 +476,7 @@ interface SubscriptionSummaryProps {
   billingMonths: number;
   isActive: boolean | undefined;
   showTrial: boolean;
+  trialDays: number;
   isLoading: boolean;
   onCheckout: () => void;
 }
@@ -465,6 +487,7 @@ function SubscriptionSummary({
   billingMonths,
   isActive,
   showTrial,
+  trialDays,
   isLoading,
   onCheckout,
 }: SubscriptionSummaryProps) {
@@ -518,11 +541,14 @@ function SubscriptionSummary({
           <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
             <Sparkles className="h-4 w-4 shrink-0 text-primary mt-0.5" />
             <span>
-              <span className="font-semibold">30 dias grátis</span> para testar tudo,{" "}
-              <span className="font-semibold">sem cadastrar cartão</span>. Escolha um plano
-              antes do fim do teste para continuar: {formatBRL(planTotal)}{" "}
-              {isMonthly ? "por mês" : `a cada ${billingMonths} meses`}. Ao assinar, a
-              cobrança é feita na hora.
+              <span className="font-semibold">{trialDays} dias grátis</span> para testar
+              tudo. Para começar, cadastre um cartão de crédito ou débito —{" "}
+              <span className="font-semibold">
+                nenhuma cobrança é feita antes do fim do teste
+              </span>
+              . Depois, {formatBRL(planTotal)}{" "}
+              {isMonthly ? "por mês" : `a cada ${billingMonths} meses`} são cobrados
+              automaticamente no cartão.
             </span>
           </div>
         )}
@@ -536,23 +562,26 @@ function SubscriptionSummary({
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
                 {isActive
                   ? `Trocar de plano (${meta.short.toLowerCase()})`
-                  : `Assinar ${meta.short.toLowerCase()} · ${formatBRL(planTotal)}`}
+                  : showTrial
+                    ? `Começar teste grátis · ${formatBRL(planTotal)}/${meta.per}`
+                    : `Assinar ${meta.short.toLowerCase()} · ${formatBRL(planTotal)}`}
               </>
             )}
           </Button>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Na tela de pagamento você escolhe <span className="font-medium">Pix</span>,{" "}
-            <span className="font-medium">cartão</span> ou{" "}
-            <span className="font-medium">boleto</span>. Pix e cartão liberam o acesso em
-            tempo real; boleto libera após a compensação (1–2 dias úteis).
+            A cobrança é feita automaticamente no{" "}
+            <span className="font-medium">cartão cadastrado</span>. Prefere{" "}
+            <span className="font-medium">Pix</span> ou{" "}
+            <span className="font-medium">boleto</span>? Use o botão "Ver fatura" depois
+            de assinar.
           </p>
         </div>
 

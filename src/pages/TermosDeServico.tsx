@@ -116,7 +116,7 @@ export default function TermosDeServico() {
                 6. Chargebacks e Contestações
               </h2>
               <p>
-                Caso o usuário abra uma contestação de pagamento (chargeback) junto à operadora do cartão, banco ou provedor Pix/boleto, <strong>o acesso à conta será cancelado automaticamente e em tempo real</strong> assim que a Hora Pro for notificada da abertura da disputa pelo provedor de pagamentos (Stripe).
+                Caso o usuário abra uma contestação de pagamento (chargeback) junto à operadora do cartão, banco ou provedor Pix/boleto, <strong>o acesso à conta será cancelado automaticamente e em tempo real</strong> assim que a Hora Pro for notificada da abertura da disputa pelo provedor de pagamentos (Asaas).
               </p>
               <p className="mt-2">
                 A Hora Pro executa também verificações automáticas periódicas para identificar inconsistências entre pagamentos e acessos ativos. Sempre que for detectada devolução, estorno, chargeback ou pagamento não confirmado, o acesso da conta é imediatamente suspenso, sem aviso prévio. Os dados permanecem armazenados conforme a Política de Privacidade.

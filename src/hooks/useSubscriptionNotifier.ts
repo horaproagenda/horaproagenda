@@ -61,7 +61,7 @@ export function useSubscriptionNotifier() {
           const prevPeriodEnd = prev.current_period_end ? new Date(prev.current_period_end).getTime() : 0;
           const nextPeriodEnd = next.current_period_end ? new Date(next.current_period_end).getTime() : 0;
 
-          // Mudança de assentos (upgrade/downgrade vindo do Stripe)
+          // Mudança de assentos (upgrade/downgrade vindo do provedor de pagamento)
           const prevSeats = prev.seat_limit ?? 0;
           const nextSeats = next.seat_limit ?? 0;
           if (prevSeats > 0 && nextSeats !== prevSeats) {

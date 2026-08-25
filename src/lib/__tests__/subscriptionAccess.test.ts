@@ -7,6 +7,8 @@ const base: SubscriptionAccessLike = {
   is_grandfathered: false,
   stripe_customer_id: 'cus_1',
   stripe_subscription_id: 'sub_1',
+  asaas_customer_id: 'cus_asaas_1',
+  asaas_subscription_id: 'sub_asaas_1',
 };
 
 const NOW = new Date('2026-08-17T12:00:00Z').getTime();
@@ -30,7 +32,7 @@ describe('subscriptionAccess', () => {
     expect(getBlockReason({ ...base, status: 'past_due' }, NOW)).toBe('payment_failed');
   });
 
-  it('canceled com cliente Stripe é pagamento recusado', () => {
+  it('canceled com cobrança Asaas é pagamento recusado', () => {
     expect(getBlockReason({ ...base, status: 'canceled' }, NOW)).toBe('payment_failed');
   });
 
@@ -41,6 +43,8 @@ describe('subscriptionAccess', () => {
       trial_ends_at: '2026-08-01T00:00:00Z',
       stripe_customer_id: null,
       stripe_subscription_id: null,
+      asaas_customer_id: null,
+      asaas_subscription_id: null,
     };
     expect(getBlockReason(never, NOW)).toBe('no_plan');
   });
@@ -82,7 +86,14 @@ describe('carência após cobrança recusada', () => {
 
   it('quem nunca assinou não recebe carência', async () => {
     const { getPaymentPhase } = await import('@/lib/subscriptionAccess');
-    const never = { ...base, status: 'canceled' as const, stripe_customer_id: null, stripe_subscription_id: null };
+    const never = {
+      ...base,
+      status: 'canceled' as const,
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      asaas_customer_id: null,
+      asaas_subscription_id: null,
+    };
     expect(getPaymentPhase(never, NOW)).toBe('ok');
     expect(hasSubscriptionAccess(never, NOW)).toBe(false);
   });

@@ -26,13 +26,13 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '17/07/2026',
     highlights: [
       'Nova identidade visual Hora Pro (paleta petróleo + âmbar)',
-      'Assinaturas via Stripe (mensal, semestral e anual por usuário)',
+      'Assinaturas via Asaas (mensal, semestral e anual por usuário)',
       'Correções em agendamento automático de pacotes sequenciais',
       'Correções em descontos, exclusão de vendas e estoque de produtos',
     ],
     changes: [
       { type: 'novo', description: 'Paleta oficial Hora Pro aplicada em toda a interface (Âmbar Dourado, Areia Quente e Grafite), com gradientes, sombras e estados de botão padronizados.' },
-      { type: 'novo', description: 'Integração completa com Stripe: checkout por assentos nos planos Mensal (R$ 110), Semestral (R$ 645,62) e Anual (R$ 1.276,86).' },
+      { type: 'novo', description: 'Integração completa com Asaas: pagamento por Pix, cartão ou boleto nos planos Mensal, Semestral e Anual.' },
       { type: 'novo', description: 'Notificação por e-mail e painel Super Admin anonimizado para novos cadastros; períodos de teste removidos.' },
       { type: 'melhoria', description: 'Agendamento automático de pacotes sequenciais respeita horário comercial, feriados, ausências e intervalos por etapa.' },
       { type: 'melhoria', description: 'Mensagens de WhatsApp sempre exibem o nome do serviço (não apenas do pacote) e passam pela prévia editável.' },

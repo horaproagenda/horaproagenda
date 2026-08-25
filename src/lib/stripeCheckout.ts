@@ -22,11 +22,11 @@ export function goToCheckout(url: string) {
   window.location.assign(url);
 }
 
-/** @deprecated nome legado do Stripe — use goToCheckout. */
+/** @deprecated nome legado — use goToCheckout. */
 export const goToStripe = goToCheckout;
 
 
-/** Rota para onde voltar após o Stripe (padrão: dashboard). */
+/** Rota para onde voltar após o pagamento (padrão: agenda). */
 export function consumeCheckoutReturnPath(fallback = '/agenda'): string {
   try {
     const stored = sessionStorage.getItem(RETURN_KEY);

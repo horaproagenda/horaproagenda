@@ -48,7 +48,7 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 export function AssinaturaSection() {
   const { user } = useAuth();
   const { subscription, isTrialing, trialDaysLeft, trialEligible } = useAccountSubscription();
-  // Preços vindos do Stripe (fonte única da verdade), atualizados em tempo real.
+  // Preços vindos do Asaas (fonte única da verdade), atualizados em tempo real.
   const { plans, periods, perSeatMonthlyBRL, cycleTotal } = usePricing();
 
   // Ciclo padrão: o de maior economia (anual).

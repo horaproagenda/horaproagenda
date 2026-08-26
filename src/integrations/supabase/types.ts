@@ -5074,7 +5074,7 @@ export type Database = {
           account_owner_id: string
           client_id: string
           created_at: string
-          created_by: string | null
+          created_by: string
           id: string
           notes: string | null
           preferred_date: string | null
@@ -5090,7 +5090,7 @@ export type Database = {
           account_owner_id?: string
           client_id: string
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           id?: string
           notes?: string | null
           preferred_date?: string | null
@@ -5106,7 +5106,7 @@ export type Database = {
           account_owner_id?: string
           client_id?: string
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           id?: string
           notes?: string | null
           preferred_date?: string | null

@@ -104,6 +104,30 @@ describe('regressão: salas compartilhadas usam a RPC restrita', () => {
   });
 });
 
+describe('regressão: segredos em texto puro nunca são lidos pelo app', () => {
+  // A senha temporária só sai pela RPC get_professional_temp_password (expira);
+  // o SELECT da coluna temp_password foi revogado no banco.
+  it('nenhum arquivo seleciona temp_password direto da tabela', () => {
+    const offenders = sources
+      .filter(s => /\.select\([^)]*temp_password/.test(s.code))
+      .map(s => s.file);
+    expect(offenders, `Selecionam temp_password: ${offenders.join(', ')}`).toEqual([]);
+  });
+
+  it('a senha temporária vem da RPC com expiração', () => {
+    const code = read('src/components/services/ProfessionalCredentialView.tsx');
+    expect(code).toMatch(/get_professional_temp_password/);
+  });
+
+  // Tokens do pool UltraMsg só são usados por funções SECURITY DEFINER.
+  it('nenhum arquivo seleciona token_encrypted do pool', () => {
+    const offenders = sources
+      .filter(s => /\.select\([^)]*token_encrypted/.test(s.code))
+      .map(s => s.file);
+    expect(offenders, `Selecionam token_encrypted: ${offenders.join(', ')}`).toEqual([]);
+  });
+});
+
 describe('regressão: mensagens de erro humanizadas', () => {
   // Problema: toasts exibiam constraint/código do Postgres ao usuário.
   it('o wrapper global de toast humaniza erros', () => {

@@ -84,3 +84,11 @@ Legenda de cobertura:
 
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.
 Nenhuma correção validada pode existir sem teste que a proteja.
+
+## Assinatura Asaas — criação, liberação e idempotência
+
+- A assinatura é criada no Asaas com `externalReference = user:<owner>|seats:<n>|months:<m>`; o webhook usa essa chave para identificar a conta e liberar o acesso.
+- Antes de criar, `asaas-create-subscription` reconcilia com o gateway (`pickReusableSubscription`): se já existir assinatura reaproveitável do mesmo dono, ela é atualizada. Nunca criar uma segunda assinatura para a mesma conta.
+- O vínculo (`asaas_customer_id`/`asaas_subscription_id`) é gravado imediatamente após a criação no gateway, antes de qualquer outro passo.
+- Falha de gravação local **não** devolve erro ao usuário depois de o cartão ir ao gateway: grava-se o mínimo (status + vínculo), responde `local_sync: "pending"` e o webhook completa.
+- Regressão: `src/lib/__tests__/asaasSubscriptionFlow.test.ts`.

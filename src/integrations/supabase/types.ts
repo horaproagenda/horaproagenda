@@ -130,8 +130,11 @@ export type Database = {
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
           billing_cycle: string
+          cancel_at_period_end: boolean
+          canceled_at: string | null
           created_at: string
           current_period_end: string | null
+          current_period_start: string | null
           discount_percentage: number
           final_price: number | null
           grace_ends_at: string | null
@@ -158,8 +161,11 @@ export type Database = {
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
           discount_percentage?: number
           final_price?: number | null
           grace_ends_at?: string | null
@@ -186,8 +192,11 @@ export type Database = {
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           billing_cycle?: string
+          cancel_at_period_end?: boolean
+          canceled_at?: string | null
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
           discount_percentage?: number
           final_price?: number | null
           grace_ends_at?: string | null
@@ -5779,8 +5788,11 @@ export type Database = {
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
           billing_cycle: string
+          cancel_at_period_end: boolean
+          canceled_at: string | null
           created_at: string
           current_period_end: string | null
+          current_period_start: string | null
           discount_percentage: number
           final_price: number | null
           grace_ends_at: string | null

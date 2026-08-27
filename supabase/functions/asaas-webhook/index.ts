@@ -183,17 +183,17 @@ async function notifyOwner(
   type: string,
   title: string,
   message: string,
-  data?: Record<string, unknown>,
 ) {
   try {
-    await admin.from("notifications").insert({
+    // public.notifications não possui coluna de payload: apenas type/title/message.
+    const { error } = await admin.from("notifications").insert({
       owner_user_id: ownerUserId,
       user_id: ownerUserId,
       type,
       title,
       message,
-      data: data ?? {},
     });
+    if (error) console.warn("[asaas-webhook] notificação interna falhou:", error.message);
   } catch (e) {
     console.warn("[asaas-webhook] notificação interna falhou:", e);
   }

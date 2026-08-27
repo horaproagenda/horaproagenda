@@ -386,9 +386,7 @@ Deno.serve(async (req) => {
         asaas_subscription_id: subscriptionId,
         status: trialEndAt ? "trial" : "pending",
         seat_limit: seats,
-        seats,
         plan_tier: seats,
-        price_monthly: quote.monthlyCents / 100,
         monthly_price: quote.monthlyCents / 100,
         billing_cycle: cycle.key,
         discount_percentage: quote.discountPercentage,
@@ -416,7 +414,7 @@ Deno.serve(async (req) => {
         message: trialEndAt
           ? `Seu teste gratuito de ${TRIAL_DAYS} dias começou. A primeira cobrança de R$ ${(quote.totalCents / 100).toFixed(2).replace(".", ",")} acontece em ${trialEndAt.toLocaleDateString("pt-BR")} no cartão ${cardBrand} •••• ${cardLastFour}.`
           : `Assinatura do plano de ${seats} usuário(s) criada. Cobrança de R$ ${(quote.totalCents / 100).toFixed(2).replace(".", ",")} em processamento no cartão ${cardBrand} •••• ${cardLastFour}.`,
-        data: { seats, months, value: quote.totalCents / 100, card_brand: cardBrand, card_last_four: cardLastFour },
+        
       });
     } catch (e) {
       console.warn("[asaas-create-subscription] notificação falhou:", e);

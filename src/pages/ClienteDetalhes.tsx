@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
 import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';

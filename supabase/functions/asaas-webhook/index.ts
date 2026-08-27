@@ -319,7 +319,6 @@ serve(async (req) => {
           due_at: payment.dueDate ? new Date(`${payment.dueDate}T12:00:00Z`).toISOString() : null,
           paid_at: paidAt,
           failed_at: OVERDUE_EVENTS.has(eventType) ? new Date().toISOString() : null,
-          provider: "asaas",
           updated_at: new Date().toISOString(),
         }, { onConflict: "gateway_payment_id" });
       } catch (e) {

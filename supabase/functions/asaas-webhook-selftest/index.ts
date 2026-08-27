@@ -2,36 +2,38 @@
 // Asaas usando o token real (ASAAS_WEBHOOK_TOKEN) sem nunca expor o valor.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-serve(async () => {
+serve(async (req) => {
   const token = (Deno.env.get("ASAAS_WEBHOOK_TOKEN") ?? "").trim();
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/asaas-webhook`;
+  let input: { event?: string; externalReference?: string; value?: number } = {};
+  try {
+    input = await req.json();
+  } catch { /* sem corpo: teste padrão */ }
+
   const eventId = `selftest-${crypto.randomUUID()}`;
   const body = JSON.stringify({
     id: eventId,
-    event: "PAYMENT_CONFIRMED",
-    payment: { id: `pay_selftest_${eventId}`, value: 1, customer: "cus_selftest_inexistente" },
+    event: input.event ?? "PAYMENT_CONFIRMED",
+    payment: {
+      id: `pay_${eventId}`,
+      value: input.value ?? 1,
+      externalReference: input.externalReference ?? null,
+      confirmedDate: new Date().toISOString().slice(0, 10),
+    },
   });
 
-  const withToken = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "asaas-access-token": token },
-    body,
-  });
+  const post = (t: string) =>
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "asaas-access-token": t },
+      body,
+    });
+
+  const withToken = await post(token);
   const withTokenBody = await withToken.text();
-
-  // repete o mesmo evento para provar a idempotência
-  const repeat = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "asaas-access-token": token },
-    body,
-  });
+  const repeat = await post(token);
   const repeatBody = await repeat.text();
-
-  const withBad = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "asaas-access-token": "token-errado" },
-    body,
-  });
+  const withBad = await post("token-errado");
   const withBadBody = await withBad.text();
 
   return new Response(

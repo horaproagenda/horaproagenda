@@ -1711,3 +1711,34 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
     min-height: 36px;
   }
 }
+
+/* ============================================================
+   13) TABELAS NO CELULAR — LEITURA SEM PERDER O CONTEXTO
+   ============================================================
+   Tabelas que precisam continuar tabelas mantêm a rolagem apenas
+   dentro de [data-table-wrapper]. Para não perder a referência da
+   linha, a primeira coluna fica fixa e legível. Fonte nunca abaixo
+   de 12px para não comprometer a leitura.
+   ============================================================ */
+@media (max-width: 767px) {
+  [data-table-wrapper] table {
+    font-size: 0.75rem;
+  }
+  [data-table-wrapper] th,
+  [data-table-wrapper] td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  [data-table-wrapper] table > thead > tr > th:first-child,
+  [data-table-wrapper] table > tbody > tr > td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: hsl(var(--card));
+    box-shadow: 1px 0 0 0 hsl(var(--border));
+  }
+  /* Cartões responsivos substituem a tabela onde disponível. */
+  [data-responsive-cards] {
+    max-width: 100%;
+  }
+}

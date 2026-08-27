@@ -438,7 +438,24 @@ Deno.serve(async (req) => {
         updated_at: new Date().toISOString(),
       })
       .eq("owner_user_id", subRow.owner_user_id);
-    if (upErr) return response(500, { error: upErr.message });
+    // O cartão já foi enviado ao Asaas: nunca devolvemos erro de gravação local
+    // aqui, senão o usuário veria "falha" e tentaria de novo. Registramos o
+    // mínimo (status + vínculo) e o webhook completa o restante.
+    let localSync: "ok" | "pending" = "ok";
+    if (upErr) {
+      localSync = "pending";
+      console.error("[asaas-create-subscription] estado local incompleto:", upErr.message);
+      await admin
+        .from("account_subscriptions")
+        .update({
+          status: trialEndAt ? "trial" : "pending",
+          trial_ends_at: trialEndAt ? trialEndAt.toISOString() : null,
+          asaas_customer_id: customerId,
+          asaas_subscription_id: subscriptionId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("owner_user_id", subRow.owner_user_id);
+    }
 
     // ── Notificação interna ───────────────────────────────────────────────
     try {

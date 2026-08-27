@@ -479,6 +479,8 @@ Deno.serve(async (req) => {
 
     return response(200, {
       ok: true,
+      local_sync: localSync,
+      subscription_id: subscriptionId,
       status: trialEndAt ? "trial" : "pending",
       trialing: !!trialEndAt,
       trial_start_at: trialStartAt?.toISOString() ?? null,

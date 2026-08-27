@@ -20,7 +20,12 @@ function walk(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-const tsxFiles = walk('src').filter((f) => !f.includes('__tests__') && !f.includes('.test.'));
+// drawer.tsx: a "alça" de arraste tem 100px por design (não é conteúdo).
+const FIXED_WIDTH_EXEMPT = ['src/components/ui/drawer.tsx'];
+const tsxFiles = walk('src').filter(
+  (f) => !f.includes('__tests__') && !f.includes('.test.') && !FIXED_WIDTH_EXEMPT.some((e) => f.endsWith(e.replace('src/', 'src/'))),
+);
+
 
 describe('utilitários de layout compartilhados', () => {
   it('index.css define field-grid, filter-bar, action-row, stack-mobile e page-header-row', () => {

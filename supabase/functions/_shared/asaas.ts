@@ -6,6 +6,8 @@
 // - Os valores/descontos são definidos por você no painel do Asaas; o app lê.
 
 export function asaasBaseUrl(): string {
+  const override = Deno.env.get("ASAAS_API_BASE_URL")?.trim().replace(/\/+$/, "");
+  if (override) return override;
   const env = (Deno.env.get("ASAAS_ENV") || "production").toLowerCase();
   return env === "sandbox"
     ? "https://sandbox.asaas.com/api/v3"

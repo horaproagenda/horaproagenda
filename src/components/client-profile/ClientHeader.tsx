@@ -182,8 +182,11 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-3 backdrop-blur-sm transition-all duration-300 sm:flex-row sm:items-start sm:gap-4 sm:p-4">
+      {/* Identidade: avatar + dados (lado a lado em qualquer largura) */}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
       {/* Avatar with photo upload */}
-      <div className="relative group">
+      <div className="relative group shrink-0">
+
         <Avatar className="h-14 w-14 border-2 border-primary/10">
           {avatarUrl && <AvatarImage src={avatarUrl} alt={client.name} />}
           <AvatarFallback className="bg-primary/5 text-primary font-semibold text-lg">

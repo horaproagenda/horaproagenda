@@ -26,6 +26,10 @@ import {
   planForSeats,
   quoteCycle,
 } from "../_shared/billingPlans.ts";
+import {
+  pickReusableSubscription,
+  subscriptionExternalReference,
+} from "../_shared/asaasSubscriptionReconcile.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -318,6 +322,25 @@ Deno.serve(async (req) => {
     };
 
     let subscriptionId: string | null = subRow.asaas_subscription_id ?? null;
+
+    // Idempotência: se o banco não tem a assinatura (ex.: gravação local falhou
+    // numa tentativa anterior), procuramos no Asaas antes de criar outra —
+    // assim o usuário nunca fica com duas assinaturas/cobranças.
+    if (!subscriptionId && customerId) {
+      try {
+        const existing = await asaasFetch<{ data?: Array<{ id: string; status?: string; externalReference?: string | null; deleted?: boolean }> }>(
+          `/subscriptions?customer=${encodeURIComponent(customerId)}&limit=100`,
+        );
+        const reused = pickReusableSubscription(existing.data, subRow.owner_user_id);
+        if (reused) {
+          subscriptionId = reused;
+          console.log("[asaas-create-subscription] assinatura existente reaproveitada", { subscriptionId });
+        }
+      } catch (e) {
+        console.warn("[asaas-create-subscription] reconciliação de assinatura falhou:", e);
+      }
+    }
+
     if (subscriptionId) {
       await asaasFetch(`/subscriptions/${subscriptionId}`, {
         method: "PUT",
@@ -340,6 +363,19 @@ Deno.serve(async (req) => {
       });
       subscriptionId = created.id;
     }
+
+    // Vínculo gravado IMEDIATAMENTE: se qualquer passo abaixo falhar, uma nova
+    // tentativa reaproveita esta assinatura em vez de criar outra.
+    const { error: linkErr } = await admin
+      .from("account_subscriptions")
+      .update({
+        payment_provider: "asaas",
+        asaas_customer_id: customerId,
+        asaas_subscription_id: subscriptionId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("owner_user_id", subRow.owner_user_id);
+    if (linkErr) console.error("[asaas-create-subscription] vínculo local falhou:", linkErr.message);
 
     // Bandeira/últimos 4 a partir do primeiro pagamento gerado (metadados).
     let cardBrand = detectCardBrand(cardNumber);

@@ -273,7 +273,7 @@ export function ExtratoFinanceiro() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap min-w-0 items-center gap-2">
             <CardTitle className="text-base">Extrato</CardTitle>
             <Badge variant="outline" className="text-[10px] gap-1">
               <Lock className="h-3 w-3" /> Somente leitura

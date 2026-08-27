@@ -217,7 +217,7 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
     <div className="space-y-3 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap min-w-0 items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-full min-w-0 sm:w-[160px] h-8 text-xs">

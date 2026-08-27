@@ -209,7 +209,7 @@ export function ConciliacaoPagamentos() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <div className="flex flex-1 gap-2">
+        <div className="flex flex-wrap min-w-0 flex-1 gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -233,7 +233,7 @@ export function ConciliacaoPagamentos() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap min-w-0 gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Recarregar'}
           </Button>

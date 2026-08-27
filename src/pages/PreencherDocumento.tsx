@@ -588,7 +588,7 @@ export default function PreencherDocumento() {
               if (event.target.value.trim()) clearMissing(token.fieldKey);
             }}
             placeholder={token.label || token.name}
-            className={`inline-flex h-9 min-w-[180px] w-full min-w-0 sm:w-[220px] align-middle ${
+            className={`inline-flex h-9 w-[min(100%,220px)] min-w-0 align-middle ${
               isMissing ? 'border-destructive ring-2 ring-destructive/40 focus-visible:ring-destructive' : ''
             }`}
           />
@@ -657,7 +657,7 @@ export default function PreencherDocumento() {
               if (event.target.value.trim()) clearMissing(token.fieldKey);
             }}
             placeholder="Digite sua resposta..."
-            className={`inline-flex h-9 min-w-[180px] w-full min-w-0 sm:w-[220px] align-middle ${
+            className={`inline-flex h-9 w-[min(100%,220px)] min-w-0 align-middle ${
               isMissing ? 'border-destructive ring-2 ring-destructive/40 focus-visible:ring-destructive' : ''
             }`}
           />

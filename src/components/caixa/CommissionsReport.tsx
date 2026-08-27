@@ -464,7 +464,7 @@ export function CommissionsReport({
                         <Table>
                           <TableHeader>
                             <TableRow style={{ borderBottomColor: `${profColor}40` }}>
-                              <TableHead className="w-[110px] text-[11px]">Data</TableHead>
+                              <TableHead className="w-full min-w-0 sm:w-[110px] text-[11px]">Data</TableHead>
                               <TableHead className="text-[11px]">Cliente</TableHead>
                               <TableHead className="text-[11px]">Serviço</TableHead>
                               <TableHead className="text-right text-[11px]">Valor</TableHead>

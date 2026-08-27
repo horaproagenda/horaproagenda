@@ -432,7 +432,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[160px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -444,7 +444,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             </SelectContent>
           </Select>
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[130px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -456,7 +456,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
             </SelectContent>
           </Select>
           <Select value={paymentTypeFilter} onValueChange={setPaymentTypeFilter}>
-            <SelectTrigger className="w-[170px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[170px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

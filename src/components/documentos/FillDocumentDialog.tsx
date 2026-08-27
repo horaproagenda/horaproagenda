@@ -476,7 +476,7 @@ export function FillDocumentDialog({
 
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Left Panel - Client & Variables */}
-          <ScrollArea className="w-[300px] border-r">
+          <ScrollArea className="w-full min-w-0 sm:w-[300px] border-r">
             <div className="p-4 space-y-4">
               {!preSelectedClientId && (
                 <div>

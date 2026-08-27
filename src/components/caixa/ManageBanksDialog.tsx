@@ -178,7 +178,7 @@ export function ManageBanksDialog() {
                       <TableHead>Código</TableHead>
                       <TableHead>Agência</TableHead>
                       <TableHead>Conta</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
+                      <TableHead className="w-full min-w-0 sm:w-[100px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

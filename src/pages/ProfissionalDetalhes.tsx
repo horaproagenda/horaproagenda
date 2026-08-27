@@ -830,7 +830,7 @@ export default function ProfissionalDetalhes() {
                             setShowCustomDatePicker(true);
                           }
                         }}>
-                          <SelectTrigger className="h-8 w-[180px] text-xs">
+                          <SelectTrigger className="h-8 w-full min-w-0 sm:w-[180px] text-xs">
                             <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             <SelectValue />
                           </SelectTrigger>

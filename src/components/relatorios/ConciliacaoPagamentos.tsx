@@ -220,7 +220,7 @@ export function ConciliacaoPagamentos() {
             />
           </div>
           <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
-            <SelectTrigger className="w-[220px] h-9">
+            <SelectTrigger className="w-full min-w-0 sm:w-[220px] h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -263,13 +263,13 @@ export function ConciliacaoPagamentos() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-[110px]">Data</TableHead>
+                    <TableHead className="w-full min-w-0 sm:w-[110px]">Data</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead className="text-right">Agend.</TableHead>
                     <TableHead className="text-right">Financeiro</TableHead>
                     <TableHead className="text-right">Caixa</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="w-full min-w-0 sm:w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

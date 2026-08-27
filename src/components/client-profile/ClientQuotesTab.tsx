@@ -220,7 +220,7 @@ export function ClientQuotesTab({ quotes, clientId, clientPhone, onAddQuote, onU
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[160px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[160px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

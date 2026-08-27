@@ -295,7 +295,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[140px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

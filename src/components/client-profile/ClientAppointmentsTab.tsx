@@ -292,7 +292,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
         
         {/* Month Filter */}
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[150px] h-8 text-xs">
+          <SelectTrigger className="w-full min-w-0 sm:w-[150px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -306,7 +306,7 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
 
         {/* Status Filter */}
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-full min-w-0 sm:w-[140px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

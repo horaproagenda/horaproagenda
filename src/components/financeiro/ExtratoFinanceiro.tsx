@@ -293,7 +293,7 @@ export function ExtratoFinanceiro() {
             />
           </div>
           <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
-            <SelectTrigger className="w-[110px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[110px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -303,7 +303,7 @@ export function ExtratoFinanceiro() {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={(v: 'all' | 'income' | 'expense') => setTypeFilter(v)}>
-            <SelectTrigger className="w-[100px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[100px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -313,7 +313,7 @@ export function ExtratoFinanceiro() {
             </SelectContent>
           </Select>
           <Select value={sourceFilter} onValueChange={(v: any) => setSourceFilter(v)}>
-            <SelectTrigger className="w-[110px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[110px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

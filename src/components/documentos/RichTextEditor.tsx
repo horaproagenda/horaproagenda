@@ -616,7 +616,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-1 border-b bg-background/70 px-2 py-1.5 sticky top-0 z-10 rounded-t-lg">
           <Select value={font} onValueChange={handleFontChange}>
-            <SelectTrigger className="h-7 w-[140px] text-xs">
+            <SelectTrigger className="h-7 w-full min-w-0 sm:w-[140px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-[280px]">

@@ -101,7 +101,7 @@ export function InteractiveDocumentFiller({ rawContent, state, onChange, showObs
             value={value}
             onChange={(e) => setForm(token.fieldKey, e.target.value)}
             placeholder={token.label || token.name}
-            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+            className="inline-flex h-9 min-w-[180px] w-full min-w-0 sm:w-[220px] align-middle"
           />
         );
       }
@@ -141,7 +141,7 @@ export function InteractiveDocumentFiller({ rawContent, state, onChange, showObs
             value={state.additionalInfo[token.fieldKey] || ''}
             onChange={(e) => setAdditional(token.fieldKey, e.target.value)}
             placeholder="Digite sua resposta..."
-            className="inline-flex h-9 min-w-[180px] w-[220px] align-middle"
+            className="inline-flex h-9 min-w-[180px] w-full min-w-0 sm:w-[220px] align-middle"
           />
         );
       case 'checkbox': {

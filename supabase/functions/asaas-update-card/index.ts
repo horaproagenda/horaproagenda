@@ -121,17 +121,18 @@ Deno.serve(async (req) => {
         .update({ is_default: false })
         .eq("owner_user_id", subRow.owner_user_id)
         .eq("is_default", true);
-      await admin.from("account_payment_methods").insert({
+      const { error: pmErr } = await admin.from("account_payment_methods").insert({
         owner_user_id: subRow.owner_user_id,
-        provider: "asaas",
-        card_brand: cardBrand,
-        card_last_four: cardLastFour,
-        card_exp_month: Number(expiryMonth),
-        card_exp_year: Number(expiryYear),
+        gateway: "asaas",
+        brand: cardBrand,
+        last_four_digits: cardLastFour,
+        expiration_month: Number(expiryMonth),
+        expiration_year: Number(expiryYear),
         holder_name: holderName,
-        holder_document: holderCpfCnpj,
         is_default: true,
+        status: "active",
       });
+      if (pmErr) throw new Error(pmErr.message);
     } catch (e) {
       console.warn("[asaas-update-card] registro do método falhou:", e);
     }

@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
       base,
       keyPrefix,
       status,
-      bodyPreview: body.slice(0, 300),
+      bodyPreview: body.slice(0, 400),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

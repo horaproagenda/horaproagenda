@@ -139,3 +139,29 @@ describe('nenhuma largura fixa grande sem contraparte fluida', () => {
     expect(violations).toEqual([]);
   });
 });
+
+describe('formulários em uma coluna no celular', () => {
+  // Problema: diálogos usavam `grid grid-cols-2` fixo, deixando campos
+  // estreitos demais e labels sobrepostos em telas de 320-390px.
+  const FORMS = [
+    'src/components/clients/NewClientDialog.tsx',
+    'src/components/client-profile/ClientInfoTab.tsx',
+    'src/pages/CadastroCliente.tsx',
+    'src/components/produtos/SupplierDialog.tsx',
+    'src/components/appointments/ProfessionalAbsenceDialog.tsx',
+    'src/components/appointments/NewAppointmentDialog.tsx',
+    'src/components/caixa/SingleSaleDialog.tsx',
+    'src/components/caixa/SaleForm.tsx',
+  ];
+
+  it.each(FORMS)('%s não usa grade de 2/3 colunas já no celular', (file) => {
+    const src = read(file);
+    const offenders = src
+      .split('\n')
+      .map((line, i) => ({ line, i }))
+      .filter(({ line }) => /\bgrid grid-cols-[23]\b/.test(line) && line.includes('<Label') === false)
+      .filter(({ line }) => !/sm:grid-cols-[234]/.test(line))
+      .map(({ line, i }) => `${file}:${i + 1} → ${line.trim().slice(0, 80)}`);
+    expect(offenders).toEqual([]);
+  });
+});

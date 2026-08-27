@@ -148,7 +148,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
             <div className="flex-1 min-h-0 overflow-y-auto px-6 pr-4">
 
               <div className="space-y-2.5 pb-2">
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="name"
@@ -177,7 +177,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="cnpj"
@@ -212,7 +212,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="state_registration"
@@ -255,7 +255,7 @@ export function SupplierDialog({ editingSupplier, onClose, trigger }: SupplierDi
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <FormField
                     control={form.control}
                     name="email"

@@ -355,7 +355,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             />
 
             {/* Name & Phone */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="name"
@@ -393,7 +393,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
 
             {/* PJ-specific fields */}
             {isPJ && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="cnpj"
@@ -433,7 +433,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             )}
 
             {/* CPF & Email (PF) | Email only (PJ shows CPF hidden) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {!isPJ && (
                 <FormField
                   control={form.control}
@@ -472,7 +472,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             )}
 
             {/* Birthdate (PF only) & Referral */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {!isPJ && (
                 <FormField
                   control={form.control}
@@ -530,7 +530,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
             <div className="rounded-md border p-3 space-y-3">
               <p className="text-xs font-semibold text-foreground">Endereço</p>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
                   name="cep"
@@ -573,7 +573,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
                   name="address_number"
@@ -602,7 +602,7 @@ export function NewClientDialog({ onClientCreated, children, open: openProp, onO
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <FormField
                   control={form.control}
                   name="address_neighborhood"

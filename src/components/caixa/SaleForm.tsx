@@ -1026,7 +1026,7 @@ export function SaleForm() {
               Produtos / Serviços / Pacotes
             </Label>
             
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 variant={itemType === 'product' ? 'default' : 'outline'}
                 onClick={() => { setItemType('product'); setSelectedItemId(''); }}

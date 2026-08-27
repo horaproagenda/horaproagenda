@@ -416,7 +416,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Horário Início</Label>
                 <Input

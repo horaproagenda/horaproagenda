@@ -2284,7 +2284,7 @@ Até breve! ✨`;
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-accent dark:text-accent/80">Início *</Label>
                   <div className="flex items-center gap-1">
@@ -2398,7 +2398,7 @@ Até breve! ✨`;
                               Este cliente possui <strong>{paidSiblingCount} aplicações pagas</strong> deste serviço. Cada agendamento criado consumirá uma aplicação.
                             </div>
                           )}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Quantidade de vezes</Label>
                               <Select
@@ -2686,7 +2686,7 @@ Até breve! ✨`;
 
                       {autoScheduleEnabled && (
                         <div className="space-y-3 pt-2 border-t">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Dia da semana preferido</Label>
                               <Select

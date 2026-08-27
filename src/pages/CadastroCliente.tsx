@@ -456,7 +456,7 @@ export default function CadastroCliente() {
 
           <Card className="shadow-xl">
             <CardContent className="p-4 sm:p-6 space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs grid grid-cols-1 sm:grid-cols-2 sm:grid-cols-4 gap-2">
                 {form.name && <div><span className="text-muted-foreground">Nome:</span> <strong>{form.name}</strong></div>}
                 {form.cpf && <div><span className="text-muted-foreground">CPF:</span> <strong>{form.cpf}</strong></div>}
                 {form.birthdate && <div><span className="text-muted-foreground">Nascimento:</span> <strong>{new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')}</strong></div>}

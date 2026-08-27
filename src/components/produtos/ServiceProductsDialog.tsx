@@ -482,7 +482,7 @@ export function ServiceProductsDialog() {
 
     return (
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs text-muted-foreground">
               {isForTemplate ? 'Modelos de Pacote (selecione um ou mais)' : 'Serviço'}
@@ -631,7 +631,7 @@ export function ServiceProductsDialog() {
             </div>
 
             {/* Frasco em uso (os dois modos) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground">Quantidade do frasco em uso</Label>
                 <div className="flex gap-2">
@@ -698,7 +698,7 @@ export function ServiceProductsDialog() {
             </div>
 
             {/* Período de uso (os dois modos, datas inclusivas) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -734,7 +734,7 @@ export function ServiceProductsDialog() {
                     {calcMode === 'manual' ? 'Informado manualmente' : 'Estimado pelo rendimento do frasco'}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:grid-cols-3">
                   <div>
                     <span className="text-muted-foreground">Comprado / estoque atual:</span>
                     <p className="font-semibold">

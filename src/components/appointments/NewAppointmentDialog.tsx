@@ -1266,13 +1266,22 @@ export function NewAppointmentDialog({
           payment_status: isPackagePaid ? 'paid' : 'pending',
         });
 
-        // Link the appointment to the package session
+        // Link the appointment to the package session.
+        // REGRESSÃO PROTEGIDA: se o vínculo falhar, o agendamento é revertido —
+        // agendamento solto fazia as rotinas de integridade enxergarem
+        // "pacote sem sessões" e apagarem tudo em segundo plano.
         if (clientPackageId) {
-          await incrementPackageSession.mutateAsync({
-            packageId: clientPackageId,
-            appointmentId: appointmentResult.id,
-          });
+          try {
+            await incrementPackageSession.mutateAsync({
+              packageId: clientPackageId,
+              appointmentId: appointmentResult.id,
+            });
+          } catch (linkError) {
+            await supabase.from('appointments').delete().eq('id', appointmentResult.id);
+            throw linkError;
+          }
         }
+
 
         // If auto-schedule is enabled, create the remaining pending sessions.
         // This must also work after importing completed sessions via Histórico

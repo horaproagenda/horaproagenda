@@ -57,6 +57,9 @@ Legenda de cobertura:
 | 32 | WhatsApp: preview antes do envio; confirmação/cancelamento lidos corretamente; sem loop de "não entendi" | `unit` `whatsappIntent.test.ts`, `whatsappReplyDecision.test.ts` + `e2e` `whatsapp-document-send.spec.ts` |
 | 33 | Sincronização em tempo real (Realtime) sem duplicidade | `smoke` `realtime.smoke.test.ts` + `e2e` `cross-device-sync.spec.ts` |
 | 34 | Privacidade: quem pode compartilhar escolhe a visibilidade no cadastro (padrão "Geral da clínica"); quem não pode segue privado | `unit` `recordVisibility.test.ts` |
+| 35 | Pacote sequencial: nenhuma rotina em segundo plano apaga pacote/agendamento por falta de venda no Caixa (`heal_orphan_service_packages` exige pacote sem venda, sem agendamento vinculado e com mais de 24h) | `unit` `sequentialPackageIntegrity.test.ts` |
+| 36 | Pacote sequencial: sessão sem vínculo é revertida e o total só é informado após conferência no banco; intervalos por etapa respeitados mesmo iniciando em data passada | `unit` `sequentialPackageIntegrity.test.ts` |
+
 
 ## Layout e dispositivos
 

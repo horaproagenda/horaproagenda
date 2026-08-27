@@ -1266,13 +1266,22 @@ export function NewAppointmentDialog({
           payment_status: isPackagePaid ? 'paid' : 'pending',
         });
 
-        // Link the appointment to the package session
+        // Link the appointment to the package session.
+        // REGRESSÃO PROTEGIDA: se o vínculo falhar, o agendamento é revertido —
+        // agendamento solto fazia as rotinas de integridade enxergarem
+        // "pacote sem sessões" e apagarem tudo em segundo plano.
         if (clientPackageId) {
-          await incrementPackageSession.mutateAsync({
-            packageId: clientPackageId,
-            appointmentId: appointmentResult.id,
-          });
+          try {
+            await incrementPackageSession.mutateAsync({
+              packageId: clientPackageId,
+              appointmentId: appointmentResult.id,
+            });
+          } catch (linkError) {
+            await supabase.from('appointments').delete().eq('id', appointmentResult.id);
+            throw linkError;
+          }
         }
+
 
         // If auto-schedule is enabled, create the remaining pending sessions.
         // This must also work after importing completed sessions via Histórico
@@ -1377,10 +1386,15 @@ export function NewAppointmentDialog({
               });
 
               if (clientPackageId) {
-                await incrementPackageSession.mutateAsync({
-                  packageId: clientPackageId,
-                  appointmentId: futureAppointment.id,
-                });
+                try {
+                  await incrementPackageSession.mutateAsync({
+                    packageId: clientPackageId,
+                    appointmentId: futureAppointment.id,
+                  });
+                } catch (linkError) {
+                  await supabase.from('appointments').delete().eq('id', futureAppointment.id);
+                  throw linkError;
+                }
               }
               createdRanges.push({ start: futureDate, end: futureEnd });
               createdCount++;
@@ -1393,14 +1407,33 @@ export function NewAppointmentDialog({
             }
           }
 
-          // Report results
-          if (failedSessions.length > 0) {
-            const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
-            toast.error(`Sessões ${failedSessions.join(', ')} não foram agendadas.${motivo} Verifique a agenda e reagende manualmente.`, { duration: 8000 });
-            toast.info(`${createdCount + 1} de ${sessionsToCreate + 1} agendamentos foram criados.`);
-          } else {
-            toast.success(`${createdCount + 1} agendamentos criados automaticamente!`);
+          // Confirmação real: consulta no banco quantas sessões do pacote têm
+          // agendamento vinculado antes de informar o total ao usuário.
+          let confirmedSessions: number | null = null;
+          if (clientPackageId) {
+            try {
+              const { data: linkedSessions } = await supabase
+                .from('package_appointments')
+                .select('appointment_id')
+                .eq('package_id', clientPackageId)
+                .not('appointment_id', 'is', null);
+              confirmedSessions = (linkedSessions || []).length;
+            } catch (verifyError) {
+              console.warn('Não foi possível confirmar as sessões agendadas:', verifyError);
+            }
           }
+
+          const expectedTotal = sessionsToCreate + 1;
+          const reportedTotal = confirmedSessions ?? (createdCount + 1);
+
+          if (failedSessions.length > 0 || reportedTotal < expectedTotal) {
+            const faltantes = failedSessions.length > 0 ? `Sessões ${failedSessions.join(', ')} não foram agendadas. ` : '';
+            const motivo = failureReasons.length > 0 ? `Motivo: ${failureReasons.join(' / ')} ` : '';
+            toast.error(`${faltantes}${motivo}${reportedTotal} de ${expectedTotal} agendamentos ficaram confirmados. Verifique a agenda e reagende as sessões que faltam.`, { duration: 9000 });
+          } else {
+            toast.success(`${reportedTotal} agendamentos criados e confirmados na agenda!`);
+          }
+
 
           // Compose WhatsApp notification and open preview (do NOT auto-send)
           if (sendWhatsappNotification && clientData?.phone) {

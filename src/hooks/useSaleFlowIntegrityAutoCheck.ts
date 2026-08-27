@@ -6,9 +6,12 @@ const MIN_INTERVAL_MS = 120_000; // 2 min throttle
 
 /**
  * Roda automaticamente o audit_sale_flow_integrity para detectar divergências
- * no fluxo venda → boleto → pacote/serviço. Não apaga vendas automaticamente:
- * uma venda legítima pode ficar temporariamente sem parcelas durante correções
- * manuais, e apagar em background remove o pacote real do cliente.
+ * no fluxo venda → boleto → pacote/serviço.
+ *
+ * REGRESSÃO PROTEGIDA: esta verificação NUNCA apaga dados. Pacotes criados
+ * direto pela agenda não possuem venda no Caixa e eram apagados em segundo
+ * plano junto com todos os agendamentos (bug "agendamentos aparecem e somem").
+ * Divergências apenas são registradas para revisão manual.
  *
  * Triggers: login, foco da janela, retorno online, visibilitychange.
  * Throttled para 1x a cada 2 minutos por dispositivo.
@@ -35,22 +38,13 @@ export function useSaleFlowIntegrityAutoCheck() {
         const ghostSales = report.sales_with_boleto_no_installments || [];
         const orphanPackages = report.packages_without_active_sale || [];
 
-        // Auto-heal orphan packages (packages whose originating sale was deleted)
-        if (orphanPackages.length > 0) {
-          const { data: healed, error: healError } = await (supabase as any).rpc('heal_orphan_service_packages');
-          if (healError) {
-            logSyncEvent('sale-flow:heal-error', 'error', { trigger, error: String(healError) });
-          } else {
-            logSyncEvent('sale-flow:orphan-packages-healed', 'ok', { trigger, result: healed });
-          }
-        }
-
         if (ghostSales.length === 0 && orphanPackages.length === 0) {
           logSyncEvent('sale-flow:healthy', 'ok', { trigger });
           return;
         }
 
         logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, ghostSales: ghostSales.length, orphanPackages: orphanPackages.length });
+
       } catch (e) {
         logSyncEvent('sale-flow:error', 'error', { trigger, error: String(e) });
       } finally {

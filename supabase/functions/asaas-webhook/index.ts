@@ -235,7 +235,7 @@ serve(async (req) => {
         gateway_event_id: eventId,
         event_type: eventType,
         payload_hash: payloadHash,
-        provider: "asaas",
+        gateway: "asaas",
       });
     if (dupErr) {
       if (dupErr.code === "23505" || dupErr.message?.includes("duplicate key")) {

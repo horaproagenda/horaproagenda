@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
 
     // ── Cliente no Asaas (idempotente) ────────────────────────────────────
     let customerId: string | null = subRow.asaas_customer_id ?? null;
-    const externalRef = `user:${subRow.owner_user_id}|seats:${seats}|months:${months}`;
+    const externalRef = subscriptionExternalReference(subRow.owner_user_id, seats, months);
 
     const userEmail = user.email ?? "";
     if (!customerId && userEmail) {

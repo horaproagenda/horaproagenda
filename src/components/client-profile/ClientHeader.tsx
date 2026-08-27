@@ -181,7 +181,7 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
   };
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card/80 backdrop-blur-sm transition-all duration-300">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-3 backdrop-blur-sm transition-all duration-300 sm:flex-row sm:items-start sm:gap-4 sm:p-4">
       {/* Avatar with photo upload */}
       <div className="relative group">
         <Avatar className="h-14 w-14 border-2 border-primary/10">

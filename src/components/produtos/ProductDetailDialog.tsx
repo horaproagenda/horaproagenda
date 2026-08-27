@@ -948,7 +948,7 @@ export function ProductDetailDialog({
               {isEditing ? (
                 // Edit Mode
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label>Nome</Label>
                       <Input
@@ -1008,7 +1008,7 @@ export function ProductDetailDialog({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label>Quantidade Atual em Estoque</Label>
                       <Input
@@ -1129,7 +1129,7 @@ export function ProductDetailDialog({
                 // View Mode
                 <div className="space-y-4">
                   {/* Stock Info Card */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 rounded-lg border bg-card">
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-sm text-muted-foreground">Estoque Atual</div>
@@ -1190,7 +1190,7 @@ export function ProductDetailDialog({
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs">Nova Quantidade</Label>
                           <Input
@@ -1239,7 +1239,7 @@ export function ProductDetailDialog({
                   <Separator />
 
                   {/* Product Info */}
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                     <div>
                       <span className="text-sm text-muted-foreground">Tipo:</span>
                       <span className="ml-2">{PRODUCT_TYPES.find(t => t.value === product.product_type)?.label}</span>
@@ -1314,7 +1314,7 @@ export function ProductDetailDialog({
                               ⚠️ {cycleSummary.runningOutAlert}
                             </div>
                           )}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div className="rounded-lg border bg-muted/30 p-2.5">
                               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ciclo atual</div>
                               <div className="text-xs tabular-nums mt-1">
@@ -1411,7 +1411,7 @@ export function ProductDetailDialog({
 
 
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">
                           {isBulkProduct ? 'Início do uso do pacote' : containerTerms.startLabel}
@@ -2686,7 +2686,7 @@ function ProductAutomaticConsumption({
             <BarChart3 className="h-4 w-4" />
             Resumo Automático
           </h4>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-lg border bg-card">
               <div className="text-xs text-muted-foreground">Total</div>
               <div className="text-lg font-bold">{productConsumption.total_quantity.toFixed(2)} {unitLabel}</div>

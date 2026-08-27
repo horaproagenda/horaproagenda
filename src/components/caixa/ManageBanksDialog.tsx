@@ -98,7 +98,7 @@ export function ManageBanksDialog() {
 
           {showForm ? (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Label htmlFor="name">Nome do Banco *</Label>
                   <Input
@@ -178,7 +178,7 @@ export function ManageBanksDialog() {
                       <TableHead>Código</TableHead>
                       <TableHead>Agência</TableHead>
                       <TableHead>Conta</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
+                      <TableHead className="w-full min-w-0 sm:w-[100px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

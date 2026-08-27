@@ -1592,3 +1592,153 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* ============================================================
+   12) UTILITÁRIOS DE LAYOUT RESPONSIVO COMPARTILHADOS
+   ============================================================
+   Padronizam formulários, barras de filtro e linhas de ação em
+   todas as páginas. Mobile-first: uma coluna no celular, colunas
+   apenas quando há espaço real.
+   Coberto por teste: src/__tests__/regression/mobile-invariants.test.ts
+   ============================================================ */
+
+/* Grade de campos de formulário: 1 coluna no celular, 2 a partir de 768px. */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+.field-grid > * {
+  min-width: 0;
+}
+.field-grid > .field-full {
+  grid-column: 1 / -1;
+}
+@media (min-width: 768px) {
+  .field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem 1rem;
+  }
+  .field-grid.field-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Barra de filtros: sempre quebra linha, nunca estoura a largura. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+.filter-bar > * {
+  min-width: 0;
+  flex: 1 1 clamp(9rem, 100%, 14rem);
+}
+.filter-bar > .filter-grow {
+  flex: 999 1 12rem;
+}
+.filter-bar > .filter-fixed {
+  flex: 0 0 auto;
+}
+@media (min-width: 640px) {
+  .filter-bar > * {
+    flex: 0 1 auto;
+  }
+  .filter-bar > .filter-grow {
+    flex: 1 1 14rem;
+  }
+}
+
+/* Linha de ações: botões em largura total no celular, em linha depois. */
+.action-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+.action-row > * {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .action-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: auto;
+  }
+  .action-row > * {
+    width: auto;
+  }
+  .action-row.action-row-end {
+    justify-content: flex-end;
+  }
+}
+
+/* Par rótulo/valor: empilhado no celular, lado a lado em telas largas. */
+.stack-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.stack-mobile > .stack-label {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: hsl(var(--muted-foreground));
+}
+.stack-mobile > .stack-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Cabeçalho de página: título + ações sem sobreposição. */
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Alvos de toque confortáveis em telas de toque. */
+@media (pointer: coarse) {
+  button:not(.no-touch-target),
+  [role="tab"],
+  a[role="button"] {
+    min-height: 36px;
+  }
+}
+
+/* ============================================================
+   13) TABELAS NO CELULAR — LEITURA SEM PERDER O CONTEXTO
+   ============================================================
+   Tabelas que precisam continuar tabelas mantêm a rolagem apenas
+   dentro de [data-table-wrapper]. Para não perder a referência da
+   linha, a primeira coluna fica fixa e legível. Fonte nunca abaixo
+   de 12px para não comprometer a leitura.
+   ============================================================ */
+@media (max-width: 767px) {
+  [data-table-wrapper] table {
+    font-size: 0.75rem;
+  }
+  [data-table-wrapper] th,
+  [data-table-wrapper] td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  [data-table-wrapper] table > thead > tr > th:first-child,
+  [data-table-wrapper] table > tbody > tr > td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: hsl(var(--card));
+    box-shadow: 1px 0 0 0 hsl(var(--border));
+  }
+  /* Cartões responsivos substituem a tabela onde disponível. */
+  [data-responsive-cards] {
+    max-width: 100%;
+  }
+}

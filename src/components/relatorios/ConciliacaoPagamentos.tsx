@@ -209,7 +209,7 @@ export function ConciliacaoPagamentos() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <div className="flex flex-1 gap-2">
+        <div className="flex flex-wrap min-w-0 flex-1 gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -220,7 +220,7 @@ export function ConciliacaoPagamentos() {
             />
           </div>
           <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
-            <SelectTrigger className="w-[220px] h-9">
+            <SelectTrigger className="w-full min-w-0 sm:w-[220px] h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -233,7 +233,7 @@ export function ConciliacaoPagamentos() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap min-w-0 gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Recarregar'}
           </Button>
@@ -263,13 +263,13 @@ export function ConciliacaoPagamentos() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-[110px]">Data</TableHead>
+                    <TableHead className="w-full min-w-0 sm:w-[110px]">Data</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead className="text-right">Agend.</TableHead>
                     <TableHead className="text-right">Financeiro</TableHead>
                     <TableHead className="text-right">Caixa</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="w-full min-w-0 sm:w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

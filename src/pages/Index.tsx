@@ -64,7 +64,7 @@ const Index = () => {
               value={selectedProfessional || 'all'} 
               onValueChange={(v) => setSelectedProfessional(v === 'all' ? null : v)}
             >
-              <SelectTrigger className="w-[180px] h-8 text-sm">
+              <SelectTrigger className="w-full min-w-0 sm:w-[180px] h-8 text-sm">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>

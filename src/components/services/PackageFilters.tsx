@@ -295,7 +295,7 @@ export function PackageFilters({
 
         {/* Sort */}
         <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[140px] h-7 text-[11px]">
+          <SelectTrigger className="w-full min-w-0 sm:w-[140px] h-7 text-[11px]">
             <ArrowUpDown className="h-3 w-3 mr-1" />
             <SelectValue placeholder="Ordenar" />
           </SelectTrigger>

@@ -104,7 +104,7 @@ export function MinhasPreferenciasSettings() {
             <h3 className="text-xs font-semibold">Meu horário de funcionamento</h3>
             {inheritedBadge(prefs?.opening_time ?? prefs?.closing_time)}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px]">Abertura</Label>
               <Input type="time" className="h-8 text-sm" value={opening} onChange={e => setOpening(e.target.value)} placeholder={global?.opening_time} />
@@ -120,7 +120,7 @@ export function MinhasPreferenciasSettings() {
                 placeholder={String(global?.slot_interval ?? 30)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center justify-between rounded-md border px-3 py-2">
               <Label className="text-[11px]">Atendo sábados</Label>
               <Switch checked={workSat ?? global?.work_saturdays ?? false} onCheckedChange={v => setWorkSat(v)} />

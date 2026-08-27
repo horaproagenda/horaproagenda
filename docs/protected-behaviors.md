@@ -73,6 +73,13 @@ Legenda de cobertura:
 | 39 | Desktop: nenhuma faixa branca de safe-area duplicada; sidebar e tabelas intactas | `e2e` `agenda-layout-visual.spec.ts` + `manual` (runbook §9) |
 | 40 | Menu mobile navega para todos os módulos autorizados | `e2e` `sidebar-mobile-nav.spec.ts` |
 
+| 41 | Utilitários de layout (`.field-grid`, `.filter-bar`, `.action-row`, `.stack-mobile`, `.page-header-row`) existem e são mobile-first | `unit` `responsive-layout-invariants.test.ts` |
+| 42 | Tabelas longas viram cartões no celular via `ResponsiveTable` (sem perder colunas nem ações) | `unit` `responsive-layout-invariants.test.ts` |
+| 43 | Perfil do cliente: nome/telefone/e-mail em seções rotuladas, empilhadas no celular, sem truncar o e-mail | `unit` `responsive-layout-invariants.test.ts` |
+| 44 | Abas do perfil rolam no celular (nunca 7 colunas comprimidas) | `unit` `responsive-layout-invariants.test.ts` |
+| 45 | Nenhuma largura fixa > 64px sem contraparte fluida (`w-full` / `max-w-` / breakpoint) | `unit` `responsive-layout-invariants.test.ts` |
+| 46 | Formulários em 1 coluna no celular (`sm:grid-cols-2/3` apenas acima de 640px) | `unit` `responsive-layout-invariants.test.ts` |
+
 ## Regra de ouro
 
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.

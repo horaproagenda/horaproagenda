@@ -4,8 +4,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
+import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
 import { ClientStatsSection } from '@/components/client-profile/ClientStatsSection';
 import { ClientAppointmentsTab } from '@/components/client-profile/ClientAppointmentsTab';
@@ -86,24 +87,24 @@ export default function ClienteDetalhes() {
     <AppLayout title={client.name}>
       <div className="space-y-4 animate-fade-in">
         {/* Compact Header Row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-lg font-semibold">Perfil do Cliente</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setLegacyOpen(true)}>
-              <History className="h-3.5 w-3.5 mr-1.5" />
-              Histórico antigo
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
-          </div>
-        </div>
+        <PageHeaderActions
+          title="Perfil do Cliente"
+          subtitle={client.name}
+          onBack={handleBack}
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={() => setLegacyOpen(true)}>
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                Histórico antigo
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </>
+          }
+        />
+
 
         {/* Compact Client Header */}
         <ClientHeader client={client} onEdit={() => setActiveTab('info')} onUpdate={updateClient.mutateAsync} />
@@ -113,32 +114,32 @@ export default function ClienteDetalhes() {
 
         {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7 h-auto bg-muted/50 p-1 gap-1">
-            <TabsTrigger value="report" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+          <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto bg-muted/50 p-1 lg:grid lg:grid-cols-7">
+            <TabsTrigger value="report" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
               <BarChart3 className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Relatório</span>
             </TabsTrigger>
-            <TabsTrigger value="credits" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+            <TabsTrigger value="credits" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Créditos</span>
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+            <TabsTrigger value="appointments" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <Calendar className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Agenda</span>
             </TabsTrigger>
-            <TabsTrigger value="documents" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+            <TabsTrigger value="documents" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
               <FileText className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Docs</span>
             </TabsTrigger>
-            <TabsTrigger value="quotes" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
+            <TabsTrigger value="quotes" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
               <Receipt className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span className="leading-tight">Orçam.</span>
             </TabsTrigger>
-            <TabsTrigger value="photos" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+            <TabsTrigger value="photos" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <Image className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="leading-tight">Fotos</span>
             </TabsTrigger>
-            <TabsTrigger value="info" className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs px-1 py-1.5 border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">
+            <TabsTrigger value="info" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">
               <Info className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Info</span>
             </TabsTrigger>

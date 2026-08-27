@@ -161,7 +161,7 @@ export function CashRegisterFilters({
     <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/30 rounded-lg">
       {/* Date Range */}
       <Select value={dateRange} onValueChange={setDateRange}>
-        <SelectTrigger className="w-[130px] h-7 text-[11px]">
+        <SelectTrigger className="w-full min-w-0 sm:w-[130px] h-7 text-[11px]">
           <SelectValue placeholder="Período" />
         </SelectTrigger>
         <SelectContent>

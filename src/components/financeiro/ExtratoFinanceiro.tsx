@@ -273,7 +273,7 @@ export function ExtratoFinanceiro() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap min-w-0 items-center gap-2">
             <CardTitle className="text-base">Extrato</CardTitle>
             <Badge variant="outline" className="text-[10px] gap-1">
               <Lock className="h-3 w-3" /> Somente leitura
@@ -293,7 +293,7 @@ export function ExtratoFinanceiro() {
             />
           </div>
           <Select value={dateFilterType} onValueChange={(v: 'all' | 'today' | 'month') => setDateFilterType(v)}>
-            <SelectTrigger className="w-[110px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[110px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -303,7 +303,7 @@ export function ExtratoFinanceiro() {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={(v: 'all' | 'income' | 'expense') => setTypeFilter(v)}>
-            <SelectTrigger className="w-[100px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[100px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -313,7 +313,7 @@ export function ExtratoFinanceiro() {
             </SelectContent>
           </Select>
           <Select value={sourceFilter} onValueChange={(v: any) => setSourceFilter(v)}>
-            <SelectTrigger className="w-[110px] h-8 text-xs">
+            <SelectTrigger className="w-full min-w-0 sm:w-[110px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

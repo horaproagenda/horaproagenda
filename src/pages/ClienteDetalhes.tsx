@@ -86,24 +86,24 @@ export default function ClienteDetalhes() {
     <AppLayout title={client.name}>
       <div className="space-y-4 animate-fade-in">
         {/* Compact Header Row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-lg font-semibold">Perfil do Cliente</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setLegacyOpen(true)}>
-              <History className="h-3.5 w-3.5 mr-1.5" />
-              Histórico antigo
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
-          </div>
-        </div>
+        <PageHeaderActions
+          title="Perfil do Cliente"
+          subtitle={client.name}
+          onBack={handleBack}
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={() => setLegacyOpen(true)}>
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                Histórico antigo
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </>
+          }
+        />
+
 
         {/* Compact Client Header */}
         <ClientHeader client={client} onEdit={() => setActiveTab('info')} onUpdate={updateClient.mutateAsync} />

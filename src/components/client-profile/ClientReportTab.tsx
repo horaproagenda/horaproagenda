@@ -494,44 +494,76 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
           {filteredPaymentHistory.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2">Nenhum pagamento registrado neste período</p>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[980px]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] py-1.5 h-auto">Data pagamento</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto">Serviço/Pacote</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Valor item</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto text-right">Pago</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto">Forma</TableHead>
-                    <TableHead className="text-[10px] py-1.5 h-auto w-8"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPaymentHistory.map(payment => (
-                    <TableRow key={payment.id} className="hover:bg-muted/30">
-                      <TableCell className="text-xs py-1.5 whitespace-nowrap">{format(new Date(`${payment.date}T12:00:00`), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="text-xs py-1.5 min-w-[180px]">
-                        <div className="font-medium">{payment.serviceName}</div>
-                        <div className="text-[10px] text-muted-foreground">{payment.description}</div>
-                      </TableCell>
-                      <TableCell className="text-xs py-1.5 text-right">R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-xs py-1.5 text-right font-semibold text-primary">R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-xs py-1.5 whitespace-nowrap">
-                        {getPaymentMethodName(payment.paymentMethod)}
-                        {isClientCreditPaymentMethod(payment.paymentMethod) && (
-                          <Badge variant="outline" className="ml-1 text-[10px]">{NON_CASH_PAYMENT_LABEL}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-1.5">
-                        {/* Devolução removida — gerenciar pelo Financeiro > Pacotes */}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            </div>
+            <ResponsiveTable
+              data={filteredPaymentHistory}
+              getRowKey={(payment) => payment.id}
+              minWidthClassName="min-w-[720px]"
+              emptyMessage="Nenhum pagamento registrado neste período"
+              columns={[
+                {
+                  key: 'service',
+                  header: 'Serviço/Pacote',
+                  priority: 'primary',
+                  hideLabelOnCard: true,
+                  className: 'text-xs py-1.5 min-w-[180px]',
+                  headClassName: 'text-[10px] py-1.5 h-auto',
+                  cell: (payment) => (
+                    <div className="min-w-0">
+                      <div className="font-medium break-words">{payment.serviceName}</div>
+                      <div className="text-[10px] text-muted-foreground break-words">{payment.description}</div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'amount',
+                  header: 'Pago',
+                  priority: 'primary',
+                  className: 'text-xs py-1.5 text-right font-semibold text-primary',
+                  headClassName: 'text-[10px] py-1.5 h-auto text-right',
+                  cell: (payment) => (
+                    <span className="font-semibold text-primary tabular-nums">
+                      R$ {Number(payment.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'date',
+                  header: 'Data pagamento',
+                  priority: 'secondary',
+                  className: 'text-xs py-1.5 whitespace-nowrap',
+                  headClassName: 'text-[10px] py-1.5 h-auto',
+                  cell: (payment) => format(new Date(`${payment.date}T12:00:00`), 'dd/MM/yyyy'),
+                },
+                {
+                  key: 'total',
+                  header: 'Valor item',
+                  priority: 'secondary',
+                  className: 'text-xs py-1.5 text-right',
+                  headClassName: 'text-[10px] py-1.5 h-auto text-right',
+                  cell: (payment) => (
+                    <span className="tabular-nums">
+                      R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'method',
+                  header: 'Forma',
+                  priority: 'secondary',
+                  className: 'text-xs py-1.5',
+                  headClassName: 'text-[10px] py-1.5 h-auto',
+                  cell: (payment) => (
+                    <span className="break-words">
+                      {getPaymentMethodName(payment.paymentMethod)}
+                      {isClientCreditPaymentMethod(payment.paymentMethod) && (
+                        <Badge variant="outline" className="ml-1 text-[10px]">{NON_CASH_PAYMENT_LABEL}</Badge>
+                      )}
+                    </span>
+                  ),
+                },
+              ]}
+            />
+
           )}
         </CardContent>
       </Card>

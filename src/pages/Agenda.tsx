@@ -1008,11 +1008,12 @@ const Agenda = () => {
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, apt: Appointment) => {
-    if (!dragAndDropEnabled) return;
+    if (!dragAndDropEnabled || isSharedResourceAppointment(apt)) return;
     setDraggedAppointment(apt);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', apt.id);
   }, [dragAndDropEnabled]);
+
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (!dragAndDropEnabled || !draggedAppointment) return;

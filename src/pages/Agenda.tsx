@@ -1357,6 +1357,7 @@ const Agenda = () => {
               {weekDays.map(day => {
                 const apt = getAppointmentAtSlot(day, time);
                 const absence = getAbsenceAtSlot(day, time);
+                const isSharedResource = apt ? isSharedResourceAppointment(apt) : false;
                 const isStart = apt && isVisibleRangeStart(day, time, apt.start_time, apt.end_time);
                 const isAbsenceStart = absence && isVisibleRangeStart(day, time, absence.start_time, absence.end_time);
                 const profId = apt?.professional_id || apt?.service?.professional_id;
@@ -1383,11 +1384,12 @@ const Agenda = () => {
                       <div 
                         className={cn(
                            'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
-                          dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                          !isSharedResource && dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                          isSharedResource && 'cursor-default border border-dashed border-primary/40 bg-primary/10',
                           isDragging && 'opacity-50 ring-2 ring-primary'
                         )}
                         style={statusStyle}
-                        draggable={dragAndDropEnabled}
+                        draggable={!isSharedResource && dragAndDropEnabled}
                         onDragStart={(e) => handleDragStart(e, apt)}
                         onDragEnd={handleDragEnd}
                         onClick={(e) => {
@@ -1750,7 +1752,7 @@ const Agenda = () => {
         {/* Mobile Appointment List */}
         <div className="flex-1 overflow-hidden">
           <MobileAgendaList
-            appointments={filteredByFilters}
+            appointments={displayedAppointments}
             professionals={professionals}
             absences={absences}
             selectedDate={selectedDate}

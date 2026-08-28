@@ -334,56 +334,74 @@ const Agenda = () => {
   // Filter appointments by search, professional, room, status and payment
   // Keep package-linked sessions visible even when their appointment status was marked as rescheduled,
   // because automatic package shifts preserve the same session instead of releasing it from the agenda.
-  const filteredByFilters = useMemo(() => {
-    return appointments.filter(apt => {
-      // Exclude only standalone released reschedules. Any appointment linked to a package session
-      // must remain visible so old packages and sequential package sessions do not disappear.
-      if (!shouldKeepAppointmentVisibleInAgenda(apt)) {
+  const matchesAgendaFilters = useCallback((apt: Appointment) => {
+    // Exclude only standalone released reschedules. Any appointment linked to a package session
+    // must remain visible so old packages and sequential package sessions do not disappear.
+    if (!shouldKeepAppointmentVisibleInAgenda(apt)) {
+      return false;
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const clientMatch = apt.client?.name?.toLowerCase().includes(search);
+      const serviceMatch = apt.service?.name?.toLowerCase().includes(search);
+      const phoneMatch = apt.client?.phone?.includes(search);
+      if (!clientMatch && !serviceMatch && !phoneMatch) {
         return false;
       }
-      
-      // Search filter
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const clientMatch = apt.client?.name?.toLowerCase().includes(search);
-        const serviceMatch = apt.service?.name?.toLowerCase().includes(search);
-        const phoneMatch = apt.client?.phone?.includes(search);
-        if (!clientMatch && !serviceMatch && !phoneMatch) {
-          return false;
-        }
+    }
+
+    if (professionalFilter !== 'all') {
+      if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
+        return false;
       }
-      
-      if (professionalFilter !== 'all') {
-        if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
-          return false;
-        }
+    }
+    if (roomFilter !== 'all') {
+      if (apt.service?.room_id !== roomFilter && apt.room_id !== roomFilter) {
+        return false;
       }
-      if (roomFilter !== 'all') {
-        if (apt.service?.room_id !== roomFilter) {
-          return false;
-        }
+    }
+    if (statusFilter !== 'all') {
+      if (apt.status !== statusFilter) {
+        return false;
       }
-      if (statusFilter !== 'all') {
-        if (apt.status !== statusFilter) {
-          return false;
-        }
+    }
+    if (paymentFilter !== 'all') {
+      // Reservas de recursos compartilhados não têm situação de pagamento própria.
+      if (isSharedResourceAppointment(apt)) return false;
+      const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
+      if (paymentFilter === 'client_credit' && !isClientCredit) {
+        return false;
       }
-      if (paymentFilter !== 'all') {
-        const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
-        if (paymentFilter === 'client_credit' && !isClientCredit) {
-          return false;
-        }
-        if (paymentFilter === 'non_cash' && !isClientCredit) {
-          return false;
-        }
-        if (!['client_credit', 'non_cash'].includes(paymentFilter) && apt.payment_status !== paymentFilter) {
-          return false;
-        }
+      if (paymentFilter === 'non_cash' && !isClientCredit) {
+        return false;
       }
-      
-      return true;
-    });
-  }, [appointments, searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
+      if (!['client_credit', 'non_cash'].includes(paymentFilter) && apt.payment_status !== paymentFilter) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
+
+  /**
+   * Agendamentos próprios da clínica/profissional: base de estatísticas,
+   * exportações e ações (pagar, editar, arrastar).
+   */
+  const filteredByFilters = useMemo(
+    () => appointments.filter(matchesAgendaFilters),
+    [appointments, matchesAgendaFilters],
+  );
+
+  /**
+   * O que aparece desenhado na grade: os próprios agendamentos MAIS as reservas
+   * somente-leitura de salas/equipamentos compartilhados por outros profissionais.
+   */
+  const displayedAppointments = useMemo(
+    () => agendaAppointments.filter(matchesAgendaFilters),
+    [agendaAppointments, matchesAgendaFilters],
+  );
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -391,6 +409,13 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  const displayedForSelectedDate = useMemo(() => {
+    return displayedAppointments.filter(
+      apt => isSameDay(new Date(apt.start_time), selectedDate)
+    ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  }, [displayedAppointments, selectedDate]);
+
 
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 

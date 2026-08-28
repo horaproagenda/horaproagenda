@@ -1214,11 +1214,12 @@ const Agenda = () => {
                     <div 
                       className={cn(
                         'h-full rounded px-2 py-1 transition-all shadow-sm',
-                        dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                        !isSharedResource && dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                        isSharedResource && 'cursor-default border border-dashed border-primary/40 bg-primary/10',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
                       style={{ ...statusStyle, minHeight: `${slotsSpan * 28 - 4}px` }}
-                      draggable={dragAndDropEnabled}
+                      draggable={!isSharedResource && dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
                       onDragEnd={handleDragEnd}
                       onClick={(e) => {

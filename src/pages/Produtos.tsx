@@ -4,6 +4,8 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';

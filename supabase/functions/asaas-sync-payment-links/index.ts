@@ -50,14 +50,17 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) return response(401, { error: "unauthorized" });
 
-    const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const supabaseUrl = requiredEnv("SUPABASE_URL");
+    const supabaseAnonKey = requiredEnv("SUPABASE_ANON_KEY");
+    const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const caller = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
     const { data: { user }, error: userErr } = await caller.auth.getUser();
     if (userErr || !user) return response(401, { error: "unauthorized" });
 
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
     const { data: isSuper, error: roleErr } = await admin.rpc("is_super_admin", {

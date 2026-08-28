@@ -1752,7 +1752,7 @@ const Agenda = () => {
         {/* Mobile Appointment List */}
         <div className="flex-1 overflow-hidden">
           <MobileAgendaList
-            appointments={filteredByFilters}
+            appointments={displayedAppointments}
             professionals={professionals}
             absences={absences}
             selectedDate={selectedDate}

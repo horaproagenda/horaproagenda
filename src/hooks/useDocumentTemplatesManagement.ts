@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DocumentTemplate } from '@/types';
@@ -18,8 +20,9 @@ export interface TemplateFormData {
 
 export function useDocumentTemplatesManagement() {
   const queryClient = useQueryClient();
+  const { onlyOwnDocuments, professionalId } = useProfessionalScopeFlags();
 
-  const { data: templates = [], isLoading, error } = useQuery({
+  const { data: allTemplates = [], isLoading, error } = useQuery({
     queryKey: ['document_templates_all'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -31,6 +34,15 @@ export function useDocumentTemplatesManagement() {
       return data as DocumentTemplate[];
     },
   });
+
+  // Quando o profissional só pode trabalhar com os próprios documentos,
+  // a lista mostra apenas os modelos que ele criou.
+  const templates = useMemo(() => {
+    if (!onlyOwnDocuments) return allTemplates;
+    return allTemplates.filter(
+      (t) => (t as unknown as { owner_professional_id?: string | null }).owner_professional_id === professionalId,
+    );
+  }, [allTemplates, onlyOwnDocuments, professionalId]);
 
   const createMutation = useMutation({
     mutationFn: async (data: TemplateFormData) => {

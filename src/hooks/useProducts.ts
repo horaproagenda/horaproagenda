@@ -112,7 +112,9 @@ export function useProducts() {
   ), [professionals, user?.id]);
   const perms = ((me as unknown as { permissions?: Record<string, boolean> })?.permissions ?? {}) as Record<string, boolean>;
   const isPrivileged = hasRole('admin') || hasRole('receptionist');
-  const onlyOwn = !isPrivileged && perms.can_view_only_own_products === true && perms.can_view_other_products !== true;
+  const onlyOwn = !isPrivileged
+    && perms.can_view_other_products !== true
+    && (perms.can_view_only_own_products === true || perms.can_manage_own_products === true);
 
   const { data: allProducts = [], isLoading, refetch } = useQuery({
     queryKey: ['products'],

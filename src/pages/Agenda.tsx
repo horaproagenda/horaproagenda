@@ -615,10 +615,11 @@ const Agenda = () => {
 
   // Get appointment count for each day (with filters applied)
   const getAppointmentsForDay = (day: Date) => {
-    return filteredByFilters.filter(apt => 
+    return displayedAppointments.filter(apt => 
       isSameDay(new Date(apt.start_time), day)
     );
   };
+
 
   const goToPrevious = () => {
     if (viewType === 'day' || viewType === 'professional') {

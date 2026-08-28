@@ -44,8 +44,15 @@ export function toSharedResourceAppointment(b: SharedResourceBooking): SharedRes
     client: { name: label } as Appointment['client'],
     service: {
       name: b.service_name || (b.resource_name ? `Recurso: ${b.resource_name}` : 'Recurso compartilhado'),
+      // Preço/duração neutros: o item é só um bloqueio visual do recurso.
+      price: 0,
+      duration: Math.max(
+        15,
+        Math.round((new Date(b.end_time).getTime() - new Date(b.start_time).getTime()) / 60000),
+      ),
       room_id: b.resource_type === 'room' ? b.resource_id : null,
     } as unknown as Appointment['service'],
+
     is_shared_resource: true,
     shared_resource_type: b.resource_type,
     shared_resource_name: b.resource_name,

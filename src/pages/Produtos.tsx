@@ -4,6 +4,8 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
@@ -181,8 +183,11 @@ export default function Produtos() {
   const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('receptionist');
-  const canDelete = hasRole('admin');
+  const { canManageProducts, canManageOwnProducts } = useProfessionalScopeFlags();
+  // O profissional pode cadastrar e editar produtos quando o administrador
+  // libera a gestão geral ou a gestão dos próprios produtos.
+  const canEdit = hasRole('admin') || hasRole('receptionist') || canManageProducts || canManageOwnProducts;
+  const canDelete = hasRole('admin') || canManageProducts || canManageOwnProducts;
 
   const [filters, setFilters] = useLocalStorage<ProductFilters>('produtos-filters', defaultFilters);
   const [searchTerm, setSearchTerm] = useState<string>('');

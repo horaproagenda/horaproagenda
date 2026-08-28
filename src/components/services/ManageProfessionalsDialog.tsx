@@ -73,14 +73,18 @@ const PERMISSIONS_CONFIG = [
   { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
   { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
   { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos', category: 'products' },
+  { key: 'can_manage_own_products', label: 'Criar e editar somente os próprios produtos', description: 'Os produtos que ele cadastrar aparecem só para ele e podem ser vinculados aos serviços e pacotes dele', category: 'products' },
   { key: 'can_view_other_products', label: 'Ver produtos de todos', description: 'Acesso a todos os produtos da agenda', category: 'products' },
   { key: 'can_view_only_own_products', label: 'Ver somente próprios produtos', description: 'Vê apenas os produtos que cadastrou', category: 'products' },
+  { key: 'can_view_all_documents', label: 'Acessar todos os documentos da clínica', description: 'Ver e usar documentos e modelos de toda a equipe', category: 'documents' },
+  { key: 'can_manage_own_documents', label: 'Criar e editar somente os próprios documentos', description: 'Vê e altera apenas os documentos e modelos que criou', category: 'documents' },
   { key: 'can_view_other_services', label: 'Ver serviços e pacotes de todos', description: 'Visualizar serviços e pacotes de outros profissionais', category: 'services' },
   { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Acessar relatórios de outros profissionais', category: 'reports' },
   { key: 'can_view_only_own_reports', label: 'Ver somente próprios relatórios', description: 'Acesso restrito aos seus relatórios', category: 'reports' },
   { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Ver logs de ações do sistema', category: 'system' },
   { key: 'can_access_settings', label: 'Acessar Configurações', description: 'Alterar configurações do sistema', category: 'system' },
 ];
+
 
 const defaultPermissions = {
   can_access_financial: false,
@@ -95,8 +99,11 @@ const defaultPermissions = {
   can_view_only_own_agenda: true,
   can_modify_agenda: false,
   can_manage_products: false,
+  can_manage_own_products: false,
   can_view_other_products: false,
   can_view_only_own_products: true,
+  can_view_all_documents: false,
+  can_manage_own_documents: false,
   can_view_other_services: false,
   can_view_other_reports: false,
   can_view_only_own_reports: true,
@@ -110,6 +117,7 @@ const PERMISSION_CATEGORIES = [
   { key: 'agenda', label: 'Agenda', icon: '📅' },
   { key: 'services', label: 'Serviços e Pacotes', icon: '🧾' },
   { key: 'products', label: 'Produtos', icon: '📦' },
+  { key: 'documents', label: 'Documentos', icon: '📄' },
   { key: 'reports', label: 'Relatórios', icon: '📊' },
   { key: 'system', label: 'Sistema', icon: '⚙️' },
 ];
@@ -1069,6 +1077,23 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                       }
                                       if (perm.key === 'can_view_only_own_agenda' && checked) {
                                         newPermissions.can_view_other_agendas = false;
+                                      }
+                                      if (perm.key === 'can_view_other_products' && checked) {
+                                        newPermissions.can_view_only_own_products = false;
+                                        newPermissions.can_manage_own_products = false;
+                                      }
+                                      if (perm.key === 'can_view_only_own_products' && checked) {
+                                        newPermissions.can_view_other_products = false;
+                                      }
+                                      if (perm.key === 'can_manage_own_products' && checked) {
+                                        newPermissions.can_view_other_products = false;
+                                        newPermissions.can_view_only_own_products = true;
+                                      }
+                                      if (perm.key === 'can_view_all_documents' && checked) {
+                                        newPermissions.can_manage_own_documents = false;
+                                      }
+                                      if (perm.key === 'can_manage_own_documents' && checked) {
+                                        newPermissions.can_view_all_documents = false;
                                       }
                                       if (perm.key === 'can_view_other_reports' && checked) {
                                         newPermissions.can_view_only_own_reports = false;

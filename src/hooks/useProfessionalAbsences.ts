@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 
 export interface ProfessionalAbsence {
   id: string;
@@ -31,8 +33,13 @@ export interface AbsenceInsert {
 
 export function useProfessionalAbsences() {
   const queryClient = useQueryClient();
+  const { user, hasRole } = useAuth();
+  const { professionalId } = useCurrentProfessional();
+  // A ausência aparece somente para quem vai se ausentar e para a
+  // recepção/administração.
+  const seesAll = hasRole('admin') || hasRole('receptionist');
 
-  const { data: absences = [], isLoading } = useQuery({
+  const { data: allAbsences = [], isLoading } = useQuery({
     queryKey: ['professional-absences'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,6 +54,13 @@ export function useProfessionalAbsences() {
       return data as ProfessionalAbsence[];
     },
   });
+
+  const absences = useMemo(() => {
+    if (seesAll) return allAbsences;
+    return allAbsences.filter(
+      (a) => (professionalId && a.professional_id === professionalId) || (!!user?.id && a.created_by === user.id),
+    );
+  }, [allAbsences, seesAll, professionalId, user?.id]);
 
   const createAbsence = useMutation({
     mutationFn: async (absence: AbsenceInsert) => {

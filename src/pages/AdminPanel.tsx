@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ManageProfessionalsDialog } from '@/components/services/ManageProfessionalsDialog';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { AssinaturaSection } from '@/components/admin/AssinaturaSection';
+import { AsaasPlansPanel } from '@/components/admin/AsaasPlansPanel';
 import { exportToCSV } from '@/lib/exportUtils';
 import { exportTableToPdf } from '@/lib/pdfExport';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -231,6 +232,7 @@ export default function AdminPanel() {
             <TabsTrigger value="access" className="text-xs border border-transparent data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:border-accent/40">Logs de Acesso</TabsTrigger>
             <TabsTrigger value="professionals" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Profissionais</TabsTrigger>
             <TabsTrigger value="assinatura" className="text-xs border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40 gap-1"><CreditCard className="h-3 w-3" />Assinatura</TabsTrigger>
+            {hasRole('super_admin') && <TabsTrigger value="asaas-planos" className="text-xs border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Planos no Asaas</TabsTrigger>}
           </TabsList>
 
 
@@ -468,6 +470,12 @@ export default function AdminPanel() {
           <TabsContent value="assinatura" className="mt-4">
             <AssinaturaSection />
           </TabsContent>
+
+          {hasRole('super_admin') && (
+            <TabsContent value="asaas-planos" className="mt-4">
+              <AsaasPlansPanel />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Diálogo "Visualizar ação" */}

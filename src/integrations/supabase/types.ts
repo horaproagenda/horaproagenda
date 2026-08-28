@@ -757,6 +757,45 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_payment_links: {
+        Row: {
+          active: boolean
+          asaas_payment_link_id: string | null
+          billing_months: number
+          created_at: string
+          cycle_key: string
+          id: string
+          seats: number
+          total_cents: number
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          active?: boolean
+          asaas_payment_link_id?: string | null
+          billing_months: number
+          created_at?: string
+          cycle_key: string
+          id?: string
+          seats: number
+          total_cents: number
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          active?: boolean
+          asaas_payment_link_id?: string | null
+          billing_months?: number
+          created_at?: string
+          cycle_key?: string
+          id?: string
+          seats?: number
+          total_cents?: number
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       boleto_audit_log: {
         Row: {
           account_owner_id: string

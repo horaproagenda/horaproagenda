@@ -127,6 +127,8 @@ import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLab
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
+import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
+import { isSharedResourceAppointment, mergeSharedResourceBookings } from '@/lib/sharedResourceAgenda';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -212,6 +214,19 @@ const Agenda = () => {
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
 
+  // Reservas de outros profissionais em salas/equipamentos compartilhados.
+  // O servidor só responde quando o profissional tem a opção
+  // "Ver agenda de outros profissionais" ativada (ou é administração/recepção).
+  const sharedRange = useMemo(() => {
+    const anchor = Math.min(selectedDate.getTime(), weekStart.getTime(), monthStart.getTime());
+    const day = 24 * 60 * 60 * 1000;
+    return {
+      from: new Date(anchor - 14 * day).toISOString(),
+      to: new Date(anchor + 75 * day).toISOString(),
+    };
+  }, [selectedDate, weekStart, monthStart]);
+  const { bookings: sharedResourceBookings } = useSharedResourceBookings(sharedRange.from, sharedRange.to);
+
   useEffect(() => {
     if (appointments.length === 0) return;
 
@@ -291,12 +306,17 @@ const Agenda = () => {
     return Array.from(slots).sort((a, b) => a.localeCompare(b));
   }, [settings, generateTimeSlotsForDay]);
   
+  const agendaAppointments = useMemo(
+    () => mergeSharedResourceBookings(appointments, sharedResourceBookings),
+    [appointments, sharedResourceBookings],
+  );
+
   // Merge base slots with any appointment times that fall outside the base slots
   // CRITICAL: This ensures ALL appointments are visible regardless of their start time
   const timeSlots = useMemo(() => {
     return mergeAgendaTimeSlots({
       baseSlots: baseTimeSlots,
-      appointments,
+      appointments: agendaAppointments,
       absences,
       viewType,
       selectedDate,
@@ -304,7 +324,7 @@ const Agenda = () => {
       monthStart,
       hideSunday,
     });
-  }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
+  }, [baseTimeSlots, agendaAppointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
   const weekDays = useMemo(() => buildWeekDays(weekStart, hideSunday), [weekStart, hideSunday]);
 

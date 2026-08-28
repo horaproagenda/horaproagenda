@@ -5898,6 +5898,23 @@ export type Database = {
           twilio_from_number: string
         }[]
       }
+      get_shared_resource_bookings: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          amount: number
+          client_name: string
+          end_time: string
+          id: string
+          notes: string
+          professional_name: string
+          resource_id: string
+          resource_name: string
+          resource_type: string
+          service_name: string
+          start_time: string
+          status: string
+        }[]
+      }
       get_shared_room_bookings: {
         Args: { _from: string; _to: string }
         Returns: {

@@ -453,14 +453,19 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   const displayName = resolveAppointmentStepServiceName(apt);
   const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;
 
+  const isShared = isSharedResourceAppointment(apt);
+
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/40 active:bg-muted/50 transition-colors overflow-hidden"
+      className={cn(
+        'flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/40 active:bg-muted/50 transition-colors overflow-hidden',
+        isShared && 'border-dashed border-primary/40 bg-primary/5',
+      )}
       style={{
         borderLeftColor: profColor,
         borderLeftWidth: '3px',
-        background: `linear-gradient(to right, ${profColor}10, transparent 30%)`,
+        background: isShared ? undefined : `linear-gradient(to right, ${profColor}10, transparent 30%)`,
       }}
     >
       <div className="flex-shrink-0 w-11 text-center">
@@ -479,6 +484,11 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
         {applicationLabel && (
           <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
         )}
+        {isShared && (
+          <p className="text-[10px] text-primary font-medium truncate leading-tight">
+            Recurso ocupado por outro profissional
+          </p>
+        )}
         {prof && (
           <div className="flex items-center gap-1 mt-0.5 min-w-0">
             <div
@@ -494,8 +504,9 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
 
       <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1 pl-1">
         <div className={cn('h-1.5 w-1.5 rounded-full', dot)} />
-        {!packageData && <PaymentIcon className={cn('h-3 w-3', payment.className)} />}
+        {!packageData && !isShared && <PaymentIcon className={cn('h-3 w-3', payment.className)} />}
       </div>
     </div>
   );
 }
+

@@ -73,6 +73,10 @@ const PERMISSIONS_CONFIG = [
   { key: 'can_view_only_own_agenda', label: 'Ver só própria agenda', category: 'agenda' },
   { key: 'can_modify_agenda', label: 'Modificar agenda', category: 'agenda' },
   { key: 'can_manage_products', label: 'Gerenciar produtos', category: 'products' },
+  { key: 'can_manage_own_products', label: 'Criar/editar só próprios produtos', category: 'products' },
+  { key: 'can_view_only_own_products', label: 'Ver só próprios produtos', category: 'products' },
+  { key: 'can_view_all_documents', label: 'Acessar todos os documentos', category: 'documents' },
+  { key: 'can_manage_own_documents', label: 'Criar/editar só próprios documentos', category: 'documents' },
   { key: 'can_view_other_services', label: 'Ver serviços e pacotes de todos', category: 'services' },
   { key: 'can_view_other_reports', label: 'Ver todos os relatórios', category: 'reports' },
   { key: 'can_view_only_own_reports', label: 'Ver só próprios relatórios', category: 'reports' },
@@ -86,6 +90,7 @@ const PERMISSION_CATEGORIES = [
   { key: 'agenda', label: 'Agenda', icon: '📅' },
   { key: 'services', label: 'Serviços e Pacotes', icon: '🧾' },
   { key: 'products', label: 'Produtos', icon: '📦' },
+  { key: 'documents', label: 'Documentos', icon: '📄' },
   { key: 'reports', label: 'Relatórios', icon: '📊' },
   { key: 'system', label: 'Sistema', icon: '⚙️' },
 ];

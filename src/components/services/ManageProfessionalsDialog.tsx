@@ -99,8 +99,11 @@ const defaultPermissions = {
   can_view_only_own_agenda: true,
   can_modify_agenda: false,
   can_manage_products: false,
+  can_manage_own_products: false,
   can_view_other_products: false,
   can_view_only_own_products: true,
+  can_view_all_documents: false,
+  can_manage_own_documents: false,
   can_view_other_services: false,
   can_view_other_reports: false,
   can_view_only_own_reports: true,
@@ -114,6 +117,7 @@ const PERMISSION_CATEGORIES = [
   { key: 'agenda', label: 'Agenda', icon: '📅' },
   { key: 'services', label: 'Serviços e Pacotes', icon: '🧾' },
   { key: 'products', label: 'Produtos', icon: '📦' },
+  { key: 'documents', label: 'Documentos', icon: '📄' },
   { key: 'reports', label: 'Relatórios', icon: '📊' },
   { key: 'system', label: 'Sistema', icon: '⚙️' },
 ];
@@ -1073,6 +1077,23 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                       }
                                       if (perm.key === 'can_view_only_own_agenda' && checked) {
                                         newPermissions.can_view_other_agendas = false;
+                                      }
+                                      if (perm.key === 'can_view_other_products' && checked) {
+                                        newPermissions.can_view_only_own_products = false;
+                                        newPermissions.can_manage_own_products = false;
+                                      }
+                                      if (perm.key === 'can_view_only_own_products' && checked) {
+                                        newPermissions.can_view_other_products = false;
+                                      }
+                                      if (perm.key === 'can_manage_own_products' && checked) {
+                                        newPermissions.can_view_other_products = false;
+                                        newPermissions.can_view_only_own_products = true;
+                                      }
+                                      if (perm.key === 'can_view_all_documents' && checked) {
+                                        newPermissions.can_manage_own_documents = false;
+                                      }
+                                      if (perm.key === 'can_manage_own_documents' && checked) {
+                                        newPermissions.can_view_all_documents = false;
                                       }
                                       if (perm.key === 'can_view_other_reports' && checked) {
                                         newPermissions.can_view_only_own_reports = false;

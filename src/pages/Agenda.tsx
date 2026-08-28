@@ -515,7 +515,7 @@ const Agenda = () => {
   // Get appointments for a specific day and time slot
   const getAppointmentsForSlot = (day: Date, time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
-    return filteredByFilters.filter(apt => {
+    return displayedAppointments.filter(apt => {
       const aptDate = new Date(apt.start_time);
       return isSameDay(aptDate, day) && 
              aptDate.getHours() === hours && 
@@ -523,13 +523,13 @@ const Agenda = () => {
     });
   };
 
-  // Check if a slot overlaps with any existing appointment
+  // Check if a slot overlaps with any existing appointment (inclui recursos compartilhados)
   const isSlotOccupied = (day: Date, time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
     const slotStart = new Date(day);
     slotStart.setHours(hours, minutes, 0, 0);
     
-    return filteredByFilters.some(apt => {
+    return displayedAppointments.some(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
       return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
@@ -542,12 +542,13 @@ const Agenda = () => {
     const slotStart = new Date(day);
     slotStart.setHours(hours, minutes, 0, 0);
     
-    return filteredByFilters.find(apt => {
+    return displayedAppointments.find(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
       return slotStart >= aptStart && slotStart < aptEnd;
     });
   };
+
 
   const isVisibleRangeStart = (day: Date, time: string, startTime: string, endTime: string) => {
     const [hours, minutes] = time.split(':').map(Number);

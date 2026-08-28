@@ -790,9 +790,17 @@ const Agenda = () => {
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
+    // Reservas de salas/equipamentos de outros profissionais são somente leitura:
+    // servem apenas para mostrar que o recurso está ocupado.
+    if (isSharedResourceAppointment(appointment)) {
+      const nome = (appointment as { shared_resource_name?: string | null }).shared_resource_name;
+      toast.info(nome ? `${nome} está reservado neste horário.` : 'Recurso reservado por outro profissional neste horário.');
+      return;
+    }
     setSelectedAppointment(appointment);
     setDetailDialogOpen(true);
   };
+
 
   const handleSlotClick = (day: Date, time: string, professionalId?: string) => {
     // Block clicks on closed days

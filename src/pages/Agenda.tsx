@@ -127,6 +127,8 @@ import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLab
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
+import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
+import { isSharedResourceAppointment, mergeSharedResourceBookings } from '@/lib/sharedResourceAgenda';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -212,6 +214,19 @@ const Agenda = () => {
   const { activeCardBrands } = useCardBrands();
   const { getHolidayForDate, isHolidayDate } = useBrazilianHolidays();
 
+  // Reservas de outros profissionais em salas/equipamentos compartilhados.
+  // O servidor só responde quando o profissional tem a opção
+  // "Ver agenda de outros profissionais" ativada (ou é administração/recepção).
+  const sharedRange = useMemo(() => {
+    const anchor = Math.min(selectedDate.getTime(), weekStart.getTime(), monthStart.getTime());
+    const day = 24 * 60 * 60 * 1000;
+    return {
+      from: new Date(anchor - 14 * day).toISOString(),
+      to: new Date(anchor + 75 * day).toISOString(),
+    };
+  }, [selectedDate, weekStart, monthStart]);
+  const { bookings: sharedResourceBookings } = useSharedResourceBookings(sharedRange.from, sharedRange.to);
+
   useEffect(() => {
     if (appointments.length === 0) return;
 
@@ -291,12 +306,17 @@ const Agenda = () => {
     return Array.from(slots).sort((a, b) => a.localeCompare(b));
   }, [settings, generateTimeSlotsForDay]);
   
+  const agendaAppointments = useMemo(
+    () => mergeSharedResourceBookings(appointments, sharedResourceBookings),
+    [appointments, sharedResourceBookings],
+  );
+
   // Merge base slots with any appointment times that fall outside the base slots
   // CRITICAL: This ensures ALL appointments are visible regardless of their start time
   const timeSlots = useMemo(() => {
     return mergeAgendaTimeSlots({
       baseSlots: baseTimeSlots,
-      appointments,
+      appointments: agendaAppointments,
       absences,
       viewType,
       selectedDate,
@@ -304,7 +324,7 @@ const Agenda = () => {
       monthStart,
       hideSunday,
     });
-  }, [baseTimeSlots, appointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
+  }, [baseTimeSlots, agendaAppointments, absences, viewType, weekStart, monthStart, selectedDate, hideSunday]);
 
   const weekDays = useMemo(() => buildWeekDays(weekStart, hideSunday), [weekStart, hideSunday]);
 
@@ -314,56 +334,74 @@ const Agenda = () => {
   // Filter appointments by search, professional, room, status and payment
   // Keep package-linked sessions visible even when their appointment status was marked as rescheduled,
   // because automatic package shifts preserve the same session instead of releasing it from the agenda.
-  const filteredByFilters = useMemo(() => {
-    return appointments.filter(apt => {
-      // Exclude only standalone released reschedules. Any appointment linked to a package session
-      // must remain visible so old packages and sequential package sessions do not disappear.
-      if (!shouldKeepAppointmentVisibleInAgenda(apt)) {
+  const matchesAgendaFilters = useCallback((apt: Appointment) => {
+    // Exclude only standalone released reschedules. Any appointment linked to a package session
+    // must remain visible so old packages and sequential package sessions do not disappear.
+    if (!shouldKeepAppointmentVisibleInAgenda(apt)) {
+      return false;
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const clientMatch = apt.client?.name?.toLowerCase().includes(search);
+      const serviceMatch = apt.service?.name?.toLowerCase().includes(search);
+      const phoneMatch = apt.client?.phone?.includes(search);
+      if (!clientMatch && !serviceMatch && !phoneMatch) {
         return false;
       }
-      
-      // Search filter
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const clientMatch = apt.client?.name?.toLowerCase().includes(search);
-        const serviceMatch = apt.service?.name?.toLowerCase().includes(search);
-        const phoneMatch = apt.client?.phone?.includes(search);
-        if (!clientMatch && !serviceMatch && !phoneMatch) {
-          return false;
-        }
+    }
+
+    if (professionalFilter !== 'all') {
+      if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
+        return false;
       }
-      
-      if (professionalFilter !== 'all') {
-        if (apt.professional_id !== professionalFilter && apt.service?.professional_id !== professionalFilter) {
-          return false;
-        }
+    }
+    if (roomFilter !== 'all') {
+      if (apt.service?.room_id !== roomFilter && apt.room_id !== roomFilter) {
+        return false;
       }
-      if (roomFilter !== 'all') {
-        if (apt.service?.room_id !== roomFilter) {
-          return false;
-        }
+    }
+    if (statusFilter !== 'all') {
+      if (apt.status !== statusFilter) {
+        return false;
       }
-      if (statusFilter !== 'all') {
-        if (apt.status !== statusFilter) {
-          return false;
-        }
+    }
+    if (paymentFilter !== 'all') {
+      // Reservas de recursos compartilhados não têm situação de pagamento própria.
+      if (isSharedResourceAppointment(apt)) return false;
+      const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
+      if (paymentFilter === 'client_credit' && !isClientCredit) {
+        return false;
       }
-      if (paymentFilter !== 'all') {
-        const isClientCredit = (apt.payment_methods || []).some(method => isClientCreditPaymentMethod(method));
-        if (paymentFilter === 'client_credit' && !isClientCredit) {
-          return false;
-        }
-        if (paymentFilter === 'non_cash' && !isClientCredit) {
-          return false;
-        }
-        if (!['client_credit', 'non_cash'].includes(paymentFilter) && apt.payment_status !== paymentFilter) {
-          return false;
-        }
+      if (paymentFilter === 'non_cash' && !isClientCredit) {
+        return false;
       }
-      
-      return true;
-    });
-  }, [appointments, searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
+      if (!['client_credit', 'non_cash'].includes(paymentFilter) && apt.payment_status !== paymentFilter) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
+
+  /**
+   * Agendamentos próprios da clínica/profissional: base de estatísticas,
+   * exportações e ações (pagar, editar, arrastar).
+   */
+  const filteredByFilters = useMemo(
+    () => appointments.filter(matchesAgendaFilters),
+    [appointments, matchesAgendaFilters],
+  );
+
+  /**
+   * O que aparece desenhado na grade: os próprios agendamentos MAIS as reservas
+   * somente-leitura de salas/equipamentos compartilhados por outros profissionais.
+   */
+  const displayedAppointments = useMemo(
+    () => agendaAppointments.filter(matchesAgendaFilters),
+    [agendaAppointments, matchesAgendaFilters],
+  );
 
   // Filter by selected date (for day view)
   const filteredAppointments = useMemo(() => {
@@ -371,6 +409,13 @@ const Agenda = () => {
       apt => isSameDay(new Date(apt.start_time), selectedDate)
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [filteredByFilters, selectedDate]);
+
+  const displayedForSelectedDate = useMemo(() => {
+    return displayedAppointments.filter(
+      apt => isSameDay(new Date(apt.start_time), selectedDate)
+    ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  }, [displayedAppointments, selectedDate]);
+
 
   const packageSequenceMap = useMemo(() => buildAppointmentPackageSequenceMap(appointments), [appointments]);
 
@@ -470,7 +515,7 @@ const Agenda = () => {
   // Get appointments for a specific day and time slot
   const getAppointmentsForSlot = (day: Date, time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
-    return filteredByFilters.filter(apt => {
+    return displayedAppointments.filter(apt => {
       const aptDate = new Date(apt.start_time);
       return isSameDay(aptDate, day) && 
              aptDate.getHours() === hours && 
@@ -478,13 +523,13 @@ const Agenda = () => {
     });
   };
 
-  // Check if a slot overlaps with any existing appointment
+  // Check if a slot overlaps with any existing appointment (inclui recursos compartilhados)
   const isSlotOccupied = (day: Date, time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
     const slotStart = new Date(day);
     slotStart.setHours(hours, minutes, 0, 0);
     
-    return filteredByFilters.some(apt => {
+    return displayedAppointments.some(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
       return isSameDay(aptStart, day) && slotStart >= aptStart && slotStart < aptEnd;
@@ -497,12 +542,13 @@ const Agenda = () => {
     const slotStart = new Date(day);
     slotStart.setHours(hours, minutes, 0, 0);
     
-    return filteredByFilters.find(apt => {
+    return displayedAppointments.find(apt => {
       const aptStart = new Date(apt.start_time);
       const aptEnd = new Date(apt.end_time);
       return slotStart >= aptStart && slotStart < aptEnd;
     });
   };
+
 
   const isVisibleRangeStart = (day: Date, time: string, startTime: string, endTime: string) => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -569,10 +615,11 @@ const Agenda = () => {
 
   // Get appointment count for each day (with filters applied)
   const getAppointmentsForDay = (day: Date) => {
-    return filteredByFilters.filter(apt => 
+    return displayedAppointments.filter(apt => 
       isSameDay(new Date(apt.start_time), day)
     );
   };
+
 
   const goToPrevious = () => {
     if (viewType === 'day' || viewType === 'professional') {
@@ -743,9 +790,17 @@ const Agenda = () => {
   };
 
   const handleAppointmentClick = (appointment: Appointment) => {
+    // Reservas de salas/equipamentos de outros profissionais são somente leitura:
+    // servem apenas para mostrar que o recurso está ocupado.
+    if (isSharedResourceAppointment(appointment)) {
+      const nome = (appointment as { shared_resource_name?: string | null }).shared_resource_name;
+      toast.info(nome ? `${nome} está reservado neste horário.` : 'Recurso reservado por outro profissional neste horário.');
+      return;
+    }
     setSelectedAppointment(appointment);
     setDetailDialogOpen(true);
   };
+
 
   const handleSlotClick = (day: Date, time: string, professionalId?: string) => {
     // Block clicks on closed days
@@ -953,11 +1008,12 @@ const Agenda = () => {
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, apt: Appointment) => {
-    if (!dragAndDropEnabled) return;
+    if (!dragAndDropEnabled || isSharedResourceAppointment(apt)) return;
     setDraggedAppointment(apt);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', apt.id);
   }, [dragAndDropEnabled]);
+
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     if (!dragAndDropEnabled || !draggedAppointment) return;
@@ -1110,6 +1166,7 @@ const Agenda = () => {
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
             const absence = getAbsenceAtSlot(selectedDate, time);
+            const isSharedResource = apt ? isSharedResourceAppointment(apt) : false;
             const isStart = apt && isVisibleRangeStart(selectedDate, time, apt.start_time, apt.end_time);
             const isAbsenceStart = absence && isVisibleRangeStart(selectedDate, time, absence.start_time, absence.end_time);
             const profId = apt?.professional_id || apt?.service?.professional_id;
@@ -1157,11 +1214,12 @@ const Agenda = () => {
                     <div 
                       className={cn(
                         'h-full rounded px-2 py-1 transition-all shadow-sm',
-                        dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                        !isSharedResource && dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                        isSharedResource && 'cursor-default border border-dashed border-primary/40 bg-primary/10',
                         isDragging && 'opacity-50 ring-2 ring-primary'
                       )}
                       style={{ ...statusStyle, minHeight: `${slotsSpan * 28 - 4}px` }}
-                      draggable={dragAndDropEnabled}
+                      draggable={!isSharedResource && dragAndDropEnabled}
                       onDragStart={(e) => handleDragStart(e, apt)}
                       onDragEnd={handleDragEnd}
                       onClick={(e) => {

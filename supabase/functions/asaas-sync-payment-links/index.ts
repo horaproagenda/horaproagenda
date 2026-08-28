@@ -20,9 +20,11 @@ import {
   type RemotePaymentLinkLike,
 } from "../_shared/asaasPlanLinks.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+function requiredEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`${name} não configurada`);
+  return value;
+}
 
 /** Todos os links do Asaas (paginado). */
 async function listAllPaymentLinks(): Promise<RemotePaymentLinkLike[]> {
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
         if (linkId) {
           const updated = await asaasFetch<{ id: string; url?: string }>(
             `/paymentLinks/${linkId}`,
-            { method: "POST", body: JSON.stringify(payload) },
+            { method: "PUT", body: JSON.stringify(payload) },
           );
           linkId = updated.id ?? linkId;
           url = updated.url ?? url;

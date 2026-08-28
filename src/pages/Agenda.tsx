@@ -1166,6 +1166,7 @@ const Agenda = () => {
           {timeSlots.map(time => {
             const apt = getAppointmentAtSlot(selectedDate, time);
             const absence = getAbsenceAtSlot(selectedDate, time);
+            const isSharedResource = apt ? isSharedResourceAppointment(apt) : false;
             const isStart = apt && isVisibleRangeStart(selectedDate, time, apt.start_time, apt.end_time);
             const isAbsenceStart = absence && isVisibleRangeStart(selectedDate, time, absence.start_time, absence.end_time);
             const profId = apt?.professional_id || apt?.service?.professional_id;

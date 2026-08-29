@@ -129,7 +129,7 @@ import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability'
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
-import { isSharedResourceAppointment, mergeSharedResourceBookings, sharedResourceColor } from '@/lib/sharedResourceAgenda';
+import { isSharedResourceAppointment, mergeSharedResourceBookings, sharedResourceBackgroundColor, sharedResourceColor } from '@/lib/sharedResourceAgenda';
 import { SharedResourceSummaryDialog } from '@/components/agenda/SharedResourceSummaryDialog';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
@@ -1127,7 +1127,7 @@ const Agenda = () => {
       // Bloqueio compartilhado usa exatamente a cor da agenda do profissional responsável.
       const color = sharedResourceColor(apt);
       return {
-        backgroundColor: `${color}24`,
+        backgroundColor: sharedResourceBackgroundColor(apt),
         borderLeft: `3px solid ${color}`,
       } as React.CSSProperties;
     }
@@ -1683,8 +1683,8 @@ const Agenda = () => {
                             isDragging && 'opacity-50 ring-2 ring-primary',
                           )}
                           style={isSharedResource
-                            ? { minHeight: '26px', backgroundColor: `${sharedResourceColor(apt)}24`, borderLeft: `3px solid ${sharedResourceColor(apt)}` }
-                            : { backgroundColor: prof.agenda_color || '#3B82F6' }}
+                           ? { minHeight: '26px', backgroundColor: sharedResourceBackgroundColor(apt), borderLeft: `3px solid ${sharedResourceColor(apt)}` }
+                             : { backgroundColor: prof.agenda_color || 'hsl(var(--primary))' }}
                           draggable={!isSharedResource && dragAndDropEnabled}
                           onDragStart={(e) => handleDragStart(e, apt)}
                           onDragEnd={handleDragEnd}

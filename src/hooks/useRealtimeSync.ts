@@ -59,6 +59,9 @@ export function useRealtimeSync() {
       'professionals', 'rooms', 'services', 'business-settings', 'business_settings',
       'professional-absences', 'professional_absences', 'waitlist', 'recurring_appointments',
       'appointment_edit_locks',
+      // Bloqueios de salas/equipamentos compartilhados por outros profissionais.
+      'shared-resource-bookings',
+
       'service_packages', 'client_packages', 'package_appointments', 'package_details',
       'package_appointment_history', 'package_template_steps',
       'dashboard-stats', 'dashboard_stats',

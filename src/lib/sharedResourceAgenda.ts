@@ -4,7 +4,7 @@ import { SharedResourceBooking, sharedResourceLabel } from '@/hooks/useSharedRes
 export const SHARED_RESOURCE_PREFIX = 'shared-resource-';
 
 /** Cor neutra usada quando o profissional responsável não tem cor cadastrada. */
-export const SHARED_RESOURCE_FALLBACK_COLOR = '#94a3b8';
+export const SHARED_RESOURCE_FALLBACK_COLOR = 'hsl(var(--muted-foreground))';
 
 /** Status que ainda ocupam o recurso (atendimento em aberto). */
 export const SHARED_RESOURCE_OPEN_STATUSES = [

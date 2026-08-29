@@ -443,18 +443,20 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   onClick: () => void;
   packageSequenceMap: Map<string, number>;
 }) {
+  const isShared = isSharedResourceAppointment(apt);
+  const shared = apt as Appointment & { shared_professional_name?: string | null; shared_professional_color?: string };
   const profId = apt.professional_id || apt.service?.professional_id;
   const prof = professionals.find((p) => p.id === profId);
-  const profColor = prof?.agenda_color || '#94a3b8';
+  const profColor = isShared ? shared.shared_professional_color : (prof?.agenda_color || 'hsl(var(--muted-foreground))');
   const timeStr = format(new Date(apt.start_time), 'HH:mm');
+  const endTimeStr = format(new Date(apt.end_time), 'HH:mm');
   const dot = getAppointmentStatusConfig(apt.status).dotClassName;
   const payment = paymentConfig[apt.payment_status as keyof typeof paymentConfig] || paymentConfig.pending;
   const PaymentIcon = payment.icon;
   const packageData = apt.package_appointment?.package;
   const displayName = resolveAppointmentStepServiceName(apt);
   const applicationLabel = packageData ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null;
-
-  const isShared = isSharedResourceAppointment(apt);
+  const professionalName = shared.shared_professional_name || apt.client?.name || 'Outro profissional';
 
   return (
     <div
@@ -463,48 +465,36 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
         'flex items-center gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/40 active:bg-muted/50 transition-colors overflow-hidden',
         isShared && 'border-dashed border-primary/40 bg-primary/5',
       )}
-      style={{
-        borderLeftColor: profColor,
-        borderLeftWidth: '3px',
-        background: isShared ? undefined : `linear-gradient(to right, ${profColor}10, transparent 30%)`,
-      }}
+      style={{ borderLeftColor: profColor, borderLeftWidth: '3px' }}
     >
       <div className="flex-shrink-0 w-11 text-center">
         <span className="text-xs font-bold text-foreground leading-none tabular-nums">{timeStr}</span>
-        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{getAppointmentDisplayDurationMinutes(apt as any, 30)}min</p>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+          {isShared ? endTimeStr : `${getAppointmentDisplayDurationMinutes(apt as any, 30)}min`}
+        </p>
       </div>
 
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-foreground truncate leading-tight">
-          {apt.client?.name || 'Cliente'}
+          {isShared ? professionalName : (apt.client?.name || 'Cliente')}
         </p>
-        <p className="text-[11px] text-muted-foreground truncate leading-tight">
-          {displayName}
-        </p>
-
-        {applicationLabel && (
-          <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>
+        {!isShared && (
+          <>
+            <p className="text-[11px] text-muted-foreground truncate leading-tight">{displayName}</p>
+            {applicationLabel && <p className="text-[10px] text-primary font-medium truncate leading-tight">{applicationLabel}</p>}
+          </>
         )}
-        {isShared && (
-          <p className="text-[10px] text-primary font-medium truncate leading-tight">
-            Recurso ocupado por outro profissional
-          </p>
-        )}
-        {prof && (
+        {isShared && <p className="text-[10px] text-muted-foreground truncate leading-tight">{timeStr} – {endTimeStr}</p>}
+        {prof && !isShared && (
           <div className="flex items-center gap-1 mt-0.5 min-w-0">
-            <div
-              className="h-1 w-1 rounded-full flex-shrink-0"
-              style={{ backgroundColor: profColor, boxShadow: `0 0 0 1px ${profColor}40` }}
-            />
-            <span className="text-[10px] font-medium truncate" style={{ color: profColor }}>
-              {prof.name.split(' ')[0]}
-            </span>
+            <div className="h-1 w-1 rounded-full flex-shrink-0" style={{ backgroundColor: profColor }} />
+            <span className="text-[10px] font-medium truncate" style={{ color: profColor }}>{prof.name.split(' ')[0]}</span>
           </div>
         )}
       </div>
 
       <div className="flex-shrink-0 flex flex-col items-end justify-center gap-1 pl-1">
-        <div className={cn('h-1.5 w-1.5 rounded-full', dot)} />
+        {!isShared && <div className={cn('h-1.5 w-1.5 rounded-full', dot)} />}
         {!packageData && !isShared && <PaymentIcon className={cn('h-3 w-3', payment.className)} />}
       </div>
     </div>

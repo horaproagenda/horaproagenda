@@ -85,8 +85,9 @@ export function useRealtimeSync() {
       'appointments', 'client-appointments', 'package_appointments',
       'package_appointment_history', 'package_details', 'service_packages',
       'client_packages', 'professional_absences', 'professional-absences',
-      'waitlist', 'recurring_appointments',
+      'waitlist', 'recurring_appointments', 'shared-resource-bookings',
     ] as const;
+
 
     const SERVICE = [
       'services', 'service_packages', 'package_templates',

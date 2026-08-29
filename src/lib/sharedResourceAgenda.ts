@@ -44,6 +44,11 @@ export function sharedResourceColor(apt: Appointment): string {
   );
 }
 
+/** Fundo translúcido que funciona tanto com cores hex quanto com tokens CSS. */
+export function sharedResourceBackgroundColor(apt: Appointment): string {
+  return `color-mix(in srgb, ${sharedResourceColor(apt)} 14%, transparent)`;
+}
+
 /**
  * Converte uma reserva de recurso compartilhado (sala ou equipamento) de outro
  * profissional em um item somente-leitura para aparecer na agenda de quem tem a
@@ -77,10 +82,11 @@ export function toSharedResourceAppointment(b: SharedResourceBooking): SharedRes
     updated_by: null,
     client: { name: label } as Appointment['client'],
     service: {
-      name: 'Horário reservado',
+      // Nome vazio: o bloqueio não pode carregar nem um rótulo de serviço.
+      name: '',
       // Preço/duração neutros: o item é só um bloqueio visual do recurso.
       price: 0,
-      duration: Math.max(
+      duration: Math.max
         15,
         Math.round((new Date(b.end_time).getTime() - new Date(b.start_time).getTime()) / 60000),
       ),

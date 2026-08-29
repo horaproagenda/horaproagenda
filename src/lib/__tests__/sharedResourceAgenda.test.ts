@@ -13,6 +13,7 @@ import {
   SHARED_RESOURCE_PREFIX,
   isSharedResourceAppointment,
   mergeSharedResourceBookings,
+  sharedResourceBackgroundColor,
   toSharedResourceAppointment,
 } from '@/lib/sharedResourceAgenda';
 import type { SharedResourceBooking } from '@/hooks/useSharedResourceBookings';
@@ -74,9 +75,9 @@ describe('recursos compartilhados na agenda', () => {
     expect(item.service?.price).toBe(0);
     expect(item.amount_paid).toBe(0);
     expect(item.client?.name).toBe('Dra. Ana');
-    expect(item.service?.name).toBe('Horário reservado');
+    expect(item.service?.name).toBe('');
     expect(item.notes).toBeNull();
-    expect((item as any).shared_professional_color).toBe('hsl(210 80% 50%)');
+    expect((item as any).shared_professional_color).toBe('#2f6fed');
   });
 
   it.each(['completed', 'cancelled', 'missed'])(

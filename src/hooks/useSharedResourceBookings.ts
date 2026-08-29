@@ -59,7 +59,6 @@ export function useSharedResourceBookings(
 
 /** Rótulo seguro para exibir na agenda quando o atendimento é de outro profissional. */
 export function sharedResourceLabel(b: SharedResourceBooking): string {
-  // Somente o nome do profissional responsável: cliente e serviço nunca são exibidos.
-  if (b.professional_name) return b.professional_name;
-  return b.resource_name ? `${b.resource_name} — reservado` : 'Recurso reservado';
+  // O nome do recurso é interno; o único rótulo permitido é o profissional responsável.
+  return b.professional_name || 'Outro profissional';
 }

@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Appointment } from '@/types';
 import { sharedResourceColor } from '@/lib/sharedResourceAgenda';
 
@@ -21,16 +21,12 @@ export function SharedResourceSummaryDialog({ open, onOpenChange, appointment }:
     (appointment as { shared_professional_name?: string | null }).shared_professional_name ||
     appointment.client?.name ||
     'Outro profissional';
-  const resourceName = (appointment as { shared_resource_name?: string | null }).shared_resource_name;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-base">Recurso ocupado</DialogTitle>
-          <DialogDescription className="text-xs">
-            {resourceName ? `${resourceName} está reservado neste horário.` : 'Recurso reservado neste horário.'}
-          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">

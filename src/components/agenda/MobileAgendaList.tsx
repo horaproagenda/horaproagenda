@@ -18,7 +18,7 @@ import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLab
 import { getAppointmentDisplayDurationMinutes } from '@/lib/appointmentDisplayDuration';
 import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 import { buildMonthGridDays, buildWeekDays, gridColumnsStyle, weekdayLabels } from '@/lib/agendaGrid';
-import { isSharedResourceAppointment } from '@/lib/sharedResourceAgenda';
+import { isSharedResourceAppointment, sharedResourceColor } from '@/lib/sharedResourceAgenda';
 
 interface MobileAgendaListProps {
   appointments: Appointment[];

@@ -59,6 +59,7 @@ Legenda de cobertura:
 | 34 | Privacidade: quem pode compartilhar escolhe a visibilidade no cadastro (padrão "Geral da clínica"); quem não pode segue privado | `unit` `recordVisibility.test.ts` |
 | 35 | Pacote sequencial: nenhuma rotina em segundo plano apaga pacote/agendamento por falta de venda no Caixa (`heal_orphan_service_packages` exige pacote sem venda, sem agendamento vinculado e com mais de 24h) | `unit` `sequentialPackageIntegrity.test.ts` |
 | 36 | Pacote sequencial: sessão sem vínculo é revertida e o total só é informado após conferência no banco; intervalos por etapa respeitados mesmo iniciando em data passada | `unit` `sequentialPackageIntegrity.test.ts` |
+| 37 | Agenda: profissional autorizado vê bloqueios somente-leitura de sala/equipamento compartilhados na própria agenda; valores e dados clínicos continuam ocultos | `unit` `sharedResourceAgenda.test.ts` + RPC `get_shared_resource_bookings` |
 
 
 ## Layout e dispositivos

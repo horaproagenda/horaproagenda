@@ -208,6 +208,7 @@ export interface Appointment {
   service_id: string | null;
   professional_id: string | null;
   room_id: string | null;
+  equipment_id?: string | null;
   package_appointment_id: string | null;
   recurring_group_id: string | null;
   start_time: string;

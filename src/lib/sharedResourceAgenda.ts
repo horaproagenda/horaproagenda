@@ -27,6 +27,7 @@ export function toSharedResourceAppointment(b: SharedResourceBooking): SharedRes
     service_id: null,
     professional_id: null,
     room_id: b.resource_type === 'room' ? b.resource_id : null,
+    equipment_id: b.resource_type === 'equipment' ? b.resource_id : null,
     package_appointment_id: null,
     recurring_group_id: null,
     start_time: b.start_time,

@@ -2390,6 +2390,16 @@ const Agenda = () => {
         onPayment={handlePayment}
       />
 
+      {/* Resumo seguro de reserva compartilhada */}
+      <SharedResourceSummaryDialog
+        appointment={sharedResourceAppointment}
+        open={sharedResourceDialogOpen}
+        onOpenChange={(open) => {
+          setSharedResourceDialogOpen(open);
+          if (!open) setSharedResourceAppointment(null);
+        }}
+      />
+
       {/* New Appointment Dialog */}
       <NewAppointmentDialog
         open={newAppointmentDialogOpen}

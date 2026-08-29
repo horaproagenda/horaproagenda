@@ -129,7 +129,8 @@ import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability'
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
-import { isSharedResourceAppointment, mergeSharedResourceBookings } from '@/lib/sharedResourceAgenda';
+import { isSharedResourceAppointment, mergeSharedResourceBookings, sharedResourceColor } from '@/lib/sharedResourceAgenda';
+import { SharedResourceSummaryDialog } from '@/components/agenda/SharedResourceSummaryDialog';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
 
@@ -796,12 +797,16 @@ const Agenda = () => {
     doc.save(`agenda_filtrada_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
+  const [sharedResourceAppointment, setSharedResourceAppointment] = useState<Appointment | null>(null);
+  const [sharedResourceDialogOpen, setSharedResourceDialogOpen] = useState(false);
+
   const handleAppointmentClick = (appointment: Appointment) => {
     // Reservas de salas/equipamentos de outros profissionais são somente leitura:
     // servem apenas para mostrar que o recurso está ocupado.
     if (isSharedResourceAppointment(appointment)) {
-      const nome = (appointment as { shared_resource_name?: string | null }).shared_resource_name;
-      toast.info(nome ? `${nome} está reservado neste horário.` : 'Recurso reservado por outro profissional neste horário.');
+      // Somente resumo: profissional, início e término.
+      setSharedResourceAppointment(appointment);
+      setSharedResourceDialogOpen(true);
       return;
     }
     setSelectedAppointment(appointment);
@@ -1118,6 +1123,14 @@ const Agenda = () => {
   // multiple professionals are visually separated in shared views.
   const isSingleProfessionalView = viewType === 'professional' || professionalFilter !== 'all';
   const getAppointmentSlotStyle = useCallback((apt: Appointment) => {
+    if (isSharedResourceAppointment(apt)) {
+      // Bloqueio compartilhado usa exatamente a cor da agenda do profissional responsável.
+      const color = sharedResourceColor(apt);
+      return {
+        backgroundColor: `${color}24`,
+        borderLeft: `3px solid ${color}`,
+      } as React.CSSProperties;
+    }
     if (isSingleProfessionalView) {
       return getAppointmentStatusStyle(apt.status);
     }
@@ -1240,18 +1253,28 @@ const Agenda = () => {
                             <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                           )}
                           <span className="text-[11px] font-semibold text-foreground truncate">{apt.client?.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
+                          {!isSharedResource && (
+                            <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
+                          )}
                           {aptDisplay?.applicationLabel && <span className="text-[9px] text-primary font-medium truncate hidden lg:inline">{aptDisplay.applicationLabel}</span>}
                           {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {!isSharedResource && (
                           <span className="text-[10px] font-medium text-foreground">R$ {apt.service?.price.toFixed(0)}</span>
+                          )}
+                          {isSharedResource ? (
+                            <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
+                              {format(new Date(apt.start_time), 'HH:mm')} - {format(new Date(apt.end_time), 'HH:mm')}
+                            </span>
+                          ) : (
                           <Badge 
                             variant={apt.payment_status === 'paid' ? 'default' : apt.payment_status === 'partial' ? 'secondary' : 'outline'} 
                             className="text-[8px] h-3.5 px-1"
                           >
                             {apt.payment_status === 'paid' ? '✓' : apt.payment_status === 'partial' ? '½' : '○'}
                           </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1660,7 +1683,7 @@ const Agenda = () => {
                             isDragging && 'opacity-50 ring-2 ring-primary',
                           )}
                           style={isSharedResource
-                            ? { minHeight: '26px' }
+                            ? { minHeight: '26px', backgroundColor: `${sharedResourceColor(apt)}24`, borderLeft: `3px solid ${sharedResourceColor(apt)}` }
                             : { backgroundColor: prof.agenda_color || '#3B82F6' }}
                           draggable={!isSharedResource && dragAndDropEnabled}
                           onDragStart={(e) => handleDragStart(e, apt)}

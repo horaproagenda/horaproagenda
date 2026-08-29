@@ -1300,6 +1300,9 @@ export function NewAppointmentDialog({
           let createdCount = 0;
           const failedSessions: number[] = [];
           const failureReasons: string[] = [];
+          // IDs criados NESTA execução (1ª sessão + sessões do laço): a
+          // confirmação final deve contar só estes, nunca sessões antigas.
+          const createdAppointmentIds: string[] = [appointmentResult.id];
 
           // Fecha o formulário imediatamente; os agendamentos seguintes são
           // criados em segundo plano com auto-reagendamento em caso de conflito.
@@ -1397,6 +1400,7 @@ export function NewAppointmentDialog({
                 }
               }
               createdRanges.push({ start: futureDate, end: futureEnd });
+              createdAppointmentIds.push(futureAppointment.id);
               createdCount++;
             } catch (error) {
               console.error(`Error creating session ${i + 1}:`, error);
@@ -1416,7 +1420,7 @@ export function NewAppointmentDialog({
                 .from('package_appointments')
                 .select('appointment_id')
                 .eq('package_id', clientPackageId)
-                .not('appointment_id', 'is', null);
+                .in('appointment_id', createdAppointmentIds);
               confirmedSessions = (linkedSessions || []).length;
             } catch (verifyError) {
               console.warn('Não foi possível confirmar as sessões agendadas:', verifyError);

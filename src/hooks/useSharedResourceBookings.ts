@@ -13,6 +13,7 @@ export interface SharedResourceBooking {
   client_name: string | null;
   service_name: string | null;
   professional_name: string | null;
+  professional_color: string | null;
   amount: number | null;
   notes: string | null;
 }
@@ -58,7 +59,6 @@ export function useSharedResourceBookings(
 
 /** Rótulo seguro para exibir na agenda quando o atendimento é de outro profissional. */
 export function sharedResourceLabel(b: SharedResourceBooking): string {
-  if (b.client_name) return b.client_name;
-  if (b.service_name) return b.service_name;
-  return b.resource_name ? `${b.resource_name} — reservado` : 'Reservado';
+  // O nome do recurso é interno; o único rótulo permitido é o profissional responsável.
+  return b.professional_name || 'Outro profissional';
 }

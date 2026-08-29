@@ -13,6 +13,7 @@ import {
   SHARED_RESOURCE_PREFIX,
   isSharedResourceAppointment,
   mergeSharedResourceBookings,
+  sharedResourceBackgroundColor,
   toSharedResourceAppointment,
 } from '@/lib/sharedResourceAgenda';
 import type { SharedResourceBooking } from '@/hooks/useSharedResourceBookings';
@@ -30,7 +31,8 @@ const booking = (over: Partial<SharedResourceBooking> = {}): SharedResourceBooki
   status: 'scheduled',
   client_name: null,
   service_name: null,
-  professional_name: null,
+  professional_name: 'Dra. Ana',
+  professional_color: '#2f6fed',
   amount: null,
   notes: null,
   ...over,
@@ -72,8 +74,22 @@ describe('recursos compartilhados na agenda', () => {
     const item = toSharedResourceAppointment(booking());
     expect(item.service?.price).toBe(0);
     expect(item.amount_paid).toBe(0);
-    expect(item.client?.name).toContain('Sala 1');
+    expect(item.client?.name).toBe('Dra. Ana');
+    expect(item.service?.name).toBe('');
     expect(item.notes).toBeNull();
+    expect((item as any).shared_professional_color).toBe('#2f6fed');
+  });
+
+  it.each(['completed', 'cancelled', 'missed'])(
+    'não exibe reservas com status encerrado: %s',
+    (status) => {
+      expect(mergeSharedResourceBookings([], [booking({ status })])).toHaveLength(0);
+    },
+  );
+
+  it('deduplica a mesma reserva quando sala e equipamento coincidem', () => {
+    const same = booking({ resource_type: 'equipment' });
+    expect(mergeSharedResourceBookings([], [booking(), same])).toHaveLength(1);
   });
 
   it('usa a duração real da reserva para ocupar a grade', () => {
@@ -115,8 +131,10 @@ describe('agenda protege ações sobre os bloqueios compartilhados', () => {
     expect(agenda).toMatch(/monthApts = filteredByFilters\.filter/);
   });
 
-  it('clicar ou arrastar um bloqueio compartilhado não abre nem move nada', () => {
+  it('clicar ou arrastar um bloqueio compartilhado abre apenas o resumo seguro', () => {
     expect(agenda).toContain('if (isSharedResourceAppointment(appointment))');
+    expect(agenda).toContain('setSharedResourceDialogOpen(true)');
+    expect(agenda).toContain('<SharedResourceSummaryDialog');
     expect(agenda).toContain('if (!dragAndDropEnabled || isSharedResourceAppointment(apt)) return;');
     expect(agenda).toContain('draggable={!isSharedResource && dragAndDropEnabled}');
   });

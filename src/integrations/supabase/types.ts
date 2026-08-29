@@ -5906,6 +5906,7 @@ export type Database = {
           end_time: string
           id: string
           notes: string
+          professional_color: string
           professional_name: string
           resource_id: string
           resource_name: string

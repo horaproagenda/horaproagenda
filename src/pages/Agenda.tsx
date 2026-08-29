@@ -1248,17 +1248,21 @@ const Agenda = () => {
                       }}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                          {dragAndDropEnabled && (
-                            <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          )}
-                          <span className="text-[11px] font-semibold text-foreground truncate">{apt.client?.name}</span>
-                          {!isSharedResource && (
-                            <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
-                          )}
-                          {aptDisplay?.applicationLabel && <span className="text-[9px] text-primary font-medium truncate hidden lg:inline">{aptDisplay.applicationLabel}</span>}
-                          {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
-                        </div>
+                         <div className="flex items-center gap-1 min-w-0 flex-1">
+                           {!isSharedResource && dragAndDropEnabled && (
+                             <GripVertical className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                           )}
+                           <span className="text-[11px] font-semibold text-foreground truncate">
+                             {isSharedResource ? ((apt as any).shared_professional_name || apt.client?.name || 'Outro profissional') : apt.client?.name}
+                           </span>
+                           {!isSharedResource && (
+                             <>
+                               <span className="text-[10px] text-muted-foreground truncate hidden sm:inline">• {aptDisplay?.title}</span>
+                               {aptDisplay?.applicationLabel && <span className="text-[9px] text-primary font-medium truncate hidden lg:inline">{aptDisplay.applicationLabel}</span>}
+                               {prof && <span className="text-[9px] text-muted-foreground/70 truncate hidden md:inline">({prof.name})</span>}
+                             </>
+                           )}
+                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {!isSharedResource && (
                           <span className="text-[10px] font-medium text-foreground">R$ {apt.service?.price.toFixed(0)}</span>
@@ -1427,10 +1431,12 @@ const Agenda = () => {
                           handleAppointmentClick(apt);
                         }}
                       >
-                        <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
-                        {aptDisplay?.applicationLabel && (
-                          <p className="truncate leading-tight text-[9px] text-primary font-medium">{aptDisplay.applicationLabel}</p>
-                        )}
+                         <p className="font-medium truncate leading-tight">
+                           {isSharedResource ? ((apt as any).shared_professional_name || apt.client?.name || 'Outro profissional') : apt.client?.name}
+                         </p>
+                         {!isSharedResource && aptDisplay?.applicationLabel && (
+                           <p className="truncate leading-tight text-[9px] text-primary font-medium">{aptDisplay.applicationLabel}</p>
+                         )}
                       </div>
                     )}
                     {isAbsenceStart && absence && !apt && (
@@ -1529,17 +1535,20 @@ const Agenda = () => {
                     
                     {dayAppointments.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
-                        {dayAppointments.slice(0, 4).map((apt, i) => {
-                          const statusDot = getAppointmentStatusConfig(apt.status).dotClassName;
-                          
-                          return (
-                            <div 
-                              key={i} 
-                              className={cn('h-2 w-2 rounded-full', isSelected ? 'bg-primary-foreground/70' : statusDot)}
-                              title={`${apt.client?.name} - ${apt.service?.name}`}
-                            />
-                          );
-                        })}
+                         {dayAppointments.slice(0, 4).map((apt, i) => {
+                           const statusDot = getAppointmentStatusConfig(apt.status).dotClassName;
+                           const dotStyle = isSharedResourceAppointment(apt)
+                             ? { backgroundColor: sharedResourceColor(apt) }
+                             : undefined;
+                           return (
+                             <div
+                               key={i}
+                               className={cn('h-2 w-2 rounded-full', isSelected ? 'bg-primary-foreground/70' : !isSharedResourceAppointment(apt) && statusDot)}
+                               style={dotStyle}
+                               title={isSharedResourceAppointment(apt) ? 'Horário reservado' : `${apt.client?.name} - ${apt.service?.name}`}
+                             />
+                           );
+                         })}
                         {dayAppointments.length > 4 && (
                           <span className={cn(
                             'text-[10px]',
@@ -1693,11 +1702,13 @@ const Agenda = () => {
                             handleAppointmentClick(apt);
                           }}
                         >
-                          <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
-                          {isSharedResource ? (
-                            <p className="truncate leading-tight text-[9px] text-primary font-medium">
-                              Recurso reservado por outro profissional
-                            </p>
+                           <p className="font-medium truncate leading-tight">
+                             {isSharedResource ? ((apt as any).shared_professional_name || apt.client?.name || 'Outro profissional') : apt.client?.name}
+                           </p>
+                           {isSharedResource ? (
+                             <p className="truncate leading-tight text-[9px] text-muted-foreground font-medium">
+                               {format(new Date(apt.start_time), 'HH:mm')} – {format(new Date(apt.end_time), 'HH:mm')}
+                             </p>
                           ) : aptDisplay?.applicationLabel ? (
                             <p className="truncate leading-tight text-[9px] text-primary-foreground/90 font-medium">
                               {aptDisplay.applicationLabel}

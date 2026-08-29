@@ -447,7 +447,7 @@ function AppointmentRow({ apt, professionals, onClick, packageSequenceMap }: {
   const shared = apt as Appointment & { shared_professional_name?: string | null; shared_professional_color?: string };
   const profId = apt.professional_id || apt.service?.professional_id;
   const prof = professionals.find((p) => p.id === profId);
-  const profColor = isShared ? shared.shared_professional_color : (prof?.agenda_color || 'hsl(var(--muted-foreground))');
+  const profColor = isShared ? (shared.shared_professional_color || 'hsl(var(--muted-foreground))') : (prof?.agenda_color || 'hsl(var(--muted-foreground))');
   const timeStr = format(new Date(apt.start_time), 'HH:mm');
   const endTimeStr = format(new Date(apt.end_time), 'HH:mm');
   const dot = getAppointmentStatusConfig(apt.status).dotClassName;

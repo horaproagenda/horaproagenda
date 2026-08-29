@@ -14,7 +14,6 @@ import {
   isSharedResourceAppointment,
   mergeSharedResourceBookings,
   sharedResourceBackgroundColor,
-  sharedResourceBackgroundColor,
   toSharedResourceAppointment,
 } from '@/lib/sharedResourceAgenda';
 import type { SharedResourceBooking } from '@/hooks/useSharedResourceBookings';

@@ -128,6 +128,7 @@ import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYME
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { isSharedResourceAppointment, mergeSharedResourceBookings } from '@/lib/sharedResourceAgenda';
 
 type ViewType = 'day' | 'week' | 'month' | 'professional';
@@ -207,6 +208,7 @@ const Agenda = () => {
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
+  const { professionalId: currentProfessionalId } = useCurrentProfessional();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlotsForDay, isLoading: isLoadingSettings } = useBusinessSettings();
@@ -362,6 +364,11 @@ const Agenda = () => {
         return false;
       }
     }
+    if (equipmentFilter !== 'all') {
+      if (apt.equipment_id !== equipmentFilter) {
+        return false;
+      }
+    }
     if (statusFilter !== 'all') {
       if (apt.status !== statusFilter) {
         return false;
@@ -383,7 +390,7 @@ const Agenda = () => {
     }
 
     return true;
-  }, [searchTerm, professionalFilter, roomFilter, statusFilter, paymentFilter]);
+  }, [searchTerm, professionalFilter, roomFilter, equipmentFilter, statusFilter, paymentFilter]);
 
   /**
    * Agendamentos próprios da clínica/profissional: base de estatísticas,
@@ -1556,7 +1563,7 @@ const Agenda = () => {
   // Render professional view (columns per professional)
   const renderProfessionalView = () => {
     const professionalsToShow = activeProfessionals;
-    
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -1573,7 +1580,7 @@ const Agenda = () => {
         <div className="grid gap-0.5" style={{ gridTemplateColumns: `56px repeat(${professionalsToShow.length}, 1fr)` }}>
           <div className="w-14" />
           {professionalsToShow.map(prof => (
-            <div 
+            <div
               key={prof.id}
               className="flex flex-col items-center rounded-lg p-2 text-center"
               style={{ borderBottom: `3px solid ${prof.agenda_color || '#3B82F6'}` }}
@@ -1587,32 +1594,37 @@ const Agenda = () => {
         <div className="overflow-y-auto rounded-b-xl border border-border/40 bg-card/30 pb-2">
           <div className="space-y-0.5">
             {timeSlots.map(time => (
-              <div 
-                key={time} 
-                className="grid gap-0.5" 
+              <div
+                key={time}
+                className="grid gap-0.5"
                 style={{ gridTemplateColumns: `56px repeat(${professionalsToShow.length}, 1fr)` }}
               >
                 <div className="w-14 flex items-center justify-center text-[10px] font-medium text-muted-foreground">
                   {time}
                 </div>
                 {professionalsToShow.map(prof => {
-                  const apt = filteredByFilters.find(a => {
-                    const aptProfId = a.professional_id || a.service?.professional_id;
-                    return aptProfId === prof.id && isVisibleRangeStart(selectedDate, time, a.start_time, a.end_time);
-                  });
-                  
-                  const occupyingApt = filteredByFilters.find(a => {
+                  const belongsToColumn = (apt: Appointment) => {
+                    if (isSharedResourceAppointment(apt)) {
+                      return currentProfessionalId === prof.id;
+                    }
+                    const aptProfId = apt.professional_id || apt.service?.professional_id;
+                    return aptProfId === prof.id;
+                  };
+
+                  const apt = displayedAppointments.find(a =>
+                    belongsToColumn(a) && isVisibleRangeStart(selectedDate, time, a.start_time, a.end_time),
+                  );
+
+                  const occupyingApt = displayedAppointments.find(a => {
                     const aptStart = new Date(a.start_time);
                     const aptEnd = new Date(a.end_time);
-                    const aptProfId = a.professional_id || a.service?.professional_id;
                     const [hours, minutes] = time.split(':').map(Number);
                     const slotTime = new Date(selectedDate);
                     slotTime.setHours(hours, minutes, 0, 0);
-                    return slotTime >= aptStart && 
-                           slotTime < aptEnd &&
-                           aptProfId === prof.id;
+                    return slotTime >= aptStart && slotTime < aptEnd && belongsToColumn(a);
                   });
-                  
+
+                  const isSharedResource = apt ? isSharedResourceAppointment(apt) : false;
                   const isOccupied = occupyingApt && !apt;
                   const isDragging = draggedAppointment?.id === apt?.id;
                   const aptDisplay = apt ? getAppointmentDisplayInfo(apt) : null;
@@ -1624,7 +1636,7 @@ const Agenda = () => {
                         'rounded border border-dashed border-border/30 min-h-[26px] cursor-pointer transition-all',
                         isOccupied && 'opacity-0 pointer-events-none',
                         !occupyingApt && 'hover:bg-muted/30 hover:border-primary/30',
-                        draggedAppointment && !apt && !isOccupied && 'bg-primary/5 border-primary/30'
+                        draggedAppointment && !apt && !isOccupied && 'bg-primary/5 border-primary/30',
                       )}
                       onClick={() => {
                         if (draggedAppointment) return;
@@ -1640,14 +1652,17 @@ const Agenda = () => {
                       onDrop={(e) => handleDrop(e, selectedDate, time)}
                     >
                       {apt && (
-                        <div 
+                        <div
                           className={cn(
                             'h-full rounded px-1 py-0.5 text-foreground text-[10px] transition-all',
-                            dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
-                            isDragging && 'opacity-50 ring-2 ring-primary'
+                            !isSharedResource && dragAndDropEnabled && 'cursor-grab active:cursor-grabbing',
+                            isSharedResource && 'cursor-default border border-dashed border-primary/40 bg-primary/10',
+                            isDragging && 'opacity-50 ring-2 ring-primary',
                           )}
-                          style={{ backgroundColor: prof.agenda_color || '#3B82F6' }}
-                          draggable={dragAndDropEnabled}
+                          style={isSharedResource
+                            ? { minHeight: '26px' }
+                            : { backgroundColor: prof.agenda_color || '#3B82F6' }}
+                          draggable={!isSharedResource && dragAndDropEnabled}
                           onDragStart={(e) => handleDragStart(e, apt)}
                           onDragEnd={handleDragEnd}
                           onClick={(e) => {
@@ -1656,9 +1671,15 @@ const Agenda = () => {
                           }}
                         >
                           <p className="font-medium truncate leading-tight">{apt.client?.name}</p>
-                          {aptDisplay?.applicationLabel && (
-                            <p className="truncate leading-tight text-[9px] text-primary-foreground/90 font-medium">{aptDisplay.applicationLabel}</p>
-                          )}
+                          {isSharedResource ? (
+                            <p className="truncate leading-tight text-[9px] text-primary font-medium">
+                              Recurso reservado por outro profissional
+                            </p>
+                          ) : aptDisplay?.applicationLabel ? (
+                            <p className="truncate leading-tight text-[9px] text-primary-foreground/90 font-medium">
+                              {aptDisplay.applicationLabel}
+                            </p>
+                          ) : null}
                         </div>
                       )}
                     </div>

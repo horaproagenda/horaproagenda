@@ -86,7 +86,7 @@ export function toSharedResourceAppointment(b: SharedResourceBooking): SharedRes
       name: '',
       // Preço/duração neutros: o item é só um bloqueio visual do recurso.
       price: 0,
-      duration: Math.max
+      duration: Math.max(
         15,
         Math.round((new Date(b.end_time).getTime() - new Date(b.start_time).getTime()) / 60000),
       ),

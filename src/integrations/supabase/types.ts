@@ -5736,6 +5736,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_composite_kit_appointments: {
+        Args: { p_client_id: string; p_group_id?: string; p_items: Json }
+        Returns: Json
+      }
       create_treatment_photo: {
         Args: {
           _appointment_id?: string
@@ -5776,6 +5780,10 @@ export type Database = {
       }
       delete_completed_or_cancelled_client_package: {
         Args: { _package_id: string }
+        Returns: Json
+      }
+      delete_kit_appointments: {
+        Args: { p_appointment_id: string; p_reason?: string; p_scope: string }
         Returns: Json
       }
       enforce_temp_password_column_privileges: {
@@ -6046,6 +6054,20 @@ export type Database = {
           trial_ends_at: string
         }[]
       }
+      list_kit_appointments: {
+        Args: { p_appointment_id: string }
+        Returns: {
+          amount_paid: number
+          end_time: string
+          id: string
+          payment_status: string
+          sequence_order: number
+          service_id: string
+          service_name: string
+          start_time: string
+          status: string
+        }[]
+      }
       log_access: {
         Args: {
           p_action: string
@@ -6130,6 +6152,15 @@ export type Database = {
         Returns: Json
       }
       repair_payment_integrity: { Args: never; Returns: number }
+      reschedule_kit_appointments: {
+        Args: {
+          p_appointment_id: string
+          p_new_end?: string
+          p_new_start: string
+          p_scope: string
+        }
+        Returns: Json
+      }
       reschedule_package_appointment_safely: {
         Args: {
           p_appointment_id: string

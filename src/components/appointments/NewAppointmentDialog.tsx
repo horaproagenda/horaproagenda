@@ -64,6 +64,8 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { useKitAppointments } from '@/hooks/useKitAppointments';
+
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
@@ -161,6 +163,11 @@ export function NewAppointmentDialog({
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountApplyToAll, setDiscountApplyToAll] = useState(false);
 
+  // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
+  const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
+
+
+
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -175,6 +182,8 @@ export function NewAppointmentDialog({
   const { settings, generateTimeSlots, getBusinessHoursForDay } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
+  const { createKit } = useKitAppointments();
+
   const { createRecurringAppointments } = useRecurringAppointments();
   const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
   const timeSlots = generateTimeSlots();
@@ -484,6 +493,114 @@ export function NewAppointmentDialog({
   const currentAppointmentDuration = serviceType === 'service'
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
     : getPackageStepDuration(0);
+
+  // ===== Kit de serviços (serviço composto) =====
+  // Cada etapa do kit vira um agendamento independente, com data e horário
+  // escolhidos pelo profissional. `interval_days` sugere a data inicial.
+  const kitComponents = useMemo(() => {
+    if (serviceType !== 'service') return [];
+    const raw = (selectedServiceData as any)?.service_components;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw.map((component: any, index: number) => {
+      const stepService = services.find((service) => service.id === component.service_id);
+      const basePrice = Number(stepService?.price ?? 0);
+      const stepPrice = Number(component.price ?? basePrice);
+      return {
+        index,
+        service_id: String(component.service_id),
+        service_name: stepService?.name || 'Serviço removido',
+        interval_days: Math.max(0, Number(component.interval_days) || 0),
+        duration: Number(stepService?.duration) > 0 ? Number(stepService?.duration) : 60,
+        price: stepPrice,
+        discount_amount: stepPrice < basePrice ? Math.max(0, basePrice - stepPrice) : 0,
+      };
+    });
+  }, [selectedServiceData, serviceType, services]);
+
+  const isKitService = kitComponents.length > 0;
+
+  // Sugere datas/horários iniciais para o kit a partir da data principal e dos
+  // intervalos configurados. O profissional pode ajustar cada etapa depois.
+  const kitSuggestionSignature = `${(selectedServiceData as any)?.id || ''}|${date ? date.toDateString() : ''}|${time}`;
+  useEffect(() => {
+    if (!isKitService) {
+      setKitSchedule((prev) => (prev.length ? [] : prev));
+      return;
+    }
+    if (!date || !time) return;
+    let cumulativeDays = 0;
+    const suggestion = kitComponents.map((component, index) => {
+      cumulativeDays += index === 0 ? 0 : component.interval_days;
+      let stepDate = addDays(date, cumulativeDays);
+      let safety = 365;
+      while (!isWorkDay(stepDate) && safety-- > 0) {
+        stepDate = addDays(stepDate, 1);
+      }
+      return { date: stepDate, time };
+    });
+    setKitSchedule(suggestion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kitSuggestionSignature, isKitService]);
+
+  const updateKitStep = (index: number, patch: { date?: Date | undefined; time?: string }) => {
+    setKitSchedule((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
+  };
+
+  // Valida cada etapa do kit: data/horário preenchidos, dia trabalhado,
+  // expediente, conflito com a agenda e choque entre as próprias etapas.
+  const kitStepIssues = useMemo(() => {
+    if (!isKitService) return [] as string[];
+    const issues: string[] = [];
+    const ranges: Array<{ start: Date; end: Date }> = [];
+    kitComponents.forEach((component, index) => {
+      const step = kitSchedule[index];
+      const label = `${index + 1}. ${component.service_name}`;
+      if (!step?.date || !step?.time) {
+        issues.push(`${label}: informe data e horário.`);
+        return;
+      }
+      const start = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
+      const end = new Date(start.getTime() + component.duration * 60_000);
+      if (!isWorkDay(step.date)) {
+        issues.push(`${label}: o estabelecimento não atende neste dia.`);
+        return;
+      }
+      const businessHoursIssue = checkBusinessHoursForRange(start, end);
+      if (businessHoursIssue) {
+        issues.push(`${label}: ${businessHoursIssue}`);
+        return;
+      }
+      if (ranges.some((range) => start < range.end && end > range.start)) {
+        issues.push(`${label}: horário encostado em outra etapa do kit.`);
+        return;
+      }
+      const conflict = getAvailabilityConflictReason(start, end, {
+        appointments: appointments as any,
+        absences: absences as any,
+        selectedProfessional,
+        selectedRoom,
+      });
+      if (conflict) {
+        issues.push(`${label}: ${conflict}.`);
+        return;
+      }
+      ranges.push({ start, end });
+    });
+    return issues;
+  }, [
+    absences,
+    appointments,
+    checkBusinessHoursForRange,
+    isKitService,
+    isWorkDay,
+    kitComponents,
+    kitSchedule,
+    selectedProfessional,
+    selectedRoom,
+    settings?.timezone,
+  ]);
+
+
 
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
@@ -1573,6 +1690,30 @@ Até breve! ✨`;
               }
             }, 1500);
           }
+        } else if (isKitService) {
+          // === Kit de serviços: um atendimento por etapa, criados de uma só vez ===
+          // A operação é atômica no banco: se qualquer etapa tiver conflito,
+          // nenhuma é salva (nunca sobra "meio kit" na agenda).
+          const items = kitComponents.map((component, index) => {
+            const step = kitSchedule[index];
+            const stepStart = createDateTimeInTimeZone(step!.date as Date, step!.time, settings?.timezone);
+            const stepEnd = new Date(stepStart.getTime() + component.duration * 60_000);
+            return {
+              service_id: component.service_id,
+              professional_id: selectedProfessional || null,
+              room_id: selectedRoom || null,
+              equipment_id: selectedEquipment[0] || null,
+              start_time: stepStart.toISOString(),
+              end_time: stepEnd.toISOString(),
+              notes: notes || null,
+              discount_amount: component.discount_amount,
+              payment_status: 'pending',
+              service_name_snapshot: component.service_name,
+              sequence_order: index + 1,
+            };
+          });
+
+          await createKit.mutateAsync({ clientId: selectedClient, items });
         } else {
           // Single appointment
           const appointmentResult = await createAppointment.mutateAsync({
@@ -1601,105 +1742,8 @@ Até breve! ✨`;
               appointmentId: appointmentResult.id,
             });
           }
-
-          // === Kit composto: cria a cadeia de agendamentos seguintes ===
-          const composedItems: Array<{ service_id: string; interval_days: number; price: number }> =
-            Array.isArray((selectedServiceData as any)?.service_components)
-              ? ((selectedServiceData as any).service_components as any[]).map((c) => ({
-                  service_id: String(c.service_id),
-                  interval_days: Number(c.interval_days) || 0,
-                  price: Number(c.price) || 0,
-                }))
-              : [];
-
-          if (composedItems.length > 0 && appointmentResult?.id) {
-            try {
-              const compositeGroupId = (crypto as any).randomUUID
-                ? (crypto as any).randomUUID()
-                : appointmentResult.id;
-
-              // Mark first appointment as composite head
-              const firstPrice = composedItems[0]?.price;
-              const firstSvcPrice = Number(selectedServiceData?.price ?? 0);
-              const firstDiscount = firstPrice != null && firstPrice < firstSvcPrice
-                ? Math.max(0, firstSvcPrice - firstPrice)
-                : 0;
-              await (supabase as any)
-                .from('appointments')
-                .update({
-                  composite_group_id: compositeGroupId,
-                  composite_sequence_order: 1,
-                  ...(firstDiscount > 0 ? { discount_amount: firstDiscount } : {}),
-                })
-                .eq('id', appointmentResult.id);
-
-              // Build subsequent appointments respecting interval, business hours and absences
-              let cursorStart = new Date(startTime);
-              const inserts: any[] = [];
-              for (let i = 1; i < composedItems.length; i++) {
-                const comp = composedItems[i];
-                // Fetch component service for duration/price
-                const compSvc = services.find((s) => s.id === comp.service_id);
-                const durationMin = compSvc?.duration ?? 60;
-                const basePrice = Number(compSvc?.price ?? 0);
-                const discount = comp.price < basePrice ? Math.max(0, basePrice - comp.price) : 0;
-
-                // Advance cursor by interval_days
-                let nextStart = new Date(cursorStart);
-                nextStart.setDate(nextStart.getDate() + Math.max(0, comp.interval_days || 0));
-
-                // Skip forward until day is a work day and slot has no conflict
-                let safety = 365;
-                while (safety-- > 0) {
-                  const dayOk = typeof isWorkDay === 'function' ? isWorkDay(nextStart) : true;
-                  const candidateEnd = new Date(nextStart.getTime() + durationMin * 60_000);
-                  const conflict = dayOk
-                    ? getAvailabilityConflictReason(nextStart, candidateEnd, {
-                        appointments: appointments as any,
-                        absences: absences as any,
-                        selectedProfessional,
-                        selectedRoom,
-                      })
-                    : 'Fora do expediente';
-                  if (!conflict) break;
-                  nextStart.setDate(nextStart.getDate() + 1);
-                }
-
-                const nextEnd = new Date(nextStart.getTime() + durationMin * 60_000);
-                inserts.push({
-                  client_id: selectedClient,
-                  service_id: comp.service_id,
-                  professional_id: selectedProfessional || null,
-                  room_id: selectedRoom || null,
-                  start_time: nextStart.toISOString(),
-                  end_time: nextEnd.toISOString(),
-                  notes: notes || null,
-                  status: 'scheduled',
-                  payment_status: 'pending',
-                  composite_group_id: compositeGroupId,
-                  composite_sequence_order: i + 1,
-                  ...(discount > 0 ? { discount_amount: discount } : {}),
-                });
-                cursorStart = nextStart;
-              }
-
-              if (inserts.length > 0) {
-                const { error: insErr } = await (supabase as any)
-                  .from('appointments')
-                  .insert(inserts);
-                if (insErr) {
-                  toast.error('Kit: primeiro agendamento criado, mas falhou ao criar os seguintes: ' + insErr.message);
-                } else {
-                  toast.success(`Kit criado: ${inserts.length + 1} agendamentos na sequência.`);
-                  queryClient.invalidateQueries({ queryKey: ['appointments'] });
-                }
-              }
-            } catch (kitErr: any) {
-              console.error('Composite kit error', kitErr);
-              toast.error('Erro ao criar cadeia do kit: ' + (kitErr?.message ?? 'desconhecido'));
-            }
-          }
         }
+
 
 
       }
@@ -2186,44 +2230,73 @@ Até breve! ✨`;
                     {selectedServiceData.return_days && ` • Retorno: ${selectedServiceData.return_days} dias`}
                   </p>
 
-                  {/* Composite service kit preview */}
-                  {Array.isArray((selectedServiceData as any)?.service_components) && (selectedServiceData as any).service_components.length > 0 && (() => {
-                    const comps = (selectedServiceData as any).service_components as Array<{ service_id: string; interval_days: number; price: number }>;
-                    let cumulativeDays = 0;
-                    const total = comps.reduce((s, c) => s + Number(c.price || 0), 0);
-                    return (
-                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                            <Repeat className="h-3.5 w-3.5" />
-                            Kit de serviços ({comps.length} etapas)
-                          </Label>
-                          <span className="text-[11px] text-muted-foreground">
-                            Total: R$ {total.toFixed(2)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Será criado um agendamento para cada etapa, respeitando o intervalo. Cobrança separada por etapa.
-                        </p>
-                        <div className="space-y-1">
-                          {comps.map((c, i) => {
-                            cumulativeDays += Number(c.interval_days || 0);
-                            const compSvc = services.find(s => s.id === c.service_id);
-                            return (
-                              <div key={`kit-prev-${i}`} className="flex items-center gap-2 text-xs bg-background rounded border p-1.5">
-                                <Badge variant="secondary" className="text-[10px] h-5">{i + 1}</Badge>
-                                <span className="flex-1 truncate font-medium">{compSvc?.name ?? 'Serviço removido'}</span>
-                                <span className="text-muted-foreground text-[11px]">
-                                  {i === 0 ? 'Início' : `+${c.interval_days}d (dia ${cumulativeDays})`}
-                                </span>
-                                <span className="font-semibold">R$ {Number(c.price || 0).toFixed(2)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                  {/* Kit de serviços: data e horário por etapa */}
+                  {isKitService && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                      <div className="field-grid flex flex-wrap items-center justify-between gap-2">
+                        <Label className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                          <Repeat className="h-3.5 w-3.5" />
+                          Kit de serviços ({kitComponents.length} etapas)
+                        </Label>
+                        <span className="text-[11px] text-muted-foreground">
+                          Total: R$ {kitComponents.reduce((sum, component) => sum + component.price, 0).toFixed(2)}
+                        </span>
                       </div>
-                    );
-                  })()}
+                      <p className="text-[11px] text-muted-foreground">
+                        Cada serviço tem seu próprio atendimento, com data e horário que você pode ajustar.
+                        Ou tudo é salvo, ou nada é salvo.
+                      </p>
+                      <div className="space-y-2">
+                        {kitComponents.map((component, index) => {
+                          const step = kitSchedule[index];
+                          return (
+                            <div key={`kit-step-${index}`} className="rounded border bg-background p-2 space-y-2">
+                              <div className="flex items-center gap-2 text-xs">
+                                <Badge variant="secondary" className="text-[10px] h-5">{index + 1}</Badge>
+                                <span className="flex-1 truncate font-medium">{component.service_name}</span>
+                                <span className="text-muted-foreground text-[11px]">
+                                  {formatDurationClock(component.duration)}
+                                  {index > 0 && component.interval_days > 0 ? ` • +${component.interval_days}d` : ''}
+                                </span>
+                                <span className="font-semibold">R$ {component.price.toFixed(2)}</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-[11px] text-muted-foreground">Data *</Label>
+                                  <DatePickerWithInput
+                                    value={step?.date}
+                                    onChange={(value) => updateKitStep(index, { date: value })}
+                                    disabled={(day) => !isWorkDay(day)}
+                                    placeholder="dd/mm/aaaa"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[11px] text-muted-foreground">Início *</Label>
+                                  <Input
+                                    type="time"
+                                    value={step?.time || ''}
+                                    onChange={(event) => updateKitStep(index, { time: event.target.value })}
+                                    className="h-9"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {kitStepIssues.length > 0 && (
+                        <Alert variant="destructive" className="py-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription className="text-[11px] space-y-0.5">
+                            {kitStepIssues.map((issue, index) => (
+                              <p key={`kit-issue-${index}`}>{issue}</p>
+                            ))}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  )}
+
 
 
 

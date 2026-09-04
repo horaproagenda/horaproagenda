@@ -64,6 +64,8 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { useKitAppointments } from '@/hooks/useKitAppointments';
+
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useBrazilianHolidays } from '@/hooks/useBrazilianHolidays';
@@ -161,6 +163,11 @@ export function NewAppointmentDialog({
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [discountApplyToAll, setDiscountApplyToAll] = useState(false);
 
+  // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
+  const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
+
+
+
 
   const { clients } = useClients();
   const { services } = useServices();
@@ -175,6 +182,8 @@ export function NewAppointmentDialog({
   const { settings, generateTimeSlots, getBusinessHoursForDay } = useBusinessSettings();
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
+  const { createKit } = useKitAppointments();
+
   const { createRecurringAppointments } = useRecurringAppointments();
   const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
   const timeSlots = generateTimeSlots();

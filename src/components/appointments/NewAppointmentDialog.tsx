@@ -494,6 +494,114 @@ export function NewAppointmentDialog({
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
     : getPackageStepDuration(0);
 
+  // ===== Kit de serviços (serviço composto) =====
+  // Cada etapa do kit vira um agendamento independente, com data e horário
+  // escolhidos pelo profissional. `interval_days` sugere a data inicial.
+  const kitComponents = useMemo(() => {
+    if (serviceType !== 'service') return [];
+    const raw = (selectedServiceData as any)?.service_components;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw.map((component: any, index: number) => {
+      const stepService = services.find((service) => service.id === component.service_id);
+      const basePrice = Number(stepService?.price ?? 0);
+      const stepPrice = Number(component.price ?? basePrice);
+      return {
+        index,
+        service_id: String(component.service_id),
+        service_name: stepService?.name || 'Serviço removido',
+        interval_days: Math.max(0, Number(component.interval_days) || 0),
+        duration: Number(stepService?.duration) > 0 ? Number(stepService?.duration) : 60,
+        price: stepPrice,
+        discount_amount: stepPrice < basePrice ? Math.max(0, basePrice - stepPrice) : 0,
+      };
+    });
+  }, [selectedServiceData, serviceType, services]);
+
+  const isKitService = kitComponents.length > 0;
+
+  // Sugere datas/horários iniciais para o kit a partir da data principal e dos
+  // intervalos configurados. O profissional pode ajustar cada etapa depois.
+  const kitSuggestionSignature = `${(selectedServiceData as any)?.id || ''}|${date ? date.toDateString() : ''}|${time}`;
+  useEffect(() => {
+    if (!isKitService) {
+      setKitSchedule((prev) => (prev.length ? [] : prev));
+      return;
+    }
+    if (!date || !time) return;
+    let cumulativeDays = 0;
+    const suggestion = kitComponents.map((component, index) => {
+      cumulativeDays += index === 0 ? 0 : component.interval_days;
+      let stepDate = addDays(date, cumulativeDays);
+      let safety = 365;
+      while (!isWorkDay(stepDate) && safety-- > 0) {
+        stepDate = addDays(stepDate, 1);
+      }
+      return { date: stepDate, time };
+    });
+    setKitSchedule(suggestion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kitSuggestionSignature, isKitService]);
+
+  const updateKitStep = (index: number, patch: { date?: Date | undefined; time?: string }) => {
+    setKitSchedule((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
+  };
+
+  // Valida cada etapa do kit: data/horário preenchidos, dia trabalhado,
+  // expediente, conflito com a agenda e choque entre as próprias etapas.
+  const kitStepIssues = useMemo(() => {
+    if (!isKitService) return [] as string[];
+    const issues: string[] = [];
+    const ranges: Array<{ start: Date; end: Date }> = [];
+    kitComponents.forEach((component, index) => {
+      const step = kitSchedule[index];
+      const label = `${index + 1}. ${component.service_name}`;
+      if (!step?.date || !step?.time) {
+        issues.push(`${label}: informe data e horário.`);
+        return;
+      }
+      const start = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
+      const end = new Date(start.getTime() + component.duration * 60_000);
+      if (!isWorkDay(step.date)) {
+        issues.push(`${label}: o estabelecimento não atende neste dia.`);
+        return;
+      }
+      const businessHoursIssue = checkBusinessHoursForRange(start, end);
+      if (businessHoursIssue) {
+        issues.push(`${label}: ${businessHoursIssue}`);
+        return;
+      }
+      if (ranges.some((range) => start < range.end && end > range.start)) {
+        issues.push(`${label}: horário encostado em outra etapa do kit.`);
+        return;
+      }
+      const conflict = getAvailabilityConflictReason(start, end, {
+        appointments: appointments as any,
+        absences: absences as any,
+        selectedProfessional,
+        selectedRoom,
+      });
+      if (conflict) {
+        issues.push(`${label}: ${conflict}.`);
+        return;
+      }
+      ranges.push({ start, end });
+    });
+    return issues;
+  }, [
+    absences,
+    appointments,
+    checkBusinessHoursForRange,
+    isKitService,
+    isWorkDay,
+    kitComponents,
+    kitSchedule,
+    selectedProfessional,
+    selectedRoom,
+    settings?.timezone,
+  ]);
+
+
+
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
 

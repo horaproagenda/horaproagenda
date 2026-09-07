@@ -103,6 +103,9 @@ import {
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
 import { resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { useKitAppointments, type KitScope } from '@/hooks/useKitAppointments';
+import { KitScopeDialog } from './KitScopeDialog';
+
 
 const UUID_RE_GLOBAL = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 function sanitizeDisplayText(text: string): string {

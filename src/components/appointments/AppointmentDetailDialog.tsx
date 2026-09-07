@@ -2705,7 +2705,17 @@ export function AppointmentDetailDialog({
       </Dialog>
 
 
+      {/* Kit de serviços: escolher o escopo da alteração/exclusão */}
+      <KitScopeDialog
+        open={!!kitScopeDialog}
+        onOpenChange={(isOpen) => { if (!isOpen) setKitScopeDialog(null); }}
+        mode={kitScopeDialog?.mode || 'save'}
+        onConfirm={handleKitScopeConfirm}
+        pending={rescheduleKit.isPending || deleteKit.isPending}
+      />
+
       {/* Propagate dates confirmation (package / recurring step rescheduled) */}
+
       <AlertDialog open={!!pendingPropagation} onOpenChange={(o) => { if (!o) setPendingPropagation(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

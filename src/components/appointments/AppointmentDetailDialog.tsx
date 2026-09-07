@@ -460,6 +460,16 @@ export function AppointmentDetailDialog({
     newStatus: AppointmentStatus;
   }>(null);
 
+  // Kits de serviços: escopo (somente este / este e os futuros / todos)
+  const { rescheduleKit, deleteKit } = useKitAppointments();
+  const [kitScopeDialog, setKitScopeDialog] = useState<null | {
+    mode: 'save' | 'delete';
+    newStart?: Date;
+    newEnd?: Date;
+    otherUpdates?: Record<string, any>;
+  }>(null);
+
+
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
     if (isClientCreditPaymentMethod(methodName)) return false;

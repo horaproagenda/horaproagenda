@@ -956,6 +956,29 @@ export function AppointmentDetailDialog({
     }
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
+
+    // Kit de serviços: quando a data/horário muda, perguntar o escopo
+    // (somente este, este e os futuros, ou todos os serviços do kit).
+    const kitTimeChanged =
+      new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
+      new Date(appointment.end_time).getTime() !== newEndTime.getTime();
+    if (isKitAppointment && kitTimeChanged) {
+      setKitScopeDialog({
+        mode: 'save',
+        newStart: newStartTime,
+        newEnd: newEndTime,
+        otherUpdates: {
+          service_id: editServiceId,
+          professional_id: editProfessionalId,
+          room_id: editRoomId,
+          equipment_id: editEquipmentId,
+          notes: editNotes,
+        },
+      });
+      return;
+    }
+
+
     
 
     

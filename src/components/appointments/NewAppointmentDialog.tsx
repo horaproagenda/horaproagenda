@@ -165,6 +165,8 @@ export function NewAppointmentDialog({
 
   // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
   const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
+  const kitGroupIdRef = useRef<string | null>(null);
+
 
 
 
@@ -1794,7 +1796,11 @@ Até breve! ✨`;
       setHolidayConfirmed(false);
     } catch (error) {
       console.error('Error creating appointment:', error);
+      toast.error(error instanceof Error && error.message
+        ? error.message
+        : 'Não foi possível salvar o agendamento agora. Tente novamente.');
     }
+
   };
 
   const resetForm = () => {

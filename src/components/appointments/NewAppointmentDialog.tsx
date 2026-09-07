@@ -1796,6 +1796,8 @@ Até breve! ✨`;
     setDate(undefined);
     setTime('');
     setNotes('');
+    setKitSchedule([]);
+
     setAutoScheduleEnabled(false);
     setPreferredDayOfWeek(null);
     setPreferredTime('');

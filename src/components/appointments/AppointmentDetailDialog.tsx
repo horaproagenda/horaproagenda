@@ -642,6 +642,47 @@ export function AppointmentDetailDialog({
   // Check if appointment is part of a recurring series
   const isRecurringSeries = appointment.recurring_group_id != null;
 
+  // Faz parte de um kit de serviços (serviço composto)?
+  const isKitAppointment = !!(appointment as any).composite_group_id;
+
+  const handleKitScopeConfirm = async (scope: KitScope) => {
+    const request = kitScopeDialog;
+    if (!request) return;
+    try {
+      if (request.mode === 'delete') {
+        await deleteKit.mutateAsync({ appointmentId: appointment.id, scope });
+        setKitScopeDialog(null);
+        setShowDeleteDialog(false);
+        onOpenChange(false);
+        return;
+      }
+
+      if (request.newStart) {
+        await rescheduleKit.mutateAsync({
+          appointmentId: appointment.id,
+          scope,
+          newStart: request.newStart,
+          newEnd: request.newEnd,
+        });
+      }
+      // Os demais campos (serviço, profissional, sala, equipamento, observações)
+      // valem só para este atendimento.
+      if (request.otherUpdates) {
+        await (supabase as any)
+          .from('appointments')
+          .update({ ...request.otherUpdates, updated_at: new Date().toISOString() })
+          .eq('id', appointment.id);
+        await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }
+      setKitScopeDialog(null);
+      setIsEditing(false);
+      void releaseLock();
+    } catch {
+      setKitScopeDialog(null);
+    }
+  };
+
+
   // Compute amount paid at the package level (for the refund flow).
   const packageTotalPaid = appointment.package_appointment ? Number(appointment.amount_paid || 0) : 0;
 

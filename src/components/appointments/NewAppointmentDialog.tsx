@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, Clock, AlertTriangle, CheckCircle, UserX, Package, Info, Briefcase, Pencil, MessageCircle, Repeat, Star } from 'lucide-react';
@@ -165,6 +165,8 @@ export function NewAppointmentDialog({
 
   // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
   const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
+  const kitGroupIdRef = useRef<string | null>(null);
+
 
 
 
@@ -1709,8 +1711,14 @@ Até breve! ✨`;
           // nenhuma é salva (nunca sobra "meio kit" na agenda).
           const items = kitComponents.map((component, index) => {
             const step = kitSchedule[index];
-            const stepStart = createDateTimeInTimeZone(step!.date as Date, step!.time, settings?.timezone);
+            if (!step?.date || !step?.time) {
+              throw new Error('Informe a data e o horário de cada serviço do kit.');
+            }
+            const stepStart = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
             const stepEnd = new Date(stepStart.getTime() + component.duration * 60_000);
+            if (Number.isNaN(stepStart.getTime()) || Number.isNaN(stepEnd.getTime())) {
+              throw new Error('Confira a data e o horário dos serviços do kit.');
+            }
             return {
               service_id: component.service_id,
               professional_id: selectedProfessional || null,
@@ -1726,7 +1734,12 @@ Até breve! ✨`;
             };
           });
 
-          await createKit.mutateAsync({ clientId: selectedClient, items });
+          // Mesmo identificador em novas tentativas: se o usuário clicar duas
+          // vezes, o banco reconhece o kit já criado e não duplica nada.
+          if (!kitGroupIdRef.current) kitGroupIdRef.current = crypto.randomUUID();
+          await createKit.mutateAsync({ clientId: selectedClient, items, groupId: kitGroupIdRef.current });
+          kitGroupIdRef.current = null;
+
         } else {
           // Single appointment
           const appointmentResult = await createAppointment.mutateAsync({
@@ -1783,7 +1796,11 @@ Até breve! ✨`;
       setHolidayConfirmed(false);
     } catch (error) {
       console.error('Error creating appointment:', error);
+      toast.error(error instanceof Error && error.message
+        ? error.message
+        : 'Não foi possível salvar o agendamento agora. Tente novamente.');
     }
+
   };
 
   const resetForm = () => {

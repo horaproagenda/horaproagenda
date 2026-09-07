@@ -1210,10 +1210,23 @@ export function NewAppointmentDialog({
 
 
     // Block if outside business hours
-    if (businessHoursError) {
+    if (businessHoursError && !isKitService) {
       toast.error(businessHoursError);
       return;
     }
+
+    // Kit de serviços: todas as etapas precisam de data e horário válidos.
+    if (isKitService) {
+      if (kitSchedule.length !== kitComponents.length || kitSchedule.some((step) => !step?.date || !step?.time)) {
+        toast.error('Informe a data e o horário de cada serviço do kit.');
+        return;
+      }
+      if (kitStepIssues.length > 0) {
+        toast.error('Ajuste os serviços do kit destacados antes de salvar.');
+        return;
+      }
+    }
+
 
     // Guarda: nenhum agendamento (manual ou automático) pode cair em um dia
     // em que o estabelecimento não trabalha (ex.: domingo com work_sundays=false).

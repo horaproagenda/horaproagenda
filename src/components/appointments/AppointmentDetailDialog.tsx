@@ -702,8 +702,13 @@ export function AppointmentDetailDialog({
         },
       });
     } 
+    // Kit de serviços: escolher o escopo antes de apagar
+    else if (isKitAppointment) {
+      setKitScopeDialog({ mode: 'delete' });
+    }
     // Handle recurring appointments
     else if (isRecurringSeries && recurringDeleteType !== 'single') {
+
       try {
         await deleteAppointmentSeries.mutateAsync({
           recurring_group_id: appointment.recurring_group_id!,

@@ -103,6 +103,9 @@ import {
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
 import { resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { useKitAppointments, type KitScope } from '@/hooks/useKitAppointments';
+import { KitScopeDialog } from './KitScopeDialog';
+
 
 const UUID_RE_GLOBAL = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 function sanitizeDisplayText(text: string): string {
@@ -457,6 +460,16 @@ export function AppointmentDetailDialog({
     newStatus: AppointmentStatus;
   }>(null);
 
+  // Kits de serviços: escopo (somente este / este e os futuros / todos)
+  const { rescheduleKit, deleteKit } = useKitAppointments();
+  const [kitScopeDialog, setKitScopeDialog] = useState<null | {
+    mode: 'save' | 'delete';
+    newStart?: Date;
+    newEnd?: Date;
+    otherUpdates?: Record<string, any>;
+  }>(null);
+
+
   // Helper function to check if payment method is card
   const isMethodCard = (methodName: string) => {
     if (isClientCreditPaymentMethod(methodName)) return false;
@@ -629,6 +642,47 @@ export function AppointmentDetailDialog({
   // Check if appointment is part of a recurring series
   const isRecurringSeries = appointment.recurring_group_id != null;
 
+  // Faz parte de um kit de serviços (serviço composto)?
+  const isKitAppointment = !!(appointment as any).composite_group_id;
+
+  const handleKitScopeConfirm = async (scope: KitScope) => {
+    const request = kitScopeDialog;
+    if (!request) return;
+    try {
+      if (request.mode === 'delete') {
+        await deleteKit.mutateAsync({ appointmentId: appointment.id, scope });
+        setKitScopeDialog(null);
+        setShowDeleteDialog(false);
+        onOpenChange(false);
+        return;
+      }
+
+      if (request.newStart) {
+        await rescheduleKit.mutateAsync({
+          appointmentId: appointment.id,
+          scope,
+          newStart: request.newStart,
+          newEnd: request.newEnd,
+        });
+      }
+      // Os demais campos (serviço, profissional, sala, equipamento, observações)
+      // valem só para este atendimento.
+      if (request.otherUpdates) {
+        await (supabase as any)
+          .from('appointments')
+          .update({ ...request.otherUpdates, updated_at: new Date().toISOString() })
+          .eq('id', appointment.id);
+        await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }
+      setKitScopeDialog(null);
+      setIsEditing(false);
+      void releaseLock();
+    } catch {
+      setKitScopeDialog(null);
+    }
+  };
+
+
   // Compute amount paid at the package level (for the refund flow).
   const packageTotalPaid = appointment.package_appointment ? Number(appointment.amount_paid || 0) : 0;
 
@@ -648,8 +702,13 @@ export function AppointmentDetailDialog({
         },
       });
     } 
+    // Kit de serviços: escolher o escopo antes de apagar
+    else if (isKitAppointment) {
+      setKitScopeDialog({ mode: 'delete' });
+    }
     // Handle recurring appointments
     else if (isRecurringSeries && recurringDeleteType !== 'single') {
+
       try {
         await deleteAppointmentSeries.mutateAsync({
           recurring_group_id: appointment.recurring_group_id!,
@@ -943,6 +1002,29 @@ export function AppointmentDetailDialog({
     }
     const newStartTime = createDateTimeInTimeZone(editBaseDate, editStartTime, settings?.timezone);
     const newEndTime = createDateTimeInTimeZone(editBaseDate, editEndTime, settings?.timezone);
+
+    // Kit de serviços: quando a data/horário muda, perguntar o escopo
+    // (somente este, este e os futuros, ou todos os serviços do kit).
+    const kitTimeChanged =
+      new Date(appointment.start_time).getTime() !== newStartTime.getTime() ||
+      new Date(appointment.end_time).getTime() !== newEndTime.getTime();
+    if (isKitAppointment && kitTimeChanged) {
+      setKitScopeDialog({
+        mode: 'save',
+        newStart: newStartTime,
+        newEnd: newEndTime,
+        otherUpdates: {
+          service_id: editServiceId,
+          professional_id: editProfessionalId,
+          room_id: editRoomId,
+          equipment_id: editEquipmentId,
+          notes: editNotes,
+        },
+      });
+      return;
+    }
+
+
     
 
     
@@ -2623,7 +2705,17 @@ export function AppointmentDetailDialog({
       </Dialog>
 
 
+      {/* Kit de serviços: escolher o escopo da alteração/exclusão */}
+      <KitScopeDialog
+        open={!!kitScopeDialog}
+        onOpenChange={(isOpen) => { if (!isOpen) setKitScopeDialog(null); }}
+        mode={kitScopeDialog?.mode || 'save'}
+        onConfirm={handleKitScopeConfirm}
+        pending={rescheduleKit.isPending || deleteKit.isPending}
+      />
+
       {/* Propagate dates confirmation (package / recurring step rescheduled) */}
+
       <AlertDialog open={!!pendingPropagation} onOpenChange={(o) => { if (!o) setPendingPropagation(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>

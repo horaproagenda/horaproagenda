@@ -1210,10 +1210,23 @@ export function NewAppointmentDialog({
 
 
     // Block if outside business hours
-    if (businessHoursError) {
+    if (businessHoursError && !isKitService) {
       toast.error(businessHoursError);
       return;
     }
+
+    // Kit de serviços: todas as etapas precisam de data e horário válidos.
+    if (isKitService) {
+      if (kitSchedule.length !== kitComponents.length || kitSchedule.some((step) => !step?.date || !step?.time)) {
+        toast.error('Informe a data e o horário de cada serviço do kit.');
+        return;
+      }
+      if (kitStepIssues.length > 0) {
+        toast.error('Ajuste os serviços do kit destacados antes de salvar.');
+        return;
+      }
+    }
+
 
     // Guarda: nenhum agendamento (manual ou automático) pode cair em um dia
     // em que o estabelecimento não trabalha (ex.: domingo com work_sundays=false).
@@ -1783,6 +1796,8 @@ Até breve! ✨`;
     setDate(undefined);
     setTime('');
     setNotes('');
+    setKitSchedule([]);
+
     setAutoScheduleEnabled(false);
     setPreferredDayOfWeek(null);
     setPreferredTime('');
@@ -3155,9 +3170,10 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || hasServiceIntervalViolations || !!businessHoursError || createAppointment.isPending || createRecurringAppointments.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || hasServiceIntervalViolations || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (hasIntervalViolations || hasServiceIntervalViolations) ? 'Corrija os intervalos' : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (hasIntervalViolations || hasServiceIntervalViolations) ? 'Corrija os intervalos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+
 
               </Button>
             </div>

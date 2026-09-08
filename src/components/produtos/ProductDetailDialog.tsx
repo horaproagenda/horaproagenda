@@ -2782,7 +2782,7 @@ function ProductAutomaticConsumption({
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
-              <TableHead>Serviço</TableHead>
+              <TableHead>Origem</TableHead>
               <TableHead>Quantidade</TableHead>
             </TableRow>
           </TableHeader>
@@ -2790,16 +2790,17 @@ function ProductAutomaticConsumption({
             {history.map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell className="text-sm">
-                  {format(parseISO(r.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  {format(parseISO(r.when), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                 </TableCell>
                 <TableCell className="text-sm">
-                  {r.appointment?.service?.name || '-'}
+                  {r.label}
                 </TableCell>
                 <TableCell className="text-sm font-medium tabular-nums">
-                  {Number(r.quantity_used).toFixed(2)} {unitLabel}
+                  {Number(r.qty).toFixed(2)} {unitLabel}
                 </TableCell>
               </TableRow>
             ))}
+
           </TableBody>
         </Table>
       ) : (

@@ -487,7 +487,7 @@ export default function Landing() {
               aria-hidden
             >
               <div className="absolute left-1/2 top-1/4 h-[520px] w-[820px] max-w-none -translate-x-1/2 rounded-full bg-landing-accent/10 blur-[120px]" />
-              <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-landing-surface/60 blur-[100px]" />
+              <div className="absolute bottom-0 right-0 h-[420px] w-full max-w-[420px] rounded-full bg-landing-surface/60 blur-[100px]" />
             </div>
             <div className="relative mx-auto flex min-h-[calc(100dvh-4rem)] max-w-6xl items-center px-4 py-14 md:px-6 md:py-20">
               <div className="grid w-full items-center gap-12 lg:grid-cols-2 lg:gap-16">

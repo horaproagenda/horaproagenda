@@ -154,7 +154,7 @@ const Documentos = () => {
     return 'anamnese';
   };
 
-  const canManageTemplate = (template: any) =>
+  const canManageTemplate = (template: { owner_professional_id?: string | null }) =>
     hasRole('admin')
     || hasRole('receptionist')
     || template?.owner_professional_id === professionalId;

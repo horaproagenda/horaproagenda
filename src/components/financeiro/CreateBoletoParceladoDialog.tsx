@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
+import { syncBoletoInstallmentsToFinancial } from '@/lib/boletoFinancialSync';
 import { syncBoletoPackageAvailability, type BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
 
 
@@ -496,8 +497,13 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
       try {
         await provisioningPromise;
-        const { error: instErr } = await supabase.from('boleto_installments').insert(records);
+        const { data: insertedInstallments, error: instErr } = await supabase
+          .from('boleto_installments')
+          .insert(records)
+          .select('id');
         if (instErr) throw instErr;
+        // Espelha as parcelas no financeiro para aparecerem no extrato/relatórios.
+        await syncBoletoInstallmentsToFinancial((insertedInstallments || []).map((r: any) => r.id));
       } catch (stepErr) {
         await rollback();
         throw stepErr;
@@ -522,6 +528,8 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         'boleto_installments_all','boleto_installments','single_sales',
         'reminders','client_services','service_packages','package_appointments',
         'client-sales','client-packages','financial_entries',
+        'fin_dashboard','package-sales-financial','conciliacao-pagamentos',
+        'atend_prof_data','atend_prof_commission_payments','cash_transactions',
       ]);
       queryClient.invalidateQueries({
         predicate: (q) => typeof q.queryKey?.[0] === 'string' && KEYS.has(q.queryKey[0] as string),

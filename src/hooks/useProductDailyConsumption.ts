@@ -219,7 +219,9 @@ export function useProductDailyConsumption(productId?: string) {
     isLoading,
     refetch,
     createConsumption,
+    replaceCycleConsumption,
     deleteConsumption,
+
     stats,
   };
 }

@@ -45,6 +45,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
@@ -1981,6 +1982,9 @@ const Agenda = () => {
             />
           </div>
           
+          {/* Instalar na tela inicial (celular) ou na barra de tarefas (notebook) */}
+          <InstallAppButton compact />
+
           {/* Compact Action Buttons */}
           <Popover>
             <PopoverTrigger asChild>

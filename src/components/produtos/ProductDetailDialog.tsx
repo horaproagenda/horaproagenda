@@ -2434,14 +2434,23 @@ export function ProductDetailDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
-            onClick={async () => {
+            onClick={async (e) => {
               const d = pendingStartDate!;
               const qty = Number(String(cycleQtyInput).replace(',', '.'));
+              const stock = Number(product?.current_stock || 0);
+              if (Number.isFinite(qty) && qty > 0 && qty > stock) {
+                e.preventDefault();
+                toast.error(
+                  `Você tem ${formatCycleQuantity(stock)} ${PRODUCT_UNITS.find(u => u.value === product?.unit)?.label} em estoque. Informe uma quantidade em uso igual ou menor.`,
+                );
+                return;
+              }
               setPendingStartDate(null);
               setCycleQtyInput('');
               await runStartCycle(d, Number.isFinite(qty) && qty > 0 ? qty : null);
             }}
           >
+
 
             <Save className="h-4 w-4 mr-1" /> Salvar
           </AlertDialogAction>

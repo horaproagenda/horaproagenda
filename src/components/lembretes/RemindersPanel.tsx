@@ -83,9 +83,13 @@ export function RemindersPanel() {
     completeReminder, 
     deleteReminder 
   } = useReminders();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('receptionist');
-  const canDelete = hasRole('admin');
+  const { hasRole, user } = useAuth();
+  const isPrivileged = hasRole('admin') || hasRole('receptionist');
+  // Todos podem criar os próprios lembretes; cada um edita e apaga os seus.
+  const canCreate = true;
+  const isOwn = (reminder: Reminder) => !!user?.id && reminder.created_by === user.id;
+  const canEditReminder = (reminder: Reminder) => isPrivileged || isOwn(reminder);
+  const canDeleteReminder = (reminder: Reminder) => hasRole('admin') || isOwn(reminder);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter reminders by search
@@ -236,12 +240,12 @@ export function RemindersPanel() {
               </div>
             </div>
             <div className="flex items-center gap-0.5">
-              {canEdit && (
+              {canEditReminder(reminder) && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(reminder)}>
                   <Edit className="h-3 w-3" />
                 </Button>
               )}
-              {canDelete && (
+              {canDeleteReminder(reminder) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -283,7 +287,7 @@ export function RemindersPanel() {
             className="h-8 text-sm"
           />
         </div>
-        {canEdit && (
+        {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();

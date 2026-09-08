@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useResourceAccess } from '@/hooks/useResourceAccess';
 
 export interface Equipment {
   id: string;
@@ -13,8 +15,9 @@ export interface Equipment {
 
 export function useEquipment() {
   const queryClient = useQueryClient();
+  const { canUseEquipment } = useResourceAccess();
 
-  const { data: equipment = [], isLoading, error } = useQuery({
+  const { data: allEquipment = [], isLoading, error } = useQuery({
     queryKey: ['equipment'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -26,6 +29,12 @@ export function useEquipment() {
       return data as Equipment[];
     },
   });
+
+  // O profissional só vê e agenda os equipamentos liberados no seu cadastro.
+  const equipment = useMemo(
+    () => allEquipment.filter((item) => canUseEquipment(item.id)),
+    [allEquipment, canUseEquipment],
+  );
 
   const refetch = () => {
     queryClient.invalidateQueries({ queryKey: ['equipment'] });

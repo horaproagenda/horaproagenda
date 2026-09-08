@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays, AlertTriangle } from 'lucide-react';
 import { Professional } from '@/types';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useProfessionalAbsences, ProfessionalAbsence } from '@/hooks/useProfessionalAbsences';
 import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
@@ -93,6 +94,8 @@ export function ProfessionalAbsenceDialog({
   editingAbsence,
 }: ProfessionalAbsenceDialogProps) {
   const { absences, createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
+  // Cada profissional registra apenas a sua própria ausência.
+  const { professionalId: ownProfessionalId, isProfessional } = useCurrentProfessional();
   const { appointments } = useAppointments();
   const [professionalId, setProfessionalId] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -138,7 +141,18 @@ export function ProfessionalAbsenceDialog({
     }
   }, [editingAbsence, prefilledDate, open]);
 
-  const activeProfessionals = professionals.filter(p => p.is_active);
+  // O profissional só pode registrar ausência para ele mesmo.
+  const lockedToOwn = isProfessional && !!ownProfessionalId;
+
+  useEffect(() => {
+    if (open && lockedToOwn && !editingAbsence) {
+      setProfessionalId(ownProfessionalId!);
+    }
+  }, [open, lockedToOwn, ownProfessionalId, editingAbsence]);
+
+  const activeProfessionals = professionals
+    .filter(p => p.is_active)
+    .filter(p => !lockedToOwn || p.id === ownProfessionalId);
 
   // Generate dates based on recurrence settings
   const generateRecurringDates = (): Date[] => {
@@ -362,7 +376,7 @@ export function ProfessionalAbsenceDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Profissional *</Label>
-                <Select value={professionalId} onValueChange={setProfessionalId}>
+                <Select value={professionalId} onValueChange={setProfessionalId} disabled={lockedToOwn}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o profissional" />
                   </SelectTrigger>

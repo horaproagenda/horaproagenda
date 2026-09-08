@@ -291,3 +291,18 @@ describe('regressão: presets e módulos administrativos', () => {
     ]);
   });
 });
+
+describe('regressão: isolamento pessoal e permissões independentes', () => {
+  it('documento geral autorizado e documento próprio podem coexistir', () => {
+    const rows = rowsFor({ module: 'documentos', can_view: true, can_create: true, can_edit: true, data_scope: 'all' });
+    expect(canSeeRecord({ rows, module: 'documentos', ownerProfessionalId: PROF_A, visibility: 'clinic', myProfessionalId: PROF_B })).toBe(true);
+    expect(canWriteRecord({ rows, module: 'documentos', action: 'edit', ownerProfessionalId: PROF_B, myProfessionalId: PROF_B })).toBe(true);
+    expect(canWriteRecord({ rows, module: 'documentos', action: 'edit', ownerProfessionalId: PROF_A, myProfessionalId: PROF_B })).toBe(false);
+  });
+
+  it('produto privado continua invisível e não editável por outro profissional', () => {
+    const rows = rowsFor({ module: 'produtos', can_view: true, can_create: true, can_edit: true, data_scope: 'own' });
+    expect(canSeeRecord({ rows, module: 'produtos', ownerProfessionalId: PROF_A, visibility: 'private', myProfessionalId: PROF_B })).toBe(false);
+    expect(canWriteRecord({ rows, module: 'produtos', action: 'edit', ownerProfessionalId: PROF_A, myProfessionalId: PROF_B })).toBe(false);
+  });
+});

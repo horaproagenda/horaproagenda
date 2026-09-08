@@ -16,23 +16,23 @@ export interface ProfessionalScopeFlags {
   isPrivileged: boolean;
   /** Pode cadastrar/editar produtos de toda a clínica. */
   canManageProducts: boolean;
-  /** Pode cadastrar/editar apenas os produtos que ele criou. */
+  /** Pode cadastrar/editar apenas os produtos que ele criou. Todo profissional pode. */
   canManageOwnProducts: boolean;
   /** Vê somente os produtos que criou. */
   onlyOwnProducts: boolean;
   /** Vê todos os documentos e modelos da clínica. */
   canViewAllDocuments: boolean;
-  /** Cria e edita apenas os próprios documentos e modelos. */
+  /** Cria e edita apenas os próprios documentos e modelos. Todo profissional pode. */
   canManageOwnDocuments: boolean;
   /** Vê somente os documentos/modelos que criou. */
   onlyOwnDocuments: boolean;
-  /** Tem acesso ao módulo financeiro e ao caixa da clínica. */
+  /** Tem acesso ao financeiro próprio, sem abrir dados da clínica. */
   canAccessFinancial: boolean;
   /** Pode dar baixa em pagamentos (registrando no caixa principal). */
   canManagePayments: boolean;
-  /** Pode abrir e fechar o próprio caixa; se não, herda o caixa da clínica. */
+  /** Pode abrir e fechar o caixa da clínica. */
   canOpenCloseRegister: boolean;
-  /** Tem caixa próprio, com entradas e saídas separadas do caixa da clínica. */
+  /** Compatibilidade: indica financeiro pessoal habilitado. */
   canManageOwnRegister: boolean;
   /** Compartilha bancos, taxas, boletos e contas com administrador e recepção. */
   sharesFinancialWithAdmin: boolean;
@@ -80,17 +80,18 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
 
   const perms = data?.permissions ?? {};
   const canManageProducts = isPrivileged || perms.can_manage_products === true;
-  const canManageOwnProducts = !isPrivileged && perms.can_manage_own_products === true;
+  const isProfessional = hasRole('professional');
+  const canManageOwnProducts = !isPrivileged && isProfessional;
   const onlyOwnProducts =
     !isPrivileged &&
     perms.can_view_other_products !== true &&
-    (perms.can_view_only_own_products === true || perms.can_manage_own_products === true);
+    (perms.can_view_only_own_products !== false || isProfessional);
 
   const canViewAllDocuments = isPrivileged || perms.can_view_all_documents === true;
-  const canManageOwnDocuments = !isPrivileged && perms.can_manage_own_documents === true;
-  const onlyOwnDocuments = !canViewAllDocuments && (perms.can_manage_own_documents === true || perms.can_view_only_own_documents === true);
+  const canManageOwnDocuments = !isPrivileged && isProfessional;
+  const onlyOwnDocuments = !canViewAllDocuments && isProfessional;
 
-  const canAccessFinancial = isPrivileged || perms.can_access_financial === true;
+  const canAccessFinancial = isPrivileged || perms.can_access_financial === true || perms.can_manage_own_register === true;
   const canManagePayments = isPrivileged || perms.can_manage_payments === true;
   const canOpenCloseRegister = isPrivileged || perms.can_open_close_register === true;
   const canManageOwnRegister = !isPrivileged && perms.can_manage_own_register === true;

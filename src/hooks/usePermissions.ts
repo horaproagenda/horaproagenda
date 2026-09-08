@@ -53,6 +53,13 @@ export function usePermissions() {
           .eq('user_id', user.id)
           .maybeSingle();
         professionalId = prof?.id ?? null;
+        if (!professionalId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: fallbackId } = await (supabase as any).rpc('get_professional_id_for_user', {
+            _user_id: user.id,
+          });
+          professionalId = (fallbackId as string | null) ?? null;
+        }
       } catch {
         professionalId = null;
       }
@@ -74,6 +81,13 @@ export function usePermissions() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { event: '*', schema: 'public', table: 'user_permissions', filter: `user_id=eq.${user.id}` } as any,
         () => qc.invalidateQueries({ queryKey: ['user-permissions', user.id] })
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'professionals' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['user-permissions', user.id] });
+          qc.invalidateQueries({ queryKey: ['professional-scope-flags', user.id] });
+        },
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };

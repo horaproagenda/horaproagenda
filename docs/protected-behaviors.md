@@ -37,6 +37,9 @@ Legenda de cobertura:
 | 17 | Nenhum valor de identidade vem do navegador (`user_id`, `account_owner_id`, `role`, `visibility` derivados no backend) | `unit` `security-invariants.test.ts` |
 | 18 | RLS ativa: usuário anônimo não lê nenhuma tabela sensível | `smoke` `rls-anon-lockdown.smoke.test.ts` |
 | 19 | Isolamento por clínica (`account_owner_id`) em todas as tabelas de negócio | `smoke` `db-integrity.smoke.test.ts` + linter Supabase |
+| 20 | Financeiro pessoal: profissional administra somente registros próprios; administrador/recepção só veem quando o compartilhamento foi ativado | RLS `can_see_own_financial_record` + `unit` `permissions.regression.test.ts` |
+| 21 | Abertura/fechamento opera exclusivamente o caixa da clínica e exige a permissão específica; financeiro pessoal não cria caixa paralelo | RLS `cash_registers` + `unit` `permissions.regression.test.ts` |
+| 22 | Produtos, lembretes e documentos pessoais são privados e administráveis pelo próprio profissional; acesso a documentos gerais é uma opção independente | RLS + `unit` `permissions.regression.test.ts` |
 
 ## Operação (agenda, financeiro, produtos, documentos)
 

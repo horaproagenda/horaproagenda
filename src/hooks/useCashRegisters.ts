@@ -37,9 +37,10 @@ export interface CashRegister {
 
 export function useCashRegisters() {
   const queryClient = useQueryClient();
-  const { professionalId, canManageOwnRegister, isPrivileged } = useProfessionalScopeFlags();
-  // Profissional com caixa próprio opera o seu caixa; os demais usam o caixa da clínica.
-  const ownRegisterMode = !isPrivileged && canManageOwnRegister && !!professionalId;
+  const { professionalId } = useProfessionalScopeFlags();
+  // Caixa é sempre o caixa da clínica. O financeiro pessoal é isolado nas
+  // categorias, contas, bancos, boletos e taxas — nunca em outro caixa físico.
+  const ownRegisterMode = false;
 
   // Track if initial load is done to avoid notifications on mount
   const initialLoadDone = useRef(false);
@@ -121,7 +122,7 @@ export function useCashRegisters() {
   const myRegisters = professionalId
     ? cashRegisters.filter(r => r.professional_id === professionalId)
     : [];
-  const scopedRegisters = ownRegisterMode ? myRegisters : clinicRegisters;
+  const scopedRegisters = clinicRegisters;
   const currentOpenRegister = scopedRegisters.find(r => r.status === 'open');
   const clinicOpenRegister = clinicRegisters.find(r => r.status === 'open');
   const myOpenRegister = myRegisters.find(r => r.status === 'open');
@@ -136,7 +137,7 @@ export function useCashRegisters() {
         .insert({
           opening_balance: openingBalance,
           opened_by: user?.id,
-          professional_id: ownRegisterMode ? professionalId : null,
+          professional_id: null,
           status: 'open',
         } as any)
         .select()

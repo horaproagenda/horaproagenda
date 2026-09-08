@@ -31,6 +31,7 @@ const booking = (over: Partial<SharedResourceBooking> = {}): SharedResourceBooki
   status: 'scheduled',
   client_name: null,
   service_name: null,
+  professional_id: 'p-ana',
   professional_name: 'Dra. Ana',
   professional_color: '#2f6fed',
   amount: null,

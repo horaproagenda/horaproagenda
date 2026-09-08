@@ -17,6 +17,10 @@ function useProductsRealtime() {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
       queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
+      queryClient.invalidateQueries({ queryKey: ['products-for-prediction'] });
+      queryClient.invalidateQueries({ queryKey: ['product-cycle-history'] });
+      queryClient.invalidateQueries({ queryKey: ['product-active-cycles'] });
       queryClient.invalidateQueries({ queryKey: ['service_products'] });
       queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
       queryClient.invalidateQueries({ queryKey: ['package_templates'] });
@@ -31,6 +35,8 @@ function useProductsRealtime() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_appointments' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_usage_records' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_daily_consumption' }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);

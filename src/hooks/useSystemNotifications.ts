@@ -206,8 +206,10 @@ export function useSystemNotifications() {
         id,
         signature: `${id}|stock:${product.current_stock}`,
         type: 'stock',
-        title: 'Estoque baixo',
-        description: `${product.name}: ${product.current_stock} ${product.unit} restante(s)`,
+        title: product.current_stock === 0 ? 'Produto acabou' : 'Estoque baixo',
+        description: product.current_stock === 0
+          ? `${product.name}: atualize o estoque antes de registrar uma nova quantidade em uso.`
+          : `${product.name}: ${product.current_stock} ${product.unit} restante(s)`,
         severity: product.current_stock === 0 ? 'critical' : 'warning',
         link: `/produtos?product=${product.id}`,
         referenceId: product.id,

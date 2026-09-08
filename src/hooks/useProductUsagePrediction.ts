@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 import { filterProductsForNotifications } from '@/lib/productNotificationScope';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
 import { averageFromCycles, projectStockDuration } from '@/lib/productCycleAnalytics';
@@ -70,6 +70,7 @@ export interface ProductUsagePrediction {
 }
 
 export function useProductUsagePrediction() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { onlyOwnProducts } = useProfessionalScopeFlags();
 
@@ -85,7 +86,6 @@ export function useProductUsagePrediction() {
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 300000, // 5 minutes
   });
 
   // Cada pessoa só é avisada sobre os produtos que lhe pertencem:
@@ -97,83 +97,70 @@ export function useProductUsagePrediction() {
 
 
 
-  // Fetch purchase history with usage data
-  const { data: purchaseHistory = [] } = useQuery({
-    queryKey: ['product-purchase-history'],
+  // Registros encerrados são a fonte única das médias e previsões.
+  const { data: cycleHistory = [] } = useQuery({
+    queryKey: ['product-cycle-history'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_usage_records')
+        .select('*')
+        .order('end_date', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: activeCycles = [] } = useQuery({
+    queryKey: ['product-active-cycles'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_purchases')
-        .select('*')
-        .not('finished_at', 'is', null)
-        .order('finished_at', { ascending: false });
-      
+        .select('id, product_id, started_using_at, cycle_quantity, cycle_unit')
+        .not('started_using_at', 'is', null)
+        .is('finished_at', null);
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 300000,
   });
 
-  // Fetch consumption records
-  const { data: consumptionRecords = [] } = useQuery({
-    queryKey: ['consumption-for-prediction'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('appointment_product_consumption')
-        .select(`
-          *,
-          appointment:appointments(id, start_time)
-        `);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    refetchInterval: 300000,
-  });
+  useEffect(() => {
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['products-for-prediction'] });
+      queryClient.invalidateQueries({ queryKey: ['product-cycle-history'] });
+      queryClient.invalidateQueries({ queryKey: ['product-active-cycles'] });
+    };
+    const channel = supabase
+      .channel('product-predictions-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, invalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_purchases' }, invalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_usage_records' }, invalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_daily_consumption' }, invalidate)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   // Calculate predictions for each product
   const predictions = useMemo((): ProductUsagePrediction[] => {
     return products.map(product => {
-      // Get completed purchases for this product (historical data)
-      const completedPurchases = purchaseHistory.filter(p => p.product_id === product.id);
-      
-      // Get consumption records for this product
-      const productConsumptions = consumptionRecords.filter((c: any) => c.product_id === product.id);
-      
-      // Calculate historical averages from completed purchases
-      let totalHistoricalAppointments = 0;
-      let totalUnitsConsumed = 0;
-      let totalDaysUsed = 0;
-      
-      completedPurchases.forEach(purchase => {
-        const purchaseConsumptions = productConsumptions.filter((c: any) => {
-          const consumptionDate = parseISO((c.appointment as any)?.start_time);
-          const startDate = purchase.started_using_at ? parseISO(purchase.started_using_at) : null;
-          const endDate = purchase.finished_at ? parseISO(purchase.finished_at) : null;
-          
-          if (!startDate || !endDate) return false;
-          return consumptionDate >= startDate && consumptionDate <= endDate;
-        });
-        
-        totalHistoricalAppointments += purchaseConsumptions.length;
-        totalUnitsConsumed += purchase.quantity;
-        
-        if (purchase.started_using_at && purchase.finished_at) {
-          totalDaysUsed += differenceInDays(
-            parseISO(purchase.finished_at),
-            parseISO(purchase.started_using_at)
-          );
-        }
-      });
+      const completedCycles = cycleHistory.filter((record: any) => record.product_id === product.id);
+      const activeCycle = activeCycles.find((cycle: any) => cycle.product_id === product.id);
+      const totalHistoricalAppointments = completedCycles.reduce((sum: number, record: any) => sum + Number(record.appointments_counted || 0), 0);
+      const totalUnitsConsumed = completedCycles.reduce((sum: number, record: any) => sum + Number(record.total_consumed || 0), 0);
+      const totalDaysUsed = completedCycles.reduce((sum: number, record: any) => {
+        if (!record.start_date || !record.end_date) return sum;
+        return sum + Math.max(1, differenceInDays(parseISO(record.end_date), parseISO(record.start_date)) + 1);
+      }, 0);
       
       // Médias reais medidas em ciclos com quantidade parcial em uso
       // (ex.: 100 das 600 unidades). Quando existem, têm prioridade — são
       // medições diretas de quanto o produto rende por atendimento.
       const cycleAverage = averageFromCycles(
-        completedPurchases.map((p: any) => ({
-          cycle_quantity: p.cycle_quantity,
-          cycle_appointments: p.cycle_appointments,
-          started_using_at: p.started_using_at,
-          finished_at: p.finished_at,
+        completedCycles.map((record: any) => ({
+          cycle_quantity: record.total_consumed,
+          cycle_appointments: record.appointments_counted,
+          started_using_at: record.start_date,
+          finished_at: record.end_date,
         })),
       );
 
@@ -190,16 +177,16 @@ export function useProductUsagePrediction() {
           : 0;
       
       // Calculate current usage (since last purchase or started_using_at)
-      const currentStartDate = product.started_using_at 
-        ? parseISO(product.started_using_at) 
+      const currentStartDate = activeCycle?.started_using_at
+        ? parseISO(activeCycle.started_using_at)
+        : product.started_using_at
+        ? parseISO(product.started_using_at)
         : parseISO(product.created_at);
-      
-      const currentAppointments = productConsumptions.filter((c: any) => {
-        const consumptionDate = parseISO((c.appointment as any)?.start_time);
-        return consumptionDate >= currentStartDate;
-      }).length;
-      
-      const currentDays = differenceInDays(new Date(), currentStartDate);
+      const currentDays = Math.max(0, differenceInDays(startOfDay(new Date()), startOfDay(currentStartDate)) + 1);
+      const averageCycleDays = completedCycles.length > 0 ? totalDaysUsed / completedCycles.length : 0;
+      const cycleProgress = activeCycle && averageCycleDays > 0 ? currentDays / averageCycleDays : 0;
+      const averageAppointmentsPerCycle = completedCycles.length > 0 ? totalHistoricalAppointments / completedCycles.length : 0;
+      const currentAppointments = Math.max(0, Math.round(averageAppointmentsPerCycle * Math.min(cycleProgress, 1)));
       
       // Predict remaining usage
       const cycleForecast = cycleAverage.avgQuantityPerAppointment
@@ -225,12 +212,7 @@ export function useProductUsagePrediction() {
       
       // Calculate depletion percentage based on usage pattern
       let depletionPercentage = 0;
-      if (avgAppointmentsPerUnit > 0) {
-        const expectedTotalAppointments = product.current_stock * avgAppointmentsPerUnit;
-        depletionPercentage = expectedTotalAppointments > 0 
-          ? (currentAppointments / expectedTotalAppointments) * 100 
-          : 0;
-      }
+      if (activeCycle && averageCycleDays > 0) depletionPercentage = cycleProgress * 100;
       
       // Determine alert levels
       const isLowStock = product.current_stock <= (product.min_stock_alert || 0);
@@ -326,7 +308,7 @@ export function useProductUsagePrediction() {
         expiry_message: expiryMessage,
       };
     });
-  }, [products, purchaseHistory, consumptionRecords]);
+  }, [products, cycleHistory, activeCycles]);
 
   const criticalProducts = predictions.filter(p => p.alert_level === 'critical');
   const warningProducts = predictions.filter(p => p.alert_level === 'warning');

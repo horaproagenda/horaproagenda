@@ -56,6 +56,18 @@ export default {
   				'Times',
   				'serif'
   			],
+  			'landing-display': [
+  				'Space Grotesk',
+  				'ui-sans-serif',
+  				'system-ui',
+  				'sans-serif'
+  			],
+  			'landing-body': [
+  				'DM Sans',
+  				'ui-sans-serif',
+  				'system-ui',
+  				'sans-serif'
+  			],
   			mono: [
   				'JetBrains Mono',
   				'ui-monospace',
@@ -107,6 +119,18 @@ export default {
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
+  			},
+  			landing: {
+  				bg: 'hsl(var(--landing-bg))',
+  				surface: 'hsl(var(--landing-surface))',
+  				accent: {
+  					DEFAULT: 'hsl(var(--landing-accent))',
+  					hover: 'hsl(var(--landing-accent-hover))'
+  				},
+  				text: {
+  					DEFAULT: 'hsl(var(--landing-text))',
+  					muted: 'hsl(var(--landing-text-muted))'
+  				}
   			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',

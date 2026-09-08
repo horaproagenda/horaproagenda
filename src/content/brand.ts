@@ -80,7 +80,11 @@ export const DIFFERENTIALS = [
   },
   {
     title: "Autocadastro do cliente",
-    desc: "Link público para o cliente preencher dados, anexar documentos e assinar termos com Gov.br antes do primeiro atendimento.",
+    desc: "Link público para o cliente preencher dados, anexar documentos e assinar termos com validade jurídica — antes do primeiro atendimento.",
+  },
+  {
+    title: "Agendamento automático",
+    desc: "Pacotes e kits são marcados em sequência pelo próprio sistema: nenhum cliente fica sem horário e sua agenda vive cheia.",
   },
   {
     title: "Lembretes pessoais e profissionais",

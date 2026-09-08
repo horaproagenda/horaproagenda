@@ -42,7 +42,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';

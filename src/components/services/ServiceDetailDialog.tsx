@@ -905,6 +905,12 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
 
 
+                <VisibilitySelect
+                  module="servicos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                />
+
                 <FormField
                   control={form.control}
                   name="is_active"

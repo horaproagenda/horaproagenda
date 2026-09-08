@@ -3216,6 +3216,7 @@ export type Database = {
           consumption_date: string
           created_at: string
           created_by: string | null
+          cycle_key: string | null
           id: string
           notes: string | null
           product_id: string
@@ -3231,6 +3232,7 @@ export type Database = {
           consumption_date?: string
           created_at?: string
           created_by?: string | null
+          cycle_key?: string | null
           id?: string
           notes?: string | null
           product_id: string
@@ -3246,6 +3248,7 @@ export type Database = {
           consumption_date?: string
           created_at?: string
           created_by?: string | null
+          cycle_key?: string | null
           id?: string
           notes?: string | null
           product_id?: string
@@ -3382,6 +3385,7 @@ export type Database = {
           container_yield: number | null
           created_at: string
           created_by: string | null
+          cycle_key: string | null
           end_date: string
           id: string
           package_template_id: string | null
@@ -3389,6 +3393,7 @@ export type Database = {
           quantity_per_appointment: number | null
           service_id: string | null
           start_date: string
+          stock_after: number | null
           total_consumed: number | null
           updated_at: string
         }
@@ -3403,6 +3408,7 @@ export type Database = {
           container_yield?: number | null
           created_at?: string
           created_by?: string | null
+          cycle_key?: string | null
           end_date: string
           id?: string
           package_template_id?: string | null
@@ -3410,6 +3416,7 @@ export type Database = {
           quantity_per_appointment?: number | null
           service_id?: string | null
           start_date: string
+          stock_after?: number | null
           total_consumed?: number | null
           updated_at?: string
         }
@@ -3424,6 +3431,7 @@ export type Database = {
           container_yield?: number | null
           created_at?: string
           created_by?: string | null
+          cycle_key?: string | null
           end_date?: string
           id?: string
           package_template_id?: string | null
@@ -3431,6 +3439,7 @@ export type Database = {
           quantity_per_appointment?: number | null
           service_id?: string | null
           start_date?: string
+          stock_after?: number | null
           total_consumed?: number | null
           updated_at?: string
         }
@@ -5841,6 +5850,18 @@ export type Database = {
       }
       ensure_primary_admin_setup: { Args: never; Returns: Json }
       expire_old_temp_passwords: { Args: never; Returns: undefined }
+      finish_product_usage_cycle: {
+        Args: {
+          _appointment_dates: string[]
+          _appointment_ids: string[]
+          _end_date: string
+          _product_id: string
+          _purchase_id: string
+          _service_ids?: string[]
+          _unit: string
+        }
+        Returns: Json
+      }
       force_delete_client: { Args: { _client_id: string }; Returns: Json }
       force_delete_professional: {
         Args: { _professional_id: string }
@@ -6316,6 +6337,16 @@ export type Database = {
       set_ultramsg_pool_token: {
         Args: { _id: string; _token: string }
         Returns: undefined
+      }
+      start_product_usage_cycle: {
+        Args: {
+          _product_id: string
+          _purchase_id?: string
+          _quantity: number
+          _start_date: string
+          _unit: string
+        }
+        Returns: Json
       }
       submit_document_fill_by_token:
         | {

@@ -59,7 +59,8 @@ export function calculateEstimatedUsagePerAppointment(params: {
   stockUnit: StockUnit;
   estimatedAppointments: number;
 }): number {
-  const normalizedContainerAmount = convertQuantity(params.containerAmount, params.containerUnit, params.stockUnit) ?? params.containerAmount;
+  const normalizedContainerAmount = convertQuantity(params.containerAmount, params.containerUnit, params.stockUnit);
+  if (normalizedContainerAmount === null) return 0;
   if (!params.estimatedAppointments || params.estimatedAppointments <= 0) return 0;
   return normalizedContainerAmount / params.estimatedAppointments;
 }
@@ -80,7 +81,8 @@ export function calculateRemainingAppointments(params: {
       return null;
     }
 
-    const normalizedContainerAmount = convertQuantity(params.containerAmount, params.containerUnit, params.stockUnit) ?? params.containerAmount;
+    const normalizedContainerAmount = convertQuantity(params.containerAmount, params.containerUnit, params.stockUnit);
+    if (normalizedContainerAmount === null) return null;
     if (normalizedContainerAmount <= 0) return null;
 
     return Math.floor((params.currentStock / normalizedContainerAmount) * params.estimatedAppointments);

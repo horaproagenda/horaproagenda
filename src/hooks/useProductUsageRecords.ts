@@ -39,7 +39,7 @@ export function useProductUsageRecords(productId?: string) {
   const { data: usageRecords = [], isLoading, refetch } = useQuery({
     queryKey: ['product_usage_records', productId ?? 'all'],
     queryFn: async () => {
-      let query = (supabase.from('product_usage_records' as any) as any)
+      let query = supabase.from('product_usage_records')
         .select('*')
         .order('start_date', { ascending: false });
       if (productId) query = query.eq('product_id', productId);
@@ -64,7 +64,7 @@ export function useProductUsageRecords(productId?: string) {
 
   const createUsageRecord = useMutation({
     mutationFn: async (record: NewProductUsageRecord) => {
-      const { data, error } = await (supabase.from('product_usage_records' as any) as any)
+      const { data, error } = await supabase.from('product_usage_records')
         .insert(record)
         .select()
         .single();
@@ -77,8 +77,8 @@ export function useProductUsageRecords(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['service_products'] });
       queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
     },
-    onError: (error: any) => {
-      toast.error('Não foi possível salvar o registro de uso: ' + (error?.message ?? ''));
+    onError: (error: unknown) => {
+      toast.error(error);
     },
   });
 
@@ -124,15 +124,15 @@ export function useProductUsageRecords(productId?: string) {
 
   const deleteUsageRecord = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('product_usage_records' as any) as any).delete().eq('id', id);
+      const { error } = await supabase.from('product_usage_records').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
       toast.success('Registro de uso removido.');
     },
-    onError: (error: any) => {
-      toast.error('Não foi possível remover o registro de uso: ' + (error?.message ?? ''));
+    onError: (error: unknown) => {
+      toast.error(error);
     },
   });
 

@@ -85,9 +85,11 @@ import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useProductConsumption } from '@/hooks/useProductConsumption';
 import { useProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
 import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
+import type { ProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
 
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -109,6 +111,33 @@ interface ProductDetailDialogProps {
   }) => Promise<void>;
   onUpdateServiceLink: (data: { id: string; quantity_per_use?: number; estimated_appointments?: number | null }) => Promise<void>;
   onDeleteServiceLink: (id: string) => Promise<void>;
+}
+
+interface ConsumptionRecordView {
+  id: string;
+  product_id: string;
+  quantity_used: number;
+  appointment?: {
+    start_time?: string | null;
+    service?: { name?: string | null } | null;
+  } | null;
+}
+
+interface ConsumptionAppointment {
+  status?: string | null;
+  service_id?: string | null;
+  package_template_id?: string | null;
+  start_time?: string | null;
+}
+
+interface ConsumptionServiceLink {
+  service_id: string;
+  quantity_per_use?: number | null;
+}
+
+interface ConsumptionTemplateLink {
+  package_template_id: string;
+  quantity_per_use?: number | null;
 }
 
 const PRODUCT_TYPES: { value: ProductType; label: string }[] = [
@@ -217,8 +246,10 @@ export function ProductDetailDialog({
 
 
   const { appointments } = useAppointments();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('receptionist');
+  const { hasRole, user } = useAuth();
+  const { canManageProducts, canManageOwnProducts } = useProfessionalScopeFlags();
+  const canEdit = hasRole('admin') || hasRole('receptionist') || canManageProducts
+    || (canManageOwnProducts && product?.created_by === user?.id);
 
 
 
@@ -422,7 +453,7 @@ export function ProductDetailDialog({
     let initialQty = 0;
     // Quantidade colocada em uso no ciclo ativo (parcial), quando informada.
     const activeCycleQuantity = Math.max(
-      Number((product as any).cycle_quantity || 0),
+      Number(product.cycle_quantity || 0),
       Number(activePurchase?.cycle_quantity || 0),
     );
     // Média histórica por atendimento, apurada nos ciclos já encerrados.
@@ -1654,7 +1685,7 @@ export function ProductDetailDialog({
                                       await onUpdateProduct({
                                         id: product!.id,
                                         started_using_at: startedAt,
-                                        finished_at: null as any,
+                                        finished_at: null,
                                       });
                                     } else if (
                                       finishedAt &&
@@ -2559,24 +2590,24 @@ function ProductAutomaticConsumption({
   templateLinks,
 }: {
   product: Product;
-  consumptionRecords: any[];
-  dailyConsumptions: any[];
+  consumptionRecords: ConsumptionRecordView[];
+  dailyConsumptions: ProductDailyConsumption[];
   productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
-  appointments: any[];
-  serviceLinks: any[];
-  templateLinks: any[];
+  appointments: ConsumptionAppointment[];
+  serviceLinks: ConsumptionServiceLink[];
+  templateLinks: ConsumptionTemplateLink[];
 }) {
   const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label || product.unit;
 
   const productRecords = useMemo(
-    () => (consumptionRecords || []).filter((r: any) => r.product_id === product.id),
+    () => (consumptionRecords || []).filter((r) => r.product_id === product.id),
     [consumptionRecords, product.id]
   );
 
   // Lançamentos por data: incluem as baixas dos ciclos de uso encerrados
   // (quantidade separada para uso), vendas e lançamentos manuais.
   const productDaily = useMemo(
-    () => (dailyConsumptions || []).filter((c: any) => c.product_id === product.id),
+    () => (dailyConsumptions || []).filter((c) => c.product_id === product.id),
     [dailyConsumptions, product.id]
   );
 
@@ -2584,21 +2615,21 @@ function ProductAutomaticConsumption({
   // senão calcula a partir dos atendimentos concluídos vinculados ao produto.
   const consumptionEvents = useMemo(() => {
     const dailyEvents = productDaily
-      .map((c: any) => ({
+      .map((c) => ({
         date: c.consumption_date ? parseISO(c.consumption_date + 'T12:00:00') : null,
         qty: Number(c.quantity_used) || 0,
       }))
-      .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+      .filter((e): e is { date: Date; qty: number } => e.date instanceof Date && !isNaN(e.date.getTime()));
 
     if (productRecords.length > 0) {
       return [
         ...dailyEvents,
         ...productRecords
-          .map((r: any) => ({
+          .map((r) => ({
             date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
             qty: Number(r.quantity_used) || 0,
           }))
-          .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime())),
+          .filter((e): e is { date: Date; qty: number } => e.date instanceof Date && !isNaN(e.date.getTime())),
       ];
     }
     if (dailyEvents.length > 0) return dailyEvents;
@@ -2657,15 +2688,15 @@ function ProductAutomaticConsumption({
 
   const history = useMemo(() => {
     const fromRecords = productRecords
-      .filter((r: any) => r.appointment?.start_time)
-      .map((r: any) => ({
+      .filter((r) => r.appointment?.start_time)
+      .map((r) => ({
         id: r.id,
         when: r.appointment.start_time,
         label: r.appointment?.service?.name || '-',
         qty: Number(r.quantity_used) || 0,
       }));
 
-    const fromDaily = productDaily.map((c: any) => ({
+    const fromDaily = productDaily.map((c) => ({
       id: c.id,
       when: c.consumption_date + 'T12:00:00',
       label: c.notes?.includes('[ciclo:') ? 'Ciclo de uso' : (c.notes || 'Consumo registrado'),
@@ -2737,7 +2768,7 @@ function ProductAutomaticConsumption({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {history.map((r: any) => (
+            {history.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="text-sm">
                   {format(parseISO(r.when), 'dd/MM/yyyy HH:mm', { locale: ptBR })}

@@ -66,7 +66,8 @@ export function calculateProductLinkCostPerUse(link: ProductLink): number {
 
     if (containerAmount > 0 && estimatedApps > 0) {
       // Converte o recipiente para a unidade de estoque
-      const containerInStock = convertQuantity(containerAmount, containerUnit, stockUnit) ?? containerAmount;
+      const containerInStock = convertQuantity(containerAmount, containerUnit, stockUnit);
+      if (containerInStock === null) return 0;
       const consumptionPerUse = containerInStock / estimatedApps;
       return consumptionPerUse * pricePerStockUnit;
     }

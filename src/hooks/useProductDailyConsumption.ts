@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { cycleConsumptionTag, type CycleConsumptionEntry } from '@/lib/productCycleConsumption';
+
 
 export interface ProductDailyConsumption {
   id: string;
@@ -38,6 +41,75 @@ export function useProductDailyConsumption(productId?: string) {
       return data as ProductDailyConsumption[];
     },
   });
+
+  // Atualização em tempo real: baixas de ciclo, vendas e lançamentos manuais
+  // aparecem nos cartões de período sem recarregar a página.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`product-daily-consumption-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_daily_consumption' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_usage_records' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+        queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [queryClient]);
+
+  /**
+   * Grava (ou regrava) os lançamentos de consumo de um ciclo encerrado.
+   * NÃO altera o estoque: o abatimento do ciclo é feito uma única vez pelo
+   * próprio encerramento. Regravar substitui os lançamentos daquele ciclo,
+   * então encerrar duas vezes nunca soma consumo em dobro.
+   */
+  const replaceCycleConsumption = useMutation({
+    mutationFn: async (params: {
+      product_id: string;
+      cycle_key: string;
+      unit: string;
+      entries: CycleConsumptionEntry[];
+      professional_id?: string | null;
+    }) => {
+      const tag = cycleConsumptionTag(params.cycle_key);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error: delError } = await supabase
+        .from('product_daily_consumption')
+        .delete()
+        .eq('product_id', params.product_id)
+        .like('notes', `%${tag}%`);
+      if (delError) throw delError;
+
+      if (params.entries.length === 0) return;
+
+      const rows = params.entries.map((e) => ({
+        product_id: params.product_id,
+        consumption_date: e.consumption_date,
+        quantity_used: e.quantity_used,
+        unit: params.unit,
+        appointment_id: e.appointment_id,
+        service_id: e.service_id,
+        professional_id: params.professional_id ?? null,
+        notes: `Consumo do ciclo de uso ${tag}`,
+        created_by: user?.id ?? null,
+      }));
+
+      const { error } = await supabase.from('product_daily_consumption').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
+    },
+  });
+
+
 
   const createConsumption = useMutation({
     mutationFn: async (consumption: {
@@ -147,7 +219,9 @@ export function useProductDailyConsumption(productId?: string) {
     isLoading,
     refetch,
     createConsumption,
+    replaceCycleConsumption,
     deleteConsumption,
+
     stats,
   };
 }

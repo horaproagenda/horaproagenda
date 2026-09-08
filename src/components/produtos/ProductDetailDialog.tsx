@@ -85,6 +85,9 @@ import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useProductConsumption } from '@/hooks/useProductConsumption';
 import { useProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
+import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
+import { distributeCycleConsumption } from '@/lib/productCycleConsumption';
+
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -210,6 +213,9 @@ export function ProductDetailDialog({
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
+  const { consumptions: dailyConsumptions, replaceCycleConsumption } = useProductDailyConsumption(product?.id);
+  const { createUsageRecord } = useProductUsageRecords(product?.id);
+
 
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
@@ -584,11 +590,10 @@ export function ProductDetailDialog({
     const totalDeduction = resolveCycleDeduction({
       stockBefore,
       cycleQuantity,
-      activePurchaseQuantity: activePurchase?.quantity ?? null,
       estimatedDeduction,
       exactDeduction,
-      isBulk,
     });
+
 
     const remainingStock = resolveStockAfterCycle(stockBefore, totalDeduction);
 
@@ -635,12 +640,14 @@ export function ProductDetailDialog({
       isBulk,
       activePurchase,
       cycleApts,
+      cycleStart,
       usedCrossFamilyConversion,
       cycleQuantity,
       closure,
       combinedAverage,
       forecast,
     };
+
   }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
   const runStartCycle = async (dateStr: string, cycleQty?: number | null) => {
@@ -678,28 +685,11 @@ export function ProductDetailDialog({
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;
-    const { activePurchase, cycleApts, totalDeduction, closure, forecast } = endCyclePreview;
+    const { activePurchase, cycleApts, totalDeduction, closure, forecast, cycleStart } = endCyclePreview;
     const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label ?? '';
-    // Persiste médias para vínculos estimados que tiveram uso
-    for (const sp of productServiceLinks) {
-      if (sp.tracking_method !== 'estimated') continue;
-      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
-      const containerInStockUnit = convertQuantity(
-        Number(sp.container_amount || 0),
-        sp.container_unit || product.unit,
-        product.unit,
-      ) ?? Number(sp.container_amount || 0);
-      if (aptsThis > 0 && containerInStockUnit > 0) {
-        const avg = containerInStockUnit / aptsThis;
-        await updateServiceProduct.mutateAsync({
-          id: sp.id,
-          quantity_per_use: avg,
-          estimated_appointments: aptsThis,
-        } as any);
-      }
-    }
 
     const newStock = resolveStockAfterCycle(Number(product.current_stock) || 0, totalDeduction);
+    const cycleKey = activePurchase?.id || `${product.id}-${cycleStart || dateStr}`;
 
     // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
@@ -720,6 +710,41 @@ export function ProductDetailDialog({
       });
     }
 
+    // Registro histórico do ciclo (fonte única do que foi consumido).
+    try {
+      await createUsageRecord.mutateAsync({
+        product_id: product.id,
+        service_id: null,
+        package_template_id: null,
+        calc_mode: 'auto',
+        container_amount: totalDeduction,
+        container_unit: product.unit,
+        quantity_per_appointment: null,
+        avg_quantity_per_appointment: closure.avgQuantityPerAppointment,
+        start_date: cycleStart || dateStr,
+        end_date: dateStr,
+        appointments_counted: cycleApts.length,
+        appointment_ids: cycleApts.map(a => a.id),
+        total_consumed: totalDeduction,
+        container_yield: cycleApts.length || null,
+      } as any);
+    } catch {
+      /* o histórico é complementar: não impede o fechamento do ciclo */
+    }
+
+    // Lançamentos de consumo por data: é o que alimenta Hoje / Semana / Mês /
+    // Semestre / Ano. Regravar o mesmo ciclo substitui os lançamentos.
+    await replaceCycleConsumption.mutateAsync({
+      product_id: product.id,
+      cycle_key: cycleKey,
+      unit: product.unit,
+      entries: distributeCycleConsumption({
+        quantity: totalDeduction,
+        appointments: cycleApts.map(a => ({ id: a.id, start_time: a.start_time, service_id: a.service_id })),
+        fallbackDate: dateStr,
+      }),
+    });
+
     // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
     // A quantidade em uso é zerada: ela pertencia ao ciclo que acabou.
     await onUpdateProduct({
@@ -736,7 +761,7 @@ export function ProductDetailDialog({
         description: [
           closure.avgQuantityPerAppointment
             ? `Média de ${formatCycleQuantity(closure.avgQuantityPerAppointment)} ${unitLabel} por atendimento.`
-            : null,
+            : 'Sem atendimentos no período, então não calculamos média por atendimento.',
           forecast.remainingAppointments !== null
             ? `Estoque restante (${formatCycleQuantity(newStock)} ${unitLabel}) deve cobrir ~${forecast.remainingAppointments} atendimento(s)${forecast.remainingDays !== null ? ` / ~${forecast.remainingDays} dia(s)` : ''}.`
             : null,
@@ -750,6 +775,7 @@ export function ProductDetailDialog({
       setPendingRefill({ remainingStock: newStock });
     }
   };
+
 
 
 
@@ -2337,11 +2363,13 @@ export function ProductDetailDialog({
               <ProductAutomaticConsumption
                 product={product}
                 consumptionRecords={consumptionRecords}
+                dailyConsumptions={dailyConsumptions}
                 productConsumption={productConsumption}
                 appointments={appointments}
                 serviceLinks={productServiceLinks}
                 templateLinks={productTemplateLinks}
               />
+
             </TabsContent>
 
 
@@ -2408,14 +2436,23 @@ export function ProductDetailDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
-            onClick={async () => {
+            onClick={async (e) => {
               const d = pendingStartDate!;
               const qty = Number(String(cycleQtyInput).replace(',', '.'));
+              const stock = Number(product?.current_stock || 0);
+              if (Number.isFinite(qty) && qty > 0 && qty > stock) {
+                e.preventDefault();
+                toast.error(
+                  `Você tem ${formatCycleQuantity(stock)} ${PRODUCT_UNITS.find(u => u.value === product?.unit)?.label} em estoque. Informe uma quantidade em uso igual ou menor.`,
+                );
+                return;
+              }
               setPendingStartDate(null);
               setCycleQtyInput('');
               await runStartCycle(d, Number.isFinite(qty) && qty > 0 ? qty : null);
             }}
           >
+
 
             <Save className="h-4 w-4 mr-1" /> Salvar
           </AlertDialogAction>
@@ -2565,6 +2602,7 @@ export function ProductDetailDialog({
 function ProductAutomaticConsumption({
   product,
   consumptionRecords,
+  dailyConsumptions,
   productConsumption,
   appointments,
   serviceLinks,
@@ -2572,6 +2610,7 @@ function ProductAutomaticConsumption({
 }: {
   product: Product;
   consumptionRecords: any[];
+  dailyConsumptions: any[];
   productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
   appointments: any[];
   serviceLinks: any[];
@@ -2584,17 +2623,36 @@ function ProductAutomaticConsumption({
     [consumptionRecords, product.id]
   );
 
+  // Lançamentos por data: incluem as baixas dos ciclos de uso encerrados
+  // (quantidade separada para uso), vendas e lançamentos manuais.
+  const productDaily = useMemo(
+    () => (dailyConsumptions || []).filter((c: any) => c.product_id === product.id),
+    [dailyConsumptions, product.id]
+  );
+
   // Eventos de consumo derivados: usa registros explícitos quando existem,
   // senão calcula a partir dos atendimentos concluídos vinculados ao produto.
   const consumptionEvents = useMemo(() => {
+    const dailyEvents = productDaily
+      .map((c: any) => ({
+        date: c.consumption_date ? parseISO(c.consumption_date + 'T12:00:00') : null,
+        qty: Number(c.quantity_used) || 0,
+      }))
+      .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+
     if (productRecords.length > 0) {
-      return productRecords
-        .map((r: any) => ({
-          date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
-          qty: Number(r.quantity_used) || 0,
-        }))
-        .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+      return [
+        ...dailyEvents,
+        ...productRecords
+          .map((r: any) => ({
+            date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
+            qty: Number(r.quantity_used) || 0,
+          }))
+          .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime())),
+      ];
     }
+    if (dailyEvents.length > 0) return dailyEvents;
+
 
     // Fallback automático: deriva consumo de atendimentos concluídos
     const serviceQtyMap = new Map<string, number>();
@@ -2621,7 +2679,7 @@ function ProductAutomaticConsumption({
       events.push({ date: d, qty });
     }
     return events;
-  }, [productRecords, appointments, serviceLinks, templateLinks]);
+  }, [productRecords, productDaily, appointments, serviceLinks, templateLinks]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -2648,11 +2706,27 @@ function ProductAutomaticConsumption({
   }, [consumptionEvents]);
 
   const history = useMemo(() => {
-    return [...productRecords]
+    const fromRecords = productRecords
       .filter((r: any) => r.appointment?.start_time)
-      .sort((a: any, b: any) => new Date(b.appointment.start_time).getTime() - new Date(a.appointment.start_time).getTime())
+      .map((r: any) => ({
+        id: r.id,
+        when: r.appointment.start_time,
+        label: r.appointment?.service?.name || '-',
+        qty: Number(r.quantity_used) || 0,
+      }));
+
+    const fromDaily = productDaily.map((c: any) => ({
+      id: c.id,
+      when: c.consumption_date + 'T12:00:00',
+      label: c.notes?.includes('[ciclo:') ? 'Ciclo de uso' : (c.notes || 'Consumo registrado'),
+      qty: Number(c.quantity_used) || 0,
+    }));
+
+    return [...fromRecords, ...fromDaily]
+      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
       .slice(0, 50);
-  }, [productRecords]);
+  }, [productRecords, productDaily]);
+
 
 
   return (
@@ -2708,7 +2782,7 @@ function ProductAutomaticConsumption({
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
-              <TableHead>Serviço</TableHead>
+              <TableHead>Origem</TableHead>
               <TableHead>Quantidade</TableHead>
             </TableRow>
           </TableHeader>
@@ -2716,16 +2790,17 @@ function ProductAutomaticConsumption({
             {history.map((r: any) => (
               <TableRow key={r.id}>
                 <TableCell className="text-sm">
-                  {format(parseISO(r.appointment.start_time), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  {format(parseISO(r.when), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                 </TableCell>
                 <TableCell className="text-sm">
-                  {r.appointment?.service?.name || '-'}
+                  {r.label}
                 </TableCell>
                 <TableCell className="text-sm font-medium tabular-nums">
-                  {Number(r.quantity_used).toFixed(2)} {unitLabel}
+                  {Number(r.qty).toFixed(2)} {unitLabel}
                 </TableCell>
               </TableRow>
             ))}
+
           </TableBody>
         </Table>
       ) : (

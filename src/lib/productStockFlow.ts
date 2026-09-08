@@ -28,25 +28,21 @@ export interface CycleDeductionInput {
   stockBefore: number;
   /** Quantidade colocada em uso no ciclo (ex.: 100 de 600). 0/null quando não informada. */
   cycleQuantity?: number | null;
-  /** Quantidade da compra que está em uso, quando existir compra ativa. */
-  activePurchaseQuantity?: number | null;
   /** Baixa somada dos vínculos com recipiente (modo estimado). */
   estimatedDeduction?: number;
   /** Baixa somada dos vínculos com quantidade exata por atendimento. */
   exactDeduction?: number;
-  /** Produto a granel: sem vínculo com serviço/pacote e sem recipiente. */
-  isBulk?: boolean;
 }
 
 /**
  * Quantidade a descontar do estoque total ao encerrar o ciclo.
  *
  * Ordem de prioridade:
- * 1. Quantidade em uso informada no início do ciclo (fonte mais confiável).
+ * 1. Quantidade em uso informada no início do ciclo (fonte oficial).
  * 2. Vínculos com serviços/pacotes (recipiente + quantidade exata).
- * 3. Produto a granel: a quantidade da compra em uso — nunca o total já comprado
- *    ao longo da vida do produto, que zeraria o estoque indevidamente.
  *
+ * Não existe mais nenhum caminho de emergência que consuma a compra inteira ou
+ * todo o estoque: sem quantidade informada e sem vínculos, nada é descontado.
  * O resultado é sempre limitado ao estoque disponível e nunca negativo.
  */
 export function resolveCycleDeduction(input: CycleDeductionInput): number {
@@ -59,13 +55,9 @@ export function resolveCycleDeduction(input: CycleDeductionInput): number {
   const linked = (Number(input.estimatedDeduction) || 0) + (Number(input.exactDeduction) || 0);
   if (linked > 0) return clamp(linked);
 
-  if (input.isBulk) {
-    const activeQty = Number(input.activePurchaseQuantity) || 0;
-    return clamp(activeQty > 0 ? activeQty : stockBefore);
-  }
-
   return 0;
 }
+
 
 /** Estoque restante após encerrar o ciclo. */
 export function resolveStockAfterCycle(stockBefore: number, deduction: number): number {

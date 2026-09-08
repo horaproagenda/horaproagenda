@@ -21,9 +21,7 @@ describe('resolveStockAfterPurchase', () => {
 
 describe('resolveCycleDeduction', () => {
   it('usa a quantidade parcial em uso quando informada', () => {
-    expect(
-      resolveCycleDeduction({ stockBefore: 600, cycleQuantity: 100, isBulk: true }),
-    ).toBe(100);
+    expect(resolveCycleDeduction({ stockBefore: 600, cycleQuantity: 100 })).toBe(100);
   });
 
   it('nunca desconta mais do que o estoque disponível', () => {
@@ -36,20 +34,15 @@ describe('resolveCycleDeduction', () => {
     ).toBe(520);
   });
 
-  it('a granel usa a quantidade da compra ativa, não o total histórico', () => {
-    expect(
-      resolveCycleDeduction({ stockBefore: 600, activePurchaseQuantity: 200, isBulk: true }),
-    ).toBe(200);
-  });
-
-  it('a granel sem compra ativa consome o estoque atual', () => {
-    expect(resolveCycleDeduction({ stockBefore: 120, isBulk: true })).toBe(120);
+  it('nunca consome o estoque inteiro por falta de informação', () => {
+    expect(resolveCycleDeduction({ stockBefore: 600 })).toBe(0);
   });
 
   it('não desconta nada quando o produto tem vínculos sem uso no ciclo', () => {
-    expect(resolveCycleDeduction({ stockBefore: 600, isBulk: false })).toBe(0);
+    expect(resolveCycleDeduction({ stockBefore: 600 })).toBe(0);
   });
 });
+
 
 describe('resolveStockAfterCycle', () => {
   it('reduz o estoque total pela quantidade usada', () => {

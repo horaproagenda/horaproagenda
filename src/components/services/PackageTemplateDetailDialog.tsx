@@ -743,6 +743,12 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   </div>
                 )}
 
+                <VisibilitySelect
+                  module="servicos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                />
+
                 <FormField
                   control={form.control}
                   name="is_active"

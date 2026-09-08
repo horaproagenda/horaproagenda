@@ -42,6 +42,8 @@ import { GenerateLinkDialog } from '@/components/documentos/GenerateLinkDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 
 const templateTypeConfig = {
   anamnese: { 
@@ -72,6 +74,8 @@ const templateTypeConfig = {
 };
 
 const Documentos = () => {
+  const { hasRole } = useAuth();
+  const { professionalId } = useProfessionalScopeFlags();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -149,6 +153,11 @@ const Documentos = () => {
     if (lowerTitle.includes('termo') || lowerTitle.includes('consent')) return 'consent';
     return 'anamnese';
   };
+
+  const canManageTemplate = (template: any) =>
+    hasRole('admin')
+    || hasRole('receptionist')
+    || template?.owner_professional_id === professionalId;
 
   return (
     <AppLayout title="Anamnese e Contratos" subtitle="Modelos de documentos editáveis para clínica estética">
@@ -271,22 +280,28 @@ const Documentos = () => {
                                     <Eye className="h-4 w-4 mr-2" />
                                     Visualizar
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(template); }}>
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Editar
-                                  </DropdownMenuItem>
+                                  {canManageTemplate(template) && (
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(template); }}>
+                                      <Edit2 className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(template); }}>
                                     <Copy className="h-4 w-4 mr-2" />
                                     Duplicar
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(template.id); }}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Excluir
-                                  </DropdownMenuItem>
+                                  {canManageTemplate(template) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(template.id); }}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Excluir
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>

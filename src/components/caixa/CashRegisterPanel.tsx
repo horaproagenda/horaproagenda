@@ -658,7 +658,7 @@ export function CashRegisterPanel() {
             </AlertDialog>
             )}
 
-            {canOpenCloseRegister && (
+            {(canOpenCloseRegister || (ownRegisterMode && canManageOwnRegister)) && (
             <Button variant="default" onClick={() => setIsCloseDialogOpen(true)}>
               <Lock className="h-4 w-4 mr-2" />
               Fechar Caixa

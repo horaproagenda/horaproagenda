@@ -53,9 +53,27 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
         .select('id, permissions')
         .eq('user_id', user!.id)
         .maybeSingle();
+      if (row?.id) {
+        return {
+          id: row.id as string,
+          permissions: ((row.permissions ?? {}) as Record<string, boolean>) || {},
+        };
+      }
+      // Cadastro sem vínculo direto de usuário: localiza pelo e-mail (mesma
+      // regra usada pelas permissões do banco).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: fallbackId } = await (supabase as any).rpc('get_professional_id_for_user', {
+        _user_id: user!.id,
+      });
+      if (!fallbackId) return { id: null, permissions: {} as Record<string, boolean> };
+      const { data: byEmail } = await supabase
+        .from('professionals')
+        .select('id, permissions')
+        .eq('id', fallbackId as string)
+        .maybeSingle();
       return {
-        id: (row?.id as string | undefined) ?? null,
-        permissions: ((row?.permissions ?? {}) as Record<string, boolean>) || {},
+        id: (byEmail?.id as string | undefined) ?? null,
+        permissions: ((byEmail?.permissions ?? {}) as Record<string, boolean>) || {},
       };
     },
   });

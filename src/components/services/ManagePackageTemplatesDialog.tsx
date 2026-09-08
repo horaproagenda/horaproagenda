@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -232,7 +233,7 @@ export function ManagePackageTemplatesDialog() {
                       <FormItem>
                         <FormLabel>Sessões *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={1} {...field} />
+                          <NumberInput min={1} value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -276,7 +277,7 @@ export function ManagePackageTemplatesDialog() {
                       <FormItem>
                         <FormLabel>Intervalo (dias) *</FormLabel>
                         <FormControl>
-                          <Input type="number" min={1} {...field} />
+                          <NumberInput min={1} value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

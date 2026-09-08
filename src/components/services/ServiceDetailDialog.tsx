@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -697,13 +698,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     <FormItem>
                       <FormLabel>Retorno (dias)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min={0} 
-                          max={365} 
-                          {...field}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                        <NumberInput
+                          min={0}
+                          max={365}
+                          value={field.value ?? null}
+                          onValueChange={(v) => field.onChange(v)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -875,14 +874,14 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                               <Label className="text-xs text-muted-foreground">
                                 {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
                               </Label>
-                              <Input
-                                type="number"
+                              <NumberInput
                                 min={0}
                                 max={365}
+                                emptyValue={0}
                                 value={c.interval_days}
                                 disabled={idx === 0}
-                                onChange={(e) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
+                                onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                                  i === idx ? { ...it, interval_days: v ?? 0 } : it
                                 ))}
                                 className="h-8 text-sm"
                               />

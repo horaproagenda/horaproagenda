@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -311,15 +312,13 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                     <FormItem>
                       <FormLabel className="text-xs">Retorno (dias)</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
+                        <NumberInput
                           min={0}
                           max={365}
                           placeholder="30"
                           className="h-8 text-sm"
-                          {...field}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                          value={field.value ?? null}
+                          onValueChange={(v) => field.onChange(v)}
                         />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
@@ -496,14 +495,14 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                           <Label className="text-[10px] text-muted-foreground">
                             {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
                           </Label>
-                          <Input
-                            type="number"
+                          <NumberInput
                             min={0}
                             max={365}
+                            emptyValue={0}
                             value={c.interval_days}
                             disabled={idx === 0}
-                            onChange={(e) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, interval_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)) } : it
+                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
+                              i === idx ? { ...it, interval_days: v ?? 0 } : it
                             ))}
                             className="h-7 text-xs bg-background"
                           />

@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -344,7 +345,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     <FormItem>
                       <FormLabel className="text-xs">Aplicações *</FormLabel>
                       <FormControl>
-                        <Input type="number" min={1} max={100} className="h-8 text-sm" {...field} />
+                        <NumberInput min={1} max={100} className="h-8 text-sm" value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>
@@ -357,7 +358,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     <FormItem>
                       <FormLabel className="text-xs">Intervalo (dias)</FormLabel>
                       <FormControl>
-                        <Input type="number" min={1} max={365} className="h-8 text-sm" {...field} />
+                        <NumberInput min={1} max={365} className="h-8 text-sm" value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>
@@ -419,7 +420,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                       </div>
                       <div>
                         <FormLabel className="text-[10px]">Após (dias)</FormLabel>
-                        <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} value={index === steps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateStep(index, { interval_after_days: Number(e.target.value) })} />
+                        <NumberInput min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} emptyValue={0} value={index === steps.length - 1 ? 0 : step.interval_after_days} onValueChange={(v) => updateStep(index, { interval_after_days: v ?? 0 })} />
                       </div>
                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={steps.length === 1} onClick={() => removeStep(index)}>
                         <Trash2 className="h-3.5 w-3.5" />

@@ -12,11 +12,17 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
   ({ value, onValueChange, onCentsChange, className, onFocus, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(formatCurrencyInput(value));
     const [isEditing, setIsEditing] = React.useState(false);
+    // Usuário apagou o valor: mantemos o campo vazio até digitar algo novo.
+    const [cleared, setCleared] = React.useState(false);
 
     React.useEffect(() => {
       if (isEditing) return;
+      if (cleared && normalizeBrazilianCurrency(value) === 0) {
+        setDisplayValue('');
+        return;
+      }
       setDisplayValue(formatCurrencyInput(value));
-    }, [isEditing, value]);
+    }, [isEditing, value, cleared]);
 
     const formatTypingValue = (nextValue: string) => {
       const sanitized = nextValue.replace(/[^\d,]/g, '');
@@ -41,6 +47,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           onChange={(event) => {
             const nextValue = formatTypingValue(event.target.value);
             setDisplayValue(nextValue);
+            setCleared(nextValue.trim() === '');
             const cents = parseBrazilianCurrencyToCents(nextValue);
             onCentsChange?.(cents);
             onValueChange(cents / 100);
@@ -55,6 +62,16 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
             onFocus?.(event);
           }}
           onBlur={() => {
+            // Campo apagado permanece vazio (sem "0,00" teimoso) para o usuário digitar o valor.
+            if (displayValue.trim() === '') {
+              onValueChange(0);
+              onCentsChange?.(0);
+              setCleared(true);
+              setDisplayValue('');
+              setIsEditing(false);
+              return;
+            }
+            setCleared(false);
             const normalizedValue = normalizeBrazilianCurrency(displayValue);
             onValueChange(normalizedValue);
             onCentsChange?.(Math.round(normalizedValue * 100));

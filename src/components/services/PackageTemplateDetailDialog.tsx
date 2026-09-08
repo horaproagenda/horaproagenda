@@ -242,6 +242,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
           is_active: data.is_active,
+          ...recordVis.visibilityField,
         })
         .eq('id', pkg.id);
 

@@ -141,7 +141,18 @@ export function ProfessionalAbsenceDialog({
     }
   }, [editingAbsence, prefilledDate, open]);
 
-  const activeProfessionals = professionals.filter(p => p.is_active);
+  // O profissional só pode registrar ausência para ele mesmo.
+  const lockedToOwn = isProfessional && !!ownProfessionalId;
+
+  useEffect(() => {
+    if (open && lockedToOwn && !editingAbsence) {
+      setProfessionalId(ownProfessionalId!);
+    }
+  }, [open, lockedToOwn, ownProfessionalId, editingAbsence]);
+
+  const activeProfessionals = professionals
+    .filter(p => p.is_active)
+    .filter(p => !lockedToOwn || p.id === ownProfessionalId);
 
   // Generate dates based on recurrence settings
   const generateRecurringDates = (): Date[] => {

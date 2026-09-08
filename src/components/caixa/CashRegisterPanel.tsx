@@ -68,9 +68,20 @@ type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
   const navigate = useNavigate();
-  const { canOpenCloseRegister } = useProfessionalScopeFlags();
+  const { canOpenCloseRegister, canManageOwnRegister } = useProfessionalScopeFlags();
   const queryClient = useQueryClient();
-  const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
+  const {
+    currentOpenRegister,
+    openCashRegister,
+    closeCashRegister,
+    isLoading,
+    ownRegisterMode,
+    clinicOpenRegister,
+  } = useCashRegisters();
+  const { transactions: clinicTransactions } = useCashTransactions(
+    ownRegisterMode ? clinicOpenRegister?.id : undefined,
+  );
+  const canOpenRegister = canOpenCloseRegister || canManageOwnRegister;
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
@@ -158,6 +169,18 @@ export function CashRegisterPanel() {
       balance: (currentOpenRegister?.opening_balance || 0) + income - expense,
     };
   }, [transactions, currentOpenRegister]);
+
+  // Saldo do caixa da clínica, para comparar com o caixa próprio do profissional.
+  const clinicBalance = useMemo(() => {
+    if (!ownRegisterMode || !clinicOpenRegister) return 0;
+    const income = clinicTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const expense = clinicTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    return Number(clinicOpenRegister.opening_balance || 0) + income - expense;
+  }, [ownRegisterMode, clinicOpenRegister, clinicTransactions]);
 
   // Receivables by period - combining financial_entries, pending appointments AND boletos.
   // Sync rules (real-time via realtime channel above):
@@ -413,12 +436,14 @@ export function CashRegisterPanel() {
           <Wallet className="h-20 w-20 text-muted-foreground mb-6" />
           <h3 className="text-2xl font-semibold mb-2">Caixa Fechado</h3>
           <p className="text-muted-foreground mb-6">
-            {canOpenCloseRegister
-              ? 'Abra o caixa para começar a registrar vendas'
+            {canOpenRegister
+              ? (ownRegisterMode
+                  ? 'Abra o seu caixa para registrar suas próprias entradas e saídas'
+                  : 'Abra o caixa para começar a registrar vendas')
               : 'O caixa da clínica está fechado. Assim que o administrador abrir o caixa, seus pagamentos serão registrados nele.'}
           </p>
 
-          {canOpenCloseRegister && (
+          {canOpenRegister && (
           <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="px-8">
@@ -467,7 +492,7 @@ export function CashRegisterPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl flex items-center gap-2">
               <Receipt className="h-6 w-6" />
-              Caixa #{currentOpenRegister.register_number}
+              {ownRegisterMode ? 'Meu caixa' : 'Caixa'} #{currentOpenRegister.register_number}
             </CardTitle>
             <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />
@@ -478,6 +503,23 @@ export function CashRegisterPanel() {
         <CardContent className="space-y-4">
           {/* Os totais (Entradas, Saídas, Descontos, Taxas Cartão, Líquido, Saldo Atual)
               são exibidos pela barra "Caixa em tempo real" no topo da página. */}
+
+          {ownRegisterMode && (
+            <div className="grid gap-3 sm:grid-cols-3 rounded-lg border bg-muted/30 p-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Meu caixa (saldo)</p>
+                <p className="text-lg font-semibold">R$ {balance.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Caixa da clínica (saldo)</p>
+                <p className="text-lg font-semibold">R$ {clinicBalance.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Diferença</p>
+                <p className="text-lg font-semibold">R$ {(balance - clinicBalance).toFixed(2)}</p>
+              </div>
+            </div>
+          )}
 
           <Separator />
 

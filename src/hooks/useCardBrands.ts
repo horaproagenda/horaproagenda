@@ -114,6 +114,7 @@ export function useCardBrands() {
   // Fee management
   const saveBrandFees = useMutation({
     mutationFn: async ({ brandId, fees }: { brandId: string; fees: { installment_number: number; fee_percentage: number }[] }) => {
+      const { data: { user } } = await supabase.auth.getUser();
       // Delete existing fees for this brand
       await supabase
         .from('card_brand_fees')
@@ -129,6 +130,7 @@ export function useCardBrands() {
               card_brand_id: brandId,
               installment_number: f.installment_number,
               fee_percentage: f.fee_percentage,
+              created_by: user?.id ?? null,
             }))
           );
 

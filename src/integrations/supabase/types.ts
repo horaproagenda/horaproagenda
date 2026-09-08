@@ -1081,6 +1081,7 @@ export type Database = {
           account_owner_id: string
           card_brand_id: string
           created_at: string
+          created_by: string | null
           fee_percentage: number
           id: string
           installment_number: number
@@ -1090,6 +1091,7 @@ export type Database = {
           account_owner_id?: string
           card_brand_id: string
           created_at?: string
+          created_by?: string | null
           fee_percentage?: number
           id?: string
           installment_number?: number
@@ -1099,6 +1101,7 @@ export type Database = {
           account_owner_id?: string
           card_brand_id?: string
           created_at?: string
+          created_by?: string | null
           fee_percentage?: number
           id?: string
           installment_number?: number
@@ -1211,6 +1214,7 @@ export type Database = {
           opening_balance: number
           payment_breakdown: Json | null
           payments_count: number | null
+          professional_id: string | null
           register_number: number
           status: string
           total_receivables: number | null
@@ -1235,6 +1239,7 @@ export type Database = {
           opening_balance?: number
           payment_breakdown?: Json | null
           payments_count?: number | null
+          professional_id?: string | null
           register_number: number
           status?: string
           total_receivables?: number | null
@@ -1259,13 +1264,22 @@ export type Database = {
           opening_balance?: number
           payment_breakdown?: Json | null
           payments_count?: number | null
+          professional_id?: string | null
           register_number?: number
           status?: string
           total_receivables?: number | null
           total_received?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_registers_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cash_transactions: {
         Row: {
@@ -1281,6 +1295,7 @@ export type Database = {
           id: string
           installments: number | null
           payment_method: string | null
+          professional_id: string | null
           reference_id: string | null
           reference_type: string | null
           type: string
@@ -1299,6 +1314,7 @@ export type Database = {
           id?: string
           installments?: number | null
           payment_method?: string | null
+          professional_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
           type: string
@@ -1317,6 +1333,7 @@ export type Database = {
           id?: string
           installments?: number | null
           payment_method?: string | null
+          professional_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
           type?: string
@@ -1335,6 +1352,13 @@ export type Database = {
             columns: ["cash_register_id"]
             isOneToOne: false
             referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_transactions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -5621,6 +5645,7 @@ export type Database = {
         Args: { _package_id: string }
         Returns: boolean
       }
+      can_manage_card_brand: { Args: { _brand_id: string }; Returns: boolean }
       can_manage_package_appointment: {
         Args: { _package_appointment_id: string }
         Returns: boolean
@@ -5629,8 +5654,17 @@ export type Database = {
         Args: { _professional_id: string }
         Returns: boolean
       }
+      can_see_card_brand: { Args: { _brand_id: string }; Returns: boolean }
       can_see_financial_entry: {
         Args: { _appointment_id: string; _created_by: string; _sale_id: string }
+        Returns: boolean
+      }
+      can_see_own_financial_record: {
+        Args: { _created_by: string }
+        Returns: boolean
+      }
+      can_see_professional_register: {
+        Args: { _professional_id: string }
         Returns: boolean
       }
       can_see_record: {
@@ -5645,6 +5679,7 @@ export type Database = {
         Args: { _bucket_id: string; _object_name: string }
         Returns: boolean
       }
+      can_use_financial_module: { Args: never; Returns: boolean }
       can_write_record: {
         Args: { _action: string; _module: string; _owner: string }
         Returns: boolean

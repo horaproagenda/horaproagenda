@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { PERMISSION_MODULES, normalizeRow, presetPermissions, type PermissionRow } from '@/lib/permissions';
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
-import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 
 type PermRow = PermissionRow;
 

@@ -73,18 +73,41 @@ export async function downloadRichDocumentPdf(opts: RichPdfOptions): Promise<voi
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgHeight = (canvas.height * pageWidth) / canvas.width;
 
-    let remaining = imgHeight;
-    let offset = 0;
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    // Fatia o canvas em páginas reais: cada folha recebe apenas o pedaço
+    // correspondente, preservando a escala e sem repetir/cortar conteúdo
+    // entre o fim de uma folha e o início da próxima.
+    const pxPerMm = canvas.width / pageWidth;
+    const pageHeightPx = Math.floor(pageHeight * pxPerMm);
+    let renderedPx = 0;
+    let firstPage = true;
 
-    while (remaining > 0) {
-      pdf.addImage(imgData, 'JPEG', 0, -offset, pageWidth, imgHeight, undefined, 'FAST');
-      remaining -= pageHeight;
-      offset += pageHeight;
-      if (remaining > 0) pdf.addPage();
+    while (renderedPx < canvas.height) {
+      const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
+      const slice = window.document.createElement('canvas');
+      slice.width = canvas.width;
+      slice.height = sliceHeight;
+      const ctx = slice.getContext('2d');
+      if (!ctx) break;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+
+      if (!firstPage) pdf.addPage();
+      firstPage = false;
+      pdf.addImage(
+        slice.toDataURL('image/jpeg', 0.95),
+        'JPEG',
+        0,
+        0,
+        pageWidth,
+        sliceHeight / pxPerMm,
+        undefined,
+        'FAST',
+      );
+      renderedPx += sliceHeight;
     }
+
 
     pdf.save(`${sanitizeFileName(opts.fileName || title)}.pdf`);
   } finally {

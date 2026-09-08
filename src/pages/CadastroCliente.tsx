@@ -57,14 +57,24 @@ const formatCpfMask = (v: string) => {
   return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
 };
 
+interface LinkBranding {
+  clinic_name?: string | null;
+  clinic_logo_url?: string | null;
+  clinic_phone?: string | null;
+  clinic_city?: string | null;
+  clinic_state?: string | null;
+}
+
 interface LinkData {
   id: string;
   expires_at: string | null;
   already_used: boolean;
   single_use: boolean;
   professional: { id: string; name: string } | null;
+  branding?: LinkBranding | null;
   templates: Array<{ id: string; title: string; content: string; variables?: any }>;
 }
+
 
 type Step = 'form' | 'documents' | 'success';
 
@@ -92,6 +102,8 @@ export default function CadastroCliente() {
   // Generated content per template (filled after submit, used for PDF downloads)
   const [generatedDocs, setGeneratedDocs] = useState<Array<{ id: string; title: string; content: string }>>([]);
   const [documentStamp, setDocumentStamp] = useState<Date>(() => new Date());
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
 
   const calcAge = (iso: string) => {
     if (!iso) return '';
@@ -164,6 +176,17 @@ export default function CadastroCliente() {
       setLoadingLink(false);
     })();
   }, [token]);
+
+  // Ao trocar de documento (ou entrar na etapa de documentos), a página volta
+  // ao início para que o cliente leia o documento inteiro antes de assinar.
+  useEffect(() => {
+    if (step !== 'documents') return;
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.document.getElementById('documento-inicio')?.scrollIntoView({ block: 'start' });
+  }, [step, currentDocIndex]);
+
+
 
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -306,9 +329,9 @@ export default function CadastroCliente() {
     linkData?.professional?.name ? `Profissional: ${linkData.professional.name}` : '',
   ];
 
-  const downloadDocPdf = (doc: { id: string; title: string; content: string }) => {
+  const downloadDocPdf = async (doc: { id: string; title: string; content: string }) => {
     if (isRichDocument(doc.content)) {
-      void downloadRichDocumentPdf({
+      await downloadRichDocumentPdf({
         title: doc.title,
         bodyHtml: doc.content,
         headerLines: buildPdfHeaderLines(),
@@ -330,25 +353,72 @@ export default function CadastroCliente() {
     });
   };
 
-  const downloadAllPdfs = () => {
-    if (generatedDocs.some((d) => isRichDocument(d.content))) {
-      generatedDocs.forEach((d) => downloadDocPdf(d));
-      return;
+  const downloadAllPdfs = async () => {
+    if (downloadingAll) return;
+    setDownloadingAll(true);
+    try {
+      // Documentos com formatação (HTML) precisam de um PDF cada; os downloads
+      // são feitos em sequência para que o navegador salve todos, não só o
+      // primeiro. Documentos simples viram um único PDF combinado.
+      const richDocs = generatedDocs.filter((d) => isRichDocument(d.content));
+      const plainDocs = generatedDocs.filter((d) => !isRichDocument(d.content));
+
+      for (const doc of richDocs) {
+        await downloadDocPdf(doc);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+
+      if (plainDocs.length === 1) {
+        await downloadDocPdf(plainDocs[0]);
+      } else if (plainDocs.length > 1) {
+        generateCombinedClientDocumentsPdf({
+          documents: plainDocs.map((d) => ({ title: d.title, filledContent: d.content })),
+          header: {
+            name: signedBy || form.name,
+            cpf: form.cpf || null,
+            birthdate: form.birthdate
+              ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+              : null,
+            professionalName: linkData?.professional?.name || null,
+          },
+        });
+      }
+      toast.success('Todos os documentos foram baixados.');
+    } catch {
+      toast.error('Não foi possível baixar todos os documentos. Tente baixar um por um.');
+    } finally {
+      setDownloadingAll(false);
     }
-    generateCombinedClientDocumentsPdf({
-      documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
-      header: {
-        name: signedBy || form.name,
-        cpf: form.cpf || null,
-        birthdate: form.birthdate
-          ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
-          : null,
-        professionalName: linkData?.professional?.name || null,
-      },
-    });
   };
 
+
+  // Identidade visual da clínica (nome e logo) exibida em todas as etapas do link.
+  const branding = linkData?.branding || null;
+  const clinicName = branding?.clinic_name?.trim() || '';
+  const clinicLogo = branding?.clinic_logo_url?.trim() || '';
+  const brandingHeader =
+    clinicName || clinicLogo ? (
+      <div className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
+        {clinicLogo && (
+          <img
+            src={clinicLogo}
+            alt={clinicName ? `Logo de ${clinicName}` : 'Logo da clínica'}
+            className="h-12 w-12 rounded-md object-contain bg-background"
+            loading="lazy"
+          />
+        )}
+        <div className="min-w-0">
+          {clinicName && <p className="truncate text-sm font-semibold">{clinicName}</p>}
+          <p className="truncate text-xs text-muted-foreground">
+            {[branding?.clinic_city, branding?.clinic_state].filter(Boolean).join('/') ||
+              'Cadastro seguro do cliente'}
+          </p>
+        </div>
+      </div>
+    ) : null;
+
   // ---------- RENDER ----------
+
 
   if (loadingLink) {
     return (
@@ -419,11 +489,16 @@ export default function CadastroCliente() {
                   ))}
                 </div>
                 {generatedDocs.length > 1 && (
-                  <Button className="w-full" onClick={downloadAllPdfs}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar todos os PDFs
+                  <Button className="w-full" onClick={() => void downloadAllPdfs()} disabled={downloadingAll}>
+                    {downloadingAll ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {downloadingAll ? 'Baixando documentos...' : 'Baixar todos os PDFs'}
                   </Button>
                 )}
+
               </div>
             )}
           </CardContent>
@@ -441,7 +516,8 @@ export default function CadastroCliente() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted">
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-          <div className="flex items-center justify-between">
+          {brandingHeader}
+          <div id="documento-inicio" className="flex items-center justify-between scroll-mt-4">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Documento {currentDocIndex + 1} de {templates.length}
@@ -453,6 +529,7 @@ export default function CadastroCliente() {
               Dados do cadastro já foram preenchidos automaticamente
             </div>
           </div>
+
 
           <Card className="shadow-xl">
             <CardContent className="p-4 sm:p-6 space-y-4">
@@ -526,6 +603,8 @@ export default function CadastroCliente() {
         <meta name="robots" content="noindex,follow" />
       </Helmet>
       <div className="max-w-2xl mx-auto space-y-4">
+        {brandingHeader}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Cadastro do Cliente</CardTitle>

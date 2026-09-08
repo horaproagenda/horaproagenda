@@ -110,6 +110,21 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         });
       }
 
+      // Boletos parcelados: o recebido é a soma das parcelas com baixa, nunca o valor total.
+      const boletoBySale = new Map<string, { count: number; paid: number }>();
+      if (saleIds.length > 0) {
+        const { data: boletos } = await supabase
+          .from('boleto_installments')
+          .select('sale_id, amount, status')
+          .in('sale_id', saleIds);
+        (boletos || []).forEach((b: any) => {
+          const cur = boletoBySale.get(b.sale_id) || { count: 0, paid: 0 };
+          cur.count += 1;
+          if (b.status === 'paid') cur.paid += Number(b.amount || 0);
+          boletoBySale.set(b.sale_id, cur);
+        });
+      }
+
       return (sales || []).map((s: any): PackageSaleRow => {
         const apps = s.package?.appointments || [];
         const used = apps.filter((a: any) => a.status === 'completed' || a.status === 'missed').length;
@@ -124,7 +139,11 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           clientName: s.client?.name || '-',
           saleDate: s.sale_date || (s.paid_at ? String(s.paid_at).slice(0,10) : ''),
           totalAmount: Number(s.original_amount || s.final_amount || 0),
-          paidAmount: Number(s.final_amount || 0),
+          paidAmount: (() => {
+            const boleto = boletoBySale.get(s.id);
+            if (boleto && boleto.count > 0) return Number(boleto.paid.toFixed(2));
+            return s.paid_at ? Number(s.final_amount || 0) : 0;
+          })(),
           paymentMethodName: s.payment_method?.name || '-',
           totalSessions: total,
           usedSessions: used,
@@ -141,6 +160,9 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
     const ch = supabase
       .channel('pacotes-financeiro-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, () => {
         queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_packages' }, () => {

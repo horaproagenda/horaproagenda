@@ -7,6 +7,8 @@ Garantir que cada quantidade colocada em uso tenha um registro completo e confi�
 - Há hoje **11 ciclos ativos** no banco, porém **nenhum ciclo encerrado** foi gravado no novo histórico de uso nem nos lançamentos diários. Assim, as previsões e notificações ainda não conseguem se basear no fluxo novo.
 - Início, término, histórico, lançamentos diários e estoque são salvos por chamadas separadas. Uma falha intermediária pode deixar datas ou saldo divergentes.
 - O formulário aceita quantidade vazia e usa principalmente a unidade geral do produto; ele não fixa de forma confiável a grandeza definida no vínculo com serviço/pacote.
+- Ao limpar início ou término, a tela altera somente o produto e deixa a compra que guarda o ciclo inalterada; por isso a data reaparece. Cancelar o início também deixa a quantidade digitada para a próxima abertura.
+- Iniciar uso pela tela de nova compra não grava a quantidade do ciclo, podendo causar encerramento com baixa zero. Uma conversão antiga entre massa e volume ainda presume densidade de água e pode calcular valores incorretos.
 - O aviso preditivo ainda lê registros antigos de consumo por atendimento e atualiza por intervalo de até cinco minutos, em vez de usar imediatamente os ciclos encerrados e o consumo diário novo.
 - Ao encerrar, já existe uma pergunta para iniciar outro ciclo, mas o segundo formulário não reaproveita claramente a última quantidade/grandeza e não obriga o novo registro completo.
 
@@ -43,7 +45,8 @@ Garantir que cada quantidade colocada em uso tenha um registro completo e confi�
 - Bloquear botões durante a gravação e manter o formulário aberto com os dados digitados se ocorrer erro.
 
 ### 4. Datas e histórico visíveis
-- Corrigir os campos de data para salvar tanto por seleção quanto por digitação completa, sem depender de uma sequência frágil de perda de foco.
+- Corrigir os campos de data para salvar tanto por seleção quanto por digitação completa, sem depender de uma sequência frágil de perda de foco; limpar ou reabrir uma data também deve atualizar o registro principal do ciclo.
+- Unificar o início pela tela de compra e pelo detalhe do produto, sempre exigindo e gravando a quantidade do ciclo; cancelar deve limpar os valores temporários.
 - Mostrar no produto o ciclo ativo e a lista de ciclos encerrados, cada um com quantidade/grandeza, início, término, duração, atendimentos, média e saldo após a baixa.
 - Fazer os cartões Hoje, Semana, Mês, Semestre e Ano lerem os lançamentos do ciclo sem duplicar registros antigos de consumo.
 - Atualizar produtos, compras, histórico, consumo e alertas em tempo real após qualquer alteração.

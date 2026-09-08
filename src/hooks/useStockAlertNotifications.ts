@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useProductUsagePrediction, ProductUsagePrediction } from './useProductUsagePrediction';
+import { useProfessionalScopeFlags } from './useProfessionalScopeFlags';
 import { useBusinessSettings } from './useBusinessSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -69,6 +70,8 @@ export function useStockAlertNotifications(notifyPhone?: string) {
     expiringSoonProducts,
   } = useProductUsagePrediction();
   const { settings } = useBusinessSettings();
+  // Profissional com estoque próprio não dispara aviso no WhatsApp da clínica.
+  const { onlyOwnProducts } = useProfessionalScopeFlags();
   const hasNotifiedRef = useRef(false);
 
   const sendNotifications = useCallback(async (alerts: StockAlert[]) => {

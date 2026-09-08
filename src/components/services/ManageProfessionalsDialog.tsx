@@ -66,7 +66,8 @@ const APP_ROLES = [
 const PERMISSIONS_CONFIG = [
   { key: 'can_access_financial', label: 'Acessar Financeiro', description: 'Ver módulo financeiro e movimentações', category: 'financial' },
   { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Registrar e alterar pagamentos', category: 'financial' },
-  { key: 'can_share_financial_with_admin', label: 'Compartilhar suas contas do financeiro com administrador e recepção', description: 'Se desligado, as contas e boletos que ele lançar aparecem somente para ele', category: 'financial' },
+  { key: 'can_share_financial_with_admin', label: 'Compartilhar seu financeiro com administrador e recepção', description: 'Vale para contas, boletos parcelados, bancos, taxas de cartão e caixa. Se desligado, tudo que ele lançar aparece somente para ele', category: 'financial' },
+  { key: 'can_manage_own_register', label: 'Ter caixa próprio', description: 'Abre um caixa só dele, com entradas e saídas próprias, sem afetar o caixa da clínica', category: 'financial' },
   { key: 'can_view_other_payments', label: 'Ver pagamentos de outros profissionais', description: 'Visualizar pagamentos de outros', category: 'financial' },
   { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de caixa de outros', category: 'financial' },
   { key: 'can_open_close_register', label: 'Abrir e fechar caixa', description: 'Iniciar e finalizar movimento de caixa', category: 'financial' },
@@ -100,6 +101,7 @@ const defaultPermissions = {
   can_view_other_payments: false,
   can_view_other_registers: false,
   can_open_close_register: false,
+  can_manage_own_register: false,
   can_view_daily_revenue: false,
   can_share_clients_with_admin: true,
   can_view_other_clients: false,

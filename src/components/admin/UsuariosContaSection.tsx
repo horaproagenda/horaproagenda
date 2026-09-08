@@ -31,6 +31,8 @@ export function UsuariosContaSection() {
   const qc = useQueryClient();
   const isAdmin = hasRole('admin');
   const { subscription } = useAccountSubscription();
+  const seatUsage = useSeatUsage();
+  const reconcileSeats = useReconcileSeats();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [permsFor, setPermsFor] = useState<{ id: string; full_name: string } | null>(null);

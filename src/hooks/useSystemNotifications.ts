@@ -148,13 +148,14 @@ export function useSystemNotifications() {
 
   // Check for old open cash registers (from previous days)
   const oldOpenRegisters = useMemo(() => {
+    if (!canSeeCash) return [];
     const todayStart = startOfDay(new Date());
     return cashRegisters.filter(register => {
       if (register.status !== 'open') return false;
       const openedAt = parseISO(register.opened_at);
       return isBefore(openedAt, todayStart);
     });
-  }, [cashRegisters]);
+  }, [cashRegisters, canSeeCash]);
 
   // Generate notifications
   const allNotifications = useMemo((): SystemNotification[] => {

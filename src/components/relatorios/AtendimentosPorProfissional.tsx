@@ -49,6 +49,7 @@ export function AtendimentosPorProfissional() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_entries' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'single_sales' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'professionals' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'professional_service_commissions' }, invalidateAll)

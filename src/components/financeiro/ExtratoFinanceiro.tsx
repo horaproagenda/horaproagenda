@@ -73,6 +73,10 @@ export function ExtratoFinanceiro() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_register_entries' }, () => {
         queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+        queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments_audit' }, () => {
         queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
         queryClient.invalidateQueries({ queryKey: ['financial_entries'] });

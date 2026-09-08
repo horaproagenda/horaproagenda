@@ -83,9 +83,13 @@ export function RemindersPanel() {
     completeReminder, 
     deleteReminder 
   } = useReminders();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole('admin') || hasRole('receptionist');
-  const canDelete = hasRole('admin');
+  const { hasRole, user } = useAuth();
+  const isPrivileged = hasRole('admin') || hasRole('receptionist');
+  // Todos podem criar os próprios lembretes; cada um edita e apaga os seus.
+  const canCreate = true;
+  const isOwn = (reminder: Reminder) => !!user?.id && reminder.created_by === user.id;
+  const canEditReminder = (reminder: Reminder) => isPrivileged || isOwn(reminder);
+  const canDeleteReminder = (reminder: Reminder) => hasRole('admin') || isOwn(reminder);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter reminders by search

@@ -72,6 +72,10 @@ export function useRealtimeSync() {
       'banks', 'cash_registers', 'cash_transactions', 'cash_register_entries', 'card_brands',
       'card_brand_fees', 'boleto_installments', 'boleto_installments_all',
       'dashboard-stats', 'dashboard_stats', 'goals',
+      // Relatórios e extrato: precisam do mesmo gatilho dos lançamentos.
+      'fin_dashboard', 'package-sales-financial', 'conciliacao-pagamentos',
+      'atend_prof_data', 'atend_prof_commission_payments',
+      'client_credit_transactions_report', 'single_sales',
     ] as const;
 
     const CLIENT = [
@@ -162,7 +166,7 @@ export function useRealtimeSync() {
       })
 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'boleto_installments' }, () => {
-        invalidateKeys([...FINANCIAL, ...CLIENT, 'single_sales', 'reminders']);
+        invalidateKeys([...FINANCIAL, ...CLIENT, 'single_sales', 'reminders', 'boleto_audit_log']);
       })
 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'client_services' }, () => {

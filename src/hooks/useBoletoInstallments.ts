@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { redistributeActiveBoletoInstallments, syncBoletoPackageAvailability } from '@/lib/boletoInstallmentSync';
+import { syncBoletoInstallmentsToFinancial, removeBoletoInstallmentFinancialEntry } from '@/lib/boletoFinancialSync';
 
 export interface BoletoInstallment {
   id: string;
@@ -39,6 +40,13 @@ const INVALIDATE_KEYS = new Set<string>([
   'client_services',
   'service_packages',
   'package_appointments',
+  // Relatórios e extrato precisam refletir a baixa imediatamente.
+  'fin_dashboard',
+  'package-sales-financial',
+  'atend_prof_data',
+  'atend_prof_commission_payments',
+  'conciliacao-pagamentos',
+  'client_credit_transactions_report',
 ]);
 
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
@@ -101,11 +109,13 @@ export function useBoletoInstallments(saleId?: string) {
         };
       });
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('boleto_installments')
-        .insert(records);
+        .insert(records)
+        .select('id');
 
       if (error) throw error;
+      await syncBoletoInstallmentsToFinancial((inserted || []).map((r: any) => r.id));
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -128,6 +138,7 @@ export function useBoletoInstallments(saleId?: string) {
         .eq('id', params.id);
 
       if (error) throw error;
+      await syncBoletoInstallmentsToFinancial([params.id]);
       if (current?.sale_id) await syncBoletoPackageAvailability(current.sale_id);
     },
     onSuccess: () => {
@@ -148,6 +159,7 @@ export function useBoletoInstallments(saleId?: string) {
         .eq('id', id);
 
       if (error) throw error;
+      await syncBoletoInstallmentsToFinancial([id]);
       if (current?.sale_id) {
         await redistributeActiveBoletoInstallments(current.sale_id);
         await syncBoletoPackageAvailability(current.sale_id);
@@ -171,6 +183,7 @@ export function useBoletoInstallments(saleId?: string) {
         .eq('id', id);
 
       if (error) throw error;
+      await syncBoletoInstallmentsToFinancial([id]);
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -266,6 +279,7 @@ export function useAllBoletoInstallments() {
         .eq('id', params.id);
 
       if (error) throw error;
+      await syncBoletoInstallmentsToFinancial([params.id]);
       if (current?.sale_id) await syncBoletoPackageAvailability(current.sale_id);
 
       await logAudit({
@@ -300,6 +314,8 @@ export function useAllBoletoInstallments() {
         .in('id', params.ids);
 
       if (error) throw error;
+
+      await syncBoletoInstallmentsToFinancial(params.ids);
 
       await Promise.all(Array.from(new Set((currentItems || []).map((item: any) => item.sale_id).filter(Boolean))).map((saleId: string) => syncBoletoPackageAvailability(saleId)));
 
@@ -341,6 +357,7 @@ export function useAllBoletoInstallments() {
         await redistributeActiveBoletoInstallments(current.sale_id);
         await syncBoletoPackageAvailability(current.sale_id);
       }
+      await syncBoletoInstallmentsToFinancial([id]);
 
       await logAudit({
         boleto_installment_id: id,
@@ -382,6 +399,8 @@ export function useAllBoletoInstallments() {
         new_amount: current?.amount,
         notes: 'Parcela cancelada pelo usuário',
       });
+
+      await syncBoletoInstallmentsToFinancial([id]);
     },
     onSuccess: () => {
       invalidateAll(queryClient);
@@ -412,6 +431,7 @@ export function useAllBoletoInstallments() {
 
       const { error } = await supabase.from('boleto_installments').delete().eq('id', id);
       if (error) throw error;
+      await removeBoletoInstallmentFinancialEntry(id);
 
       if (current?.sale_id) {
         await redistributeActiveBoletoInstallments(current.sale_id);

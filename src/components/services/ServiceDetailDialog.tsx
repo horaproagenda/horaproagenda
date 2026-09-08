@@ -310,6 +310,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           equipment: data.equipment || [],
           return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
+          ...recordVis.visibilityField,
           component_service_ids: components.map(c => c.service_id),
           service_components: components as any,
         } as any)

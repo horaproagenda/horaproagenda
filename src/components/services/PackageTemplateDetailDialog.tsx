@@ -92,6 +92,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isSequential = pkg.package_type === 'sequential';
   const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number }>>([]);
+  const recordVis = useRecordVisibility('servicos', (pkg as any).visibility ?? undefined);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();

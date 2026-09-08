@@ -107,6 +107,9 @@ export function useProductDailyConsumption(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
     },
+    onError: (error: unknown) => {
+      toast.error(error);
+    },
   });
 
 

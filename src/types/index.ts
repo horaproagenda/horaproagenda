@@ -196,6 +196,9 @@ export interface DocumentTemplate {
   category: DocumentTemplateCategory;
   created_at: string;
   updated_at: string;
+  owner_professional_id?: string | null;
+  created_by?: string | null;
+  visibility?: 'private' | 'shared' | 'clinic';
 }
 
 export type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'missed' | 'rescheduled';

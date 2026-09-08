@@ -57,14 +57,24 @@ const formatCpfMask = (v: string) => {
   return `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
 };
 
+interface LinkBranding {
+  clinic_name?: string | null;
+  clinic_logo_url?: string | null;
+  clinic_phone?: string | null;
+  clinic_city?: string | null;
+  clinic_state?: string | null;
+}
+
 interface LinkData {
   id: string;
   expires_at: string | null;
   already_used: boolean;
   single_use: boolean;
   professional: { id: string; name: string } | null;
+  branding?: LinkBranding | null;
   templates: Array<{ id: string; title: string; content: string; variables?: any }>;
 }
+
 
 type Step = 'form' | 'documents' | 'success';
 

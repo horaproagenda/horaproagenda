@@ -316,9 +316,9 @@ export default function CadastroCliente() {
     linkData?.professional?.name ? `Profissional: ${linkData.professional.name}` : '',
   ];
 
-  const downloadDocPdf = (doc: { id: string; title: string; content: string }) => {
+  const downloadDocPdf = async (doc: { id: string; title: string; content: string }) => {
     if (isRichDocument(doc.content)) {
-      void downloadRichDocumentPdf({
+      await downloadRichDocumentPdf({
         title: doc.title,
         bodyHtml: doc.content,
         headerLines: buildPdfHeaderLines(),
@@ -340,23 +340,44 @@ export default function CadastroCliente() {
     });
   };
 
-  const downloadAllPdfs = () => {
-    if (generatedDocs.some((d) => isRichDocument(d.content))) {
-      generatedDocs.forEach((d) => downloadDocPdf(d));
-      return;
+  const downloadAllPdfs = async () => {
+    if (downloadingAll) return;
+    setDownloadingAll(true);
+    try {
+      // Documentos com formatação (HTML) precisam de um PDF cada; os downloads
+      // são feitos em sequência para que o navegador salve todos, não só o
+      // primeiro. Documentos simples viram um único PDF combinado.
+      const richDocs = generatedDocs.filter((d) => isRichDocument(d.content));
+      const plainDocs = generatedDocs.filter((d) => !isRichDocument(d.content));
+
+      for (const doc of richDocs) {
+        await downloadDocPdf(doc);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+
+      if (plainDocs.length === 1) {
+        await downloadDocPdf(plainDocs[0]);
+      } else if (plainDocs.length > 1) {
+        generateCombinedClientDocumentsPdf({
+          documents: plainDocs.map((d) => ({ title: d.title, filledContent: d.content })),
+          header: {
+            name: signedBy || form.name,
+            cpf: form.cpf || null,
+            birthdate: form.birthdate
+              ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
+              : null,
+            professionalName: linkData?.professional?.name || null,
+          },
+        });
+      }
+      toast.success('Todos os documentos foram baixados.');
+    } catch {
+      toast.error('Não foi possível baixar todos os documentos. Tente baixar um por um.');
+    } finally {
+      setDownloadingAll(false);
     }
-    generateCombinedClientDocumentsPdf({
-      documents: generatedDocs.map((d) => ({ title: d.title, filledContent: d.content })),
-      header: {
-        name: signedBy || form.name,
-        cpf: form.cpf || null,
-        birthdate: form.birthdate
-          ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
-          : null,
-        professionalName: linkData?.professional?.name || null,
-      },
-    });
   };
+
 
   // ---------- RENDER ----------
 

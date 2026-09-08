@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, Filter, X, Eye, Edit3, Plus, Trash2, FileDown, RefreshCw, Search, Users, CreditCard } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShareAppLinkCard } from '@/components/admin/ShareAppLinkCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -226,6 +227,8 @@ export default function AdminPanel() {
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-semibold tracking-wide">Painel do Administrador</h1>
         </div>
+
+        <ShareAppLinkCard />
 
         <Tabs defaultValue="access" className="w-full">
           <TabsList className="h-8 bg-muted/50 p-1 gap-1 flex-wrap">

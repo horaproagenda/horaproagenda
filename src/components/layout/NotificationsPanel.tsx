@@ -160,6 +160,11 @@ export function NotificationsPanel() {
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {notification.description}
                     </p>
+                    {notification.timeLabel && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+                        {notification.timeLabel}
+                      </p>
+                    )}
                     {notification.link && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-primary">
                         <span>Clique para ver detalhes</span>

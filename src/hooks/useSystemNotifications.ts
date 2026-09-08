@@ -10,6 +10,13 @@ import { useCashRegisters } from './useCashRegisters';
 import { useBusinessSettings } from './useBusinessSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfessionalScopeFlags } from './useProfessionalScopeFlags';
+import { usePermissions } from './usePermissions';
+import {
+  canReceiveNotification,
+  filterNotificationsByAccess,
+  notificationTimeLabel,
+  dateOnlyToLocal,
+} from '@/lib/notificationVisibility';
 import { filterProductsForNotifications } from '@/lib/productNotificationScope';
 import {
   isNotificationDismissed,
@@ -30,12 +37,22 @@ export interface SystemNotification {
   referenceId?: string;
   referenceType?: 'financial_entry' | 'package' | 'product' | 'client' | 'reminder' | 'cash_register';
   clientId?: string;
+  /** Momento a que o aviso se refere (exibido de forma discreta). */
+  at?: string;
+  /** Selo curto de data/hora, ex.: "hoje 14:32". */
+  timeLabel?: string;
 }
 
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
   const { user } = useAuth();
   const { onlyOwnProducts } = useProfessionalScopeFlags();
+  // Cada aviso só é buscado e exibido para quem tem acesso àquela área.
+  const { can } = usePermissions();
+  const canSeeFinance = canReceiveNotification('boleto', can);
+  const canSeeProducts = canReceiveNotification('stock', can);
+  const canSeePackages = canReceiveNotification('package', can);
+  const canSeeCash = canReceiveNotification('cash_register', can);
 
   // Fetch TODAS as contas (a pagar e a receber) vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
@@ -54,6 +71,7 @@ export function useSystemNotifications() {
       if (error) throw error;
       return data || [];
     },
+    enabled: canSeeFinance,
     refetchInterval: 60000, // Check every minute
   });
 
@@ -82,6 +100,7 @@ export function useSystemNotifications() {
         })
         .filter(pkg => pkg.remaining > 0 && pkg.remaining <= 2); // 2 or fewer sessions remaining
     },
+    enabled: canSeePackages,
     refetchInterval: 300000, // Check every 5 minutes
   });
 
@@ -100,6 +119,7 @@ export function useSystemNotifications() {
         product.current_stock <= (product.min_stock_alert || 0)
       );
     },
+    enabled: canSeeProducts,
     refetchInterval: 300000, // Check every 5 minutes
   });
 
@@ -128,13 +148,14 @@ export function useSystemNotifications() {
 
   // Check for old open cash registers (from previous days)
   const oldOpenRegisters = useMemo(() => {
+    if (!canSeeCash) return [];
     const todayStart = startOfDay(new Date());
     return cashRegisters.filter(register => {
       if (register.status !== 'open') return false;
       const openedAt = parseISO(register.opened_at);
       return isBefore(openedAt, todayStart);
     });
-  }, [cashRegisters]);
+  }, [cashRegisters, canSeeCash]);
 
   // Generate notifications
   const allNotifications = useMemo((): SystemNotification[] => {
@@ -154,6 +175,7 @@ export function useSystemNotifications() {
         description: `${entry.description} - R$ ${Number(entry.amount).toFixed(2)}`,
         severity: 'critical',
         date: entry.due_date,
+        at: dateOnlyToLocal(entry.due_date)?.toISOString(),
         link: `/financeiro?tab=${tabSlug}&entry=${entry.id}`,
         referenceId: entry.id,
         referenceType: 'financial_entry',
@@ -285,6 +307,7 @@ export function useSystemNotifications() {
         description: `${reminder.description || 'Lembrete agendado para hoje'}${timeStr}`,
         severity: reminder.priority === 'high' ? 'critical' : 'info',
         date: reminder.reminder_date || undefined,
+        at: dateOnlyToLocal(reminder.reminder_date, reminder.reminder_time)?.toISOString(),
         link: '/lembretes',
         referenceId: reminder.id,
         referenceType: 'reminder',
@@ -301,6 +324,7 @@ export function useSystemNotifications() {
         title: '⚠️ Caixa do dia anterior aberto!',
         description: `Caixa aberto em ${openedDate} não foi fechado. Feche-o antes de continuar.`,
         severity: 'critical',
+        at: register.opened_at,
         link: '/caixa?tab=caixa',
         referenceId: register.id,
         referenceType: 'cash_register',
@@ -331,8 +355,13 @@ export function useSystemNotifications() {
       }
     }
 
-    return result;
-  }, [boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, oldOpenRegisters, settings]);
+    const now = new Date();
+    return filterNotificationsByAccess(result, can).map(n => ({
+      ...n,
+      at: n.at ?? now.toISOString(),
+      timeLabel: notificationTimeLabel(n.at ?? now, now),
+    }));
+  }, [can, boletosVencendoHoje, packageLowSessions, lowStockProducts, usageCritical, usageWarning, expiredProducts, expiringTodayProducts, expiringSoonProducts, todayReminders, currentOpenRegister, oldOpenRegisters, settings]);
 
   // Filter out dismissed (by signature) so they only re-appear when content changes
   const notifications = useMemo(

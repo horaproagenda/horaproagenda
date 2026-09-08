@@ -145,7 +145,7 @@ export function useStockAlertNotifications(notifyPhone?: string) {
 
   // Prepare alerts for WhatsApp notification
   useEffect(() => {
-    if (!notifyPhone) return;
+    if (!notifyPhone || onlyOwnProducts) return;
     
     const alerts: StockAlert[] = [];
 

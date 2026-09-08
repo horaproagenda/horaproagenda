@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DatePickerWithInput } from '@/components/ui/date-picker-with-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { TimeInput } from '@/components/ui/time-input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -166,6 +167,10 @@ export function NewAppointmentDialog({
   // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
   const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
   const kitGroupIdRef = useRef<string | null>(null);
+  // Agendamento automático do kit (mesma ideia dos pacotes)
+  const [kitAutoScheduleEnabled, setKitAutoScheduleEnabled] = useState(true);
+  const [kitPreferredDayOfWeek, setKitPreferredDayOfWeek] = useState<number | null>(null);
+  const [kitPreferredTime, setKitPreferredTime] = useState('');
 
 
 
@@ -523,26 +528,48 @@ export function NewAppointmentDialog({
 
   // Sugere datas/horários iniciais para o kit a partir da data principal e dos
   // intervalos configurados. O profissional pode ajustar cada etapa depois.
-  const kitSuggestionSignature = `${(selectedServiceData as any)?.id || ''}|${date ? date.toDateString() : ''}|${time}`;
+  const kitSuggestionSignature = [
+    (selectedServiceData as any)?.id || '',
+    date ? date.toDateString() : '',
+    time,
+    kitAutoScheduleEnabled ? 'auto' : 'manual',
+    kitPreferredDayOfWeek === null ? 'any' : String(kitPreferredDayOfWeek),
+    kitPreferredTime,
+  ].join('|');
   useEffect(() => {
     if (!isKitService) {
       setKitSchedule((prev) => (prev.length ? [] : prev));
       return;
     }
     if (!date || !time) return;
-    let cumulativeDays = 0;
+
+    if (!kitAutoScheduleEnabled) {
+      // Modo manual: mantém o que já foi digitado e só garante uma linha por etapa.
+      setKitSchedule((prev) =>
+        kitComponents.map((_, index) => prev[index] ?? { date, time })
+      );
+      return;
+    }
+
+    let cursor = date;
     const suggestion = kitComponents.map((component, index) => {
-      cumulativeDays += index === 0 ? 0 : component.interval_days;
-      let stepDate = addDays(date, cumulativeDays);
-      let safety = 365;
-      while (!isWorkDay(stepDate) && safety-- > 0) {
-        stepDate = addDays(stepDate, 1);
+      if (index === 0) {
+        cursor = date;
+        return { date, time };
       }
-      return { date: stepDate, time };
+      const gap = component.interval_days;
+      if (gap > 0) {
+        cursor = nextChainDate(cursor, gap, {
+          intervals: [],
+          isAllowedDay: (day) => isWorkDay(day),
+          preferredDayOfWeek: kitPreferredDayOfWeek,
+        });
+      }
+      return { date: cursor, time: kitPreferredTime || time };
     });
     setKitSchedule(suggestion);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kitSuggestionSignature, isKitService]);
+  }, [kitSuggestionSignature, isKitService, kitComponents.length]);
 
   const updateKitStep = (index: number, patch: { date?: Date | undefined; time?: string }) => {
     setKitSchedule((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
@@ -550,30 +577,29 @@ export function NewAppointmentDialog({
 
   // Valida cada etapa do kit: data/horário preenchidos, dia trabalhado,
   // expediente, conflito com a agenda e choque entre as próprias etapas.
-  const kitStepIssues = useMemo(() => {
-    if (!isKitService) return [] as string[];
-    const issues: string[] = [];
+  const kitStepProblems = useMemo(() => {
+    if (!isKitService) return {} as Record<number, string>;
+    const problems: Record<number, string> = {};
     const ranges: Array<{ start: Date; end: Date }> = [];
     kitComponents.forEach((component, index) => {
       const step = kitSchedule[index];
-      const label = `${index + 1}. ${component.service_name}`;
       if (!step?.date || !step?.time) {
-        issues.push(`${label}: informe data e horário.`);
+        problems[index] = 'Informe data e horário.';
         return;
       }
       const start = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
       const end = new Date(start.getTime() + component.duration * 60_000);
       if (!isWorkDay(step.date)) {
-        issues.push(`${label}: o estabelecimento não atende neste dia.`);
+        problems[index] = 'O estabelecimento não atende neste dia.';
         return;
       }
       const businessHoursIssue = checkBusinessHoursForRange(start, end);
       if (businessHoursIssue) {
-        issues.push(`${label}: ${businessHoursIssue}`);
+        problems[index] = businessHoursIssue;
         return;
       }
       if (ranges.some((range) => start < range.end && end > range.start)) {
-        issues.push(`${label}: horário encostado em outra etapa do kit.`);
+        problems[index] = 'Este horário se choca com outra etapa do kit.';
         return;
       }
       const conflict = getAvailabilityConflictReason(start, end, {
@@ -583,12 +609,12 @@ export function NewAppointmentDialog({
         selectedRoom,
       });
       if (conflict) {
-        issues.push(`${label}: ${conflict}.`);
+        problems[index] = `${conflict}.`;
         return;
       }
       ranges.push({ start, end });
     });
-    return issues;
+    return problems;
   }, [
     absences,
     appointments,
@@ -602,7 +628,13 @@ export function NewAppointmentDialog({
     settings?.timezone,
   ]);
 
-
+  const kitStepIssues = useMemo(
+    () =>
+      Object.entries(kitStepProblems).map(
+        ([index, message]) => `${Number(index) + 1}. ${kitComponents[Number(index)]?.service_name || 'Etapa'}: ${message}`,
+      ),
+    [kitComponents, kitStepProblems],
+  );
 
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
@@ -1814,6 +1846,10 @@ Até breve! ✨`;
     setTime('');
     setNotes('');
     setKitSchedule([]);
+    setKitAutoScheduleEnabled(true);
+    setKitPreferredDayOfWeek(null);
+    setKitPreferredTime('');
+    kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
     setPreferredDayOfWeek(null);
@@ -1851,6 +1887,108 @@ Até breve! ✨`;
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-5" data-appointment-form="new">
+            <p className="text-xs font-medium text-muted-foreground">Dia e horário do primeiro agendamento</p>
+            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/40 p-3 dark:border-accent/40 dark:bg-accent/20">
+              <div className="space-y-2">
+                <Label className="text-accent dark:text-accent/80 font-medium">Data *</Label>
+                <DatePickerWithInput
+                  value={date}
+                  onChange={setDate}
+                  disabled={(d) => !isWorkDay(d)}
+                  placeholder="dd/mm/aaaa"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Digite manualmente ou selecione no calendário
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-accent dark:text-accent/80">Início *</Label>
+                  <div className="flex items-center gap-1">
+                    <div className="relative flex-1">
+                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <TimeInput
+                        value={time}
+                        onChange={setTime}
+                        className="pl-8 h-9"
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2 z-50" align="end">
+                        <p className="text-xs font-medium mb-2">Horários sugeridos</p>
+                        <ScrollArea className="h-[200px]">
+                          <div className="space-y-1">
+                            {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
+                              <Button
+                                key={slot}
+                                variant={time === slot ? "default" : "ghost"}
+                                size="sm"
+                                type="button"
+                                className={cn(
+                                  "w-full justify-start text-left h-8",
+                                  !isAvailable && "opacity-50"
+                                )}
+                                onClick={() => {
+                                  setTime(slot);
+                                }}
+                              >
+                                <div className="flex items-center gap-2 w-full">
+                                  {isAvailable ? (
+                                    <CheckCircle className="h-3 w-3 text-primary shrink-0" />
+                                  ) : (
+                                    <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
+                                  )}
+                                  <span>{slot}</span>
+                                  {!isAvailable && (
+                                    <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
+                                  )}
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-accent dark:text-accent/80 flex items-center justify-between">
+                    <span>Término</span>
+                    {endTimeOverride && (
+                      <button
+                        type="button"
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setEndTimeOverride('')}
+                        title="Restaurar término automático"
+                      >
+                        Auto
+                      </button>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <TimeInput
+                      value={endTimeOverride || (appointmentTimes?.endLabel || '')}
+                      onChange={setEndTimeOverride}
+                      className="pl-8 h-9"
+                      placeholder="HH:MM"
+                      disabled={!appointmentTimes}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                O término é calculado pela duração do serviço, mas pode ser editado manualmente.
+              </p>
+            </div>
+
             <div className="space-y-2 relative">
               <Label htmlFor="client">Cliente *</Label>
               <Input
@@ -2278,14 +2416,82 @@ Até breve! ✨`;
                         Cada serviço tem seu próprio atendimento, com data e horário que você pode ajustar.
                         Ou tudo é salvo, ou nada é salvo.
                       </p>
+
+                      {/* Agendamento automático do kit (substitui o "criar múltiplos") */}
+                      <div className="rounded-md border bg-background p-2 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <Label className="text-xs font-medium flex items-center gap-1.5">
+                              <Repeat className="h-3.5 w-3.5" />
+                              Agendamento automático
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              Distribui os serviços do kit conforme os intervalos, pulando dias sem atendimento
+                            </p>
+                          </div>
+                          <Switch checked={kitAutoScheduleEnabled} onCheckedChange={setKitAutoScheduleEnabled} />
+                        </div>
+
+                        {kitAutoScheduleEnabled && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t">
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-muted-foreground">Dia da semana preferido</Label>
+                              <Select
+                                value={kitPreferredDayOfWeek === null ? '_any' : kitPreferredDayOfWeek.toString()}
+                                onValueChange={(value) => setKitPreferredDayOfWeek(value === '_any' ? null : parseInt(value))}
+                              >
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_any">Qualquer dia de atendimento</SelectItem>
+                                  <SelectItem value="1">Segunda-feira</SelectItem>
+                                  <SelectItem value="2">Terça-feira</SelectItem>
+                                  <SelectItem value="3">Quarta-feira</SelectItem>
+                                  <SelectItem value="4">Quinta-feira</SelectItem>
+                                  <SelectItem value="5">Sexta-feira</SelectItem>
+                                  {workSaturdays && <SelectItem value="6">Sábado</SelectItem>}
+                                  {workSundays && <SelectItem value="0">Domingo</SelectItem>}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-muted-foreground">Horário preferido</Label>
+                              <TimeInput
+                                value={kitPreferredTime}
+                                onChange={setKitPreferredTime}
+                                className="h-9"
+                              />
+                              {!kitPreferredTime && (
+                                <p className="text-[10px] text-muted-foreground">Vazio: mantém o horário do primeiro</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="space-y-2">
                         {kitComponents.map((component, index) => {
                           const step = kitSchedule[index];
+                          const stepProblem = kitStepProblems[index];
                           return (
-                            <div key={`kit-step-${index}`} className="rounded border bg-background p-2 space-y-2">
+                            <div
+                              key={`kit-step-${index}`}
+                              className={cn(
+                                'rounded border bg-background p-2 space-y-2',
+                                stepProblem && 'border-destructive bg-destructive/5',
+                              )}
+                            >
                               <div className="flex items-center gap-2 text-xs">
-                                <Badge variant="secondary" className="text-[10px] h-5">{index + 1}</Badge>
-                                <span className="flex-1 truncate font-medium">{component.service_name}</span>
+                                <Badge
+                                  variant={stepProblem ? 'destructive' : 'secondary'}
+                                  className="text-[10px] h-5"
+                                >
+                                  {index + 1}
+                                </Badge>
+                                <span className={cn('flex-1 truncate font-medium', stepProblem && 'text-destructive')}>
+                                  {component.service_name}
+                                </span>
                                 <span className="text-muted-foreground text-[11px]">
                                   {formatDurationClock(component.duration)}
                                   {index > 0 && component.interval_days > 0 ? ` • +${component.interval_days}d` : ''}
@@ -2304,28 +2510,23 @@ Até breve! ✨`;
                                 </div>
                                 <div className="space-y-1">
                                   <Label className="text-[11px] text-muted-foreground">Início *</Label>
-                                  <Input
-                                    type="time"
+                                  <TimeInput
                                     value={step?.time || ''}
-                                    onChange={(event) => updateKitStep(index, { time: event.target.value })}
-                                    className="h-9"
+                                    onChange={(value) => updateKitStep(index, { time: value })}
+                                    className={cn('h-9', stepProblem && 'border-destructive')}
                                   />
                                 </div>
                               </div>
+                              {stepProblem && (
+                                <p className="text-[11px] text-destructive flex items-start gap-1">
+                                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                  {stepProblem}
+                                </p>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                      {kitStepIssues.length > 0 && (
-                        <Alert variant="destructive" className="py-2">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertDescription className="text-[11px] space-y-0.5">
-                            {kitStepIssues.map((issue, index) => (
-                              <p key={`kit-issue-${index}`}>{issue}</p>
-                            ))}
-                          </AlertDescription>
-                        </Alert>
-                      )}
                     </div>
                   )}
 
@@ -2379,110 +2580,8 @@ Até breve! ✨`;
               )}
             </div>
 
-            <div className="space-y-3 rounded-lg border border-accent/30 bg-accent/40 p-3 dark:border-accent/40 dark:bg-accent/20">
-              <div className="space-y-2">
-                <Label className="text-accent dark:text-accent/80 font-medium">Data *</Label>
-                <DatePickerWithInput
-                  value={date}
-                  onChange={setDate}
-                  disabled={(d) => !isWorkDay(d)}
-                  placeholder="dd/mm/aaaa"
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Digite manualmente ou selecione no calendário
-                </p>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-accent dark:text-accent/80">Início *</Label>
-                  <div className="flex items-center gap-1">
-                    <div className="relative flex-1">
-                      <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="time"
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        className="pl-8 h-9"
-                        placeholder="HH:MM"
-                      />
-                    </div>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon" type="button" className="shrink-0 h-9 w-9">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-2 z-50" align="end">
-                        <p className="text-xs font-medium mb-2">Horários sugeridos</p>
-                        <ScrollArea className="h-[200px]">
-                          <div className="space-y-1">
-                            {availableSlots.map(({ slot, isAvailable, conflictReason }) => (
-                              <Button
-                                key={slot}
-                                variant={time === slot ? "default" : "ghost"}
-                                size="sm"
-                                type="button"
-                                className={cn(
-                                  "w-full justify-start text-left h-8",
-                                  !isAvailable && "opacity-50"
-                                )}
-                                onClick={() => {
-                                  setTime(slot);
-                                }}
-                              >
-                                <div className="flex items-center gap-2 w-full">
-                                  {isAvailable ? (
-                                    <CheckCircle className="h-3 w-3 text-primary shrink-0" />
-                                  ) : (
-                                    <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
-                                  )}
-                                  <span>{slot}</span>
-                                  {!isAvailable && (
-                                    <span className="text-[10px] text-destructive ml-auto">({conflictReason})</span>
-                                  )}
-                                </div>
-                              </Button>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-accent dark:text-accent/80 flex items-center justify-between">
-                    <span>Término</span>
-                    {endTimeOverride && (
-                      <button
-                        type="button"
-                        className="text-[10px] text-primary hover:underline"
-                        onClick={() => setEndTimeOverride('')}
-                        title="Restaurar término automático"
-                      >
-                        Auto
-                      </button>
-                    )}
-                  </Label>
-                  <div className="relative">
-                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="time"
-                      value={endTimeOverride || (appointmentTimes?.endLabel || '')}
-                      onChange={(e) => setEndTimeOverride(e.target.value)}
-                      className="pl-8 h-9"
-                      placeholder="HH:MM"
-                      disabled={!appointmentTimes}
-                    />
-                  </div>
-                </div>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                O término é calculado pela duração do serviço, mas pode ser editado manualmente.
-              </p>
-            </div>
-
-                  {selectedServiceData && serviceType === 'service' && selectedClient && (!usingPaidServiceId || paidSiblingCount > 1) && (
+                  {selectedServiceData && serviceType === 'service' && !isKitService && selectedClient && (!usingPaidServiceId || paidSiblingCount > 1) && (
                     <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
@@ -2574,11 +2673,10 @@ Até breve! ✨`;
 
                           <div className="space-y-1">
                             <Label className="text-xs">Horário preferido</Label>
-                            <Input
-                              type="time"
+                            <TimeInput
                               className="h-8 text-xs"
                               value={preferredTime}
-                              onChange={(e) => setPreferredTime(e.target.value)}
+                              onChange={setPreferredTime}
                               placeholder="Mesmo horário do primeiro"
                             />
                             {!preferredTime && (
@@ -2699,18 +2797,17 @@ Até breve! ✨`;
                                           />
                                           <div className="mt-2 flex items-center gap-2 border-t pt-2">
                                             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <Input
-                                              type="time"
-                                              className="h-7 text-xs"
-                                              value={format(previewDate, 'HH:mm')}
-                                              onChange={(e) => {
-                                                const [h, m] = e.target.value.split(':').map(Number);
-                                                if (isNaN(h) || isNaN(m)) return;
-                                                const next = new Date(previewDate);
-                                                next.setHours(h, m, 0, 0);
-                                                updateEditableServiceDate(index, next);
-                                              }}
-                                            />
+                                            <TimeInput
+                                               className="h-7 text-xs"
+                                               value={format(previewDate, 'HH:mm')}
+                                               onChange={(value) => {
+                                                 const [h, m] = value.split(':').map(Number);
+                                                 if (isNaN(h) || isNaN(m)) return;
+                                                 const next = new Date(previewDate);
+                                                 next.setHours(h, m, 0, 0);
+                                                 updateEditableServiceDate(index, next);
+                                               }}
+                                             />
                                             <span className="text-[11px] text-muted-foreground">
                                               {format(previewDate, "EEEE", { locale: ptBR })}
                                             </span>
@@ -2819,11 +2916,10 @@ Até breve! ✨`;
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Horário preferido</Label>
-                              <Input
-                                type="time"
+                              <TimeInput
                                 className="h-8 text-xs"
                                 value={preferredTime}
-                                onChange={(e) => setPreferredTime(e.target.value)}
+                                onChange={setPreferredTime}
                                 placeholder="Mesmo horário"
                               />
                               {!preferredTime && (
@@ -3006,18 +3102,17 @@ Até breve! ✨`;
                                                 />
                                               </PopoverContent>
                                             </Popover>
-                                            <Input
-                                              type="time"
-                                              className="h-7 text-xs w-24 shrink-0"
-                                              value={format(previewDate, 'HH:mm')}
-                                              onChange={(e) => {
-                                                const [hh, mm] = e.target.value.split(':').map(Number);
-                                                if (isNaN(hh) || isNaN(mm)) return;
-                                                const merged = new Date(previewDate);
-                                                merged.setHours(hh, mm, 0, 0);
-                                                updateEditableDate(index, merged);
-                                              }}
-                                            />
+                                            <TimeInput
+                                               className="h-7 text-xs w-24 shrink-0"
+                                               value={format(previewDate, 'HH:mm')}
+                                               onChange={(value) => {
+                                                 const [hh, mm] = value.split(':').map(Number);
+                                                 if (isNaN(hh) || isNaN(mm)) return;
+                                                 const merged = new Date(previewDate);
+                                                 merged.setHours(hh, mm, 0, 0);
+                                                 updateEditableDate(index, merged);
+                                               }}
+                                             />
                                           </div>
                                         </div>
                                         {index === 0 && !hasConflict && <Badge variant="secondary" className="text-[10px] shrink-0">Primeira</Badge>}

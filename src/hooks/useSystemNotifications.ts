@@ -8,6 +8,9 @@ import { useProductUsagePrediction } from './useProductUsagePrediction';
 import { useReminders } from './useReminders';
 import { useCashRegisters } from './useCashRegisters';
 import { useBusinessSettings } from './useBusinessSettings';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionalScopeFlags } from './useProfessionalScopeFlags';
+import { filterProductsForNotifications } from '@/lib/productNotificationScope';
 import {
   isNotificationDismissed,
   dismissNotification,

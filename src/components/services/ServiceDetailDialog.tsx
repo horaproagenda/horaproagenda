@@ -62,6 +62,8 @@ import {
   type CommissionOverride,
 } from './ProfessionalCommissionField';
 import { useQueryClient } from '@tanstack/react-query';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 
 interface ServiceAppointment {
   id: string;
@@ -114,6 +116,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { activeServices } = useServices();
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const recordVis = useRecordVisibility('servicos', (service as any).visibility ?? undefined);
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
@@ -182,6 +185,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       } else {
         setComponents([]);
       }
+      recordVis.setVisibility(((service as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       setIsEditing(false);
     }
   }, [open, service]);
@@ -308,6 +312,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           equipment: data.equipment || [],
           return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
+          ...recordVis.visibilityField,
           component_service_ids: components.map(c => c.service_id),
           service_components: components as any,
         } as any)
@@ -904,6 +909,12 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                 ) : null}
 
 
+
+                <VisibilitySelect
+                  module="servicos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                />
 
                 <FormField
                   control={form.control}

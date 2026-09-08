@@ -49,6 +49,8 @@ import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -90,6 +92,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isSequential = pkg.package_type === 'sequential';
   const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number }>>([]);
+  const recordVis = useRecordVisibility('servicos', (pkg as any).visibility ?? undefined);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
@@ -134,6 +137,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         equipment: pkg.equipment || [],
         is_active: pkg.is_active,
       });
+      recordVis.setVisibility(((pkg as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       setIsEditing(false);
     }
   }, [open, pkg]);
@@ -241,6 +245,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           professional_id: data.professional_id || null,
           equipment: data.equipment || [],
           is_active: data.is_active,
+          ...recordVis.visibilityField,
         })
         .eq('id', pkg.id);
 
@@ -742,6 +747,12 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     </div>
                   </div>
                 )}
+
+                <VisibilitySelect
+                  module="servicos"
+                  value={recordVis.visibility}
+                  onChange={recordVis.setVisibility}
+                />
 
                 <FormField
                   control={form.control}

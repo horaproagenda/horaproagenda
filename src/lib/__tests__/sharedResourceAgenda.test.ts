@@ -31,6 +31,7 @@ const booking = (over: Partial<SharedResourceBooking> = {}): SharedResourceBooki
   status: 'scheduled',
   client_name: null,
   service_name: null,
+  professional_id: 'p-ana',
   professional_name: 'Dra. Ana',
   professional_color: '#2f6fed',
   amount: null,
@@ -141,5 +142,14 @@ describe('agenda protege ações sobre os bloqueios compartilhados', () => {
 
   it('a mudança de agendamento revalida os bloqueios compartilhados em tempo real', () => {
     expect(read('src/hooks/useRealtimeSync.ts')).toContain("'shared-resource-bookings'");
+  });
+});
+
+describe('filtro por profissional na agenda', () => {
+  it('mantém o profissional responsável no bloqueio compartilhado', () => {
+    const apt = toSharedResourceAppointment(booking({ professional_id: 'p-ana' }));
+    expect(apt.professional_id).toBe('p-ana');
+    expect(apt.shared_professional_name).toBe('Dra. Ana');
+    expect(apt.service?.name).toBe('');
   });
 });

@@ -12,6 +12,7 @@ export interface SharedResourceBooking {
   status: string | null;
   client_name: string | null;
   service_name: string | null;
+  professional_id: string | null;
   professional_name: string | null;
   professional_color: string | null;
   amount: number | null;

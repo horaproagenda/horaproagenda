@@ -182,6 +182,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       } else {
         setComponents([]);
       }
+      recordVis.setVisibility(((service as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       setIsEditing(false);
     }
   }, [open, service]);

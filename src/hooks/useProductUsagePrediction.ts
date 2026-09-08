@@ -88,6 +88,15 @@ export function useProductUsagePrediction() {
     refetchInterval: 300000, // 5 minutes
   });
 
+  // Cada pessoa só é avisada sobre os produtos que lhe pertencem:
+  // estoque próprio do profissional x estoque da clínica.
+  const products = useMemo(
+    () => filterProductsForNotifications(allProductsRaw, { userId: user?.id, onlyOwnProducts }),
+    [allProductsRaw, onlyOwnProducts, user?.id],
+  );
+
+
+
   // Fetch purchase history with usage data
   const { data: purchaseHistory = [] } = useQuery({
     queryKey: ['product-purchase-history'],

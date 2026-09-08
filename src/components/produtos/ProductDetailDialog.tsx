@@ -685,28 +685,11 @@ export function ProductDetailDialog({
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;
-    const { activePurchase, cycleApts, totalDeduction, closure, forecast } = endCyclePreview;
+    const { activePurchase, cycleApts, totalDeduction, closure, forecast, cycleStart } = endCyclePreview;
     const unitLabel = PRODUCT_UNITS.find(u => u.value === product.unit)?.label ?? '';
-    // Persiste médias para vínculos estimados que tiveram uso
-    for (const sp of productServiceLinks) {
-      if (sp.tracking_method !== 'estimated') continue;
-      const aptsThis = cycleApts.filter(a => a.service_id === sp.service_id).length;
-      const containerInStockUnit = convertQuantity(
-        Number(sp.container_amount || 0),
-        sp.container_unit || product.unit,
-        product.unit,
-      ) ?? Number(sp.container_amount || 0);
-      if (aptsThis > 0 && containerInStockUnit > 0) {
-        const avg = containerInStockUnit / aptsThis;
-        await updateServiceProduct.mutateAsync({
-          id: sp.id,
-          quantity_per_use: avg,
-          estimated_appointments: aptsThis,
-        } as any);
-      }
-    }
 
     const newStock = resolveStockAfterCycle(Number(product.current_stock) || 0, totalDeduction);
+    const cycleKey = activePurchase?.id || `${product.id}-${cycleStart || dateStr}`;
 
     // Fecha a compra ativa com o término informado e guarda as métricas do ciclo
     if (activePurchase && onUpdatePurchase) {
@@ -727,6 +710,41 @@ export function ProductDetailDialog({
       });
     }
 
+    // Registro histórico do ciclo (fonte única do que foi consumido).
+    try {
+      await createUsageRecord.mutateAsync({
+        product_id: product.id,
+        service_id: null,
+        package_template_id: null,
+        calc_mode: 'auto',
+        container_amount: totalDeduction,
+        container_unit: product.unit,
+        quantity_per_appointment: null,
+        avg_quantity_per_appointment: closure.avgQuantityPerAppointment,
+        start_date: cycleStart || dateStr,
+        end_date: dateStr,
+        appointments_counted: cycleApts.length,
+        appointment_ids: cycleApts.map(a => a.id),
+        total_consumed: totalDeduction,
+        container_yield: cycleApts.length || null,
+      } as any);
+    } catch {
+      /* o histórico é complementar: não impede o fechamento do ciclo */
+    }
+
+    // Lançamentos de consumo por data: é o que alimenta Hoje / Semana / Mês /
+    // Semestre / Ano. Regravar o mesmo ciclo substitui os lançamentos.
+    await replaceCycleConsumption.mutateAsync({
+      product_id: product.id,
+      cycle_key: cycleKey,
+      unit: product.unit,
+      entries: distributeCycleConsumption({
+        quantity: totalDeduction,
+        appointments: cycleApts.map(a => ({ id: a.id, start_time: a.start_time, service_id: a.service_id })),
+        fallbackDate: dateStr,
+      }),
+    });
+
     // Atualiza estoque e fecha o ciclo do produto (sem auto-iniciar novo).
     // A quantidade em uso é zerada: ela pertencia ao ciclo que acabou.
     await onUpdateProduct({
@@ -743,7 +761,7 @@ export function ProductDetailDialog({
         description: [
           closure.avgQuantityPerAppointment
             ? `Média de ${formatCycleQuantity(closure.avgQuantityPerAppointment)} ${unitLabel} por atendimento.`
-            : null,
+            : 'Sem atendimentos no período, então não calculamos média por atendimento.',
           forecast.remainingAppointments !== null
             ? `Estoque restante (${formatCycleQuantity(newStock)} ${unitLabel}) deve cobrir ~${forecast.remainingAppointments} atendimento(s)${forecast.remainingDays !== null ? ` / ~${forecast.remainingDays} dia(s)` : ''}.`
             : null,
@@ -757,6 +775,7 @@ export function ProductDetailDialog({
       setPendingRefill({ remainingStock: newStock });
     }
   };
+
 
 
 

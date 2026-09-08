@@ -2679,7 +2679,7 @@ function ProductAutomaticConsumption({
       events.push({ date: d, qty });
     }
     return events;
-  }, [productRecords, appointments, serviceLinks, templateLinks]);
+  }, [productRecords, productDaily, appointments, serviceLinks, templateLinks]);
 
   const stats = useMemo(() => {
     const now = new Date();

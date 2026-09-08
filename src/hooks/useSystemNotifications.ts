@@ -34,6 +34,8 @@ export interface SystemNotification {
 
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
+  const { user } = useAuth();
+  const { onlyOwnProducts } = useProfessionalScopeFlags();
 
   // Fetch TODAS as contas (a pagar e a receber) vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({

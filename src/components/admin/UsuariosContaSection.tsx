@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { PERMISSION_MODULES, normalizeRow, presetPermissions, type PermissionRow } from '@/lib/permissions';
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
-import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 
 type PermRow = PermissionRow;
 
@@ -31,6 +31,8 @@ export function UsuariosContaSection() {
   const qc = useQueryClient();
   const isAdmin = hasRole('admin');
   const { subscription } = useAccountSubscription();
+  const seatUsage = useSeatUsage();
+  const reconcileSeats = useReconcileSeats();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [permsFor, setPermsFor] = useState<{ id: string; full_name: string } | null>(null);
@@ -70,22 +72,39 @@ export function UsuariosContaSection() {
     return <p className="text-sm">Apenas administradores podem gerenciar usuários.</p>;
   }
 
-  const activeCount = users.filter((u: { is_active: boolean }) => u.is_active).length;
-  const limit = subscription?.seat_limit ?? 1;
-  const limitLabel = subscription?.is_grandfathered ? 'ilimitado' : String(limit);
+  const activeCount = seatUsage?.used ?? users.filter((u: { is_active: boolean }) => u.is_active).length;
+  const limit = seatUsage?.seat_limit ?? subscription?.seat_limit ?? 1;
+  const limitLabel = (seatUsage?.is_grandfathered ?? subscription?.is_grandfathered) ? 'ilimitado' : String(limit);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-base font-semibold flex items-center gap-2"><Users className="h-4 w-4" /> Usuários da conta</h3>
           <p className="text-xs text-muted-foreground">
             {activeCount} de {limitLabel} usuário(s) ativos
           </p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Adicionar usuário
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={reconcileSeats.isPending}
+            onClick={() => reconcileSeats.mutate(undefined, {
+              onSuccess: (freed) => toast.success(
+                freed > 0
+                  ? `${freed} vaga(s) liberada(s) de cadastros já apagados.`
+                  : 'Contagem conferida: nenhuma vaga presa.',
+              ),
+              onError: (e: Error) => toast.error(e.message),
+            })}
+          >
+            {reconcileSeats.isPending ? 'Conferindo...' : 'Conferir usuários'}
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Adicionar usuário
+          </Button>
+        </div>
       </div>
 
       <Card>

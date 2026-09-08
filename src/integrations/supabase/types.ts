@@ -6175,6 +6175,7 @@ export type Database = {
         Returns: number
       }
       recalculate_product_cycles: { Args: never; Returns: undefined }
+      reconcile_account_seats: { Args: { _owner?: string }; Returns: number }
       record_data_migration: {
         Args: { p_details?: Json; p_key: string }
         Returns: boolean

@@ -42,7 +42,7 @@ import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSeatUsage } from '@/hooks/useSeatUsage';
+import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
@@ -188,6 +188,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const seatUsage = useSeatUsage();
+  const reconcileSeats = useReconcileSeats();
   const noSeats = isSeatCapacityReached(seatUsage);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -507,11 +508,30 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                           : `${seatUsage.used} em uso de ${seatUsage.seat_limit} contratado(s) — ${seatUsage.available} disponível(is).`}
                       </p>
                     </div>
-                    {!seatUsage.is_grandfathered && (
-                      <Badge variant={noSeats ? 'destructive' : 'secondary'} className="text-[10px] shrink-0">
-                        {seatUsage.used}/{seatUsage.seat_limit}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!seatUsage.is_grandfathered && (
+                        <Badge variant={noSeats ? 'destructive' : 'secondary'} className="text-[10px]">
+                          {seatUsage.used}/{seatUsage.seat_limit}
+                        </Badge>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px]"
+                        disabled={reconcileSeats.isPending}
+                        onClick={() => reconcileSeats.mutate(undefined, {
+                          onSuccess: (freed) => toast.success(
+                            freed > 0
+                              ? `${freed} vaga(s) liberada(s) de cadastros já apagados.`
+                              : 'Contagem conferida: nenhuma vaga presa.',
+                          ),
+                          onError: (e: Error) => toast.error(e.message),
+                        })}
+                      >
+                        {reconcileSeats.isPending ? 'Conferindo...' : 'Conferir usuários'}
+                      </Button>
+                    </div>
                   </div>
                   {noSeats && (
                     <div className="flex items-center justify-between gap-2">

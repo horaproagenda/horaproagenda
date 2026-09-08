@@ -3860,6 +3860,8 @@ export type Database = {
         Row: {
           account_owner_id: string
           agenda_color: string | null
+          allowed_equipment_ids: string[]
+          allowed_room_ids: string[]
           app_role: string | null
           avatar_url: string | null
           beneficiary_address: string | null
@@ -3905,6 +3907,8 @@ export type Database = {
         Insert: {
           account_owner_id?: string
           agenda_color?: string | null
+          allowed_equipment_ids?: string[]
+          allowed_room_ids?: string[]
           app_role?: string | null
           avatar_url?: string | null
           beneficiary_address?: string | null
@@ -3950,6 +3954,8 @@ export type Database = {
         Update: {
           account_owner_id?: string
           agenda_color?: string | null
+          allowed_equipment_ids?: string[]
+          allowed_room_ids?: string[]
           app_role?: string | null
           avatar_url?: string | null
           beneficiary_address?: string | null

@@ -8,6 +8,9 @@ import { useProductUsagePrediction } from './useProductUsagePrediction';
 import { useReminders } from './useReminders';
 import { useCashRegisters } from './useCashRegisters';
 import { useBusinessSettings } from './useBusinessSettings';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionalScopeFlags } from './useProfessionalScopeFlags';
+import { filterProductsForNotifications } from '@/lib/productNotificationScope';
 import {
   isNotificationDismissed,
   dismissNotification,
@@ -31,6 +34,8 @@ export interface SystemNotification {
 
 export function useSystemNotifications() {
   const hasShownToasts = useRef(wasShownThisSession());
+  const { user } = useAuth();
+  const { onlyOwnProducts } = useProfessionalScopeFlags();
 
   // Fetch TODAS as contas (a pagar e a receber) vencendo hoje
   const { data: boletosVencendoHoje = [] } = useQuery({
@@ -81,7 +86,7 @@ export function useSystemNotifications() {
   });
 
   // Fetch produtos com estoque baixo
-  const { data: lowStockProducts = [] } = useQuery({
+  const { data: lowStockRaw = [] } = useQuery({
     queryKey: ['products-low-stock'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -97,6 +102,13 @@ export function useSystemNotifications() {
     },
     refetchInterval: 300000, // Check every 5 minutes
   });
+
+  // Estoque próprio do profissional não avisa a clínica, e a clínica não
+  // avisa quem só cuida dos próprios produtos.
+  const lowStockProducts = useMemo(
+    () => filterProductsForNotifications(lowStockRaw, { userId: user?.id, onlyOwnProducts }),
+    [lowStockRaw, onlyOwnProducts, user?.id],
+  );
 
   // Get usage predictions for additional alerts (including expiry)
   const { 

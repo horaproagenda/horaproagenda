@@ -55,6 +55,14 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
             onFocus?.(event);
           }}
           onBlur={() => {
+            // Campo apagado permanece vazio (sem "0,00" teimoso) para o usuário digitar o valor.
+            if (displayValue.trim() === '') {
+              onValueChange(0);
+              onCentsChange?.(0);
+              setDisplayValue('');
+              setIsEditing(false);
+              return;
+            }
             const normalizedValue = normalizeBrazilianCurrency(displayValue);
             onValueChange(normalizedValue);
             onCentsChange?.(Math.round(normalizedValue * 100));

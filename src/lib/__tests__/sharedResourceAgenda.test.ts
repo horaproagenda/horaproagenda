@@ -144,3 +144,12 @@ describe('agenda protege ações sobre os bloqueios compartilhados', () => {
     expect(read('src/hooks/useRealtimeSync.ts')).toContain("'shared-resource-bookings'");
   });
 });
+
+describe('filtro por profissional na agenda', () => {
+  it('mantém o profissional responsável no bloqueio compartilhado', () => {
+    const apt = toSharedResourceAppointment(booking({ professional_id: 'p-ana' }));
+    expect(apt.professional_id).toBe('p-ana');
+    expect(apt.shared_professional_name).toBe('Dra. Ana');
+    expect(apt.service?.name).toBe('');
+  });
+});

@@ -240,12 +240,12 @@ export function RemindersPanel() {
               </div>
             </div>
             <div className="flex items-center gap-0.5">
-              {canEdit && (
+              {canEditReminder(reminder) && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(reminder)}>
                   <Edit className="h-3 w-3" />
                 </Button>
               )}
-              {canDelete && (
+              {canDeleteReminder(reminder) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -287,7 +287,7 @@ export function RemindersPanel() {
             className="h-8 text-sm"
           />
         </div>
-        {canEdit && (
+        {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) resetForm();

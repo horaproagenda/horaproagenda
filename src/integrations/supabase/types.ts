@@ -3297,6 +3297,7 @@ export type Database = {
           created_by: string | null
           cycle_appointments: number | null
           cycle_quantity: number | null
+          cycle_unit: string | null
           duration_days: number | null
           finished_at: string | null
           id: string
@@ -3319,6 +3320,7 @@ export type Database = {
           created_by?: string | null
           cycle_appointments?: number | null
           cycle_quantity?: number | null
+          cycle_unit?: string | null
           duration_days?: number | null
           finished_at?: string | null
           id?: string
@@ -3341,6 +3343,7 @@ export type Database = {
           created_by?: string | null
           cycle_appointments?: number | null
           cycle_quantity?: number | null
+          cycle_unit?: string | null
           duration_days?: number | null
           finished_at?: string | null
           id?: string
@@ -3476,6 +3479,7 @@ export type Database = {
           created_by: string | null
           current_stock: number
           cycle_quantity: number | null
+          cycle_unit: string | null
           description: string | null
           expiry_date: string | null
           finished_at: string | null
@@ -3508,6 +3512,7 @@ export type Database = {
           created_by?: string | null
           current_stock?: number
           cycle_quantity?: number | null
+          cycle_unit?: string | null
           description?: string | null
           expiry_date?: string | null
           finished_at?: string | null
@@ -3540,6 +3545,7 @@ export type Database = {
           created_by?: string | null
           current_stock?: number
           cycle_quantity?: number | null
+          cycle_unit?: string | null
           description?: string | null
           expiry_date?: string | null
           finished_at?: string | null

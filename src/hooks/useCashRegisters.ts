@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 
 export interface BankDeposit {
   bank_id: string;
@@ -25,6 +26,7 @@ export interface CashRegister {
   opened_by: string | null;
   closed_by: string | null;
   register_number: number;
+  professional_id: string | null;
   status: 'open' | 'closed';
   cash_amount: number | null;
   check_amount: number | null;
@@ -35,6 +37,9 @@ export interface CashRegister {
 
 export function useCashRegisters() {
   const queryClient = useQueryClient();
+  const { professionalId, canManageOwnRegister, isPrivileged } = useProfessionalScopeFlags();
+  // Profissional com caixa próprio opera o seu caixa; os demais usam o caixa da clínica.
+  const ownRegisterMode = !isPrivileged && canManageOwnRegister && !!professionalId;
 
   // Track if initial load is done to avoid notifications on mount
   const initialLoadDone = useRef(false);
@@ -112,8 +117,15 @@ export function useCashRegisters() {
     staleTime: 0,
   });
 
-  const currentOpenRegister = cashRegisters.find(r => r.status === 'open');
-  const closedRegisters = cashRegisters.filter(r => r.status === 'closed');
+  const clinicRegisters = cashRegisters.filter(r => !r.professional_id);
+  const myRegisters = professionalId
+    ? cashRegisters.filter(r => r.professional_id === professionalId)
+    : [];
+  const scopedRegisters = ownRegisterMode ? myRegisters : clinicRegisters;
+  const currentOpenRegister = scopedRegisters.find(r => r.status === 'open');
+  const clinicOpenRegister = clinicRegisters.find(r => r.status === 'open');
+  const myOpenRegister = myRegisters.find(r => r.status === 'open');
+  const closedRegisters = scopedRegisters.filter(r => r.status === 'closed');
 
   const openCashRegister = useMutation({
     mutationFn: async (openingBalance: number) => {
@@ -124,6 +136,7 @@ export function useCashRegisters() {
         .insert({
           opening_balance: openingBalance,
           opened_by: user?.id,
+          professional_id: ownRegisterMode ? professionalId : null,
           status: 'open',
         } as any)
         .select()
@@ -269,6 +282,12 @@ export function useCashRegisters() {
 
   return {
     cashRegisters,
+    clinicRegisters,
+    myRegisters,
+    scopedRegisters,
+    ownRegisterMode,
+    clinicOpenRegister,
+    myOpenRegister,
     currentOpenRegister,
     closedRegisters,
     isLoading,

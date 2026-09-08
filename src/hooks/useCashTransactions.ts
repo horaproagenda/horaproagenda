@@ -6,6 +6,7 @@ import { ensureNetAmount } from '@/lib/netValueCalculation';
 
 export interface CashTransaction {
   id: string;
+  professional_id?: string | null;
   cash_register_id: string | null;
   type: 'income' | 'expense';
   category: string;
@@ -191,11 +192,23 @@ export function useCashTransactions(cashRegisterId?: string) {
   const createTransaction = useMutation({
     mutationFn: async (transaction: Omit<CashTransaction, 'id' | 'created_at' | 'updated_at'>) => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
+      // Cada movimento pertence ao mesmo caixa (da clínica ou do profissional).
+      let professionalId: string | null = transaction.professional_id ?? null;
+      if (!professionalId && transaction.cash_register_id) {
+        const { data: reg } = await supabase
+          .from('cash_registers')
+          .select('professional_id')
+          .eq('id', transaction.cash_register_id)
+          .maybeSingle();
+        professionalId = (reg as any)?.professional_id ?? null;
+      }
+
       const { data, error } = await supabase
         .from('cash_transactions')
         .insert({
           ...transaction,
+          professional_id: professionalId,
           created_by: user?.id,
         })
         .select()

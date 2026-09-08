@@ -1,4 +1,4 @@
 # Roadmap
 
-- [ ] Confirmar e corrigir todos os erros de typecheck da prévia.
-- [ ] Revalidar compilação e testes do fluxo de produtos.
+- [x] Confirmar e corrigir todos os erros de typecheck da prévia.
+- [x] Revalidar compilação e testes do fluxo de produtos.

@@ -38,6 +38,9 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useProfessionals } from '@/hooks/useProfessionals';
+import { useRooms } from '@/hooks/useRooms';
+import { useEquipment } from '@/hooks/useEquipment';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSeatUsage } from '@/hooks/useSeatUsage';
 import { isSeatCapacityReached } from '@/lib/seatUsage';
@@ -160,6 +163,8 @@ const professionalSchema = z.object({
   commission_payment_day: z.coerce.number().min(0).max(31).default(1),
   is_active: z.boolean(),
   permissions: z.record(z.boolean()).default(defaultPermissions),
+  allowed_room_ids: z.array(z.string()).default([]),
+  allowed_equipment_ids: z.array(z.string()).default([]),
 });
 
 type ProfessionalFormData = z.infer<typeof professionalSchema>;
@@ -181,6 +186,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { professionals, refetch } = useProfessionals();
+  const { rooms } = useRooms();
+  const { equipment } = useEquipment();
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -221,6 +228,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       commission_payment_day: 1,
       is_active: true,
       permissions: defaultPermissions,
+      allowed_room_ids: [],
+      allowed_equipment_ids: [],
     },
   });
 
@@ -229,6 +238,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
   const permissions = form.watch('permissions');
+  const allowedRoomIds = form.watch('allowed_room_ids') || [];
+  const allowedEquipmentIds = form.watch('allowed_equipment_ids') || [];
   const currentColor = form.watch('agenda_color');
 
   // Cores já usadas por outros profissionais (excluindo o que está sendo editado).
@@ -289,6 +300,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         commission_frequency: data.is_commission_based ? data.commission_frequency : 'monthly',
         commission_payment_day: data.is_commission_based ? data.commission_payment_day : 1,
         is_active: data.is_active,
+        allowed_room_ids: data.app_role === 'admin' ? [] : data.allowed_room_ids,
+        allowed_equipment_ids: data.app_role === 'admin' ? [] : data.allowed_equipment_ids,
         permissions: data.app_role === 'admin' 
           ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
           : data.permissions,
@@ -370,6 +383,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       commission_payment_day: professional.commission_payment_day || 1,
       is_active: professional.is_active,
       permissions: { ...defaultPermissions, ...existingPermissions },
+      allowed_room_ids: professional.allowed_room_ids || [],
+      allowed_equipment_ids: professional.allowed_equipment_ids || [],
     });
     setShowForm(true);
   };
@@ -1114,6 +1129,69 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     </div>
                   )}
                 </div>
+
+                {appRole !== 'admin' && (
+                  <div className="rounded-lg border bg-card overflow-hidden">
+                    <div className="px-3 py-2 bg-muted/50 border-b">
+                      <span className="text-xs font-medium flex items-center gap-2">
+                        <span>🚪</span>
+                        Salas e equipamentos liberados
+                      </span>
+                    </div>
+                    <div className="p-3 space-y-4">
+                      <p className="text-[10px] text-muted-foreground">
+                        Marque o que este profissional pode ver, filtrar e agendar. Se nada for marcado,
+                        ele continua com acesso a todas as salas e equipamentos.
+                      </p>
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium">Salas</p>
+                        {rooms.length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground">Nenhuma sala cadastrada.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {rooms.map((room) => (
+                              <label key={room.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/30 cursor-pointer">
+                                <Checkbox
+                                  checked={allowedRoomIds.includes(room.id)}
+                                  onCheckedChange={(checked) => {
+                                    const next = checked
+                                      ? [...allowedRoomIds, room.id]
+                                      : allowedRoomIds.filter((id) => id !== room.id);
+                                    form.setValue('allowed_room_ids', next);
+                                  }}
+                                />
+                                <span className="text-xs truncate">{room.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium">Equipamentos</p>
+                        {equipment.length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground">Nenhum equipamento cadastrado.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {equipment.map((item) => (
+                              <label key={item.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/30 cursor-pointer">
+                                <Checkbox
+                                  checked={allowedEquipmentIds.includes(item.id)}
+                                  onCheckedChange={(checked) => {
+                                    const next = checked
+                                      ? [...allowedEquipmentIds, item.id]
+                                      : allowedEquipmentIds.filter((id) => id !== item.id);
+                                    form.setValue('allowed_equipment_ids', next);
+                                  }}
+                                />
+                                <span className="text-xs truncate">{item.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button

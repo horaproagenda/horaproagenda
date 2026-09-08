@@ -26,6 +26,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { computePackageReceivedAmount } from '@/lib/packageReceivedAmount';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { calculateTotalCostPerUse } from '@/lib/productCostCalculation';
 import { CompactFilterTrigger } from '@/components/shared/CompactFilterTrigger';
@@ -139,11 +140,12 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           clientName: s.client?.name || '-',
           saleDate: s.sale_date || (s.paid_at ? String(s.paid_at).slice(0,10) : ''),
           totalAmount: Number(s.original_amount || s.final_amount || 0),
-          paidAmount: (() => {
-            const boleto = boletoBySale.get(s.id);
-            if (boleto && boleto.count > 0) return Number(boleto.paid.toFixed(2));
-            return s.paid_at ? Number(s.final_amount || 0) : 0;
-          })(),
+          paidAmount: computePackageReceivedAmount({
+            boletoCount: boletoBySale.get(s.id)?.count || 0,
+            boletoPaidAmount: boletoBySale.get(s.id)?.paid || 0,
+            paidAt: s.paid_at,
+            finalAmount: Number(s.final_amount || 0),
+          }),
           paymentMethodName: s.payment_method?.name || '-',
           totalSessions: total,
           usedSessions: used,

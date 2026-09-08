@@ -513,7 +513,7 @@ export default function Landing() {
                     <Link to="/auth" className="w-full sm:w-auto">
                       <Button
                         size="lg"
-                        className="h-13 w-full gap-2 bg-landing-accent px-8 text-base font-bold text-white shadow-xl shadow-landing-accent/25 transition-all hover:-translate-y-0.5 hover:bg-landing-accent-hover sm:w-auto"
+                        className="h-12 w-full gap-2 bg-landing-accent px-8 text-base font-bold text-white shadow-xl shadow-landing-accent/25 transition-all hover:-translate-y-0.5 hover:bg-landing-accent-hover sm:w-auto"
                       >
                         Criar minha conta
                         <ArrowRight className="h-4 w-4" />
@@ -523,7 +523,7 @@ export default function Landing() {
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-13 w-full border-landing-text/20 bg-transparent px-8 text-base font-semibold text-landing-text hover:bg-landing-surface hover:text-landing-text sm:w-auto"
+                        className="h-12 w-full border-landing-text/20 bg-transparent px-8 text-base font-semibold text-landing-text hover:bg-landing-surface hover:text-landing-text sm:w-auto"
                       >
                         Entrar
                       </Button>
@@ -828,7 +828,7 @@ export default function Landing() {
                     <Link to="/auth" className="w-full sm:w-auto">
                       <Button
                         size="lg"
-                        className="h-13 w-full gap-2 bg-landing-bg px-9 text-base font-bold text-landing-text shadow-xl hover:bg-landing-surface sm:w-auto"
+                        className="h-12 w-full gap-2 bg-landing-bg px-9 text-base font-bold text-landing-text shadow-xl hover:bg-landing-surface sm:w-auto"
                       >
                         Criar minha conta
                         <ArrowRight className="h-4 w-4" />
@@ -838,7 +838,7 @@ export default function Landing() {
                       <Button
                         size="lg"
                         variant="outline"
-                        className="h-13 w-full border-2 border-white/80 bg-transparent px-9 text-base font-bold text-white hover:bg-white hover:text-landing-accent sm:w-auto"
+                        className="h-12 w-full border-2 border-white/80 bg-transparent px-9 text-base font-bold text-white hover:bg-white hover:text-landing-accent sm:w-auto"
                       >
                         Entrar
                       </Button>

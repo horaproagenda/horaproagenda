@@ -2706,11 +2706,27 @@ function ProductAutomaticConsumption({
   }, [consumptionEvents]);
 
   const history = useMemo(() => {
-    return [...productRecords]
+    const fromRecords = productRecords
       .filter((r: any) => r.appointment?.start_time)
-      .sort((a: any, b: any) => new Date(b.appointment.start_time).getTime() - new Date(a.appointment.start_time).getTime())
+      .map((r: any) => ({
+        id: r.id,
+        when: r.appointment.start_time,
+        label: r.appointment?.service?.name || '-',
+        qty: Number(r.quantity_used) || 0,
+      }));
+
+    const fromDaily = productDaily.map((c: any) => ({
+      id: c.id,
+      when: c.consumption_date + 'T12:00:00',
+      label: c.notes?.includes('[ciclo:') ? 'Ciclo de uso' : (c.notes || 'Consumo registrado'),
+      qty: Number(c.quantity_used) || 0,
+    }));
+
+    return [...fromRecords, ...fromDaily]
+      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
       .slice(0, 50);
-  }, [productRecords]);
+  }, [productRecords, productDaily]);
+
 
 
   return (

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumberInput } from '@/components/ui/number-input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -546,7 +547,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                             </div>
                             <div>
                               <Label className="text-[10px]">Após (dias)</Label>
-                              <Input type="number" min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onChange={(e) => updateSeqStep(index, { interval_after_days: Number(e.target.value) })} />
+                              <NumberInput min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} emptyValue={0} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onValueChange={(v) => updateSeqStep(index, { interval_after_days: v ?? 0 })} />
                             </div>
                             <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
                               <Trash2 className="h-3.5 w-3.5" />
@@ -610,7 +611,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                           <FormItem>
                             <FormLabel>Total de Aplicações</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} />
+                              <NumberInput min={1} value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -659,7 +660,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                           <FormItem>
                             <FormLabel>Intervalo (dias)</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} />
+                              <NumberInput min={1} value={field.value ?? null} onValueChange={(v) => field.onChange(v)} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

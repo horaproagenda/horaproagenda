@@ -697,13 +697,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     <FormItem>
                       <FormLabel>Retorno (dias)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min={0} 
-                          max={365} 
-                          {...field}
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                        <NumberInput
+                          min={0}
+                          max={365}
+                          value={field.value ?? null}
+                          onValueChange={(v) => field.onChange(v)}
                         />
                       </FormControl>
                       <FormMessage />

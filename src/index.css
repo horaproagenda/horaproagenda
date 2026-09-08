@@ -288,6 +288,14 @@ input::-webkit-clear-button {
     --sidebar: 38 33% 94%;
     --tracking-normal: 0em;
     --spacing: 0.25rem;
+
+    /* Landing pública — tema escuro "azul segurança" (direção aprovada) */
+    --landing-bg: 216 65% 12%;        /* #0B1B33 azul profundo */
+    --landing-surface: 217 62% 19%;   /* #12294D azul médio */
+    --landing-accent: 25 95% 53%;     /* #F97316 laranja Hora Pro */
+    --landing-accent-hover: 21 90% 48%;
+    --landing-text: 216 48% 94%;      /* #E8EEF7 quase branco */
+    --landing-text-muted: 216 25% 65%;
   }
 
 

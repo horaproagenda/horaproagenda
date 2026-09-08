@@ -392,7 +392,33 @@ export default function CadastroCliente() {
   };
 
 
+  // Identidade visual da clínica (nome e logo) exibida em todas as etapas do link.
+  const branding = linkData?.branding || null;
+  const clinicName = branding?.clinic_name?.trim() || '';
+  const clinicLogo = branding?.clinic_logo_url?.trim() || '';
+  const brandingHeader =
+    clinicName || clinicLogo ? (
+      <div className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
+        {clinicLogo && (
+          <img
+            src={clinicLogo}
+            alt={clinicName ? `Logo de ${clinicName}` : 'Logo da clínica'}
+            className="h-12 w-12 rounded-md object-contain bg-background"
+            loading="lazy"
+          />
+        )}
+        <div className="min-w-0">
+          {clinicName && <p className="truncate text-sm font-semibold">{clinicName}</p>}
+          <p className="truncate text-xs text-muted-foreground">
+            {[branding?.clinic_city, branding?.clinic_state].filter(Boolean).join('/') ||
+              'Cadastro seguro do cliente'}
+          </p>
+        </div>
+      </div>
+    ) : null;
+
   // ---------- RENDER ----------
+
 
   if (loadingLink) {
     return (

@@ -62,6 +62,8 @@ import {
   type CommissionOverride,
 } from './ProfessionalCommissionField';
 import { useQueryClient } from '@tanstack/react-query';
+import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
+import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 
 interface ServiceAppointment {
   id: string;

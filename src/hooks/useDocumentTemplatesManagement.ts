@@ -136,7 +136,9 @@ export function useDocumentTemplatesManagement() {
           variables: template.variables || [],
           is_active: true,
           category: (template as any).category ?? 'anamnese',
+          ...(professionalId ? { owner_professional_id: professionalId } : {}),
           ...((template as any).visibility ? { visibility: (template as any).visibility } : {}),
+
         } as any)
         .select()
         .single();

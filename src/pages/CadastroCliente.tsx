@@ -175,6 +175,17 @@ export default function CadastroCliente() {
     })();
   }, [token]);
 
+  // Ao trocar de documento (ou entrar na etapa de documentos), a página volta
+  // ao início para que o cliente leia o documento inteiro antes de assinar.
+  useEffect(() => {
+    if (step !== 'documents') return;
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.document.getElementById('documento-inicio')?.scrollIntoView({ block: 'start' });
+  }, [step, currentDocIndex]);
+
+
+
   const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleCepBlur = async () => {

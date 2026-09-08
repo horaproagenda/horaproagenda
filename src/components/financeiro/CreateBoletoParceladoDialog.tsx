@@ -395,6 +395,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
       // 4) Provisioning rows
       let provisioningPromise: Promise<any> = Promise.resolve();
+      let createdPackageId: string | null = null;
 
       if (isServiceLike && itemId) {
         const qty = Math.max(1, applicationsCount || 1);
@@ -436,10 +437,12 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
                 sessions_scheduled: 0,
                 is_active: false,
                 category: template.category || 'Pago via Boleto Parcelado',
+                created_by: user?.id || null,
               })
               .select('id')
               .single();
 
+            createdPackageId = clientPackage?.id || null;
             if (pkgError || !clientPackage) {
               console.error('[CreateBoletoParcelado] Falha ao criar pacote do cliente:', pkgError);
               throw pkgError || new Error('Falha ao criar pacote do cliente para boleto parcelado');
@@ -474,13 +477,33 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
         }
       }
 
-      // 5) Disparar parcelas + provisioning + atualização de cliente EM PARALELO
-      const [{ error: instErr }] = await Promise.all([
-        supabase.from('boleto_installments').insert(records),
-        provisioningPromise,
-        clientUpdatePromise,
-      ]);
-      if (instErr) throw instErr;
+      // 5) Tudo ou nada: se qualquer etapa falhar, desfazemos o que foi criado,
+      //    para nunca sobrar venda/pacote/boleto "órfão" após uma mensagem de erro.
+      const rollback = async () => {
+        try {
+          await supabase.from('boleto_installments').delete().eq('sale_id', sale.id);
+          await supabase.from('client_services').delete().eq('sale_id', sale.id);
+          if (createdPackageId) {
+            await supabase.from('package_appointments').delete().eq('package_id', createdPackageId);
+            await supabase.from('single_sales').update({ package_id: null }).eq('id', sale.id);
+            await supabase.from('service_packages').delete().eq('id', createdPackageId);
+          }
+          await supabase.from('single_sales').delete().eq('id', sale.id);
+        } catch (rollbackErr) {
+          console.error('[CreateBoletoParcelado] Falha ao desfazer criação parcial:', rollbackErr);
+        }
+      };
+
+      try {
+        await provisioningPromise;
+        const { error: instErr } = await supabase.from('boleto_installments').insert(records);
+        if (instErr) throw instErr;
+      } catch (stepErr) {
+        await rollback();
+        throw stepErr;
+      }
+      // Atualização de endereço do cliente é acessória: não desfaz a criação.
+      await clientUpdatePromise;
 
       // Se algum boleto já nasceu pago (retroativo), liberar o pacote conforme a regra
       if (isPackageLike && records.some(r => r.status === 'paid')) {

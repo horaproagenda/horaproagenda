@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/lib/toast';
 
 export interface SeatUsage {
   used: number;
@@ -67,6 +68,9 @@ export function useReconcileSeats() {
       qc.invalidateQueries({ queryKey: ['seat-usage', user?.id] });
       qc.invalidateQueries({ queryKey: ['account-users'] });
       qc.invalidateQueries({ queryKey: ['professionals'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(error);
     },
   });
 }

@@ -1,8 +1,6 @@
-import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 
 export interface Reminder {
   id: string;
@@ -26,11 +24,6 @@ export interface Reminder {
 
 export function useReminders() {
   const queryClient = useQueryClient();
-  const { user, hasRole } = useAuth();
-  // A página de Lembretes está disponível para todos os usuários, porém cada
-  // profissional trabalha apenas com os lembretes que criou. Administrador e
-  // recepção continuam vendo os lembretes de toda a equipe.
-  const seesAll = hasRole('admin') || hasRole('receptionist');
 
   const { data: allReminders = [], isLoading, refetch } = useQuery({
     queryKey: ['reminders'],
@@ -46,10 +39,9 @@ export function useReminders() {
     },
   });
 
-  const reminders = useMemo(() => {
-    if (seesAll || !user?.id) return allReminders;
-    return allReminders.filter((r) => !r.created_by || r.created_by === user.id);
-  }, [allReminders, seesAll, user?.id]);
+  // A RLS retorna somente os lembretes do usuário autenticado, inclusive para
+  // administrador e recepção. Não existe exceção de equipe para dado pessoal.
+  const reminders = allReminders;
 
   const createReminder = useMutation({
     mutationFn: async (reminder: Omit<Reminder, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'completed_at'>) => {

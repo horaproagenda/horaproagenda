@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfessionals } from '@/hooks/useProfessionals';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 
 function useProductsRealtime() {
   const queryClient = useQueryClient();
@@ -112,18 +112,11 @@ export interface ProductPurchase {
 export function useProducts() {
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const { professionals } = useProfessionals();
+  const { professionalId } = useProfessionalScopeFlags();
   useProductsRealtime();
 
   // Resolve scope: admin/receptionist always see all; professionals respect their own permissions flag.
-  const me = useMemo(() => professionals.find(
-    (p) => (p as unknown as { user_id?: string | null }).user_id === user?.id
-  ), [professionals, user?.id]);
-  const perms = ((me as unknown as { permissions?: Record<string, boolean> })?.permissions ?? {}) as Record<string, boolean>;
   const isPrivileged = hasRole('admin') || hasRole('receptionist');
-  const onlyOwn = !isPrivileged
-    && perms.can_view_other_products !== true
-    && (perms.can_view_only_own_products === true || perms.can_manage_own_products === true);
 
   const { data: allProducts = [], isLoading, refetch } = useQuery({
     queryKey: ['products'],
@@ -139,9 +132,9 @@ export function useProducts() {
   });
 
   const products = useMemo(() => {
-    if (!onlyOwn || !user?.id) return allProducts;
+    if (isPrivileged || !user?.id) return allProducts;
     return allProducts.filter((p) => p.created_by === user.id);
-  }, [allProducts, onlyOwn, user?.id]);
+  }, [allProducts, isPrivileged, user?.id]);
 
 
   const createProduct = useMutation({
@@ -153,6 +146,9 @@ export function useProducts() {
         .insert({
           ...product,
           created_by: user?.id,
+          ...(!isPrivileged && professionalId
+            ? { owner_professional_id: professionalId, visibility: 'private' as const }
+            : {}),
         })
         .select()
         .single();

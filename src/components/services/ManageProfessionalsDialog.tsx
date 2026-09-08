@@ -64,13 +64,12 @@ const APP_ROLES = [
 ];
 
 const PERMISSIONS_CONFIG = [
-  { key: 'can_access_financial', label: 'Acessar Financeiro', description: 'Ver módulo financeiro e movimentações', category: 'financial' },
+  { key: 'can_access_financial', label: 'Possui seu próprio financeiro', description: 'Cria, edita, baixa e exclui somente os próprios registros financeiros', category: 'financial' },
   { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Registrar e alterar pagamentos', category: 'financial' },
   { key: 'can_share_financial_with_admin', label: 'Compartilhar seu financeiro com administrador e recepção', description: 'Vale para contas, boletos parcelados, bancos, taxas de cartão e caixa. Se desligado, tudo que ele lançar aparece somente para ele', category: 'financial' },
-  { key: 'can_manage_own_register', label: 'Ter caixa próprio', description: 'Abre um caixa só dele, com entradas e saídas próprias, sem afetar o caixa da clínica', category: 'financial' },
   { key: 'can_view_other_payments', label: 'Ver pagamentos de outros profissionais', description: 'Visualizar pagamentos de outros', category: 'financial' },
   { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de caixa de outros', category: 'financial' },
-  { key: 'can_open_close_register', label: 'Abrir e fechar caixa', description: 'Iniciar e finalizar movimento de caixa', category: 'financial' },
+  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa compartilhado da clínica', category: 'financial' },
   { key: 'can_view_daily_revenue', label: 'Ver lucro/receita do dia', description: 'Visualizar valores financeiros totais', category: 'financial' },
   { key: 'can_share_clients_with_admin', label: 'Compartilhar seus clientes com administrador e recepção', description: 'Se desligado, os clientes que ele cadastrar não aparecem para o administrador, a recepção e os outros profissionais', category: 'clients' },
   { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Acesso a todos os clientes', category: 'clients' },
@@ -79,12 +78,12 @@ const PERMISSIONS_CONFIG = [
   { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
   { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
   { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos', category: 'products' },
-  { key: 'can_manage_own_products', label: 'Criar e editar somente os próprios produtos', description: 'Os produtos que ele cadastrar aparecem só para ele e podem ser vinculados aos serviços e pacotes dele', category: 'products' },
+  { key: 'can_manage_own_products', label: 'Produtos próprios', description: 'Todo profissional pode criar e editar produtos privados para seus serviços e pacotes', category: 'products' },
   { key: 'can_view_other_products', label: 'Ver produtos de todos', description: 'Acesso a todos os produtos da agenda', category: 'products' },
   { key: 'can_view_only_own_products', label: 'Ver somente próprios produtos', description: 'Vê apenas os produtos que cadastrou', category: 'products' },
   { key: 'can_share_documents_with_admin', label: 'Compartilhar seus documentos com administrador e recepção', description: 'Se desligado, os documentos e modelos criados por ele ficam visíveis apenas para ele', category: 'documents' },
   { key: 'can_view_all_documents', label: 'Acessar todos os documentos da clínica', description: 'Ver e usar documentos e modelos de toda a equipe', category: 'documents' },
-  { key: 'can_manage_own_documents', label: 'Criar e editar somente os próprios documentos', description: 'Vê e altera apenas os documentos e modelos que criou', category: 'documents' },
+  { key: 'can_manage_own_documents', label: 'Documentos próprios', description: 'Todo profissional pode criar e editar documentos privados; esta opção não interfere nos documentos da clínica', category: 'documents' },
   { key: 'can_share_services_with_admin', label: 'Compartilhar seus serviços e pacotes com administrador e recepção', description: 'Se desligado, serviços e pacotes criados por ele ficam visíveis apenas para ele', category: 'services' },
   { key: 'can_view_other_services', label: 'Ver serviços e pacotes de todos', description: 'Visualizar serviços e pacotes de outros profissionais', category: 'services' },
   { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Acessar relatórios de outros profissionais', category: 'reports' },
@@ -110,12 +109,12 @@ const defaultPermissions = {
   can_view_only_own_agenda: true,
   can_modify_agenda: false,
   can_manage_products: false,
-  can_manage_own_products: false,
+  can_manage_own_products: true,
   can_view_other_products: false,
   can_view_only_own_products: true,
   can_share_documents_with_admin: true,
   can_view_all_documents: false,
-  can_manage_own_documents: false,
+  can_manage_own_documents: true,
   can_share_services_with_admin: true,
   can_view_other_services: false,
   can_view_other_reports: false,
@@ -1125,20 +1124,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                       }
                                       if (perm.key === 'can_view_other_products' && checked) {
                                         newPermissions.can_view_only_own_products = false;
-                                        newPermissions.can_manage_own_products = false;
                                       }
                                       if (perm.key === 'can_view_only_own_products' && checked) {
                                         newPermissions.can_view_other_products = false;
-                                      }
-                                      if (perm.key === 'can_manage_own_products' && checked) {
-                                        newPermissions.can_view_other_products = false;
-                                        newPermissions.can_view_only_own_products = true;
-                                      }
-                                      if (perm.key === 'can_view_all_documents' && checked) {
-                                        newPermissions.can_manage_own_documents = false;
-                                      }
-                                      if (perm.key === 'can_manage_own_documents' && checked) {
-                                        newPermissions.can_view_all_documents = false;
                                       }
                                       if (perm.key === 'can_view_other_reports' && checked) {
                                         newPermissions.can_view_only_own_reports = false;

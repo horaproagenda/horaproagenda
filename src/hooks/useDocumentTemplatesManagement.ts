@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +19,7 @@ export interface TemplateFormData {
 
 export function useDocumentTemplatesManagement() {
   const queryClient = useQueryClient();
-  const { onlyOwnDocuments, professionalId } = useProfessionalScopeFlags();
+  const { professionalId, isPrivileged } = useProfessionalScopeFlags();
 
   const { data: allTemplates = [], isLoading, error } = useQuery({
     queryKey: ['document_templates_all'],
@@ -35,14 +34,9 @@ export function useDocumentTemplatesManagement() {
     },
   });
 
-  // Quando o profissional só pode trabalhar com os próprios documentos,
-  // a lista mostra apenas os modelos que ele criou.
-  const templates = useMemo(() => {
-    if (!onlyOwnDocuments) return allTemplates;
-    return allTemplates.filter(
-      (t) => (t as unknown as { owner_professional_id?: string | null }).owner_professional_id === professionalId,
-    );
-  }, [allTemplates, onlyOwnDocuments, professionalId]);
+  // A RLS combina modelos próprios com modelos gerais autorizados. Mantemos
+  // ambos visíveis; os botões de alteração continuam limitados ao dono.
+  const templates = allTemplates;
 
   const createMutation = useMutation({
     mutationFn: async (data: TemplateFormData) => {
@@ -60,7 +54,9 @@ export function useDocumentTemplatesManagement() {
           ...(professionalId ? { owner_professional_id: professionalId } : {}),
           // Só envia visibilidade quando o usuário pôde escolher (permissão de
           // compartilhar); sem o campo o banco aplica o padrão privado.
-          ...(data.visibility ? { visibility: data.visibility } : {}),
+          ...(professionalId && !isPrivileged
+            ? { visibility: 'private' as const }
+            : data.visibility ? { visibility: data.visibility } : {}),
         } as any)
 
         .select()
@@ -90,7 +86,9 @@ export function useDocumentTemplatesManagement() {
           variables: data.variables || [],
           is_active: data.is_active ?? true,
           ...(data.category ? { category: data.category } : {}),
-          ...(data.visibility ? { visibility: data.visibility } : {}),
+           ...(professionalId && !isPrivileged
+             ? { visibility: 'private' as const }
+             : data.visibility ? { visibility: data.visibility } : {}),
         } as any)
         .eq('id', id);
       
@@ -137,7 +135,9 @@ export function useDocumentTemplatesManagement() {
           is_active: true,
           category: (template as any).category ?? 'anamnese',
           ...(professionalId ? { owner_professional_id: professionalId } : {}),
-          ...((template as any).visibility ? { visibility: (template as any).visibility } : {}),
+          ...(professionalId && !isPrivileged
+            ? { visibility: 'private' as const }
+            : (template as any).visibility ? { visibility: (template as any).visibility } : {}),
 
         } as any)
         .select()

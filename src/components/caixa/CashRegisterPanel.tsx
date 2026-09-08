@@ -68,7 +68,7 @@ type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
   const navigate = useNavigate();
-  const { canOpenCloseRegister, canManageOwnRegister } = useProfessionalScopeFlags();
+  const { canOpenCloseRegister } = useProfessionalScopeFlags();
   const queryClient = useQueryClient();
   const {
     currentOpenRegister,
@@ -81,7 +81,7 @@ export function CashRegisterPanel() {
   const { transactions: clinicTransactions } = useCashTransactions(
     ownRegisterMode ? clinicOpenRegister?.id : undefined,
   );
-  const canOpenRegister = canOpenCloseRegister || canManageOwnRegister;
+  const canOpenRegister = canOpenCloseRegister;
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
   const { entries } = useFinancialEntries();
   const { appointments } = useAppointments();
@@ -437,9 +437,7 @@ export function CashRegisterPanel() {
           <h3 className="text-2xl font-semibold mb-2">Caixa Fechado</h3>
           <p className="text-muted-foreground mb-6">
             {canOpenRegister
-              ? (ownRegisterMode
-                  ? 'Abra o seu caixa para registrar suas próprias entradas e saídas'
-                  : 'Abra o caixa para começar a registrar vendas')
+              ? 'Abra o caixa da clínica para começar a registrar vendas'
               : 'O caixa da clínica está fechado. Assim que o administrador abrir o caixa, seus pagamentos serão registrados nele.'}
           </p>
 
@@ -492,7 +490,7 @@ export function CashRegisterPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl flex items-center gap-2">
               <Receipt className="h-6 w-6" />
-              {ownRegisterMode ? 'Meu caixa' : 'Caixa'} #{currentOpenRegister.register_number}
+              Caixa da clínica #{currentOpenRegister.register_number}
             </CardTitle>
             <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />
@@ -658,7 +656,7 @@ export function CashRegisterPanel() {
             </AlertDialog>
             )}
 
-            {(canOpenCloseRegister || (ownRegisterMode && canManageOwnRegister)) && (
+            {canOpenCloseRegister && (
             <Button variant="default" onClick={() => setIsCloseDialogOpen(true)}>
               <Lock className="h-4 w-4 mr-2" />
               Fechar Caixa

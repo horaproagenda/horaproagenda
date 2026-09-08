@@ -7,6 +7,8 @@
  * indevidamente.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   blankRow,
   presetPermissions,
@@ -304,5 +306,26 @@ describe('regressão: isolamento pessoal e permissões independentes', () => {
     const rows = rowsFor({ module: 'produtos', can_view: true, can_create: true, can_edit: true, data_scope: 'own' });
     expect(canSeeRecord({ rows, module: 'produtos', ownerProfessionalId: PROF_A, visibility: 'private', myProfessionalId: PROF_B })).toBe(false);
     expect(canWriteRecord({ rows, module: 'produtos', action: 'edit', ownerProfessionalId: PROF_A, myProfessionalId: PROF_B })).toBe(false);
+  });
+
+  it('financeiro próprio não cria caixa paralelo e caixa da clínica exige permissão própria', () => {
+    const hook = readFileSync(join(process.cwd(), 'src/hooks/useCashRegisters.ts'), 'utf8');
+    const panel = readFileSync(join(process.cwd(), 'src/components/caixa/CashRegisterPanel.tsx'), 'utf8');
+    expect(hook).toContain('const ownRegisterMode = false');
+    expect(hook).toContain('professional_id: null');
+    expect(panel).toContain('const canOpenRegister = canOpenCloseRegister');
+    expect(panel).not.toContain('canOpenCloseRegister || canManageOwnRegister');
+  });
+
+  it('opções de documentos próprios e da clínica não se desligam mutuamente', () => {
+    const form = readFileSync(join(process.cwd(), 'src/components/services/ManageProfessionalsDialog.tsx'), 'utf8');
+    expect(form).not.toContain("if (perm.key === 'can_view_all_documents' && checked)");
+    expect(form).not.toContain("newPermissions.can_view_all_documents = false");
+  });
+
+  it('lembretes não possuem exceção visual para administrador ou recepção', () => {
+    const hook = readFileSync(join(process.cwd(), 'src/hooks/useReminders.ts'), 'utf8');
+    expect(hook).not.toContain('seesAll');
+    expect(hook).toContain('const reminders = allReminders');
   });
 });

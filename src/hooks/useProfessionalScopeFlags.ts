@@ -32,6 +32,10 @@ export interface ProfessionalScopeFlags {
   canManagePayments: boolean;
   /** Pode abrir e fechar o próprio caixa; se não, herda o caixa da clínica. */
   canOpenCloseRegister: boolean;
+  /** Tem caixa próprio, com entradas e saídas separadas do caixa da clínica. */
+  canManageOwnRegister: boolean;
+  /** Compartilha bancos, taxas, boletos e contas com administrador e recepção. */
+  sharesFinancialWithAdmin: boolean;
   isLoading: boolean;
 }
 
@@ -71,6 +75,8 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
   const canAccessFinancial = isPrivileged || perms.can_access_financial === true;
   const canManagePayments = isPrivileged || perms.can_manage_payments === true;
   const canOpenCloseRegister = isPrivileged || perms.can_open_close_register === true;
+  const canManageOwnRegister = !isPrivileged && perms.can_manage_own_register === true;
+  const sharesFinancialWithAdmin = isPrivileged || perms.can_share_financial_with_admin === true;
 
   return {
     professionalId: data?.id ?? null,
@@ -84,6 +90,8 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
     canAccessFinancial,
     canManagePayments,
     canOpenCloseRegister,
+    canManageOwnRegister,
+    sharesFinancialWithAdmin,
     isLoading,
   };
 }

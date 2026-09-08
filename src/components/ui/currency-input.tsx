@@ -47,6 +47,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           onChange={(event) => {
             const nextValue = formatTypingValue(event.target.value);
             setDisplayValue(nextValue);
+            setCleared(nextValue.trim() === '');
             const cents = parseBrazilianCurrencyToCents(nextValue);
             onCentsChange?.(cents);
             onValueChange(cents / 100);

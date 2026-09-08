@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { UserX, Calendar, Clock, FileText, Trash2, Edit, CheckCircle, XCircle, History, Repeat, CalendarDays, AlertTriangle } from 'lucide-react';
 import { Professional } from '@/types';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useProfessionalAbsences, ProfessionalAbsence } from '@/hooks/useProfessionalAbsences';
 import { useAppointments } from '@/hooks/useAppointments';
 import { toast } from 'sonner';
@@ -93,6 +94,8 @@ export function ProfessionalAbsenceDialog({
   editingAbsence,
 }: ProfessionalAbsenceDialogProps) {
   const { absences, createAbsence, updateAbsence, deleteAbsence } = useProfessionalAbsences();
+  // Cada profissional registra apenas a sua própria ausência.
+  const { professionalId: ownProfessionalId, isProfessional } = useCurrentProfessional();
   const { appointments } = useAppointments();
   const [professionalId, setProfessionalId] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));

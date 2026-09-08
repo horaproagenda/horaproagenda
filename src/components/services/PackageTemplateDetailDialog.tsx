@@ -134,6 +134,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         equipment: pkg.equipment || [],
         is_active: pkg.is_active,
       });
+      recordVis.setVisibility(((pkg as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       setIsEditing(false);
     }
   }, [open, pkg]);

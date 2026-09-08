@@ -9,6 +9,7 @@ export type TrackingMethod = 'exact' | 'estimated';
 export interface PackageTemplateProduct {
   id: string;
   template_id: string;
+  package_template_id?: string;
   product_id: string;
   quantity_per_use: number;
   estimated_appointments: number | null;

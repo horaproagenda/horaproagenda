@@ -9,7 +9,7 @@ import { calculateProductLinkCostPerUse, calculateTotalCostPerUse } from '../pro
 /**
  * Testes automatizados que espelham a lógica do gatilho SQL
  * `decrease_product_stock_on_appointment_complete`:
- *  - Conversão de unidades (mesma família e cross-family densidade 1)
+ *  - Conversão somente entre unidades da mesma família
  *  - Cálculo exato (quantity_per_use direto)
  *  - Cálculo estimado (recipiente / atendimentos estimados)
  *  - Aplicação a vínculos de serviço, template de pacote e etapa de pacote
@@ -29,14 +29,13 @@ describe('Conversão de unidades (espelha convert_product_quantity SQL)', () => 
   it('massa ↔ massa', () => {
     expect(convertQuantity(2, 'kg', 'g')).toBe(2000);
     expect(convertQuantity(500, 'g', 'kg')).toBe(0.5);
+    expect(convertQuantity(2, 'g', 'mg')).toBe(2000);
+    expect(convertQuantity(500, 'mg', 'g')).toBe(0.5);
   });
 
-  it('cross-family assume densidade 1 (gel/água/cremes)', () => {
-    // Comprei 25 kg de gel, uso 500 ml por atendimento → baixa = 0,5 kg
-    expect(convertQuantity(500, 'ml', 'kg')).toBe(0.5);
-    expect(convertQuantity(500, 'ml', 'g')).toBe(500);
-    expect(convertQuantity(1, 'l', 'kg')).toBe(1);
-    expect(convertQuantity(1000, 'g', 'l')).toBe(1);
+  it('bloqueia conversão entre massa e volume sem presumir densidade', () => {
+    expect(convertQuantity(500, 'ml', 'kg')).toBeNull();
+    expect(convertQuantity(1000, 'g', 'l')).toBeNull();
   });
 });
 
@@ -52,15 +51,14 @@ describe('Modo estimado: recipiente ÷ atendimentos', () => {
     ).toBe(50);
   });
 
-  it('recipiente em ml com estoque em kg (densidade 1)', () => {
-    // 500 ml para 25 atendimentos com estoque em kg → 0.02 kg por uso
+  it('não calcula recipiente com grandeza incompatível ao estoque', () => {
     const result = calculateEstimatedUsagePerAppointment({
       containerAmount: 500,
       containerUnit: 'ml',
       stockUnit: 'kg',
       estimatedAppointments: 25,
     });
-    expect(result).toBeCloseTo(0.02, 6);
+    expect(result).toBe(0);
   });
 
   it('retorna 0 quando estimated_appointments é 0/negativo', () => {
@@ -133,7 +131,7 @@ describe('Custo por uso de vínculos serviço → produto / template → produto
     expect(cost).toBe(5); // 5 ml * R$1 = R$5
   });
 
-  it('modo estimado com conversão cross-family (ml→kg densidade 1)', () => {
+  it('bloqueia custo estimado com grandezas incompatíveis', () => {
     const cost = calculateProductLinkCostPerUse({
       product_id: 'p2',
       quantity_per_use: 0,
@@ -147,8 +145,7 @@ describe('Custo por uso de vínculos serviço → produto / template → produto
         quantity_purchased: 25, // R$ 40 por kg
       },
     });
-    // 100 ml / 10 = 10 ml por uso → 0.01 kg → 0.01 * 40 = R$ 0,40
-    expect(cost).toBeCloseTo(0.4, 6);
+    expect(cost).toBe(0);
   });
 
   it('estimado sem dados cai em fallback exact', () => {

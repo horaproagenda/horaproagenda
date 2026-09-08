@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { cycleConsumptionTag, type CycleConsumptionEntry } from '@/lib/productCycleConsumption';
+import { humanizeError } from '@/lib/humanError';
 
 
 export interface ProductDailyConsumption {
@@ -106,6 +107,9 @@ export function useProductDailyConsumption(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(humanizeError(error));
     },
   });
 

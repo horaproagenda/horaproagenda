@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
 import { averageFromCycles, projectStockDuration } from '@/lib/productCycleAnalytics';
+import type { Product } from '@/hooks/useProducts';
 
 
 export interface ProductUsageHistory {
@@ -69,6 +70,21 @@ export interface ProductUsagePrediction {
   expiry_message: string | null;
 }
 
+interface CompletedCycleRow {
+  product_id: string;
+  total_consumed: number | null;
+  appointments_counted: number | null;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+interface ActiveCycleRow {
+  product_id: string;
+  started_using_at: string | null;
+  cycle_quantity: number | null;
+  cycle_unit: string | null;
+}
+
 export function useProductUsagePrediction() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -84,7 +100,7 @@ export function useProductUsagePrediction() {
         .eq('is_active', true);
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as Product[];
     },
   });
 
@@ -107,7 +123,7 @@ export function useProductUsagePrediction() {
         .order('end_date', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as CompletedCycleRow[];
     },
   });
 
@@ -120,7 +136,7 @@ export function useProductUsagePrediction() {
         .not('started_using_at', 'is', null)
         .is('finished_at', null);
       if (error) throw error;
-      return data || [];
+      return (data || []) as ActiveCycleRow[];
     },
   });
 
@@ -143,11 +159,11 @@ export function useProductUsagePrediction() {
   // Calculate predictions for each product
   const predictions = useMemo((): ProductUsagePrediction[] => {
     return products.map(product => {
-      const completedCycles = cycleHistory.filter((record: any) => record.product_id === product.id);
-      const activeCycle = activeCycles.find((cycle: any) => cycle.product_id === product.id);
-      const totalHistoricalAppointments = completedCycles.reduce((sum: number, record: any) => sum + Number(record.appointments_counted || 0), 0);
-      const totalUnitsConsumed = completedCycles.reduce((sum: number, record: any) => sum + Number(record.total_consumed || 0), 0);
-      const totalDaysUsed = completedCycles.reduce((sum: number, record: any) => {
+      const completedCycles = cycleHistory.filter((record) => record.product_id === product.id);
+      const activeCycle = activeCycles.find((cycle) => cycle.product_id === product.id);
+      const totalHistoricalAppointments = completedCycles.reduce((sum, record) => sum + Number(record.appointments_counted || 0), 0);
+      const totalUnitsConsumed = completedCycles.reduce((sum, record) => sum + Number(record.total_consumed || 0), 0);
+      const totalDaysUsed = completedCycles.reduce((sum, record) => {
         if (!record.start_date || !record.end_date) return sum;
         return sum + Math.max(1, differenceInDays(parseISO(record.end_date), parseISO(record.start_date)) + 1);
       }, 0);
@@ -156,7 +172,7 @@ export function useProductUsagePrediction() {
       // (ex.: 100 das 600 unidades). Quando existem, têm prioridade — são
       // medições diretas de quanto o produto rende por atendimento.
       const cycleAverage = averageFromCycles(
-        completedCycles.map((record: any) => ({
+        completedCycles.map((record) => ({
           cycle_quantity: record.total_consumed,
           cycle_appointments: record.appointments_counted,
           started_using_at: record.start_date,

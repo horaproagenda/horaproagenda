@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
 import { averageFromCycles, projectStockDuration } from '@/lib/productCycleAnalytics';
+import type { Product } from '@/hooks/useProducts';
 
 
 export interface ProductUsageHistory {
@@ -99,7 +100,7 @@ export function useProductUsagePrediction() {
         .eq('is_active', true);
       
       if (error) throw error;
-      return (data || []) as CompletedCycleRow[];
+      return (data || []) as Product[];
     },
   });
 
@@ -122,7 +123,7 @@ export function useProductUsagePrediction() {
         .order('end_date', { ascending: false });
       
       if (error) throw error;
-      return (data || []) as ActiveCycleRow[];
+      return (data || []) as CompletedCycleRow[];
     },
   });
 
@@ -135,7 +136,7 @@ export function useProductUsagePrediction() {
         .not('started_using_at', 'is', null)
         .is('finished_at', null);
       if (error) throw error;
-      return data || [];
+      return (data || []) as ActiveCycleRow[];
     },
   });
 

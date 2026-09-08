@@ -136,7 +136,8 @@ interface ConsumptionServiceLink {
 }
 
 interface ConsumptionTemplateLink {
-  package_template_id: string;
+  package_template_id?: string;
+  template_id?: string;
   quantity_per_use?: number | null;
 }
 
@@ -2642,7 +2643,8 @@ function ProductAutomaticConsumption({
     }
     const templateQtyMap = new Map<string, number>();
     for (const tp of templateLinks || []) {
-      templateQtyMap.set(tp.package_template_id, Number(tp.quantity_per_use) || 0);
+      const templateId = tp.package_template_id || tp.template_id;
+      if (templateId) templateQtyMap.set(templateId, Number(tp.quantity_per_use) || 0);
     }
 
     const events: { date: Date; qty: number }[] = [];

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
+import { humanizeError } from '@/lib/humanError';
 
 export interface SeatUsage {
   used: number;
@@ -70,7 +71,7 @@ export function useReconcileSeats() {
       qc.invalidateQueries({ queryKey: ['professionals'] });
     },
     onError: (error: unknown) => {
-      toast.error(error);
+      toast.error(humanizeError(error));
     },
   });
 }

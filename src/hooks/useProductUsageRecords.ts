@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { humanizeError } from '@/lib/humanError';
 import type { UsageCalcMode } from '@/lib/productUsageCalc';
 
 export interface ProductUsageRecord {
@@ -78,7 +79,7 @@ export function useProductUsageRecords(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
     },
     onError: (error: unknown) => {
-      toast.error(error);
+      toast.error(humanizeError(error));
     },
   });
 
@@ -101,7 +102,7 @@ export function useProductUsageRecords(productId?: string) {
       return data;
     },
     onSuccess: invalidateCycleQueries,
-    onError: (error: unknown) => toast.error(error),
+    onError: (error: unknown) => toast.error(humanizeError(error)),
   });
 
   const finishCycle = useMutation({
@@ -119,7 +120,7 @@ export function useProductUsageRecords(productId?: string) {
       return data as { stock_after?: number; quantity?: number; appointments?: number; average_per_appointment?: number | null; duration_days?: number; already_finished?: boolean } | null;
     },
     onSuccess: invalidateCycleQueries,
-    onError: (error: unknown) => toast.error(error),
+    onError: (error: unknown) => toast.error(humanizeError(error)),
   });
 
   const deleteUsageRecord = useMutation({
@@ -132,7 +133,7 @@ export function useProductUsageRecords(productId?: string) {
       toast.success('Registro de uso removido.');
     },
     onError: (error: unknown) => {
-      toast.error(error);
+      toast.error(humanizeError(error));
     },
   });
 

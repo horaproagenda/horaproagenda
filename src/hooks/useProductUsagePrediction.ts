@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+import { filterProductsForNotifications } from '@/lib/productNotificationScope';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO, startOfDay, isBefore, isToday } from 'date-fns';
@@ -71,7 +74,7 @@ export function useProductUsagePrediction() {
   const { onlyOwnProducts } = useProfessionalScopeFlags();
 
   // Fetch all products with their purchase history
-  const { data: products: allProductsRaw = [] } = useQuery({
+  const { data: allProductsRaw = [] } = useQuery({
     queryKey: ['products-for-prediction'],
     queryFn: async () => {
       const { data, error } = await supabase

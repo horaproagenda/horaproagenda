@@ -20,6 +20,8 @@ export interface ProductUsageRecord {
   appointment_ids: string[];
   total_consumed: number | null;
   container_yield: number | null;
+  cycle_key: string | null;
+  stock_after: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -80,6 +82,46 @@ export function useProductUsageRecords(productId?: string) {
     },
   });
 
+  const invalidateCycleQueries = () => {
+    ['products', 'product_purchases', 'product_usage_records', 'product_daily_consumption', 'products-for-prediction', 'product-cycle-history'].forEach((key) => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+  };
+
+  const startCycle = useMutation({
+    mutationFn: async (input: { productId: string; purchaseId?: string | null; startDate: string; quantity: number; unit: string }) => {
+      const { data, error } = await supabase.rpc('start_product_usage_cycle', {
+        _product_id: input.productId,
+        _purchase_id: input.purchaseId ?? undefined,
+        _start_date: input.startDate,
+        _quantity: input.quantity,
+        _unit: input.unit,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidateCycleQueries,
+    onError: (error: unknown) => toast.error(error),
+  });
+
+  const finishCycle = useMutation({
+    mutationFn: async (input: { productId: string; purchaseId: string; endDate: string; unit: string; appointments: Array<{ id: string; date: string; serviceId?: string | null }> }) => {
+      const { data, error } = await supabase.rpc('finish_product_usage_cycle', {
+        _product_id: input.productId,
+        _purchase_id: input.purchaseId,
+        _end_date: input.endDate,
+        _unit: input.unit,
+        _appointment_ids: input.appointments.map((item) => item.id),
+        _appointment_dates: input.appointments.map((item) => item.date),
+        _service_ids: input.appointments.map((item) => item.serviceId ?? null) as unknown as string[],
+      });
+      if (error) throw error;
+      return data as { stock_after?: number; quantity?: number; appointments?: number; average_per_appointment?: number | null; duration_days?: number; already_finished?: boolean } | null;
+    },
+    onSuccess: invalidateCycleQueries,
+    onError: (error: unknown) => toast.error(error),
+  });
+
   const deleteUsageRecord = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase.from('product_usage_records' as any) as any).delete().eq('id', id);
@@ -100,5 +142,5 @@ export function useProductUsageRecords(productId?: string) {
       .filter((r) => !targetProductId || r.product_id === targetProductId)
       .flatMap((r) => r.appointment_ids ?? []);
 
-  return { usageRecords, isLoading, refetch, createUsageRecord, deleteUsageRecord, usedAppointmentIds };
+  return { usageRecords, isLoading, refetch, createUsageRecord, deleteUsageRecord, startCycle, finishCycle, usedAppointmentIds };
 }

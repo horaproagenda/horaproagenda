@@ -4,8 +4,9 @@ export type StockUnit = 'un' | 'ml' | 'l' | 'g' | 'kg' | 'other' | string;
 const CONVERSIONS: Record<string, Record<string, number>> = {
   l: { ml: 1000 },
   ml: { l: 1 / 1000 },
-  kg: { g: 1000 },
-  g: { kg: 1 / 1000 },
+  kg: { g: 1000, mg: 1_000_000 },
+  g: { kg: 1 / 1000, mg: 1000 },
+  mg: { g: 1 / 1000, kg: 1 / 1_000_000 },
 };
 
 // Pontes volume ↔ massa assumindo densidade ≈ 1 g/ml (água, gel, cremes
@@ -38,9 +39,6 @@ export function convertQuantity(
 
   const direct = CONVERSIONS[fromUnit]?.[toUnit];
   if (direct !== undefined) return value * direct;
-
-  const cross = CROSS_FAMILY_DENSITY_1[fromUnit]?.[toUnit];
-  if (cross !== undefined) return value * cross;
 
   return null;
 }

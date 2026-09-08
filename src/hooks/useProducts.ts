@@ -17,6 +17,10 @@ function useProductsRealtime() {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
       queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
+      queryClient.invalidateQueries({ queryKey: ['products-for-prediction'] });
+      queryClient.invalidateQueries({ queryKey: ['product-cycle-history'] });
+      queryClient.invalidateQueries({ queryKey: ['product-active-cycles'] });
       queryClient.invalidateQueries({ queryKey: ['service_products'] });
       queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
       queryClient.invalidateQueries({ queryKey: ['package_templates'] });
@@ -31,13 +35,15 @@ function useProductsRealtime() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_appointments' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, invalidateAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_usage_records' }, invalidateAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_daily_consumption' }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
 }
 
 export type ProductType = 'solid' | 'liquid' | 'cream' | 'powder' | 'gel' | 'other';
-export type ProductUnit = 'un' | 'ml' | 'l' | 'g' | 'kg' | 'other';
+export type ProductUnit = 'un' | 'ml' | 'l' | 'mg' | 'g' | 'kg' | 'other';
 
 export interface Product {
   id: string;
@@ -59,6 +65,8 @@ export interface Product {
   current_stock: number;
   /** Quantidade colocada em uso no ciclo ativo (ex.: 100 de 600 unidades). */
   cycle_quantity?: number | null;
+  /** Grandeza escolhida para a quantidade do ciclo ativo. */
+  cycle_unit?: string | null;
 
   min_stock_alert: number | null;
   notes: string | null;
@@ -86,6 +94,7 @@ export interface ProductPurchase {
   duration_days: number | null;
   /** Quantidade colocada em uso neste ciclo (unidade do estoque). */
   cycle_quantity?: number | null;
+  cycle_unit?: string | null;
   /** Atendimentos concluídos durante o ciclo. */
   cycle_appointments?: number | null;
   /** Média de consumo por atendimento apurada ao encerrar o ciclo. */

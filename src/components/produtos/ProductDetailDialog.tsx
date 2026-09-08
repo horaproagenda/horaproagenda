@@ -85,6 +85,9 @@ import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useProductConsumption } from '@/hooks/useProductConsumption';
 import { useProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
+import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
+import { distributeCycleConsumption } from '@/lib/productCycleConsumption';
+
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -210,6 +213,9 @@ export function ProductDetailDialog({
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
+  const { consumptions: dailyConsumptions, replaceCycleConsumption } = useProductDailyConsumption(product?.id);
+  const { createUsageRecord } = useProductUsageRecords(product?.id);
+
 
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();

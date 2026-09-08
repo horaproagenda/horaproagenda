@@ -376,7 +376,7 @@ export function ProfessionalAbsenceDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Profissional *</Label>
-                <Select value={professionalId} onValueChange={setProfessionalId}>
+                <Select value={professionalId} onValueChange={setProfessionalId} disabled={lockedToOwn}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o profissional" />
                   </SelectTrigger>

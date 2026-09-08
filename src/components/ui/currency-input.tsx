@@ -66,10 +66,12 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
             if (displayValue.trim() === '') {
               onValueChange(0);
               onCentsChange?.(0);
+              setCleared(true);
               setDisplayValue('');
               setIsEditing(false);
               return;
             }
+            setCleared(false);
             const normalizedValue = normalizeBrazilianCurrency(displayValue);
             onValueChange(normalizedValue);
             onCentsChange?.(Math.round(normalizedValue * 100));

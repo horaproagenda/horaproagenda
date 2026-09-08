@@ -640,12 +640,14 @@ export function ProductDetailDialog({
       isBulk,
       activePurchase,
       cycleApts,
+      cycleStart,
       usedCrossFamilyConversion,
       cycleQuantity,
       closure,
       combinedAverage,
       forecast,
     };
+
   }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
 
   const runStartCycle = async (dateStr: string, cycleQty?: number | null) => {

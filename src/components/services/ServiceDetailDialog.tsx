@@ -114,6 +114,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const { activeServices } = useServices();
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
+  const recordVis = useRecordVisibility('servicos', (service as any).visibility ?? undefined);
   type CompositeComponent = { service_id: string; interval_days: number; price: number };
   const [components, setComponents] = useState<CompositeComponent[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');

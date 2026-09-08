@@ -12,11 +12,17 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
   ({ value, onValueChange, onCentsChange, className, onFocus, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState(formatCurrencyInput(value));
     const [isEditing, setIsEditing] = React.useState(false);
+    // Usuário apagou o valor: mantemos o campo vazio até digitar algo novo.
+    const [cleared, setCleared] = React.useState(false);
 
     React.useEffect(() => {
       if (isEditing) return;
+      if (cleared && normalizeBrazilianCurrency(value) === 0) {
+        setDisplayValue('');
+        return;
+      }
       setDisplayValue(formatCurrencyInput(value));
-    }, [isEditing, value]);
+    }, [isEditing, value, cleared]);
 
     const formatTypingValue = (nextValue: string) => {
       const sanitized = nextValue.replace(/[^\d,]/g, '');

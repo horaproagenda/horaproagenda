@@ -55,10 +55,14 @@ export function useDocumentTemplatesManagement() {
           variables: data.variables || [],
           is_active: data.is_active ?? true,
           category: data.category ?? 'anamnese',
+          // Registra o profissional dono do modelo para que ele continue
+          // visível para quem o criou (inclusive na geração de links).
+          ...(professionalId ? { owner_professional_id: professionalId } : {}),
           // Só envia visibilidade quando o usuário pôde escolher (permissão de
           // compartilhar); sem o campo o banco aplica o padrão privado.
           ...(data.visibility ? { visibility: data.visibility } : {}),
         } as any)
+
         .select()
         .single();
       

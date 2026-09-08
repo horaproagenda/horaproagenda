@@ -26,6 +26,12 @@ export interface ProfessionalScopeFlags {
   canManageOwnDocuments: boolean;
   /** Vê somente os documentos/modelos que criou. */
   onlyOwnDocuments: boolean;
+  /** Tem acesso ao módulo financeiro e ao caixa da clínica. */
+  canAccessFinancial: boolean;
+  /** Pode dar baixa em pagamentos (registrando no caixa principal). */
+  canManagePayments: boolean;
+  /** Pode abrir e fechar o próprio caixa; se não, herda o caixa da clínica. */
+  canOpenCloseRegister: boolean;
   isLoading: boolean;
 }
 
@@ -62,6 +68,10 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
   const canManageOwnDocuments = !isPrivileged && perms.can_manage_own_documents === true;
   const onlyOwnDocuments = !canViewAllDocuments && (perms.can_manage_own_documents === true || perms.can_view_only_own_documents === true);
 
+  const canAccessFinancial = isPrivileged || perms.can_access_financial === true;
+  const canManagePayments = isPrivileged || perms.can_manage_payments === true;
+  const canOpenCloseRegister = isPrivileged || perms.can_open_close_register === true;
+
   return {
     professionalId: data?.id ?? null,
     isPrivileged,
@@ -71,6 +81,9 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
     canViewAllDocuments,
     canManageOwnDocuments,
     onlyOwnDocuments,
+    canAccessFinancial,
+    canManagePayments,
+    canOpenCloseRegister,
     isLoading,
   };
 }

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,6 +68,7 @@ type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
   const navigate = useNavigate();
+  const { canOpenCloseRegister } = useProfessionalScopeFlags();
   const queryClient = useQueryClient();
   const { currentOpenRegister, openCashRegister, closeCashRegister, isLoading } = useCashRegisters();
   const { transactions } = useCashTransactions(currentOpenRegister?.id);
@@ -410,8 +412,13 @@ export function CashRegisterPanel() {
         <CardContent className="flex flex-col items-center justify-center py-16">
           <Wallet className="h-20 w-20 text-muted-foreground mb-6" />
           <h3 className="text-2xl font-semibold mb-2">Caixa Fechado</h3>
-          <p className="text-muted-foreground mb-6">Abra o caixa para começar a registrar vendas</p>
-          
+          <p className="text-muted-foreground mb-6">
+            {canOpenCloseRegister
+              ? 'Abra o caixa para começar a registrar vendas'
+              : 'O caixa da clínica está fechado. Assim que o administrador abrir o caixa, seus pagamentos serão registrados nele.'}
+          </p>
+
+          {canOpenCloseRegister && (
           <Dialog open={isOpenDialogOpen} onOpenChange={setIsOpenDialogOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="px-8">
@@ -446,6 +453,7 @@ export function CashRegisterPanel() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
         </CardContent>
       </Card>
     );
@@ -583,6 +591,7 @@ export function CashRegisterPanel() {
               </DialogContent>
             </Dialog>
 
+            {canOpenCloseRegister && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="text-destructive hover:text-destructive">
@@ -605,11 +614,14 @@ export function CashRegisterPanel() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            )}
 
+            {canOpenCloseRegister && (
             <Button variant="default" onClick={() => setIsCloseDialogOpen(true)}>
               <Lock className="h-4 w-4 mr-2" />
               Fechar Caixa
             </Button>
+            )}
             
             <CashRegisterCloseDialog
               open={isCloseDialogOpen}

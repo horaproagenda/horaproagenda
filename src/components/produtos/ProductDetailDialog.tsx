@@ -2363,11 +2363,13 @@ export function ProductDetailDialog({
               <ProductAutomaticConsumption
                 product={product}
                 consumptionRecords={consumptionRecords}
+                dailyConsumptions={dailyConsumptions}
                 productConsumption={productConsumption}
                 appointments={appointments}
                 serviceLinks={productServiceLinks}
                 templateLinks={productTemplateLinks}
               />
+
             </TabsContent>
 
 

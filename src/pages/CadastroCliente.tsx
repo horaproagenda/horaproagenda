@@ -102,6 +102,8 @@ export default function CadastroCliente() {
   // Generated content per template (filled after submit, used for PDF downloads)
   const [generatedDocs, setGeneratedDocs] = useState<Array<{ id: string; title: string; content: string }>>([]);
   const [documentStamp, setDocumentStamp] = useState<Date>(() => new Date());
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
 
   const calcAge = (iso: string) => {
     if (!iso) return '';
@@ -461,11 +463,16 @@ export default function CadastroCliente() {
                   ))}
                 </div>
                 {generatedDocs.length > 1 && (
-                  <Button className="w-full" onClick={downloadAllPdfs}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar todos os PDFs
+                  <Button className="w-full" onClick={() => void downloadAllPdfs()} disabled={downloadingAll}>
+                    {downloadingAll ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {downloadingAll ? 'Baixando documentos...' : 'Baixar todos os PDFs'}
                   </Button>
                 )}
+
               </div>
             )}
           </CardContent>
@@ -483,7 +490,8 @@ export default function CadastroCliente() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted">
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-          <div className="flex items-center justify-between">
+          {brandingHeader}
+          <div id="documento-inicio" className="flex items-center justify-between scroll-mt-4">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Documento {currentDocIndex + 1} de {templates.length}
@@ -495,6 +503,7 @@ export default function CadastroCliente() {
               Dados do cadastro já foram preenchidos automaticamente
             </div>
           </div>
+
 
           <Card className="shadow-xl">
             <CardContent className="p-4 sm:p-6 space-y-4">
@@ -568,6 +577,8 @@ export default function CadastroCliente() {
         <meta name="robots" content="noindex,follow" />
       </Helmet>
       <div className="max-w-2xl mx-auto space-y-4">
+        {brandingHeader}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Cadastro do Cliente</CardTitle>

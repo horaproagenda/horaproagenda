@@ -2602,6 +2602,7 @@ export function ProductDetailDialog({
 function ProductAutomaticConsumption({
   product,
   consumptionRecords,
+  dailyConsumptions,
   productConsumption,
   appointments,
   serviceLinks,
@@ -2609,6 +2610,7 @@ function ProductAutomaticConsumption({
 }: {
   product: Product;
   consumptionRecords: any[];
+  dailyConsumptions: any[];
   productConsumption: ReturnType<typeof useProductConsumption>['consumptionReport'][number] | null | undefined;
   appointments: any[];
   serviceLinks: any[];
@@ -2621,17 +2623,36 @@ function ProductAutomaticConsumption({
     [consumptionRecords, product.id]
   );
 
+  // Lançamentos por data: incluem as baixas dos ciclos de uso encerrados
+  // (quantidade separada para uso), vendas e lançamentos manuais.
+  const productDaily = useMemo(
+    () => (dailyConsumptions || []).filter((c: any) => c.product_id === product.id),
+    [dailyConsumptions, product.id]
+  );
+
   // Eventos de consumo derivados: usa registros explícitos quando existem,
   // senão calcula a partir dos atendimentos concluídos vinculados ao produto.
   const consumptionEvents = useMemo(() => {
+    const dailyEvents = productDaily
+      .map((c: any) => ({
+        date: c.consumption_date ? parseISO(c.consumption_date + 'T12:00:00') : null,
+        qty: Number(c.quantity_used) || 0,
+      }))
+      .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+
     if (productRecords.length > 0) {
-      return productRecords
-        .map((r: any) => ({
-          date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
-          qty: Number(r.quantity_used) || 0,
-        }))
-        .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime()));
+      return [
+        ...dailyEvents,
+        ...productRecords
+          .map((r: any) => ({
+            date: r.appointment?.start_time ? parseISO(r.appointment.start_time) : null,
+            qty: Number(r.quantity_used) || 0,
+          }))
+          .filter((e: any) => e.date instanceof Date && !isNaN(e.date.getTime())),
+      ];
     }
+    if (dailyEvents.length > 0) return dailyEvents;
+
 
     // Fallback automático: deriva consumo de atendimentos concluídos
     const serviceQtyMap = new Map<string, number>();

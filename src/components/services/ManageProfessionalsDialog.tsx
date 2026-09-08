@@ -188,6 +188,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const seatUsage = useSeatUsage();
+  const reconcileSeats = useReconcileSeats();
   const noSeats = isSeatCapacityReached(seatUsage);
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

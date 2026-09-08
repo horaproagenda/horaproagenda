@@ -67,8 +67,11 @@ export interface ProductUsagePrediction {
 }
 
 export function useProductUsagePrediction() {
+  const { user } = useAuth();
+  const { onlyOwnProducts } = useProfessionalScopeFlags();
+
   // Fetch all products with their purchase history
-  const { data: products = [] } = useQuery({
+  const { data: products: allProductsRaw = [] } = useQuery({
     queryKey: ['products-for-prediction'],
     queryFn: async () => {
       const { data, error } = await supabase

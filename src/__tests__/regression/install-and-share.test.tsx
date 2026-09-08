@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { ShareAppLinkCard } from '@/components/admin/ShareAppLinkCard';
 
@@ -41,7 +40,7 @@ describe('botão de instalar aplicativo', () => {
     fireBeforeInstallPrompt('accepted');
 
     const button = await screen.findByTestId('install-app-button');
-    await userEvent.click(button);
+    await act(async () => { fireEvent.click(button); });
 
     await waitFor(() => expect(screen.queryByTestId('install-app-button')).toBeNull());
     expect(localStorage.getItem('app-install-done')).toBe('true');
@@ -63,7 +62,7 @@ describe('compartilhar link do aplicativo', () => {
     render(<ShareAppLinkCard />);
     expect(screen.getByTestId('share-app-link-value').textContent).toBe(window.location.origin);
 
-    await userEvent.click(screen.getByTestId('share-app-link-button'));
+    await act(async () => { fireEvent.click(screen.getByTestId('share-app-link-button')); });
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.origin));
   });
 });

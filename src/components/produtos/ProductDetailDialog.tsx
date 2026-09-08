@@ -590,11 +590,10 @@ export function ProductDetailDialog({
     const totalDeduction = resolveCycleDeduction({
       stockBefore,
       cycleQuantity,
-      activePurchaseQuantity: activePurchase?.quantity ?? null,
       estimatedDeduction,
       exactDeduction,
-      isBulk,
     });
+
 
     const remainingStock = resolveStockAfterCycle(stockBefore, totalDeduction);
 

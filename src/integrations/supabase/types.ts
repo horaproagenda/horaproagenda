@@ -5629,6 +5629,10 @@ export type Database = {
         Args: { _professional_id: string }
         Returns: boolean
       }
+      can_see_financial_entry: {
+        Args: { _appointment_id: string; _created_by: string; _sale_id: string }
+        Returns: boolean
+      }
       can_see_record: {
         Args: {
           _module: string
@@ -6109,6 +6113,10 @@ export type Database = {
         Returns: undefined
       }
       professional_permission: { Args: { _key: string }; Returns: boolean }
+      professional_share_flag: {
+        Args: { _module: string; _owner: string }
+        Returns: boolean
+      }
       purge_inactive_client_package_artifacts: {
         Args: { _account_owner_id?: string; _client_id?: string }
         Returns: Json

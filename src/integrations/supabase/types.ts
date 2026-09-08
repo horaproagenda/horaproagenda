@@ -6048,6 +6048,7 @@ export type Database = {
         Args: { _package_id: string }
         Returns: Json
       }
+      has_own_financial_access: { Args: never; Returns: boolean }
       has_permission: {
         Args: {
           _action: string

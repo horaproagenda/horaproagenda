@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { cycleConsumptionTag, type CycleConsumptionEntry } from '@/lib/productCycleConsumption';
+
 
 export interface ProductDailyConsumption {
   id: string;

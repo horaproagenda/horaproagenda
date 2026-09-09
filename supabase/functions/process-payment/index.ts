@@ -368,25 +368,43 @@ serve(async (req) => {
     let accumulatedPaymentMethods = [...body.payment_methods];
 
     if (packageId) {
-      const { data: packageRows, error: packageRowsError } = await supabase
+      // Consulta em duas etapas (sem embed): imune à ambiguidade de relacionamento
+      // entre package_appointments e appointments, que antes derrubava a baixa.
+      const { data: sessionRows, error: sessionRowsError } = await supabase
         .from('package_appointments')
-        // FK hint obrigatório: package_appointments tem duas relações com appointments
-        // (appointment_id e package_appointment_id). Sem o hint o PostgREST recusa o embed.
-        .select('appointment:appointments!package_appointments_appointment_id_fkey(id, amount_paid, payment_methods)')
+        .select('appointment_id')
         .eq('package_id', packageId)
         .not('appointment_id', 'is', null);
 
-      if (packageRowsError) {
-        console.error('Error fetching package payment totals:', packageRowsError);
+      if (sessionRowsError) {
+        console.error('Error fetching package sessions:', sessionRowsError);
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to synchronize package payments', details: packageRowsError.message }),
+          JSON.stringify({ success: false, error: 'Failed to synchronize package payments', details: sessionRowsError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const packageAppointments = (packageRows || [])
-        .map((row: any) => row.appointment)
-        .filter(Boolean);
+      const sessionAppointmentIds = [...new Set(
+        (sessionRows || []).map((row: any) => row.appointment_id).filter(Boolean)
+      )] as string[];
+
+      let packageAppointments: any[] = [];
+      if (sessionAppointmentIds.length > 0) {
+        const { data: aptRows, error: aptRowsError } = await supabase
+          .from('appointments')
+          .select('id, amount_paid, payment_methods')
+          .in('id', sessionAppointmentIds);
+
+        if (aptRowsError) {
+          console.error('Error fetching package payment totals:', aptRowsError);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Failed to synchronize package payments', details: aptRowsError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        packageAppointments = aptRows || [];
+      }
+
       const currentPackagePaid = Math.max(...packageAppointments.map((apt: any) => Number(apt.amount_paid || 0)), previousAmountPaid, 0);
       const requestedDelta = typeof body.payment_delta === 'number'
         ? body.payment_delta

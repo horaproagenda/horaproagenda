@@ -112,7 +112,7 @@ export interface ProductPurchase {
 export function useProducts() {
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const { professionalId } = useProfessionalScopeFlags();
+  const { professionalId, onlyOwnProducts } = useProfessionalScopeFlags();
   useProductsRealtime();
 
   // Resolve scope: admin/receptionist always see all; professionals respect their own permissions flag.

@@ -987,13 +987,13 @@ const Agenda = () => {
       }
     });
     
-    let paymentStatus: PaymentStatus = 'pending';
-    // Use priceAfterDiscount for payment status check
-    if (totalPaid >= priceAfterDiscount) {
-      paymentStatus = 'paid';
-    } else if (totalPaid > 0) {
-      paymentStatus = 'partial';
-    }
+    // Regra única de status (mesma usada no diálogo e no servidor):
+    // desconto abate o valor devido e nunca deixa saldo em aberto.
+    const paymentStatus: PaymentStatus = derivePaymentStatus({
+      price: totalPrice,
+      discount,
+      amountPaid: totalPaid,
+    });
 
     // For the edge function, send the actual procedure value, not excess
     const amountToSendToBackend = isOverpaymentWithChange

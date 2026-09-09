@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { BRAND, PRIMARY_TAGLINE, TAGLINES, DIFFERENTIALS } from '@/content/brand';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 
 const resultStats = [
   { value: '+8h', label: 'economizadas por semana', desc: 'Menos tempo confirmando manualmente' },

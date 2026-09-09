@@ -370,7 +370,9 @@ serve(async (req) => {
     if (packageId) {
       const { data: packageRows, error: packageRowsError } = await supabase
         .from('package_appointments')
-        .select('appointment:appointments(id, amount_paid, payment_methods)')
+        // FK hint obrigatório: package_appointments tem duas relações com appointments
+        // (appointment_id e package_appointment_id). Sem o hint o PostgREST recusa o embed.
+        .select('appointment:appointments!package_appointments_appointment_id_fkey(id, amount_paid, payment_methods)')
         .eq('package_id', packageId)
         .not('appointment_id', 'is', null);
 

@@ -409,8 +409,9 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                 const showAsPackageBadge = isPackage || !!notesApplicationHint;
                 const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
                 const displayName = resolveAppointmentStepServiceName(appointment);
-                const packageName = isPackage ? resolveAppointmentPackageName(appointment) : null;
-                const serviceLine = packageName ? `Pacote: ${packageName}` : null;
+                const packageName = showAsPackageBadge ? resolveAppointmentPackageName(appointment, '') : '';
+                // Nome completo do pacote como contexto — sem repetir quando já é o rótulo principal
+                const serviceLine = packageName && packageName !== displayName ? packageName : null;
                 const displayNotes = formatAppointmentNotesWithRecurringSequence(appointment.notes, recurringSequenceMap.get(appointment.id));
 
 
@@ -439,8 +440,12 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                           <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                         )}
                         <div className="min-w-0">
-                          <div className="font-medium text-sm truncate">{displayName}</div>
-                          {serviceLine && <div className="text-[10px] text-muted-foreground truncate">Serviço: {serviceLine}</div>}
+                          <div className="font-medium text-sm whitespace-normal break-words leading-tight">{displayName}</div>
+                          {serviceLine && (
+                            <div className="text-[10px] text-muted-foreground whitespace-normal break-words leading-tight">
+                              Pacote: {serviceLine}
+                            </div>
+                          )}
                         </div>
                       </div>
 

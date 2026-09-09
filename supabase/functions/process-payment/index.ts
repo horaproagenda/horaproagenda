@@ -699,7 +699,7 @@ serve(async (req) => {
     //   - O desconto atua exclusivamente como REDUTOR do valor a receber.
     //   - Ele é discriminado dentro do próprio registro de pagamento (notes/description),
     //     mantendo o princípio do "lançamento único" por evento de pagamento.
-    const discountAmount = Math.max(0, Number(body.discount_amount || 0));
+    const discountAmount = discountFromBody;
 
     if (newCashPaymentAmount > 0) {
       // Lançamento único e rastreável: registra valor integral, desconto e recebido

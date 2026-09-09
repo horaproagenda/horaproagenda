@@ -612,12 +612,17 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                     const stepServiceName = isPackage
                       ? (appointment.service?.name || (appointment as any)?.service_name_snapshot || null)
                       : null;
-                    // Primary label: para pacote mostra o serviço da etapa; senão o nome do serviço.
+                    // Primary label: pacote comum usa o nome completo do pacote;
+                    // sequencial/kit mostram o serviço da etapa.
                     const primaryLabel = isPackage
-                      ? (stepServiceName || packageName || 'Pacote (registro removido)')
+                      ? (isCommonPackageAppointment(appointment as any)
+                          ? (packageName || stepServiceName || 'Pacote (registro removido)')
+                          : (stepServiceName || packageName || 'Pacote (registro removido)'))
                       : (serviceName || 'Atendimento');
-                    // Secondary line: nome do pacote (contexto) quando for etapa de pacote.
-                    const secondaryLabel = isPackage ? (packageName ? `Pacote: ${packageName}` : 'Pacote') : null;
+                    // Secondary line: nome completo do pacote (contexto), sem repetir o rótulo principal.
+                    const secondaryLabel = isPackage && packageName && packageName !== primaryLabel
+                      ? `Pacote: ${packageName}`
+                      : null;
                     const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
                     const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
                     const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));

@@ -317,6 +317,14 @@ export function useAppointments() {
       queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      // Relatórios/extrato de pacotes e atendimentos precisam refletir a baixa na hora
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
+      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
+      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error, _, context) => {

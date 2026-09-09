@@ -1215,22 +1215,20 @@ export function AppointmentDetailDialog({
   }) || !!packageBoletoInfo?.hasBoleto;
   
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
-  const persistedDiscount = Number((appointment as any)?.discount_amount || 0);
+  const persistedDiscount = appointmentDiscount;
   const remainingAmount = isPackagePaid
     ? 0
     : Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
   
-  // Determine effective payment status based on actual amounts
-  // This ensures consistency between displayed status and values
-  const calculateEffectivePaymentStatus = () => {
-    const requiredAfterDiscount = Math.max(0, totalPrice + persistedAdditionalItemsTotal - persistedDiscount);
-    if (requiredAfterDiscount === 0) return 'paid';
-    if (amountPaid >= requiredAfterDiscount) return 'paid';
-    if (amountPaid > 0) return 'partial';
-    return 'pending';
-  };
-  
-  const effectivePaymentStatus = calculateEffectivePaymentStatus();
+  // Regra única de status (compartilhada com a agenda e o servidor):
+  // desconto entra como valor devido a menos, nunca como saldo em aberto.
+  const effectivePaymentStatus = isPackagePaid
+    ? 'paid'
+    : derivePaymentStatus({
+        price: totalPrice + persistedAdditionalItemsTotal,
+        discount: persistedDiscount,
+        amountPaid,
+      });
   const paymentStatus = paymentStatusConfig[effectivePaymentStatus];
   const PaymentIcon = paymentStatus.icon;
 

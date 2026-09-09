@@ -30,14 +30,16 @@ beforeEach(() => {
 });
 
 describe('botão de instalar aplicativo', () => {
-  it('fica oculto sem convite de instalação', () => {
+  it('aparece mesmo sem convite automático, com instruções manuais', async () => {
     render(<InstallAppButton />);
-    expect(screen.queryByTestId('install-app-button')).toBeNull();
+    const button = await screen.findByTestId('install-app-button');
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('Adicionar à tela de início')).toBeTruthy();
   });
 
-  it('aparece após o convite e desaparece depois de instalar', async () => {
+  it('instala pelo convite do navegador e some depois de instalado', async () => {
     render(<InstallAppButton />);
-    fireBeforeInstallPrompt('accepted');
+    await act(async () => { fireBeforeInstallPrompt('accepted'); });
 
     const button = await screen.findByTestId('install-app-button');
     await act(async () => { fireEvent.click(button); });
@@ -46,10 +48,28 @@ describe('botão de instalar aplicativo', () => {
     expect(localStorage.getItem('app-install-done')).toBe('true');
   });
 
-  it('não volta a aparecer quando já foi instalado antes', () => {
+  it('volta a aparecer quando o aplicativo foi removido do aparelho', async () => {
+    // Registro antigo de instalação + novo convite do navegador = app removido.
     localStorage.setItem('app-install-done', 'true');
     render(<InstallAppButton />);
-    fireBeforeInstallPrompt();
+    await act(async () => { fireBeforeInstallPrompt(); });
+
+    expect(await screen.findByTestId('install-app-button')).toBeTruthy();
+    expect(localStorage.getItem('app-install-done')).toBeNull();
+  });
+
+  it('fica oculto enquanto o aplicativo está aberto instalado', () => {
+    vi.stubGlobal('matchMedia', ((query: string) => ({
+      matches: query.includes('standalone'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      onchange: null,
+      dispatchEvent: vi.fn(),
+    })) as any);
+    render(<InstallAppButton />);
     expect(screen.queryByTestId('install-app-button')).toBeNull();
   });
 });

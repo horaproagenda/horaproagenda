@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { BRAND, PRIMARY_TAGLINE, TAGLINES, DIFFERENTIALS } from '@/content/brand';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 
 const resultStats = [
   { value: '+8h', label: 'economizadas por semana', desc: 'Menos tempo confirmando manualmente' },
@@ -735,6 +736,14 @@ export default function Landing() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-6">
+                  <InstallAppButton
+                    variant="default"
+                    size="lg"
+                    label="Adicionar à tela inicial"
+                    className="h-12 px-6 text-sm"
+                  />
+                </div>
               </Reveal>
               <Reveal>
                 <div className="rounded-2xl border border-landing-text/10 bg-gradient-to-br from-landing-accent/15 via-landing-surface to-landing-surface p-8">

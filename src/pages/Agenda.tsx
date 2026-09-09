@@ -127,6 +127,7 @@ import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/app
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
+import { derivePaymentStatus } from '@/lib/paymentStatus';
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
@@ -883,12 +884,28 @@ const Agenda = () => {
     if (!appointment) return;
 
     // Calculate the correct total price based on appointment type
-    const isPackageAppointment = !!appointment.package_appointment;
     const packageData = appointment.package_appointment?.package;
-    
+    // Reconhece pacote também quando o vínculo não veio carregado (snapshot/observações),
+    // para não usar o preço da sessão no lugar do preço do pacote.
+    const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
+    const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot;
+    const resolvedPackageTotal = Number(packageData?.total_price || 0) || (
+      isPackageAppointment
+        ? Math.max(
+            ...appointments
+              .filter((item) => (
+                (packageData?.id && item.package_appointment?.package_id === packageData.id) ||
+                (!!packageNameSnapshot && (item as any).package_name_snapshot === packageNameSnapshot && item.client_id === appointment.client_id)
+              ))
+              .map((item) => Number(item.package_appointment?.package?.total_price || 0)),
+            0
+          )
+        : 0
+    );
+
     // For package appointments, use the FULL package price, not per session
     const baseTotalPrice = isPackageAppointment 
-      ? (packageData?.total_price || 0)
+      ? resolvedPackageTotal
       : (appointment.service?.price || 0);
     const existingAdditionalTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
     const newAdditionalTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
@@ -970,13 +987,13 @@ const Agenda = () => {
       }
     });
     
-    let paymentStatus: PaymentStatus = 'pending';
-    // Use priceAfterDiscount for payment status check
-    if (totalPaid >= priceAfterDiscount) {
-      paymentStatus = 'paid';
-    } else if (totalPaid > 0) {
-      paymentStatus = 'partial';
-    }
+    // Regra única de status (mesma usada no diálogo e no servidor):
+    // desconto abate o valor devido e nunca deixa saldo em aberto.
+    const paymentStatus: PaymentStatus = derivePaymentStatus({
+      price: totalPrice,
+      discount,
+      amountPaid: totalPaid,
+    });
 
     // For the edge function, send the actual procedure value, not excess
     const amountToSendToBackend = isOverpaymentWithChange

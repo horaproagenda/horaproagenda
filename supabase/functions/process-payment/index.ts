@@ -475,6 +475,10 @@ serve(async (req) => {
               amount_paid: accumulatedAmountPaid,
               payment_methods: accumulatedPaymentMethods,
               payment_date: nextPaymentDate,
+              // CRITICAL: o desconto do pacote precisa existir em TODAS as sessões.
+              // Sem isso, as outras aplicações mostram o valor do desconto como
+              // saldo em aberto e o pacote nunca aparece como quitado.
+              discount_amount: discountToPersist,
               updated_by: userId,
             })
             .in('id', siblingIds);
@@ -695,90 +699,145 @@ serve(async (req) => {
     //   - O desconto atua exclusivamente como REDUTOR do valor a receber.
     //   - Ele é discriminado dentro do próprio registro de pagamento (notes/description),
     //     mantendo o princípio do "lançamento único" por evento de pagamento.
-    const discountAmount = Math.max(0, Number(body.discount_amount || 0));
+    const discountAmount = discountFromBody;
 
     if (newCashPaymentAmount > 0) {
       // Lançamento único e rastreável: registra valor integral, desconto e recebido
+      const paymentFingerprint = `[pay:${body.appointment_id}:${accumulatedAmountPaid.toFixed(2)}:${newCashPaymentAmount.toFixed(2)}]`;
       const breakdownNotes = [
         `Valor integral: R$ ${Number(baseRequiredAmount + additionalItemsTotal).toFixed(2)}`,
         discountAmount > 0 ? `Desconto concedido: R$ ${discountAmount.toFixed(2)}` : null,
         `Valor recebido: R$ ${newCashPaymentAmount.toFixed(2)}`,
         `Forma: ${primaryPaymentMethodName || 'n/a'}`,
         `Data: ${today}`,
+        paymentFingerprint,
       ].filter(Boolean).join(' | ');
 
-      const { error: entryError } = await supabase.from('financial_entries').insert({
-        type: 'receivable',
-        description: `Pagamento: ${serviceName} - ${clientName}`,
-        amount: newCashPaymentAmount,
-        due_date: today,
-        paid_date: today,
-        status: 'paid',
-        client_id: appointment.client?.id,
-        appointment_id: body.appointment_id,
-        payment_method_id: primaryPaymentMethodId,
-        notes: breakdownNotes,
-        created_by: userId,
-      });
+      // Idempotência: se a mesma baixa já foi registrada (retry após erro de rede),
+      // não duplica o lançamento financeiro nem a movimentação de caixa.
+      const { data: existingEntries, error: existingEntryError } = await supabase
+        .from('financial_entries')
+        .select('id')
+        .eq('appointment_id', body.appointment_id)
+        .ilike('notes', `%${paymentFingerprint}%`)
+        .limit(1);
 
-      if (entryError) {
-        console.error('Error creating financial entry:', entryError);
+      if (existingEntryError) {
+        console.error('Error checking existing financial entry:', existingEntryError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Não foi possível registrar o pagamento no financeiro. Tente novamente.',
+            details: existingEntryError.message,
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // Create cash transaction if register is open - use payment_method_name for proper categorization
-      if (body.cash_register_id) {
-        const { error: cashError } = await supabase.from('cash_transactions').insert({
-          cash_register_id: body.cash_register_id,
-          type: 'income',
-          category: 'sale',
-          description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
-          amount: newCashPaymentAmount,
-          payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
-          reference_id: body.appointment_id,
-          reference_type: 'appointment',
-          card_fee_amount: body.card_fee_amount || 0,
-          installments: body.installments || 1,
-          created_by: userId,
-        });
+      const alreadyRegistered = (existingEntries || []).length > 0;
 
-        if (cashError) {
-          console.error('Error creating cash transaction:', cashError);
-        }
-      }
-
-
-      // Create pending receivable for partial payments
-      if (remainingAfterPayment > 0 && resolvedPaymentStatus === 'partial') {
-        const { error: pendingError } = await supabase.from('financial_entries').insert({
+      if (!alreadyRegistered) {
+        const { error: entryError } = await supabase.from('financial_entries').insert({
           type: 'receivable',
-          description: `Saldo pendente: ${serviceName} - ${clientName}`,
-          amount: remainingAfterPayment,
+          description: `Pagamento: ${serviceName} - ${clientName}`,
+          amount: newCashPaymentAmount,
           due_date: today,
-          paid_date: null,
-          status: 'pending',
+          paid_date: today,
+          status: 'paid',
           client_id: appointment.client?.id,
           appointment_id: body.appointment_id,
+          payment_method_id: primaryPaymentMethodId,
+          notes: breakdownNotes,
           created_by: userId,
         });
 
-        if (pendingError) {
-          console.error('Error creating pending receivable:', pendingError);
+        if (entryError) {
+          console.error('Error creating financial entry:', entryError);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'O pagamento não pôde ser registrado no financeiro. Nada foi cobrado — tente novamente.',
+              details: entryError.message,
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
-      }
 
-      // Mark pending entries as paid if fully paid
-      if (resolvedPaymentStatus === 'paid') {
-        const { error: updatePendingError } = await supabase
-          .from('financial_entries')
-          .update({ status: 'paid', paid_date: today })
-          .eq('appointment_id', body.appointment_id)
-          .eq('status', 'pending');
+        // Create cash transaction if register is open - use payment_method_name for proper categorization
+        if (body.cash_register_id) {
+          const { error: cashError } = await supabase.from('cash_transactions').insert({
+            cash_register_id: body.cash_register_id,
+            type: 'income',
+            category: 'sale',
+            description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
+            amount: newCashPaymentAmount,
+            payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
+            reference_id: body.appointment_id,
+            reference_type: 'appointment',
+            card_fee_amount: body.card_fee_amount || 0,
+            installments: body.installments || 1,
+            created_by: userId,
+          });
 
-        if (updatePendingError) {
-          console.error('Error updating pending entries:', updatePendingError);
+          if (cashError) {
+            console.error('Error creating cash transaction:', cashError);
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error: 'O pagamento não pôde ser lançado no caixa. Verifique se o caixa está aberto e tente novamente.',
+                details: cashError.message,
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
       }
     }
+
+    // Saldo a receber: recalculado SEMPRE (mesmo sem dinheiro novo, ex.: só desconto).
+    // Desconto nunca gera saldo em aberto porque já foi abatido de totalRequiredAmount.
+    const { error: clearPendingError } = await supabase
+      .from('financial_entries')
+      .delete()
+      .eq('appointment_id', body.appointment_id)
+      .eq('status', 'pending')
+      .ilike('description', 'Saldo pendente:%');
+
+    if (clearPendingError) {
+      console.error('Error clearing stale pending receivable:', clearPendingError);
+    }
+
+    if (remainingAfterPayment > 0.009 && resolvedPaymentStatus !== 'paid') {
+      const { error: pendingError } = await supabase.from('financial_entries').insert({
+        type: 'receivable',
+        description: `Saldo pendente: ${serviceName} - ${clientName}`,
+        amount: Number(remainingAfterPayment.toFixed(2)),
+        due_date: today,
+        paid_date: null,
+        status: 'pending',
+        client_id: appointment.client?.id,
+        appointment_id: body.appointment_id,
+        created_by: userId,
+      });
+
+      if (pendingError) {
+        console.error('Error creating pending receivable:', pendingError);
+      }
+    }
+
+    // Mark pending entries as paid if fully paid
+    if (resolvedPaymentStatus === 'paid') {
+      const { error: updatePendingError } = await supabase
+        .from('financial_entries')
+        .update({ status: 'paid', paid_date: today })
+        .eq('appointment_id', body.appointment_id)
+        .eq('status', 'pending');
+
+      if (updatePendingError) {
+        console.error('Error updating pending entries:', updatePendingError);
+      }
+    }
+
 
     // Log audit entry for payment processing
     await supabase.from('audit_logs').insert({

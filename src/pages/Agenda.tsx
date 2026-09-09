@@ -127,6 +127,7 @@ import { getAppointmentStatusConfig, getAppointmentStatusStyle } from '@/lib/app
 import { buildAppointmentPackageSequenceMap, getAppointmentPackageApplicationLabel } from '@/lib/packageSequence';
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { shouldKeepAppointmentVisibleInAgenda } from '@/lib/packageAvailability';
+import { derivePaymentStatus } from '@/lib/paymentStatus';
 import { AgendaFiltersContent } from '@/components/agenda/AgendaFiltersContent';
 import { useSharedResourceBookings } from '@/hooks/useSharedResourceBookings';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';

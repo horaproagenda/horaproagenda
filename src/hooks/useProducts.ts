@@ -112,7 +112,7 @@ export interface ProductPurchase {
 export function useProducts() {
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const { professionalId } = useProfessionalScopeFlags();
+  const { professionalId, onlyOwnProducts } = useProfessionalScopeFlags();
   useProductsRealtime();
 
   // Resolve scope: admin/receptionist always see all; professionals respect their own permissions flag.
@@ -131,10 +131,12 @@ export function useProducts() {
     },
   });
 
+  // Escopo: admin/recepção veem tudo. Profissional com "Ver produtos de todos"
+  // também vê tudo; só filtra por autoria quem está limitado aos próprios.
   const products = useMemo(() => {
-    if (isPrivileged || !user?.id) return allProducts;
+    if (isPrivileged || !user?.id || !onlyOwnProducts) return allProducts;
     return allProducts.filter((p) => p.created_by === user.id);
-  }, [allProducts, isPrivileged, user?.id]);
+  }, [allProducts, isPrivileged, onlyOwnProducts, user?.id]);
 
 
   const createProduct = useMutation({

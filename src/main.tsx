@@ -9,6 +9,7 @@ import { logVersionEvent } from "./lib/appVersionLog";
 import { bootVersionGuard } from "./lib/bootVersionGuard";
 import { installChunkErrorRecovery } from "./lib/chunkErrorRecovery";
 import { initKeyboardInsetTracking } from "./lib/keyboardInset";
+import { initInstallPromptCapture } from "./lib/installPrompt";
 
 // Recupera de chunks obsoletos após deploy (clicar em rota e carregar
 // chunk antigo do cache): força um reload único quando detecta o erro.

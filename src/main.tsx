@@ -18,6 +18,10 @@ installChunkErrorRecovery();
 // Teclado virtual (iOS/Android): expõe --kb-inset para os containers de rolagem.
 initKeyboardInsetTracking();
 
+// Convite de instalação do navegador: precisa ser capturado antes do React
+// montar, pois o evento acontece uma única vez no carregamento da página.
+initInstallPromptCapture();
+
 // Guarda de versão de boot: detecta bundle obsoleto (cache de CDN, SW antigo,
 // novo navegador/login com cache local antigo) e força purge + reload ANTES
 // do React montar. Roda em paralelo (fire-and-forget) para não bloquear o boot.

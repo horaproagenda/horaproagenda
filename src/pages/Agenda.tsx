@@ -884,12 +884,28 @@ const Agenda = () => {
     if (!appointment) return;
 
     // Calculate the correct total price based on appointment type
-    const isPackageAppointment = !!appointment.package_appointment;
     const packageData = appointment.package_appointment?.package;
-    
+    // Reconhece pacote também quando o vínculo não veio carregado (snapshot/observações),
+    // para não usar o preço da sessão no lugar do preço do pacote.
+    const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
+    const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot;
+    const resolvedPackageTotal = Number(packageData?.total_price || 0) || (
+      isPackageAppointment
+        ? Math.max(
+            ...appointments
+              .filter((item) => (
+                (packageData?.id && item.package_appointment?.package_id === packageData.id) ||
+                (!!packageNameSnapshot && (item as any).package_name_snapshot === packageNameSnapshot && item.client_id === appointment.client_id)
+              ))
+              .map((item) => Number(item.package_appointment?.package?.total_price || 0)),
+            0
+          )
+        : 0
+    );
+
     // For package appointments, use the FULL package price, not per session
     const baseTotalPrice = isPackageAppointment 
-      ? (packageData?.total_price || 0)
+      ? resolvedPackageTotal
       : (appointment.service?.price || 0);
     const existingAdditionalTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
     const newAdditionalTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);

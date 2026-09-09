@@ -103,6 +103,7 @@ import {
   UUID_RE,
 } from '@/lib/appointmentHistoryFormat';
 import { resolveAppointmentPackageName, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
+import { derivePaymentStatus } from '@/lib/paymentStatus';
 import { useKitAppointments, type KitScope } from '@/hooks/useKitAppointments';
 import { KitScopeDialog } from './KitScopeDialog';
 

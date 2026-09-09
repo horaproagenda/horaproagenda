@@ -128,5 +128,7 @@ export const formatAppointmentServiceWithPackageContext = (
   const serviceName = resolveAppointmentStepServiceName(appointment);
   if (!isPackageAppointmentLike(appointment)) return serviceName;
   const packageName = resolveAppointmentPackageName(appointment, '');
-  return packageName ? `${serviceName} (${packageName})` : serviceName;
+  // Nunca repetir o nome do pacote (caso do pacote comum, cujo rótulo já é o pacote).
+  if (!packageName || packageName === serviceName) return serviceName;
+  return `${serviceName} (${packageName})`;
 };

@@ -1653,13 +1653,21 @@ export function AppointmentDetailDialog({
             className="px-6 pt-6 pb-2 flex-shrink-0 border-b"
             style={{ borderBottomColor: `${dialogProfColor}40` }}
           >
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-start gap-2">
               {isPackageAppointment ? (
-                <Package className="h-5 w-5" style={{ color: dialogProfColor }} />
+                <Package className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: dialogProfColor }} />
               ) : (
-                <Sparkles className="h-5 w-5" style={{ color: dialogProfColor }} />
+                <Sparkles className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: dialogProfColor }} />
               )}
-              {resolvedServiceName}
+              <span className="min-w-0 flex-1">
+                <span className="block whitespace-normal break-words leading-tight">{resolvedServiceName}</span>
+                {/* Nome completo do pacote, exatamente como foi cadastrado */}
+                {isPackageAppointment && resolvedPackageName !== resolvedServiceName && (
+                  <span className="block text-xs font-normal text-muted-foreground whitespace-normal break-words leading-tight mt-0.5">
+                    Pacote: {resolvedPackageName}
+                  </span>
+                )}
+              </span>
             </DialogTitle>
           </DialogHeader>
 

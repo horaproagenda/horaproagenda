@@ -475,6 +475,10 @@ serve(async (req) => {
               amount_paid: accumulatedAmountPaid,
               payment_methods: accumulatedPaymentMethods,
               payment_date: nextPaymentDate,
+              // CRITICAL: o desconto do pacote precisa existir em TODAS as sessões.
+              // Sem isso, as outras aplicações mostram o valor do desconto como
+              // saldo em aberto e o pacote nunca aparece como quitado.
+              discount_amount: discountToPersist,
               updated_by: userId,
             })
             .in('id', siblingIds);

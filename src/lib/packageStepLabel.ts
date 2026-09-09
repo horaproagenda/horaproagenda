@@ -62,7 +62,7 @@ export type AppointmentServiceLabelSource = {
   package_name_snapshot?: string | null;
   notes?: string | null;
   package_appointment?: {
-    package?: { name?: string | null } | null;
+    package?: { name?: string | null; package_type?: string | null } | null;
   } | null;
 };
 
@@ -79,6 +79,18 @@ export const isPackageAppointmentLike = (appointment?: AppointmentServiceLabelSo
   );
 };
 
+/**
+ * Pacote comum (standard): todas as sessões são do mesmo procedimento, então o
+ * rótulo correto em qualquer tela é o NOME COMPLETO do pacote, exatamente como
+ * foi cadastrado. Pacote sequencial e kit mantêm o nome do serviço da etapa.
+ */
+export const isCommonPackageAppointment = (appointment?: AppointmentServiceLabelSource | null) => {
+  if (!isPackageAppointmentLike(appointment)) return false;
+  const type = cleanLabel(appointment?.package_appointment?.package?.package_type);
+  if (!type) return false;
+  return type !== 'sequential' && type !== 'kit' && type !== 'composite';
+};
+
 export const resolveAppointmentStepServiceName = (
   appointment?: AppointmentServiceLabelSource | null,
   fallback = 'Serviço',
@@ -89,7 +101,11 @@ export const resolveAppointmentStepServiceName = (
   const currentServiceName = cleanLabel(appointment.service?.name);
 
   if (isPackage) {
-    return snapshotName || currentServiceName || MISSING_STEP_SERVICE_LABEL;
+    const packageName = resolveAppointmentPackageName(appointment, '');
+    // Pacote comum: sempre o nome completo do pacote.
+    if (isCommonPackageAppointment(appointment) && packageName) return packageName;
+    // Etapa sem serviço identificado: melhor mostrar o pacote do que "não encontrado".
+    return snapshotName || currentServiceName || packageName || MISSING_STEP_SERVICE_LABEL;
   }
 
   return currentServiceName || snapshotName || fallback;
@@ -112,5 +128,7 @@ export const formatAppointmentServiceWithPackageContext = (
   const serviceName = resolveAppointmentStepServiceName(appointment);
   if (!isPackageAppointmentLike(appointment)) return serviceName;
   const packageName = resolveAppointmentPackageName(appointment, '');
-  return packageName ? `${serviceName} (${packageName})` : serviceName;
+  // Nunca repetir o nome do pacote (caso do pacote comum, cujo rótulo já é o pacote).
+  if (!packageName || packageName === serviceName) return serviceName;
+  return `${serviceName} (${packageName})`;
 };

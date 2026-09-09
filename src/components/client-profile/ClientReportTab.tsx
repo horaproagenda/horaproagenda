@@ -42,6 +42,7 @@ import {
 import { isClientCreditPaymentMethod, CLIENT_CREDIT_SOURCE_LABEL, NON_CASH_PAYMENT_LABEL } from '@/lib/clientCreditPayment';
 import { exportToCSV as exportRowsToCSV } from '@/lib/exportUtils';
 import { paymentMethodLabel } from '@/lib/paymentLabels';
+import { isCommonPackageAppointment } from '@/lib/packageStepLabel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';

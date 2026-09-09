@@ -735,6 +735,14 @@ export default function Landing() {
                     </li>
                   ))}
                 </ul>
+                <div className="mt-6">
+                  <InstallAppButton
+                    variant="default"
+                    size="lg"
+                    label="Adicionar à tela inicial"
+                    className="h-12 px-6 text-sm"
+                  />
+                </div>
               </Reveal>
               <Reveal>
                 <div className="rounded-2xl border border-landing-text/10 bg-gradient-to-br from-landing-accent/15 via-landing-surface to-landing-surface p-8">

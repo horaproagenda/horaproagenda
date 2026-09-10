@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
@@ -85,6 +84,7 @@ import {
 import { cn, normalizeBrazilianCurrency, parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
+import { resolvePurchaseCycleDates, validatePurchaseCycleDates } from '@/lib/productPurchaseCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useServices } from '@/hooks/useServices';
@@ -170,10 +170,13 @@ const createEmptyPurchaseForm = () => ({
   supplier_id: '',
   purchase_date: format(new Date(), 'yyyy-MM-dd'),
   expiry_date: '',
-  start_using_today: false,
+  // Datas de uso são SEMPRE manuais (nunca preenchidas automaticamente).
+  usage_start_date: '',
+  usage_end_date: '',
   is_for_sale: false,
   skip_cash_transaction: false,
 });
+
 
 export default function Produtos() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -337,25 +340,29 @@ export default function Produtos() {
 
   const handlePurchaseSubmit = async () => {
     if (!purchaseForm.product_id || purchaseForm.quantity <= 0) return;
+    const dateError = validatePurchaseCycleDates({
+      usageStartDate: purchaseForm.usage_start_date,
+      usageEndDate: purchaseForm.usage_end_date,
+    });
+    if (dateError) {
+      toast.error(dateError);
+      return;
+    }
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
-      const today = format(new Date(), 'yyyy-MM-dd');
       const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
       const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
-      // Auto-promove se produto encerrado OU se usuário marcou "começar a usar hoje"
-      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
-      const promoteNow = isFinished || purchaseForm.start_using_today;
-      // Início do uso = "hoje" só quando explicitamente marcado; caso contrário, usa a data da compra
-      const cycleStartDate = purchaseForm.start_using_today
-        ? today
-        : (purchaseForm.purchase_date || today);
-      const startedUsingAt = promoteNow ? cycleStartDate : null;
+      // As datas de uso são exclusivamente manuais: sem preenchimento automático.
+      const { startedUsingAt, finishedAt } = resolvePurchaseCycleDates({
+        usageStartDate: purchaseForm.usage_start_date,
+        usageEndDate: purchaseForm.usage_end_date,
+      });
 
-      // Fecha o ciclo anterior antes de promover a nova compra (se aplicável)
-      if (promoteNow && startedUsingAt) {
+      // Fecha o ciclo anterior somente quando um novo início de uso foi informado
+      if (startedUsingAt) {
         await closePreviousActiveCycle(purchaseForm.product_id, startedUsingAt);
       }
 
@@ -367,7 +374,7 @@ export default function Produtos() {
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
         started_using_at: startedUsingAt,
-        finished_at: null,
+        finished_at: finishedAt,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
@@ -385,11 +392,12 @@ export default function Produtos() {
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
         supplier: purchaseForm.supplier || product.supplier,
         purchase_date: purchaseForm.purchase_date,
-        started_using_at: startedUsingAt || product.started_using_at,
         is_for_sale: purchaseForm.is_for_sale,
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
-        ...(promoteNow ? { finished_at: null as any } : {}),
+        // Só altera o ciclo do produto quando o usuário informou as datas manualmente
+        ...(startedUsingAt ? { started_using_at: startedUsingAt, finished_at: finishedAt } : {}),
       });
+
 
       setPurchaseDialogOpen(false);
       setPurchaseForm(createEmptyPurchaseForm());
@@ -649,17 +657,23 @@ export default function Produtos() {
                       <Label className="text-xs">Data de Validade</Label>
                       <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
                     </div>
-                    <div className="flex items-center justify-between rounded-md border p-2">
+                    <div className="rounded-md border p-2 space-y-2">
                       <div>
-                        <Label className="text-xs">Iniciar o uso do produto hoje</Label>
-                        <p className="text-[10px] text-muted-foreground">Data: {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                        <Label className="text-xs font-medium">Uso do produto (opcional)</Label>
+                        <p className="text-[10px] text-muted-foreground">Preencha manualmente. Deixe em branco se o uso ainda não começou.</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Não</span>
-                        <Switch checked={purchaseForm.start_using_today} onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, start_using_today: v })} />
-                        <span className="text-xs text-muted-foreground">Sim</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Início do uso</Label>
+                          <SafeDateInput value={purchaseForm.usage_start_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_start_date: v ?? '' })} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Término do uso</Label>
+                          <SafeDateInput value={purchaseForm.usage_end_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_end_date: v ?? '' })} className="h-7 text-xs" />
+                        </div>
                       </div>
                     </div>
+
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
                         <Label className="text-xs">Para Venda ou Uso da Clínica</Label>

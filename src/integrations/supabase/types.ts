@@ -503,6 +503,9 @@ export type Database = {
           discount_amount: number
           end_time: string
           equipment_id: string | null
+          financial_model:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
           id: string
           notes: string | null
           package_appointment_id: string | null
@@ -534,6 +537,9 @@ export type Database = {
           discount_amount?: number
           end_time: string
           equipment_id?: string | null
+          financial_model?:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
@@ -565,6 +571,9 @@ export type Database = {
           discount_amount?: number
           end_time?: string
           equipment_id?: string | null
+          financial_model?:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
           id?: string
           notes?: string | null
           package_appointment_id?: string | null
@@ -953,6 +962,7 @@ export type Database = {
           clinic_cep: string | null
           clinic_city: string | null
           clinic_cnpj: string | null
+          clinic_code: string | null
           clinic_complement: string | null
           clinic_email: string | null
           clinic_logo_url: string | null
@@ -998,6 +1008,7 @@ export type Database = {
           clinic_cep?: string | null
           clinic_city?: string | null
           clinic_cnpj?: string | null
+          clinic_code?: string | null
           clinic_complement?: string | null
           clinic_email?: string | null
           clinic_logo_url?: string | null
@@ -1043,6 +1054,7 @@ export type Database = {
           clinic_cep?: string | null
           clinic_city?: string | null
           clinic_cnpj?: string | null
+          clinic_code?: string | null
           clinic_complement?: string | null
           clinic_email?: string | null
           clinic_logo_url?: string | null
@@ -1356,6 +1368,123 @@ export type Database = {
           },
           {
             foreignKeyName: "cash_transactions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      charge_installments: {
+        Row: {
+          account_owner_id: string
+          amount: number
+          charge_id: string
+          created_at: string
+          due_date: string
+          id: string
+          installment_number: number
+          paid_date: string | null
+          payment_method: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          amount: number
+          charge_id: string
+          created_at?: string
+          due_date: string
+          id?: string
+          installment_number: number
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          amount?: number
+          charge_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          installment_number?: number
+          paid_date?: string | null
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charge_installments_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      charges: {
+        Row: {
+          account_owner_id: string
+          appointment_id: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          installments_count: number
+          notes: string | null
+          professional_id: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          appointment_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments_count?: number
+          notes?: string | null
+          professional_id?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          appointment_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          installments_count?: number
+          notes?: string | null
+          professional_id?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charges_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charges_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charges_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
@@ -1735,6 +1864,142 @@ export type Database = {
           },
         ]
       }
+      commission_rules: {
+        Row: {
+          account_owner_id: string
+          clinic_percentage: number
+          created_at: string
+          deduct_fees: boolean
+          deduct_materials: boolean
+          id: string
+          is_active: boolean
+          payment_rule: Database["public"]["Enums"]["commission_payment_rule"]
+          professional_id: string
+          professional_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          clinic_percentage?: number
+          created_at?: string
+          deduct_fees?: boolean
+          deduct_materials?: boolean
+          id?: string
+          is_active?: boolean
+          payment_rule?: Database["public"]["Enums"]["commission_payment_rule"]
+          professional_id: string
+          professional_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          clinic_percentage?: number
+          created_at?: string
+          deduct_fees?: boolean
+          deduct_materials?: boolean
+          id?: string
+          is_active?: boolean
+          payment_rule?: Database["public"]["Enums"]["commission_payment_rule"]
+          professional_id?: string
+          professional_percentage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_rules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissions: {
+        Row: {
+          account_owner_id: string
+          appointment_id: string | null
+          charge_installment_id: string | null
+          clinic_amount: number
+          commission_rule_id: string | null
+          created_at: string
+          fees_amount: number
+          gross_amount: number
+          id: string
+          materials_amount: number
+          paid_at: string | null
+          professional_amount: number
+          professional_id: string
+          released_at: string | null
+          status: Database["public"]["Enums"]["commission_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          appointment_id?: string | null
+          charge_installment_id?: string | null
+          clinic_amount?: number
+          commission_rule_id?: string | null
+          created_at?: string
+          fees_amount?: number
+          gross_amount?: number
+          id?: string
+          materials_amount?: number
+          paid_at?: string | null
+          professional_amount?: number
+          professional_id: string
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          appointment_id?: string | null
+          charge_installment_id?: string | null
+          clinic_amount?: number
+          commission_rule_id?: string | null
+          created_at?: string
+          fees_amount?: number
+          gross_amount?: number
+          id?: string
+          materials_amount?: number
+          paid_at?: string | null
+          professional_amount?: number
+          professional_id?: string
+          released_at?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_charge_installment_id_fkey"
+            columns: ["charge_installment_id"]
+            isOneToOne: false
+            referencedRelation: "charge_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_commission_rule_id_fkey"
+            columns: ["commission_rule_id"]
+            isOneToOne: false
+            referencedRelation: "commission_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_change_verifications: {
         Row: {
           attempts: number
@@ -2060,6 +2325,50 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_accounts: {
+        Row: {
+          account_owner_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_clinic: boolean
+          name: string
+          professional_id: string | null
+          public_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_clinic?: boolean
+          name: string
+          professional_id?: string | null
+          public_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_clinic?: boolean
+          name?: string
+          professional_id?: string | null
+          public_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_accounts_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_categories: {
         Row: {
           account_owner_id: string
@@ -2264,6 +2573,115 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "single_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_movements: {
+        Row: {
+          account_owner_id: string
+          amount: number
+          appointment_id: string | null
+          cash_session_id: string | null
+          category: string | null
+          counterpart_account_id: string | null
+          counterpart_movement_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          financial_account_id: string
+          id: string
+          movement_date: string
+          movement_type: Database["public"]["Enums"]["financial_movement_type"]
+          payment_method: string | null
+          professional_id: string | null
+          status: Database["public"]["Enums"]["financial_movement_status"]
+          transfer_group_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          amount: number
+          appointment_id?: string | null
+          cash_session_id?: string | null
+          category?: string | null
+          counterpart_account_id?: string | null
+          counterpart_movement_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          financial_account_id: string
+          id?: string
+          movement_date?: string
+          movement_type: Database["public"]["Enums"]["financial_movement_type"]
+          payment_method?: string | null
+          professional_id?: string | null
+          status?: Database["public"]["Enums"]["financial_movement_status"]
+          transfer_group_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          amount?: number
+          appointment_id?: string | null
+          cash_session_id?: string | null
+          category?: string | null
+          counterpart_account_id?: string | null
+          counterpart_movement_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          financial_account_id?: string
+          id?: string
+          movement_date?: string
+          movement_type?: Database["public"]["Enums"]["financial_movement_type"]
+          payment_method?: string | null
+          professional_id?: string | null
+          status?: Database["public"]["Enums"]["financial_movement_status"]
+          transfer_group_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_movements_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_counterpart_account_id_fkey"
+            columns: ["counterpart_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_counterpart_movement_id_fkey"
+            columns: ["counterpart_movement_id"]
+            isOneToOne: false
+            referencedRelation: "financial_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -3922,6 +4340,9 @@ export type Database = {
           cpf: string | null
           created_at: string
           email: string | null
+          employment_type:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
           id: string
           is_active: boolean
           is_commission_based: boolean | null
@@ -3930,6 +4351,7 @@ export type Database = {
           number: string | null
           permissions: Json | null
           phone: string | null
+          public_code: string | null
           quiet_hours_end: number | null
           quiet_hours_start: number | null
           specialties: string[] | null
@@ -3969,6 +4391,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
           id?: string
           is_active?: boolean
           is_commission_based?: boolean | null
@@ -3977,6 +4402,7 @@ export type Database = {
           number?: string | null
           permissions?: Json | null
           phone?: string | null
+          public_code?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           specialties?: string[] | null
@@ -4016,6 +4442,9 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
           id?: string
           is_active?: boolean
           is_commission_based?: boolean | null
@@ -4024,6 +4453,7 @@ export type Database = {
           number?: string | null
           permissions?: Json | null
           phone?: string | null
+          public_code?: string | null
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           specialties?: string[] | null
@@ -4136,6 +4566,45 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receptionist_professional_grants: {
+        Row: {
+          account_owner_id: string
+          created_at: string
+          id: string
+          professional_id: string
+          receptionist_professional_id: string
+        }
+        Insert: {
+          account_owner_id: string
+          created_at?: string
+          id?: string
+          professional_id: string
+          receptionist_professional_id: string
+        }
+        Update: {
+          account_owner_id?: string
+          created_at?: string
+          id?: string
+          professional_id?: string
+          receptionist_professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receptionist_professional_gra_receptionist_professional_id_fkey"
+            columns: ["receptionist_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptionist_professional_grants_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
         ]
@@ -5670,6 +6139,10 @@ export type Database = {
         Returns: boolean
       }
       can_see_card_brand: { Args: { _brand_id: string }; Returns: boolean }
+      can_see_financial_account: {
+        Args: { _account_id: string }
+        Returns: boolean
+      }
       can_see_financial_entry: {
         Args: { _appointment_id: string; _created_by: string; _sale_id: string }
         Returns: boolean
@@ -5692,6 +6165,10 @@ export type Database = {
       }
       can_upload_client_storage_object: {
         Args: { _bucket_id: string; _object_name: string }
+        Returns: boolean
+      }
+      can_use_financial_account: {
+        Args: { _account_id: string }
         Returns: boolean
       }
       can_use_financial_module: { Args: never; Returns: boolean }
@@ -5852,6 +6329,10 @@ export type Database = {
       }
       ensure_admin_professional: {
         Args: { p_user_id: string }
+        Returns: undefined
+      }
+      ensure_financial_accounts: {
+        Args: { _owner: string }
         Returns: undefined
       }
       ensure_primary_admin_setup: { Args: never; Returns: Json }
@@ -6156,6 +6637,11 @@ export type Database = {
       }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }
+      my_employment_type: {
+        Args: never
+        Returns: Database["public"]["Enums"]["professional_employment_type"]
+      }
+      my_professional_id: { Args: never; Returns: string }
       perm: { Args: { _action: string; _module: string }; Returns: boolean }
       perm_scope: { Args: { _module: string }; Returns: string }
       preview_package_appointment_cascade: {
@@ -6261,6 +6747,9 @@ export type Database = {
           discount_amount: number
           end_time: string
           equipment_id: string | null
+          financial_model:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
           id: string
           notes: string | null
           package_appointment_id: string | null
@@ -6316,6 +6805,9 @@ export type Database = {
           discount_amount: number
           end_time: string
           equipment_id: string | null
+          financial_model:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
           id: string
           notes: string | null
           package_appointment_id: string | null
@@ -6345,6 +6837,7 @@ export type Database = {
         Args: { _id: string; _token: string }
         Returns: undefined
       }
+      short_code: { Args: { _prefix: string; _seed: string }; Returns: string }
       start_product_usage_cycle: {
         Args: {
           _product_id: string
@@ -6425,6 +6918,7 @@ export type Database = {
         | "unidades"
         | "salas_compartilhadas"
       app_role: "admin" | "receptionist" | "professional" | "super_admin"
+      appointment_financial_model: "independente" | "comissionado" | "clinica"
       appointment_status:
         | "scheduled"
         | "confirmed"
@@ -6432,6 +6926,11 @@ export type Database = {
         | "cancelled"
         | "missed"
         | "rescheduled"
+      commission_payment_rule:
+        | "no_atendimento"
+        | "no_pagamento"
+        | "proporcional_parcelas"
+      commission_status: "pendente" | "disponivel" | "pago"
       data_visibility: "private" | "shared" | "clinic"
       document_type:
         | "anamnese"
@@ -6440,6 +6939,18 @@ export type Database = {
         | "photo"
         | "other"
         | "consent"
+      financial_movement_status: "pendente" | "confirmado" | "cancelado"
+      financial_movement_type:
+        | "entrada"
+        | "saida"
+        | "transferencia"
+        | "estorno"
+        | "ajuste"
+      professional_employment_type:
+        | "independente"
+        | "comissionado"
+        | "funcionario"
+        | "administrador"
       quote_status: "draft" | "sent" | "accepted" | "rejected" | "expired"
       treatment_stage: "before" | "during" | "after"
     }
@@ -6587,6 +7098,7 @@ export const Constants = {
         "salas_compartilhadas",
       ],
       app_role: ["admin", "receptionist", "professional", "super_admin"],
+      appointment_financial_model: ["independente", "comissionado", "clinica"],
       appointment_status: [
         "scheduled",
         "confirmed",
@@ -6595,6 +7107,12 @@ export const Constants = {
         "missed",
         "rescheduled",
       ],
+      commission_payment_rule: [
+        "no_atendimento",
+        "no_pagamento",
+        "proporcional_parcelas",
+      ],
+      commission_status: ["pendente", "disponivel", "pago"],
       data_visibility: ["private", "shared", "clinic"],
       document_type: [
         "anamnese",
@@ -6603,6 +7121,20 @@ export const Constants = {
         "photo",
         "other",
         "consent",
+      ],
+      financial_movement_status: ["pendente", "confirmado", "cancelado"],
+      financial_movement_type: [
+        "entrada",
+        "saida",
+        "transferencia",
+        "estorno",
+        "ajuste",
+      ],
+      professional_employment_type: [
+        "independente",
+        "comissionado",
+        "funcionario",
+        "administrador",
       ],
       quote_status: ["draft", "sent", "accepted", "rejected", "expired"],
       treatment_stage: ["before", "during", "after"],

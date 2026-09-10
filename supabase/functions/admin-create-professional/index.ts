@@ -129,12 +129,12 @@ serve(async (req) => {
       // e caixa próprios (independente) ou opera o da clínica.
       'employment_type',
     ] as const;
+    for (const k of ALLOWED_FIELDS) {
+      if (p[k] !== undefined) safePayload[k] = p[k];
+    }
     const EMPLOYMENT_TYPES = ['independente', 'comissionado', 'funcionario', 'administrador'];
     if (safePayload.employment_type && !EMPLOYMENT_TYPES.includes(safePayload.employment_type)) {
       delete safePayload.employment_type;
-    }
-    for (const k of ALLOWED_FIELDS) {
-      if (p[k] !== undefined) safePayload[k] = p[k];
     }
 
     // 3. Insert/update professional record (tenant-locked)

@@ -662,10 +662,26 @@ export default function Produtos() {
                         <SafeDateInput value={purchaseForm.purchase_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                     </div>
-                    <div>
-                      <Label className="text-xs">Data de Validade</Label>
-                      <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Forma de Pagamento</Label>
+                        <Select
+                          value={purchaseForm.payment_method_id || 'none'}
+                          onValueChange={(v) => setPurchaseForm({ ...purchaseForm, payment_method_id: v === 'none' ? '' : v })}
+                        >
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-sm">Não informada</SelectItem>
+                            {activePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Data de Validade</Label>
+                        <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                      </div>
                     </div>
+
                     <div className="rounded-md border p-2 space-y-2">
                       <div>
                         <Label className="text-xs font-medium">Uso do produto (opcional)</Label>

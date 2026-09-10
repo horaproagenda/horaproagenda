@@ -355,6 +355,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointment_additional_items_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointment_additional_items_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -619,6 +626,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
           {
@@ -1291,6 +1305,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cash_registers_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cash_transactions: {
@@ -1371,6 +1392,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_transactions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1490,6 +1518,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "charges_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       client_credit_transactions: {
@@ -1544,6 +1579,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credit_transactions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1679,6 +1721,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_registration_links_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1862,6 +1911,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clients_assigned_professional_id_fkey"
+            columns: ["assigned_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       commission_rules: {
@@ -1910,6 +1966,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1996,6 +2059,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -2215,6 +2285,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "document_fill_links_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "document_fill_links_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -2365,6 +2442,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_accounts_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -2562,6 +2646,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "financial_entries_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "financial_entries_root_entry_id_fkey"
             columns: ["root_entry_id"]
             isOneToOne: false
@@ -2682,6 +2773,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_movements_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -3239,6 +3337,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "package_templates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "package_templates_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -3699,6 +3804,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "product_daily_consumption_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_daily_consumption_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -4043,6 +4155,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "professional_absences_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       professional_credentials: {
@@ -4085,6 +4204,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: true
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4249,6 +4375,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "professional_service_commissions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "professional_service_commissions_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -4309,6 +4442,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: true
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_whatsapp_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4601,10 +4741,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "receptionist_professional_gra_receptionist_professional_id_fkey"
+            columns: ["receptionist_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "receptionist_professional_grants_professional_id_fkey"
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptionist_professional_grants_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -4851,6 +5005,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "service_packages_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_packages_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -5009,6 +5170,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
           {
@@ -5491,6 +5659,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ultramsg_instance_pool_assigned_professional_id_fkey"
+            columns: ["assigned_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_permissions: {
@@ -5693,6 +5868,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
           {
@@ -5915,6 +6097,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "whatsapp_send_queue_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       whatsapp_templates: {
@@ -5978,6 +6167,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_templates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -6050,7 +6246,122 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "professional_whatsapp_credentials_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals_directory"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      professionals_directory: {
+        Row: {
+          account_owner_id: string | null
+          agenda_color: string | null
+          allowed_equipment_ids: string[] | null
+          allowed_room_ids: string[] | null
+          app_role: string | null
+          avatar_url: string | null
+          bio: string | null
+          commission_fixed_value: number | null
+          commission_frequency: string | null
+          commission_payment_day: number | null
+          commission_percentage: number | null
+          commission_type: string | null
+          company_name: string | null
+          created_at: string | null
+          email: string | null
+          employment_type:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
+          id: string | null
+          is_active: boolean | null
+          is_commission_based: boolean | null
+          name: string | null
+          permissions: Json | null
+          phone: string | null
+          public_code: string | null
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
+          specialties: string[] | null
+          updated_at: string | null
+          user_id: string | null
+          whatsapp_from_number: string | null
+          whatsapp_release_approved: boolean | null
+          whatsapp_release_approved_at: string | null
+        }
+        Insert: {
+          account_owner_id?: string | null
+          agenda_color?: string | null
+          allowed_equipment_ids?: string[] | null
+          allowed_room_ids?: string[] | null
+          app_role?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          commission_fixed_value?: number | null
+          commission_frequency?: string | null
+          commission_payment_day?: number | null
+          commission_percentage?: number | null
+          commission_type?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
+          id?: string | null
+          is_active?: boolean | null
+          is_commission_based?: boolean | null
+          name?: string | null
+          permissions?: Json | null
+          phone?: string | null
+          public_code?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          whatsapp_from_number?: string | null
+          whatsapp_release_approved?: boolean | null
+          whatsapp_release_approved_at?: string | null
+        }
+        Update: {
+          account_owner_id?: string | null
+          agenda_color?: string | null
+          allowed_equipment_ids?: string[] | null
+          allowed_room_ids?: string[] | null
+          app_role?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          commission_fixed_value?: number | null
+          commission_frequency?: string | null
+          commission_payment_day?: number | null
+          commission_percentage?: number | null
+          commission_type?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          employment_type?:
+            | Database["public"]["Enums"]["professional_employment_type"]
+            | null
+          id?: string | null
+          is_active?: boolean | null
+          is_commission_based?: boolean | null
+          name?: string | null
+          permissions?: Json | null
+          phone?: string | null
+          public_code?: string | null
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          whatsapp_from_number?: string | null
+          whatsapp_release_approved?: boolean | null
+          whatsapp_release_approved_at?: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {

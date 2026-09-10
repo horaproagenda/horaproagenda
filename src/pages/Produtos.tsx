@@ -379,6 +379,9 @@ export default function Produtos() {
         total_price: normalizedTotalPrice,
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
+        payment_method_id: purchaseForm.payment_method_id || null,
+        payment_method: activePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
+
         started_using_at: startedUsingAt,
         finished_at: finishedAt,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,

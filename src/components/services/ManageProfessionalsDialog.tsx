@@ -92,13 +92,10 @@ const PERMISSIONS_CONFIG = [
 
 
 const defaultPermissions = {
-  can_access_financial: false,
-  can_share_financial_with_admin: false,
-  can_manage_payments: false,
-  can_view_other_payments: false,
-  can_view_other_registers: false,
+  can_manage_clinic_financial: false,
   can_open_close_register: false,
-  can_manage_own_register: false,
+  can_register_expenses: false,
+  can_manage_payments: false,
   can_view_daily_revenue: false,
   can_share_clients_with_admin: true,
   can_view_other_clients: false,

@@ -45,6 +45,7 @@ import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib
 import { NewCategoryDialog } from './NewCategoryDialog';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -120,6 +121,21 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [open, isProfessional, ownProfessionalId, form]);
 
+  // Com apenas um profissional ou uma sala cadastrada, já vem preenchido.
+  const activeProfessionalsList = professionals.filter(p => p.is_active);
+  const activeRoomsList = rooms.filter(r => r.is_active);
+  useEffect(() => {
+    if (!open) return;
+    const currentProfessional = form.getValues('professional_id');
+    if (activeProfessionalsList.length === 1 && (!currentProfessional || currentProfessional === '_none')) {
+      form.setValue('professional_id', activeProfessionalsList[0].id, { shouldValidate: false });
+    }
+    const currentRoom = form.getValues('room_id');
+    if (activeRoomsList.length === 1 && (!currentRoom || currentRoom === '_none')) {
+      form.setValue('room_id', activeRoomsList[0].id, { shouldValidate: false });
+    }
+  }, [open, activeProfessionalsList, activeRoomsList, form]);
+
   const watchPrice = form.watch('price');
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');
@@ -130,7 +146,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
     room_id: watchRoomId && watchRoomId !== '_none' ? watchRoomId : null,
   };
-  const compatibleServices = activeServices.filter(service => isServiceCompatibleWithPackage(service, packageScope));
+  // Kits de serviço não entram em pacotes: são outra forma de agendamento e cobrança.
+  const compatibleServices = withoutKitServices(activeServices, steps.map(s => s.service_id))
+    .filter(service => isServiceCompatibleWithPackage(service, packageScope));
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;

@@ -52,6 +52,7 @@ import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -100,9 +101,11 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const { equipment } = useEquipment();
   const { services, activeServices } = useServices();
   // Use full list for step options so previously-selected inactive services still match.
+  // Kits de serviço não podem compor pacotes (agendamento e cobrança diferentes).
   const stepServiceOptions = React.useMemo(
-    () => (services || []).map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
-    [services]
+    () => withoutKitServices(services || [], sequentialSteps.map(s => s.service_id))
+      .map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
+    [services, sequentialSteps]
   );
 
   const form = useForm<PackageFormData>({

@@ -65,6 +65,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 interface ServiceAppointment {
   id: string;
@@ -836,7 +837,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="_none">Selecione</SelectItem>
-                                  {activeServices.filter(s => s.id !== service.id).map(s => (
+                                  {withoutKitServices(activeServices, components.map(c => c.service_id)).filter(s => s.id !== service.id).map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                   ))}
                                 </SelectContent>

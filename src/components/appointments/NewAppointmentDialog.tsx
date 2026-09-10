@@ -392,6 +392,17 @@ export function NewAppointmentDialog({
     }
   }, [selectedServiceData, selectedPackageData, serviceType]);
 
+  // Com apenas um profissional (ou uma sala) cadastrado, já vem preenchido.
+  useEffect(() => {
+    if (!open) return;
+    if (activeProfessionals.length === 1 && !selectedProfessional) {
+      setSelectedProfessional(activeProfessionals[0].id);
+    }
+    if (activeRooms.length === 1 && !selectedRoom) {
+      setSelectedRoom(activeRooms[0].id);
+    }
+  }, [open, activeProfessionals, activeRooms, selectedProfessional, selectedRoom]);
+
   // Calculate appointment start and end times
   // IMPORTANTE: o horário de término é derivado do horário de início + duração
   // usando aritmética de minutos no relógio de parede (HH:mm) para evitar

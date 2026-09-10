@@ -178,8 +178,6 @@ function AuthInner() {
   const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
   const [signupResendIn, setSignupResendIn] = useState(0);
-  const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
-  const [signupLockUntil, setSignupLockUntil] = useState(0);
   const [signupCodeSentAt, setSignupCodeSentAt] = useState(0);
 
   // Forgot password
@@ -315,8 +313,6 @@ function AuthInner() {
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
       setSignupResendIn(OTP_RESEND_SECONDS);
-      setSignupCodeAttempts(0);
-      setSignupLockUntil(0);
       setSignupCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
@@ -342,8 +338,6 @@ function AuthInner() {
       if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao reenviar'));
       if (data?.error) throw new Error(data.error);
       setSignupResendIn(OTP_RESEND_SECONDS);
-      setSignupCodeAttempts(0);
-      setSignupLockUntil(0);
       setSignupCodeSentAt(Date.now());
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
@@ -358,16 +352,6 @@ function AuthInner() {
     if (loading) return;
     if (signupCode.length !== 6) {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
-      return;
-    }
-    const tNow = Date.now();
-    if (signupLockUntil && tNow < signupLockUntil) {
-      const secs = Math.ceil((signupLockUntil - tNow) / 1000);
-      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
-      return;
-    }
-    if (signupCodeSentAt && tNow - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
-      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -435,23 +419,7 @@ function AuthInner() {
           return;
         }
 
-        // O servidor é a fonte de verdade para validade e tentativas do código.
-        const msg = signUpError.message || '';
-        const isCodeError = /código|code|confirmação/i.test(msg);
-        if (isCodeError) {
-          const next = signupCodeAttempts + 1;
-          setSignupCodeAttempts(next);
-          const remaining = OTP_MAX_ATTEMPTS - next;
-          if (remaining <= 0) {
-            setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
-            toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
-          } else {
-            toast({ title: 'Código inválido', description: `${msg} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
-          }
-          return;
-        }
-
-        toast({ title: 'Erro', description: msg || 'Erro ao criar conta', variant: 'destructive' });
+        toast({ title: 'Erro', description: signUpError.message || 'Erro ao criar conta', variant: 'destructive' });
         return;
       }
 
@@ -639,13 +607,9 @@ function AuthInner() {
   };
 
 
-  const signupOtpStatus: OtpStatus = signupLockUntil > now
-    ? { kind: 'blocked', until: signupLockUntil }
-    : signupCodeSentAt && now - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000
-      ? { kind: 'expired' }
-      : signupCodeSentAt
-        ? { kind: 'sent', at: signupCodeSentAt }
-        : { kind: 'idle' };
+  const signupOtpStatus: OtpStatus = signupCodeSentAt
+    ? { kind: 'sent', at: signupCodeSentAt }
+    : { kind: 'idle' };
 
   const resetOtpStatus: OtpStatus = resetLockUntil > now
     ? { kind: 'blocked', until: resetLockUntil }

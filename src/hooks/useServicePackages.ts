@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ServicePackage } from '@/types';
+import { PROFESSIONAL_SAFE_COLUMNS } from '@/lib/professionalColumns';
 
 export function useServicePackages() {
   const queryClient = useQueryClient();
@@ -13,7 +14,7 @@ export function useServicePackages() {
         .select(`
           *,
           client:clients (*),
-          professional:professionals (*),
+          professional:professionals (${PROFESSIONAL_SAFE_COLUMNS}),
           room:rooms (*),
           service:services (*),
           appointments:package_appointments (*)

@@ -59,6 +59,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { PROFESSIONAL_SAFE_COLUMNS, fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
 
 const PERMISSIONS_CONFIG = [
   { key: 'can_access_financial', label: 'Acessar Financeiro', category: 'financial' },
@@ -141,11 +142,14 @@ export default function ProfissionalDetalhes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professionals')
-        .select('*')
+        .select(PROFESSIONAL_SAFE_COLUMNS)
         .eq('id', id)
         .single();
       if (error) throw error;
-      return data;
+      // Campos sensíveis (CPF, endereço, dados de recebimento) só via função
+      // protegida: administrador da clínica ou o próprio profissional.
+      const sensitive = await fetchProfessionalSensitiveData(supabase as never, id!);
+      return { ...(data as unknown as Record<string, any>), ...sensitive } as any;
     },
     enabled: !!id,
   });

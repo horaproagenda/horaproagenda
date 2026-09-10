@@ -128,6 +128,32 @@ describe('regressão: segredos em texto puro nunca são lidos pelo app', () => {
   });
 });
 
+describe('regressão: PII do profissional não é lida em massa', () => {
+  // CPF/CNPJ/endereço/dados de recebimento tiveram o SELECT revogado no banco;
+  // qualquer select('*') em professionals volta a falhar (ou expor PII).
+  it("nenhum arquivo usa select('*') ou embed (*) em professionals", () => {
+    const offenders = sources
+      .filter(s =>
+        /from\(['"]professionals['"]\)[\s\S]{0,120}?\.select\(\s*['"`]\s*\*/.test(s.code) ||
+        /professionals\s*\(\s*\*\s*\)/.test(s.code),
+      )
+      .map(s => s.file);
+    expect(offenders, `Leem todas as colunas de professionals: ${offenders.join(', ')}`).toEqual([]);
+  });
+
+  it('os campos sensíveis vêm da função protegida', () => {
+    const code = read('src/lib/professionalColumns.ts');
+    expect(code).toMatch(/get_professional_sensitive_data/);
+    for (const col of ['cpf', 'cnpj', 'beneficiary_address']) {
+      expect(PROFESSIONAL_SAFE_LIST).not.toContain(col);
+    }
+  });
+});
+
+const PROFESSIONAL_SAFE_LIST = read('src/lib/professionalColumns.ts')
+  .split('PROFESSIONAL_SAFE_COLUMNS = [')[1]
+  .split('].join')[0];
+
 describe('regressão: mensagens de erro humanizadas', () => {
   // Problema: toasts exibiam constraint/código do Postgres ao usuário.
   it('o wrapper global de toast humaniza erros', () => {

@@ -6,6 +6,7 @@ import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { Client, Appointment, ClientDocument, TreatmentPhoto, Quote, QuoteItem } from '@/types';
 import { formatAppointmentServiceWithPackageContext, resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 import { buildLegacySaleKeySet, hasMatchingLegacySale, isLegacyRetroactiveAppointment } from '@/lib/legacyPaymentDedup';
+import { PROFESSIONAL_SAFE_COLUMNS } from '@/lib/professionalColumns';
 
 // Interface for payment history items from multiple sources
 interface PaymentHistoryItem {
@@ -328,11 +329,11 @@ export function useClientProfile(clientId: string) {
         .select(`
           *,
           service:services(*),
-          professional:professionals(*),
+          professional:professionals(${PROFESSIONAL_SAFE_COLUMNS}),
           room:rooms(*),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
             *,
-            package:service_packages(*, professional:professionals(*), room:rooms(*), service:services(*))
+            package:service_packages(*, professional:professionals(${PROFESSIONAL_SAFE_COLUMNS}), room:rooms(*), service:services(*))
           )
         `)
         .eq('client_id', clientId)
@@ -343,7 +344,7 @@ export function useClientProfile(clientId: string) {
         throw error;
       }
       console.log('Appointments fetched:', data?.length);
-      return data as Appointment[];
+      return data as unknown as Appointment[];
     },
     enabled: !!clientId,
     staleTime: 30_000,

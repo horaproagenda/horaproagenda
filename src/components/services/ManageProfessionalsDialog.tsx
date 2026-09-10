@@ -45,6 +45,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
 import {
@@ -397,17 +398,19 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
     }
   };
 
-  const handleEdit = (professional: any) => {
+  const handleEdit = async (professional: any) => {
     if (!isAdmin) {
       toast.error('Apenas administradores podem editar profissionais.');
       return;
     }
     setEditingId(professional.id);
     const existingPermissions = professional.permissions || defaultPermissions;
+    // CPF e nascimento não são legíveis pela tabela: vêm da consulta protegida.
+    const sensitive = await fetchProfessionalSensitiveData(supabase as never, professional.id);
     form.reset({
       name: professional.name,
-      cpf: professional.cpf || '',
-      birthdate: professional.birthdate || '',
+      cpf: sensitive.cpf || '',
+      birthdate: sensitive.birthdate || '',
       email: professional.email || '',
       password: '',
       phone: professional.phone || '',

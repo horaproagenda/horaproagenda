@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PackageTemplate } from '@/types';
+import { PROFESSIONAL_SAFE_COLUMNS } from '@/lib/professionalColumns';
 
 export function usePackageTemplates() {
   const queryClient = useQueryClient();
@@ -12,7 +13,7 @@ export function usePackageTemplates() {
         .from('package_templates')
         .select(`
           *,
-          professional:professionals (*),
+          professional:professionals (${PROFESSIONAL_SAFE_COLUMNS}),
           room:rooms (*)
         `)
         .eq('is_active', true)

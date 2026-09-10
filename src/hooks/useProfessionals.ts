@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Professional } from '@/types';
 import { useAccountOwnerId } from './useAccountOwnerId';
+import { PROFESSIONAL_SAFE_COLUMNS } from '@/lib/professionalColumns';
 
 export function useProfessionals() {
   const queryClient = useQueryClient();
@@ -12,13 +13,13 @@ export function useProfessionals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professionals')
-        .select('*')
+        .select(PROFESSIONAL_SAFE_COLUMNS)
         .eq('account_owner_id', accountOwnerId)
         .order('name', { ascending: true });
 
       if (error) throw error;
       // Admin (owner) profissional sempre aparece primeiro na lista
-      const list = (data as Professional[]) ?? [];
+      const list = ((data ?? []) as unknown as Professional[]);
       list.sort((a, b) => {
         const ar = a as unknown as { user_id?: string | null; account_owner_id?: string | null };
         const br = b as unknown as { user_id?: string | null; account_owner_id?: string | null };

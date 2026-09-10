@@ -271,7 +271,11 @@ serve(async (req) => {
       }
       if (!userId) {
         console.error("complete-signup create user error:", createError);
-        return jsonResponse({ success: false, error: createError.message || "Erro ao criar usuário." }, 500);
+        return jsonResponse({
+          success: false,
+          code: "account_creation_unavailable",
+          error: "Não foi possível criar sua conta agora. Tente novamente.",
+        }, 500);
       }
     }
 

@@ -142,6 +142,21 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
   }, [open, lockType]);
 
   const isKit = lockType === 'kit' || components.length > 0;
+  // Etapas de kit só aceitam serviços simples (kits/pacotes têm cobrança e agendamento próprios).
+  const kitStepServices = withoutKitServices(activeServices, components.map(c => c.service_id));
+
+  // Preenchimento automático quando existe apenas um profissional ou uma sala ativa.
+  const activeProfessionalsList = professionals.filter(p => p.is_active);
+  const activeRoomsList = rooms.filter(r => r.is_active);
+  React.useEffect(() => {
+    if (!open) return;
+    if (activeProfessionalsList.length === 1 && !form.getValues('professional_id')) {
+      form.setValue('professional_id', activeProfessionalsList[0].id);
+    }
+    if (activeRoomsList.length === 1 && !form.getValues('room_id')) {
+      form.setValue('room_id', activeRoomsList[0].id);
+    }
+  }, [open, activeProfessionalsList, activeRoomsList, form]);
   const kitTotalDuration = components.reduce((sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0), 0);
   const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
 

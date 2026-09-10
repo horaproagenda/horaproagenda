@@ -53,6 +53,15 @@ import {
   pickNextAvailableColor,
   getAgendaColorLabel,
 } from '@/lib/agendaColors';
+import {
+  EMPLOYMENT_TYPES,
+  financialLockReason,
+  financialPermissionsLocked,
+  inferEmploymentType,
+  normalizePermissionsForEmployment,
+  withCompatFinancialKeys,
+} from '@/lib/employmentType';
+import { useReceptionistGrants } from '@/hooks/useReceptionistGrants';
 
 const AGENDA_COLORS = AGENDA_COLOR_PALETTE;
 
@@ -306,6 +315,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         bio: data.bio || null,
         agenda_color: data.agenda_color,
         app_role: data.app_role,
+        employment_type: data.app_role === 'admin' ? 'administrador' : data.employment_type,
         is_commission_based: data.is_commission_based,
         commission_type: data.is_commission_based ? data.commission_type : 'percentage',
         commission_percentage: data.is_commission_based ? data.commission_percentage : 0,
@@ -315,9 +325,12 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         is_active: data.is_active,
         allowed_room_ids: data.app_role === 'admin' ? [] : data.allowed_room_ids,
         allowed_equipment_ids: data.app_role === 'admin' ? [] : data.allowed_equipment_ids,
-        permissions: data.app_role === 'admin' 
+        permissions: data.app_role === 'admin'
           ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
-          : data.permissions,
+          : withCompatFinancialKeys(
+              data.employment_type,
+              normalizePermissionsForEmployment(data.employment_type, data.permissions),
+            ),
       };
 
       if (editingId) {
@@ -388,6 +401,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       bio: professional.bio || '',
       agenda_color: professional.agenda_color || '#3B82F6',
       app_role: professional.app_role || 'professional',
+      employment_type: inferEmploymentType(professional),
+      authorized_professional_ids: [],
       is_commission_based: professional.is_commission_based || false,
       commission_type: professional.commission_type || 'percentage',
       commission_percentage: professional.commission_percentage || 0,

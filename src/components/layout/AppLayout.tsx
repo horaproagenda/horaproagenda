@@ -2,7 +2,6 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
-import { TrialBanner } from '@/components/TrialBanner';
 import { OnboardingGate } from '@/components/onboarding/OnboardingWizard';
 import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';

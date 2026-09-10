@@ -64,13 +64,11 @@ const APP_ROLES = [
 ];
 
 const PERMISSIONS_CONFIG = [
-  { key: 'can_access_financial', label: 'Possui seu próprio financeiro', description: 'Cria, edita, baixa e exclui somente os próprios registros financeiros', category: 'financial' },
-  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Registrar e alterar pagamentos', category: 'financial' },
-  { key: 'can_share_financial_with_admin', label: 'Compartilhar seu financeiro com administrador e recepção', description: 'Vale para contas, boletos parcelados, bancos, taxas de cartão e caixa. Se desligado, tudo que ele lançar aparece somente para ele', category: 'financial' },
-  { key: 'can_view_other_payments', label: 'Ver pagamentos de outros profissionais', description: 'Visualizar pagamentos de outros', category: 'financial' },
-  { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de caixa de outros', category: 'financial' },
-  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa compartilhado da clínica', category: 'financial' },
-  { key: 'can_view_daily_revenue', label: 'Ver lucro/receita do dia', description: 'Visualizar valores financeiros totais', category: 'financial' },
+  { key: 'can_manage_clinic_financial', label: 'Gerenciar o financeiro da clínica', description: 'Ver, criar, editar e apagar lançamentos e relatórios da clínica (perfil gerente)', category: 'financial' },
+  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa da clínica, registrando saldo esperado, contado e diferença', category: 'financial' },
+  { key: 'can_register_expenses', label: 'Registrar despesas da clínica', description: 'Lançar saídas na conta financeira da clínica', category: 'financial' },
+  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Somente dos profissionais autorizados na lista abaixo', category: 'financial' },
+  { key: 'can_view_daily_revenue', label: 'Ver receita do dia da clínica', description: 'Visualizar os totais financeiros da clínica', category: 'financial' },
   { key: 'can_share_clients_with_admin', label: 'Compartilhar seus clientes com administrador e recepção', description: 'Se desligado, os clientes que ele cadastrar não aparecem para o administrador, a recepção e os outros profissionais', category: 'clients' },
   { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Acesso a todos os clientes', category: 'clients' },
   { key: 'can_view_only_own_clients', label: 'Ver somente próprios clientes', description: 'Acesso restrito aos seus clientes', category: 'clients' },

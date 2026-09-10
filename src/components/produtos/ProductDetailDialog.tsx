@@ -1735,6 +1735,8 @@ export function ProductDetailDialog({
                             </div>
                           </TableCell>
                           <TableCell>{purchase.supplier || '-'}</TableCell>
+                          <TableCell>{purchase.payment_method || '-'}</TableCell>
+
                           <TableCell>
                             {purchase.started_using_at ? (
                               <div className="text-sm">

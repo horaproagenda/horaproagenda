@@ -836,7 +836,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="_none">Selecione</SelectItem>
-                                  {activeServices.filter(s => s.id !== service.id).map(s => (
+                                  {withoutKitServices(activeServices, components.map(c => c.service_id)).filter(s => s.id !== service.id).map(s => (
                                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                   ))}
                                 </SelectContent>

@@ -382,6 +382,20 @@ serve(async (req) => {
           is_active: true,
           user_id: userId,
           account_owner_id: userId,
+          // O titular da conta é sempre administrador da clínica, com acesso total.
+          app_role: "admin",
+          employment_type: "administrador",
+          is_commission_based: false,
+          permissions: {
+            can_manage_products: true,
+            can_view_other_products: true,
+            can_view_all_documents: true,
+            can_manage_clinic_financial: true,
+            can_open_close_register: true,
+            can_register_expenses: true,
+            can_manage_payments: true,
+            can_view_daily_revenue: true,
+          },
           cep: clinicCep?.trim() || null,
           street: clinicStreet?.trim() || null,
           number: clinicNumber?.trim() || null,
@@ -390,6 +404,7 @@ serve(async (req) => {
           city: clinicCity?.trim() || city?.trim() || null,
           state: (clinicState || state || "").toUpperCase() || null,
         });
+
       }
     } catch (e) {
       console.warn("complete-signup first professional insert failed:", e);

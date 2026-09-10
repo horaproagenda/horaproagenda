@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
 import { syncBoletoInstallmentsToFinancial } from '@/lib/boletoFinancialSync';
 import { syncBoletoPackageAvailability, type BoletoPackageReleaseRule } from '@/lib/boletoInstallmentSync';
+import { fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
+
 
 
 async function lookupCep(cep: string, apply: (data: { street?: string; neighborhood?: string; city?: string; state?: string }) => void) {

@@ -873,6 +873,45 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
 
                 <FormField
                   control={form.control}
+                  name="employment_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Tipo de vínculo com a clínica</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue(
+                            'permissions',
+                            normalizePermissionsForEmployment(value as never, form.getValues('permissions') || {}),
+                          );
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Selecione o tipo de vínculo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value} className="text-xs">
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">
+                        {EMPLOYMENT_TYPES.find((t) => t.value === field.value)?.description}
+                      </p>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+
+
+                <FormField
+                  control={form.control}
                   name="specialties"
                   render={({ field }) => (
                     <FormItem>

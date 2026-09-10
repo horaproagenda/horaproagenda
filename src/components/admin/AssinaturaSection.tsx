@@ -183,7 +183,7 @@ export function AssinaturaSection() {
                   Teste gratuito ativo · {trialDaysLeft}{" "}
                   {trialDaysLeft === 1 ? "dia restante" : "dias restantes"}
                 </p>
-                <p className="text-sm text-muted-foreground truncate">
+                <p className="text-sm text-muted-foreground">
                   {subscription?.seat_limit} usuário(s) liberados. Primeira cobrança
                   {subscription?.final_price ? ` de ${formatBRL(subscription.final_price)}` : ""} em{" "}
                   {subscription?.next_billing_at ?? subscription?.trial_ends_at
@@ -195,22 +195,10 @@ export function AssinaturaSection() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handlePortal}
-              disabled={portalLoading}
-              className="w-full sm:w-auto"
-            >
-              {portalLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Settings2 className="h-4 w-4 mr-2" />
-              )}
-              Ver fatura
-            </Button>
           </CardContent>
         </Card>
       )}
+
 
       {isActive && !isGrandfathered && (
         <Card className="border-primary/30 bg-primary/5">

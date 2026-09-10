@@ -45,6 +45,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
 import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
+import { fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
 import { ProfessionalCredentialView } from './ProfessionalCredentialView';
 import {

@@ -105,10 +105,16 @@ export function AssinaturaSection() {
       } else {
         toast.success("Assinatura criada! A cobrança está sendo processada no cartão cadastrado.");
       }
+      // Libera o aplicativo: espera o acesso valer e abre a agenda.
+      const granted = await waitForSubscriptionAccess({ timeoutMs: 20_000 });
+      notifySubscriptionUpdated();
+      revalidate();
+      if (granted) navigate("/agenda", { replace: true });
     } finally {
       setIsLoading(false);
     }
   };
+
 
   /** Troca o cartão da assinatura e tenta quitar a fatura em aberto. */
   const handleUpdateCard = async (card: CreditCardInput) => {

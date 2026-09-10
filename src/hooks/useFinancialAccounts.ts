@@ -135,9 +135,11 @@ export function useFinancialMovements(accountId?: string | null) {
       movement_date?: string;
     }) => {
       const { data: auth } = await supabase.auth.getUser();
+      if (!accountOwnerId) throw new Error('Conta não identificada.');
       const { data, error } = await supabase
         .from('financial_movements')
         .insert({
+          account_owner_id: accountOwnerId,
           financial_account_id: input.from_account_id,
           counterpart_account_id: input.to_account_id,
           movement_type: 'transferencia',

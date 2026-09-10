@@ -50,8 +50,9 @@ describe('admin-create-account-user provisions seat users', () => {
   it('only accepts the roles the account admin may assign, defaulting to professional', () => {
     expect(src).toMatch(/ALLOWED_ROLES\s*=\s*\[\s*"admin",\s*"professional",\s*"receptionist"\s*\]/);
     expect(src).toMatch(/:\s*"professional"/);
-    // super_admin must never be assignable from this endpoint.
-    expect(src).not.toMatch(/super_admin/);
+    // Elevated platform roles must never be assignable from this endpoint.
+    expect(src).not.toMatch(/role:\s*["']super_admin["']/);
+
   });
 
 

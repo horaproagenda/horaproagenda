@@ -87,6 +87,8 @@ import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
 import { resolvePurchaseCycleDates, validatePurchaseCycleDates } from '@/lib/productPurchaseCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+
 import { useServices } from '@/hooks/useServices';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -173,9 +175,11 @@ const createEmptyPurchaseForm = () => ({
   // Datas de uso são SEMPRE manuais (nunca preenchidas automaticamente).
   usage_start_date: '',
   usage_end_date: '',
+  payment_method_id: '',
   is_for_sale: false,
   skip_cash_transaction: false,
 });
+
 
 
 export default function Produtos() {

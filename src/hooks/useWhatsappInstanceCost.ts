@@ -17,7 +17,7 @@ export function useWhatsappInstanceCost(qty: number) {
   return useQuery<WhatsappInstanceCost>({
     queryKey: ['whatsapp-instance-cost', qty],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc('get_whatsapp_instance_cost_brl', {
+      const { data, error } = await supabase.rpc('get_whatsapp_instance_cost_brl', {
         qty,
       });
       if (error) throw error;

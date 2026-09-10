@@ -100,9 +100,11 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const { equipment } = useEquipment();
   const { services, activeServices } = useServices();
   // Use full list for step options so previously-selected inactive services still match.
+  // Kits de serviço não podem compor pacotes (agendamento e cobrança diferentes).
   const stepServiceOptions = React.useMemo(
-    () => (services || []).map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
-    [services]
+    () => withoutKitServices(services || [], sequentialSteps.map(s => s.service_id))
+      .map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
+    [services, sequentialSteps]
   );
 
   const form = useForm<PackageFormData>({

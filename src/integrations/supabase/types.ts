@@ -3720,6 +3720,8 @@ export type Database = {
           finished_at: string | null
           id: string
           notes: string | null
+          payment_method: string | null
+          payment_method_id: string | null
           product_id: string
           purchase_date: string
           quantity: number
@@ -3743,6 +3745,8 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
+          payment_method_id?: string | null
           product_id: string
           purchase_date?: string
           quantity?: number
@@ -3766,6 +3770,8 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          payment_method?: string | null
+          payment_method_id?: string | null
           product_id?: string
           purchase_date?: string
           quantity?: number
@@ -3778,6 +3784,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_purchases_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_purchases_product_id_fkey"
             columns: ["product_id"]

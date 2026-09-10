@@ -149,7 +149,7 @@ export default function ProfissionalDetalhes() {
       // Campos sensíveis (CPF, endereço, dados de recebimento) só via função
       // protegida: administrador da clínica ou o próprio profissional.
       const sensitive = await fetchProfessionalSensitiveData(supabase as never, id!);
-      return { ...(data as Record<string, unknown>), ...sensitive } as typeof data & Record<string, unknown>;
+      return { ...(data as unknown as Record<string, any>), ...sensitive } as any;
     },
     enabled: !!id,
   });

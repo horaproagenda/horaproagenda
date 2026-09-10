@@ -130,10 +130,11 @@ serve(async (req) => {
       full_name,
     }).eq("id", newUserId);
 
-    // Insere role 'professional' por padrão (não admin) — account_owner_id é obrigatório
+    // Perfil escolhido pelo administrador (padrão: professional) — account_owner_id é obrigatório
     const { error: roleErr } = await supaAdmin
       .from("user_roles")
-      .insert({ user_id: newUserId, role: "professional", account_owner_id: callerId });
+      .insert({ user_id: newUserId, role: assignedRole, account_owner_id: callerId });
+
     if (roleErr) {
       return new Response(JSON.stringify({ success: false, error: roleErr.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

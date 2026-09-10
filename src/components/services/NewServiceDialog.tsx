@@ -472,7 +472,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="_none" className="text-xs">Selecione</SelectItem>
-                              {activeServices.map(s => (
+                              {kitStepServices.map(s => (
                                 <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
                               ))}
                             </SelectContent>

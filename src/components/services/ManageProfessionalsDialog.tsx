@@ -159,6 +159,8 @@ const professionalSchema = z.object({
   bio: z.string().trim().max(500, 'Bio muito longa').optional(),
   agenda_color: z.string().default('#3B82F6'),
   app_role: z.string().default('professional'),
+  employment_type: z.enum(['independente', 'comissionado', 'funcionario', 'administrador']).default('funcionario'),
+  authorized_professional_ids: z.array(z.string()).default([]),
   is_commission_based: z.boolean().default(false),
   commission_type: z.string().default('percentage'),
   commission_percentage: z.coerce.number().min(0).max(100).default(0),
@@ -225,6 +227,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       bio: '',
       agenda_color: DEFAULT_AGENDA_COLOR,
       app_role: 'professional',
+      employment_type: 'funcionario',
+      authorized_professional_ids: [],
       is_commission_based: false,
       commission_type: 'percentage',
       commission_percentage: 0,
@@ -242,6 +246,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const commissionType = form.watch('commission_type');
   const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
+  const employmentType = form.watch('employment_type');
+  const financialLocked = financialPermissionsLocked(employmentType);
+  const financialLockMessage = financialLockReason(employmentType);
+  const authorizedProfessionalIds = form.watch('authorized_professional_ids') || [];
   const permissions = form.watch('permissions');
   const allowedRoomIds = form.watch('allowed_room_ids') || [];
   const allowedEquipmentIds = form.watch('allowed_equipment_ids') || [];

@@ -130,7 +130,7 @@ export function labelField(code: string): string {
   if (fieldLabels[code]) return fieldLabels[code];
   const normalized = code
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_\-]+/g, ' ')
+    .replace(/[_-]+/g, ' ')
     .trim()
     .toLowerCase();
   if (!normalized) return code;

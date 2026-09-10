@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { VERIFICATION_CODE_TTL_SECONDS, newRequestId, normalizeVerificationEmail } from "../_shared/verification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,8 +62,9 @@ serve(async (req) => {
     }
 
     const { email, type }: VerificationRequest = await req.json();
-    const normalizedEmail = (email ?? "").toString().trim().toLowerCase();
+    const normalizedEmail = normalizeVerificationEmail(email);
     const normalizedType = type === "login" ? "login" : "signup";
+    const requestId = newRequestId();
 
     if (!normalizedEmail) {
       throw new Error("Email é obrigatório");
@@ -94,7 +96,7 @@ serve(async (req) => {
     }
 
     const code = generateCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + VERIFICATION_CODE_TTL_SECONDS * 1000);
 
     const supabaseClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
@@ -120,49 +122,26 @@ serve(async (req) => {
 
     await supabaseClient.from("email_verification_ip_log").insert({ ip });
 
-    // Cooldown 60s
-    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
-    const { data: recent } = await supabaseClient
-      .from("verification_codes")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .eq("type", normalizedType)
-      .gte("created_at", sixtySecondsAgo)
-      .limit(1)
-      .maybeSingle();
-
-    if (recent) {
+    const { data: issueResult, error: issueError } = await supabaseClient.rpc("issue_verification_code", {
+      p_email: normalizedEmail,
+      p_type: normalizedType,
+      p_code: code,
+      p_expires_at: expiresAt.toISOString(),
+    });
+    if (issueError) {
+      console.error("[send-verification-code] reservation failed", { requestId, message: issueError.message });
+      return new Response(JSON.stringify({ error: "Não foi possível gerar o código agora.", requestId }), {
+        status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const issued = issueResult as { created?: boolean; code?: string; id?: string; retry_after?: number } | null;
+    if (!issued?.created && issued?.code === "cooldown") {
       return new Response(
-        JSON.stringify({ error: "Aguarde 60 segundos antes de solicitar um novo código." }),
+        JSON.stringify({ error: `Aguarde ${issued.retry_after ?? 60} segundos antes de solicitar um novo código.`, code: "cooldown", retryAfter: issued.retry_after, requestId }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    // Não apague códigos recentes do mesmo e-mail: e-mails podem chegar fora de
-    // ordem. Mantemos todos os códigos não expirados por 10 min e aceitamos
-    // qualquer código correto, evitando falso "Código inválido".
-    await supabaseClient
-      .from("verification_codes")
-      .delete()
-      .eq("email", normalizedEmail)
-      .eq("type", normalizedType)
-      .lt("expires_at", new Date().toISOString());
-
-    const { data: insertedCode, error: insertError } = await supabaseClient
-      .from("verification_codes")
-      .insert({
-        email: normalizedEmail,
-        code,
-        type: normalizedType,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select("id")
-      .single();
-
-    if (insertError) {
-      console.error("Error inserting verification code:", insertError);
-      throw new Error("Erro ao gerar código de verificação");
-    }
+    if (!issued?.created || !issued.id) throw new Error("Erro ao gerar código de verificação");
 
     // Send via Lovable transactional email infrastructure.
     // The target function has verify_jwt=true and the gateway only accepts a
@@ -181,15 +160,13 @@ serve(async (req) => {
       body: JSON.stringify({
         templateName: 'verification-code',
         recipientEmail: normalizedEmail,
-        idempotencyKey: `verification-${normalizedType}-${insertedCode?.id ?? Date.now()}`,
+        idempotencyKey: `verification-${normalizedType}-${issued.id}`,
         templateData: { code, type: normalizedType },
       }),
     });
 
     if (!sendResp.ok) {
-      if (insertedCode?.id) {
-        await supabaseClient.from("verification_codes").delete().eq("id", insertedCode.id);
-      }
+      await supabaseClient.from("verification_codes").delete().eq("id", issued.id);
       const errText = await sendResp.text().catch(() => "");
       console.error("Error sending email:", sendResp.status, errText);
       return new Response(
@@ -203,7 +180,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Código enviado para o e-mail" }),
+      JSON.stringify({ success: true, message: "Código enviado para o e-mail", expiresAt: expiresAt.toISOString(), requestId }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: unknown) {

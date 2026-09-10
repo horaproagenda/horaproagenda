@@ -6629,6 +6629,15 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       is_tenant_staff: { Args: never; Returns: boolean }
+      issue_verification_code: {
+        Args: {
+          p_code: string
+          p_email: string
+          p_expires_at: string
+          p_type: string
+        }
+        Returns: Json
+      }
       link_current_user_professional: { Args: never; Returns: string }
       link_package_session_to_appointment: {
         Args: { _appointment_id: string; _package_id: string }

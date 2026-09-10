@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { normalizeVerificationEmail, sha256 } from "../_shared/verification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +11,7 @@ interface CompleteSignupRequest {
   email: string;
   password: string;
   fullName: string;
-  code?: string;
+  signupToken?: string;
   phone?: string;
   cpf?: string;
   companyName?: string;
@@ -110,14 +111,13 @@ serve(async (req) => {
   try {
     const requestBody: CompleteSignupRequest = await req.json();
     const {
-      email, password, fullName, code, phone, cpf, companyName, cnpj, city, state, selectedPlan,
+      email, password, fullName, signupToken, phone, cpf, companyName, cnpj, city, state, selectedPlan,
       clinicName, clinicPhone, clinicEmail,
       clinicCep, clinicStreet, clinicNumber, clinicComplement,
       clinicNeighborhood, clinicCity, clinicState,
       businessType, businessTypeLabel,
     } = requestBody;
-    const normalizedEmail = email?.trim().toLowerCase();
-    const normalizedCode = (code ?? "").toString().replace(/\D/g, "").trim();
+    const normalizedEmail = normalizeVerificationEmail(email);
 
     if (!normalizedEmail || !password || !fullName?.trim()) {
       return jsonResponse({ success: false, error: "Nome, e-mail e senha são obrigatórios." }, 400);
@@ -163,68 +163,28 @@ serve(async (req) => {
       }
     }
 
-    // Validate verification code atomically (accepts either a freshly-used code
-    // within the last 10 min OR an active code passed in `code`).
+    // The email code is validated only by verify-code. This endpoint accepts a
+    // short-lived, opaque authorization and never reimplements OTP validation.
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    let verifiedCodeId: string | null = null;
-    {
-      const { data: usedCode } = await supabaseAdmin
-        .from("verification_codes")
-        .select("id")
-        .eq("email", normalizedEmail)
-        .eq("type", "signup")
-        .not("used_at", "is", null)
-        .gte("used_at", tenMinutesAgo)
-        .order("used_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (usedCode) {
-        verifiedCodeId = usedCode.id;
-      } else if (normalizedCode.length === 6) {
-        // Fallback: match by code value across ANY unused signup code for this
-        // email (not just the latest). This avoids "Código inválido" when a
-        // delayed email or a resend race left more than one active code in the
-        // table — any matching, unexpired code is accepted.
-        const { data: matching } = await supabaseAdmin
-          .from("verification_codes")
-          .select("*")
-          .eq("email", normalizedEmail)
-          .eq("type", "signup")
-          .eq("code", normalizedCode)
-          .is("used_at", null)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (matching) {
-          if (new Date(matching.expires_at).getTime() < Date.now()) {
-            await supabaseAdmin.from("verification_codes").delete().eq("id", matching.id);
-            return jsonResponse({ success: false, error: "Código expirado. Solicite um novo." }, 400);
-          }
-          verifiedCodeId = matching.id;
-        } else {
-          const { data: anyActive } = await supabaseAdmin
-            .from("verification_codes")
-            .select("id, attempts, expires_at")
-            .eq("email", normalizedEmail)
-            .eq("type", "signup")
-            .is("used_at", null)
-            .gte("expires_at", new Date().toISOString())
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!anyActive) {
-            return jsonResponse({ success: false, error: "Nenhum código ativo. Solicite um novo código." }, 400);
-          }
-          await supabaseAdmin
-            .from("verification_codes")
-            .update({ attempts: (anyActive.attempts ?? 0) + 1 })
-            .eq("id", anyActive.id);
-          return jsonResponse({ success: false, error: "Código inválido." }, 400);
-        }
-      } else {
-        return jsonResponse({ success: false, error: "E-mail não verificado. Solicite um novo código." }, 400);
-      }
+    if (!signupToken || signupToken.length < 40) {
+      return jsonResponse({ success: false, code: "verification_required", error: "Confirme o código recebido por e-mail antes de continuar." }, 400);
+    }
+    const { data: grantResult, error: grantError } = await supabaseAdmin.rpc(
+      "consume_signup_verification_grant",
+      { p_email: normalizedEmail, p_token_hash: await sha256(signupToken) },
+    );
+    const grant = grantResult as { valid?: boolean; code?: string; already_consumed?: boolean } | null;
+    if (grantError) {
+      console.error("complete-signup grant validation error:", grantError.message);
+      return jsonResponse({ success: false, code: "verification_unavailable", error: "Não foi possível confirmar seu cadastro agora. Tente novamente." }, 500);
+    }
+    if (!grant?.valid) {
+      const expired = grant?.code === "grant_expired";
+      return jsonResponse({
+        success: false,
+        code: expired ? "verification_expired" : "verification_invalid",
+        error: expired ? "A confirmação expirou. Solicite um novo código." : "A confirmação do e-mail não é válida. Solicite um novo código.",
+      }, 400);
     }
 
 
@@ -285,7 +245,7 @@ serve(async (req) => {
         message.includes("already") ||
         message.includes("registered") ||
         message.includes("exists") ||
-        (createError as any)?.code === "email_exists"
+        (createError as { code?: string })?.code === "email_exists"
       ) {
         const existingUser = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
         const { data: existingTrial } = await supabaseAdmin
@@ -318,19 +278,6 @@ serve(async (req) => {
     if (!userId) {
       return jsonResponse({ success: false, error: "Erro ao criar usuário." }, 500);
     }
-
-    // Mark the verification code as used ONLY after we successfully created
-    // the user. This prevents the code from being burned if user creation
-    // failed for any reason (so the user can retry without requesting a new
-    // code).
-    if (verifiedCodeId) {
-      await supabaseAdmin
-        .from("verification_codes")
-        .update({ used_at: new Date().toISOString() })
-        .eq("id", verifiedCodeId)
-        .is("used_at", null);
-    }
-
 
     const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
       id: userId,

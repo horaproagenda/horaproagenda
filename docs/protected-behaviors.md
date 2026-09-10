@@ -18,6 +18,7 @@ Legenda de cobertura:
 | 3 | Recuperação de senha: código do e-mail é aceito (normalização de espaços/caixa, janela de validade) | `unit` `verifyCodeNormalization.test.ts` |
 | 4 | Troca de senha exige política mínima e dá feedback humanizado | `unit` `passwordPolicy.test.ts`, `humanError.test.ts` |
 | 5 | Primeiro Administrador é o próprio usuário autenticado (sem formulário duplicado) e recebe role + permissões totais | `unit` `signup-admin-role.test.ts` + `smoke` (`ensure_primary_admin_setup`) |
+| 5a | Cadastro: qualquer código correto e vigente é confirmado uma única vez; a conta recebe autorização curta, suporta repetição segura e nunca acusa falso “código inválido” | `unit` `verifyCodeNormalization.test.ts`, `signup-admin-role.test.ts` + fluxo real das Edge Functions |
 | 6 | Cadastro de profissionais respeita `seat_limit` da assinatura | `unit` `seatUsage.test.ts` + `smoke` `seat-usage.smoke.test.ts` |
 | 7 | Assinatura: plano + cartão no cadastro, 20 dias grátis, cobrança automática ao fim; falha → 2 dias de carência com aviso → suspensão sem apagar dados; ações de pagamento só para admin | `unit` `subscriptionAccess.test.ts`, `subscriptionReminders.test.ts`, `plans.test.ts` |
 

@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /**
  * Mirrors the normalization done in supabase/functions/verify-code/index.ts
@@ -64,5 +66,27 @@ describe('verify-code input normalization', () => {
     );
 
     expect(blocksSignup).toBe(false);
+  });
+});
+
+describe('signup verification server contract', () => {
+  const verifySource = readFileSync(resolve(__dirname, '../../../supabase/functions/verify-code/index.ts'), 'utf8');
+  const completeSource = readFileSync(resolve(__dirname, '../../../supabase/functions/complete-signup/index.ts'), 'utf8');
+  const sendSource = readFileSync(resolve(__dirname, '../../../supabase/functions/send-verification-code/index.ts'), 'utf8');
+
+  it('uses one atomic database operation for code confirmation and attempt counting', () => {
+    expect(verifySource).toContain('confirm_verification_code');
+    expect(verifySource).not.toContain('.from("verification_codes")');
+  });
+
+  it('reserves sends atomically so concurrent requests cannot issue duplicate emails', () => {
+    expect(sendSource).toContain('issue_verification_code');
+    expect(sendSource).not.toContain('sixtySecondsAgo');
+  });
+
+  it('never sends the raw email code to account creation', () => {
+    expect(completeSource).toContain('consume_signup_verification_grant');
+    expect(completeSource).toContain('signupToken');
+    expect(completeSource).not.toMatch(/\.eq\(["']code["']/);
   });
 });

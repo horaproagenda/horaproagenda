@@ -189,7 +189,7 @@ export function tokenizeDocumentSegment(
     if (SINGLE_CHECKBOX_REGEX.test(part)) {
       // Use surrounding text as label (prefer next text, fallback to previous)
       const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
-      const label = previousText?.value.trim().replace(/[:•\-]$/, '').trim() || `Opção ${lineIndex + 1}.${counters.checkboxIndex + 1}`;
+      const label = previousText?.value.trim().replace(/[:•-]$/, '').trim() || `Opção ${lineIndex + 1}.${counters.checkboxIndex + 1}`;
       tokens.push({ type: 'checkbox', fieldKey: `checkbox_${lineIndex}_${counters.checkboxIndex}`, label });
       counters.checkboxIndex += 1;
       return;

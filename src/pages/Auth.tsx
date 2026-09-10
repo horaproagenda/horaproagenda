@@ -16,7 +16,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
-import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode } from '@/lib/edgeFunctionError';
+import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode, type EdgeErrorPayload } from '@/lib/edgeFunctionError';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -178,8 +178,6 @@ function AuthInner() {
   const [signupCode, setSignupCode] = useState('');
   const [resending, setResending] = useState(false);
   const [signupResendIn, setSignupResendIn] = useState(0);
-  const [signupCodeAttempts, setSignupCodeAttempts] = useState(0);
-  const [signupLockUntil, setSignupLockUntil] = useState(0);
   const [signupCodeSentAt, setSignupCodeSentAt] = useState(0);
 
   // Forgot password
@@ -205,7 +203,7 @@ function AuthInner() {
     if (user) {
       navigate(postLoginTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, postLoginTarget]);
 
   // Persist terms acceptance
   useEffect(() => {
@@ -297,7 +295,7 @@ function AuthInner() {
         body: { email, type: 'signup' },
       });
       // Detecta e-mail já cadastrado (status 409) — não avança para o passo do código.
-      let payload: any = data;
+      let payload: EdgeErrorPayload | null = data && typeof data === 'object' ? data as EdgeErrorPayload : null;
       if (error) {
         payload = (await readEdgeFunctionError(error)) ?? data;
       }
@@ -315,8 +313,6 @@ function AuthInner() {
       if (data?.error) throw new Error(data.error);
       setSignupStep('code');
       setSignupResendIn(OTP_RESEND_SECONDS);
-      setSignupCodeAttempts(0);
-      setSignupLockUntil(0);
       setSignupCodeSentAt(Date.now());
       toast({ title: 'Código enviado!', description: 'Confira seu e-mail.' });
     } catch (err: unknown) {
@@ -342,8 +338,6 @@ function AuthInner() {
       if (error) throw new Error(await edgeErrorMessage(error, 'Erro ao reenviar'));
       if (data?.error) throw new Error(data.error);
       setSignupResendIn(OTP_RESEND_SECONDS);
-      setSignupCodeAttempts(0);
-      setSignupLockUntil(0);
       setSignupCodeSentAt(Date.now());
       toast({ title: 'Novo código enviado', description: 'Verifique seu e-mail.' });
     } catch (err: unknown) {
@@ -355,18 +349,9 @@ function AuthInner() {
   };
 
   const handleConfirmSignupCode = async () => {
+    if (loading) return;
     if (signupCode.length !== 6) {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
-      return;
-    }
-    const tNow = Date.now();
-    if (signupLockUntil && tNow < signupLockUntil) {
-      const secs = Math.ceil((signupLockUntil - tNow) / 1000);
-      toast({ title: 'Muitas tentativas', description: `Aguarde ${secs}s e solicite um novo código.`, variant: 'destructive' });
-      return;
-    }
-    if (signupCodeSentAt && tNow - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000) {
-      toast({ title: 'Código expirado', description: 'Solicite um novo código para continuar.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -374,7 +359,22 @@ function AuthInner() {
       const email = signupEmail.trim().toLowerCase();
       const code = signupCode.replace(/\D/g, '').trim();
 
-      // Verificação + criação atômica via complete-signup (passamos o code).
+      const { data: verification, error: verificationError } = await supabase.functions.invoke('verify-code', {
+        body: { email, code, type: 'signup' },
+      });
+      if (verificationError) {
+        const payload = await readEdgeFunctionError(verificationError);
+        const verifyErr = new Error(payload?.error || 'Não foi possível conferir o código.') as Error & { code?: string };
+        verifyErr.code = payload?.code;
+        throw verifyErr;
+      }
+      if (!verification?.valid || !verification?.signupToken) {
+        const verifyErr = new Error(verification?.error || 'Código inválido.') as Error & { code?: string };
+        verifyErr.code = verification?.code;
+        throw verifyErr;
+      }
+
+      // A conta recebe somente a autorização curta emitida após a confirmação.
       const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
         cpf: signupCpf.replace(/\D/g, ''),
         cnpj: signupCnpj.replace(/\D/g, '') || undefined,
@@ -392,7 +392,7 @@ function AuthInner() {
         clinicState: signupAddress.state.trim().toUpperCase(),
         businessType: signupBusinessType,
         businessTypeLabel: signupBusinessType === 'outro' ? signupBusinessTypeLabel.trim() : undefined,
-        code,
+        signupToken: verification.signupToken,
       });
 
       if (signUpError) {
@@ -419,23 +419,7 @@ function AuthInner() {
           return;
         }
 
-        // Código inválido/expirado/sem código ativo — incrementa tentativas.
-        const msg = signUpError.message || '';
-        const isCodeError = /código|code/i.test(msg);
-        if (isCodeError) {
-          const next = signupCodeAttempts + 1;
-          setSignupCodeAttempts(next);
-          const remaining = OTP_MAX_ATTEMPTS - next;
-          if (remaining <= 0) {
-            setSignupLockUntil(Date.now() + OTP_LOCKOUT_MS);
-            toast({ title: 'Limite atingido', description: 'Solicite um novo código para tentar de novo.', variant: 'destructive' });
-          } else {
-            toast({ title: 'Código inválido', description: `${msg} (${remaining} tentativa(s) restante(s))`, variant: 'destructive' });
-          }
-          return;
-        }
-
-        toast({ title: 'Erro', description: msg || 'Erro ao criar conta', variant: 'destructive' });
+        toast({ title: 'Erro', description: signUpError.message || 'Erro ao criar conta', variant: 'destructive' });
         return;
       }
 
@@ -623,13 +607,9 @@ function AuthInner() {
   };
 
 
-  const signupOtpStatus: OtpStatus = signupLockUntil > now
-    ? { kind: 'blocked', until: signupLockUntil }
-    : signupCodeSentAt && now - signupCodeSentAt > OTP_EXPIRY_SECONDS * 1000
-      ? { kind: 'expired' }
-      : signupCodeSentAt
-        ? { kind: 'sent', at: signupCodeSentAt }
-        : { kind: 'idle' };
+  const signupOtpStatus: OtpStatus = signupCodeSentAt
+    ? { kind: 'sent', at: signupCodeSentAt }
+    : { kind: 'idle' };
 
   const resetOtpStatus: OtpStatus = resetLockUntil > now
     ? { kind: 'blocked', until: resetLockUntil }

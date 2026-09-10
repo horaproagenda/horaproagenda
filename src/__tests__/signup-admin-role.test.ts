@@ -36,6 +36,12 @@ describe('complete-signup grants admin role', () => {
     // Prevents a silent "no admin role" state that would hide the panel.
     expect(src).toMatch(/roleError[\s\S]{0,200}Erro ao configurar permissões/);
   });
+
+  it('requires a short-lived signup authorization instead of accepting the email code', () => {
+    expect(src).toMatch(/signupToken/);
+    expect(src).toMatch(/consume_signup_verification_grant/);
+    expect(src).not.toMatch(/normalizedCode/);
+  });
 });
 
 describe('admin-create-account-user provisions seat users', () => {

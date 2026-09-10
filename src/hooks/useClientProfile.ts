@@ -344,7 +344,7 @@ export function useClientProfile(clientId: string) {
         throw error;
       }
       console.log('Appointments fetched:', data?.length);
-      return data as Appointment[];
+      return data as unknown as Appointment[];
     },
     enabled: !!clientId,
     staleTime: 30_000,

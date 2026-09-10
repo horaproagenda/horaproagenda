@@ -19,7 +19,7 @@ export function useProfessionals() {
 
       if (error) throw error;
       // Admin (owner) profissional sempre aparece primeiro na lista
-      const list = (data as Professional[]) ?? [];
+      const list = ((data ?? []) as unknown as Professional[]);
       list.sort((a, b) => {
         const ar = a as unknown as { user_id?: string | null; account_owner_id?: string | null };
         const br = b as unknown as { user_id?: string | null; account_owner_id?: string | null };

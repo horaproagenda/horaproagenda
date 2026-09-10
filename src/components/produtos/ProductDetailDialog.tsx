@@ -1553,6 +1553,8 @@ export function ProductDetailDialog({
                     <TableHead>Quantidade</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Fornecedor</TableHead>
+                    <TableHead>Pagamento</TableHead>
+
                     <TableHead>Uso</TableHead>
                     {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                       <TableHead className="text-right">Ações</TableHead>

@@ -11,6 +11,10 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.complete-signup]
     verify_jwt = false
+  [functions.send-verification-code]
+    verify_jwt = false
+  [functions.verify-code]
+    verify_jwt = false
   [functions.admin-delete-user]
     verify_jwt = true
   [functions.delete-my-account]

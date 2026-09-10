@@ -355,6 +355,7 @@ function AuthInner() {
   };
 
   const handleConfirmSignupCode = async () => {
+    if (loading) return;
     if (signupCode.length !== 6) {
       toast({ title: 'Código incompleto', description: 'Digite os 6 dígitos.', variant: 'destructive' });
       return;
@@ -374,7 +375,22 @@ function AuthInner() {
       const email = signupEmail.trim().toLowerCase();
       const code = signupCode.replace(/\D/g, '').trim();
 
-      // Verificação + criação atômica via complete-signup (passamos o code).
+      const { data: verification, error: verificationError } = await supabase.functions.invoke('verify-code', {
+        body: { email, code, type: 'signup' },
+      });
+      if (verificationError) {
+        const payload = await readEdgeFunctionError(verificationError);
+        const verifyErr = new Error(payload?.error || 'Não foi possível conferir o código.') as Error & { code?: string };
+        verifyErr.code = payload?.code;
+        throw verifyErr;
+      }
+      if (!verification?.valid || !verification?.signupToken) {
+        const verifyErr = new Error(verification?.error || 'Código inválido.') as Error & { code?: string };
+        verifyErr.code = verification?.code;
+        throw verifyErr;
+      }
+
+      // A conta recebe somente a autorização curta emitida após a confirmação.
       const { error: signUpError } = await signUp(email, signupPassword, signupName.trim(), {
         cpf: signupCpf.replace(/\D/g, ''),
         cnpj: signupCnpj.replace(/\D/g, '') || undefined,
@@ -392,7 +408,7 @@ function AuthInner() {
         clinicState: signupAddress.state.trim().toUpperCase(),
         businessType: signupBusinessType,
         businessTypeLabel: signupBusinessType === 'outro' ? signupBusinessTypeLabel.trim() : undefined,
-        code,
+        signupToken: verification.signupToken,
       });
 
       if (signUpError) {
@@ -419,9 +435,9 @@ function AuthInner() {
           return;
         }
 
-        // Código inválido/expirado/sem código ativo — incrementa tentativas.
+        // O servidor é a fonte de verdade para validade e tentativas do código.
         const msg = signUpError.message || '';
-        const isCodeError = /código|code/i.test(msg);
+        const isCodeError = /código|code|confirmação/i.test(msg);
         if (isCodeError) {
           const next = signupCodeAttempts + 1;
           setSignupCodeAttempts(next);

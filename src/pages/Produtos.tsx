@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';

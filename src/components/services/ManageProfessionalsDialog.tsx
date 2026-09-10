@@ -378,6 +378,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         });
         if (error) throw error;
         if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');
+        const newProfessionalId = (result as any)?.professional_id || (result as any)?.professional?.id || null;
+        if (newProfessionalId && data.app_role === 'receptionist' && data.authorized_professional_ids.length > 0) {
+          await receptionistGrants.save(newProfessionalId, data.authorized_professional_ids);
+        }
         toast.success('Profissional cadastrado! Ele pode acessar com o e-mail e senha definidos.');
       }
 

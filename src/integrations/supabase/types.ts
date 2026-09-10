@@ -5041,6 +5041,42 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_verification_grants: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          request_id: string
+          token_hash: string
+          updated_at: string
+          verification_code_id: string | null
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          request_id: string
+          token_hash: string
+          updated_at?: string
+          verification_code_id?: string | null
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          request_id?: string
+          token_hash?: string
+          updated_at?: string
+          verification_code_id?: string | null
+        }
+        Relationships: []
+      }
       single_sales: {
         Row: {
           account_owner_id: string
@@ -6216,9 +6252,24 @@ export type Database = {
         Args: { p_action: string; p_token: string }
         Returns: Json
       }
+      confirm_verification_code: {
+        Args: {
+          p_code: string
+          p_email: string
+          p_grant_expires_at: string
+          p_request_id: string
+          p_token_hash: string
+          p_type: string
+        }
+        Returns: Json
+      }
       confirmar_codigo_whatsapp: {
         Args: { p_codigo: string; p_id: string }
         Returns: boolean
+      }
+      consume_signup_verification_grant: {
+        Args: { p_email: string; p_token_hash: string }
+        Returns: Json
       }
       convert_product_quantity: {
         Args: { _from: string; _to: string; _value: number }

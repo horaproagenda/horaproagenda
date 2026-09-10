@@ -125,7 +125,14 @@ serve(async (req) => {
       'name', 'phone', 'cpf', 'birthdate', 'specialty', 'specialties',
       'bio', 'color', 'avatar_url', 'commission_percentage',
       'receives_commission', 'active', 'notes',
+      // Tipo de vínculo com a clínica: define se o profissional tem financeiro
+      // e caixa próprios (independente) ou opera o da clínica.
+      'employment_type',
     ] as const;
+    const EMPLOYMENT_TYPES = ['independente', 'comissionado', 'funcionario', 'administrador'];
+    if (safePayload.employment_type && !EMPLOYMENT_TYPES.includes(safePayload.employment_type)) {
+      delete safePayload.employment_type;
+    }
     for (const k of ALLOWED_FIELDS) {
       if (p[k] !== undefined) safePayload[k] = p[k];
     }

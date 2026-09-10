@@ -228,6 +228,17 @@ const Configuracoes = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {(settings as unknown as { clinic_code?: string })?.clinic_code && (
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Código da clínica</p>
+                    <p className="text-sm font-semibold tracking-wide">
+                      {(settings as unknown as { clinic_code?: string }).clinic_code}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Cada profissional cadastrado fica ligado a este código. Informe-o ao falar com o suporte.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label className="text-xs">Nome do profissional</Label>
                   <Input

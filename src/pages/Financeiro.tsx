@@ -28,6 +28,7 @@ import { GoalsPanel } from '@/components/financeiro/GoalsPanel';
 import { PrecificacaoServicos } from '@/components/financeiro/PrecificacaoServicos';
 import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolidado';
 import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
+import { TransferBetweenAccountsDialog } from '@/components/financeiro/TransferBetweenAccountsDialog';
 
 import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
@@ -91,6 +92,9 @@ export default function Financeiro() {
     <AppLayout title="Financeiro" subtitle="Gestão financeira completa">
       <div className="space-y-4 page-enter">
 
+        <div className="flex justify-end">
+          <TransferBetweenAccountsDialog />
+        </div>
 
         {/* Summary Cards — minimalistas com ícones coloridos */}
         <div className="grid grid-cols-3 gap-2">

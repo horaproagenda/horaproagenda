@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,6 +53,15 @@ import {
   pickNextAvailableColor,
   getAgendaColorLabel,
 } from '@/lib/agendaColors';
+import {
+  EMPLOYMENT_TYPES,
+  financialLockReason,
+  financialPermissionsLocked,
+  inferEmploymentType,
+  normalizePermissionsForEmployment,
+  withCompatFinancialKeys,
+} from '@/lib/employmentType';
+import { useReceptionistGrants } from '@/hooks/useReceptionistGrants';
 
 const AGENDA_COLORS = AGENDA_COLOR_PALETTE;
 
@@ -64,13 +73,11 @@ const APP_ROLES = [
 ];
 
 const PERMISSIONS_CONFIG = [
-  { key: 'can_access_financial', label: 'Possui seu próprio financeiro', description: 'Cria, edita, baixa e exclui somente os próprios registros financeiros', category: 'financial' },
-  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Registrar e alterar pagamentos', category: 'financial' },
-  { key: 'can_share_financial_with_admin', label: 'Compartilhar seu financeiro com administrador e recepção', description: 'Vale para contas, boletos parcelados, bancos, taxas de cartão e caixa. Se desligado, tudo que ele lançar aparece somente para ele', category: 'financial' },
-  { key: 'can_view_other_payments', label: 'Ver pagamentos de outros profissionais', description: 'Visualizar pagamentos de outros', category: 'financial' },
-  { key: 'can_view_other_registers', label: 'Ver caixa de outros profissionais', description: 'Acessar movimentações de caixa de outros', category: 'financial' },
-  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa compartilhado da clínica', category: 'financial' },
-  { key: 'can_view_daily_revenue', label: 'Ver lucro/receita do dia', description: 'Visualizar valores financeiros totais', category: 'financial' },
+  { key: 'can_manage_clinic_financial', label: 'Gerenciar o financeiro da clínica', description: 'Ver, criar, editar e apagar lançamentos e relatórios da clínica (perfil gerente)', category: 'financial' },
+  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa da clínica, registrando saldo esperado, contado e diferença', category: 'financial' },
+  { key: 'can_register_expenses', label: 'Registrar despesas da clínica', description: 'Lançar saídas na conta financeira da clínica', category: 'financial' },
+  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Somente dos profissionais autorizados na lista abaixo', category: 'financial' },
+  { key: 'can_view_daily_revenue', label: 'Ver receita do dia da clínica', description: 'Visualizar os totais financeiros da clínica', category: 'financial' },
   { key: 'can_share_clients_with_admin', label: 'Compartilhar seus clientes com administrador e recepção', description: 'Se desligado, os clientes que ele cadastrar não aparecem para o administrador, a recepção e os outros profissionais', category: 'clients' },
   { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Acesso a todos os clientes', category: 'clients' },
   { key: 'can_view_only_own_clients', label: 'Ver somente próprios clientes', description: 'Acesso restrito aos seus clientes', category: 'clients' },
@@ -94,13 +101,10 @@ const PERMISSIONS_CONFIG = [
 
 
 const defaultPermissions = {
-  can_access_financial: false,
-  can_share_financial_with_admin: false,
-  can_manage_payments: false,
-  can_view_other_payments: false,
-  can_view_other_registers: false,
+  can_manage_clinic_financial: false,
   can_open_close_register: false,
-  can_manage_own_register: false,
+  can_register_expenses: false,
+  can_manage_payments: false,
   can_view_daily_revenue: false,
   can_share_clients_with_admin: true,
   can_view_other_clients: false,
@@ -164,6 +168,8 @@ const professionalSchema = z.object({
   bio: z.string().trim().max(500, 'Bio muito longa').optional(),
   agenda_color: z.string().default('#3B82F6'),
   app_role: z.string().default('professional'),
+  employment_type: z.enum(['independente', 'comissionado', 'funcionario', 'administrador']).default('funcionario'),
+  authorized_professional_ids: z.array(z.string()).default([]),
   is_commission_based: z.boolean().default(false),
   commission_type: z.string().default('percentage'),
   commission_percentage: z.coerce.number().min(0).max(100).default(0),
@@ -230,6 +236,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       bio: '',
       agenda_color: DEFAULT_AGENDA_COLOR,
       app_role: 'professional',
+      employment_type: 'funcionario',
+      authorized_professional_ids: [],
       is_commission_based: false,
       commission_type: 'percentage',
       commission_percentage: 0,
@@ -247,6 +255,18 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const commissionType = form.watch('commission_type');
   const commissionFrequency = form.watch('commission_frequency');
   const appRole = form.watch('app_role');
+  const employmentType = form.watch('employment_type');
+  const financialLocked = financialPermissionsLocked(employmentType);
+  const financialLockMessage = financialLockReason(employmentType);
+  const authorizedProfessionalIds = form.watch('authorized_professional_ids') || [];
+  const receptionistGrants = useReceptionistGrants(editingId);
+
+  // Carrega a lista de profissionais autorizados da recepção ao editar.
+  useEffect(() => {
+    if (!editingId) return;
+    form.setValue('authorized_professional_ids', receptionistGrants.grantedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, receptionistGrants.grantedIds.join(',')]);
   const permissions = form.watch('permissions');
   const allowedRoomIds = form.watch('allowed_room_ids') || [];
   const allowedEquipmentIds = form.watch('allowed_equipment_ids') || [];
@@ -303,6 +323,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         bio: data.bio || null,
         agenda_color: data.agenda_color,
         app_role: data.app_role,
+        employment_type: data.app_role === 'admin' ? 'administrador' : data.employment_type,
         is_commission_based: data.is_commission_based,
         commission_type: data.is_commission_based ? data.commission_type : 'percentage',
         commission_percentage: data.is_commission_based ? data.commission_percentage : 0,
@@ -312,9 +333,12 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         is_active: data.is_active,
         allowed_room_ids: data.app_role === 'admin' ? [] : data.allowed_room_ids,
         allowed_equipment_ids: data.app_role === 'admin' ? [] : data.allowed_equipment_ids,
-        permissions: data.app_role === 'admin' 
+        permissions: data.app_role === 'admin'
           ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
-          : data.permissions,
+          : withCompatFinancialKeys(
+              data.employment_type,
+              normalizePermissionsForEmployment(data.employment_type, data.permissions),
+            ),
       };
 
       if (editingId) {
@@ -335,6 +359,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           });
           if (fnErr) throw fnErr;
         }
+        if (data.app_role === 'receptionist') {
+          await receptionistGrants.save(editingId, data.authorized_professional_ids);
+        }
         toast.success('Profissional atualizado com sucesso!');
       } else {
         if (!data.password || data.password.length < 8) {
@@ -351,6 +378,10 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         });
         if (error) throw error;
         if (result && (result as any).success === false) throw new Error((result as any).error || 'Erro ao criar profissional');
+        const newProfessionalId = (result as any)?.professional_id || (result as any)?.professional?.id || null;
+        if (newProfessionalId && data.app_role === 'receptionist' && data.authorized_professional_ids.length > 0) {
+          await receptionistGrants.save(newProfessionalId, data.authorized_professional_ids);
+        }
         toast.success('Profissional cadastrado! Ele pode acessar com o e-mail e senha definidos.');
       }
 
@@ -385,6 +416,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       bio: professional.bio || '',
       agenda_color: professional.agenda_color || '#3B82F6',
       app_role: professional.app_role || 'professional',
+      employment_type: inferEmploymentType(professional),
+      authorized_professional_ids: [],
       is_commission_based: professional.is_commission_based || false,
       commission_type: professional.commission_type || 'percentage',
       commission_percentage: professional.commission_percentage || 0,
@@ -855,6 +888,45 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
 
                 <FormField
                   control={form.control}
+                  name="employment_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Tipo de vínculo com a clínica</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue(
+                            'permissions',
+                            normalizePermissionsForEmployment(value as never, form.getValues('permissions') || {}),
+                          );
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Selecione o tipo de vínculo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {EMPLOYMENT_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value} className="text-xs">
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">
+                        {EMPLOYMENT_TYPES.find((t) => t.value === field.value)?.description}
+                      </p>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+
+
+                <FormField
+                  control={form.control}
                   name="specialties"
                   render={({ field }) => (
                     <FormItem>
@@ -1086,6 +1158,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         const categoryPerms = PERMISSIONS_CONFIG.filter(p => p.category === category.key);
                         if (categoryPerms.length === 0) return null;
                         
+                        const categoryLocked = category.key === 'financial' && financialLocked;
+
                         return (
                           <div key={category.key} className="rounded-lg border bg-card overflow-hidden">
                             <div className="px-3 py-2 bg-muted/50 border-b">
@@ -1094,18 +1168,24 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                 {category.label}
                               </span>
                             </div>
+                            {categoryLocked && financialLockMessage && (
+                              <p className="px-3 py-2 text-[10px] text-primary bg-primary/5 border-b">
+                                {financialLockMessage}
+                              </p>
+                            )}
                             <div className="p-2 space-y-1">
                               {categoryPerms.map((perm) => (
                                 <div 
                                   key={perm.key} 
-                                  className="flex items-center justify-between p-2 rounded hover:bg-muted/30 transition-colors"
+                                  className={`flex items-center justify-between p-2 rounded transition-colors ${categoryLocked ? 'opacity-50' : 'hover:bg-muted/30'}`}
                                 >
                                   <div className="flex-1 min-w-0 pr-3">
                                     <p className="text-xs font-medium truncate">{perm.label}</p>
                                     <p className="text-[10px] text-muted-foreground truncate">{perm.description}</p>
                                   </div>
                                   <Switch
-                                    checked={permissions?.[perm.key] || false}
+                                    disabled={categoryLocked}
+                                    checked={categoryLocked ? false : permissions?.[perm.key] || false}
                                     onCheckedChange={(checked) => {
                                       const newPermissions = { ...permissions, [perm.key]: checked };
                                       
@@ -1147,6 +1227,43 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     </div>
                   )}
                 </div>
+
+                {appRole === 'receptionist' && (
+                  <div className="rounded-lg border bg-card overflow-hidden">
+                    <div className="px-3 py-2 bg-muted/50 border-b">
+                      <span className="text-xs font-medium flex items-center gap-2">
+                        <span>🧾</span>
+                        Profissionais que a recepção pode dar baixa
+                      </span>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        A recepção dá baixa apenas nos profissionais marcados aqui. Se nenhum for marcado,
+                        ela movimenta somente a conta da clínica.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {professionals
+                          .filter((p) => p.id !== editingId)
+                          .map((p) => (
+                            <label key={p.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/30 cursor-pointer">
+                              <Checkbox
+                                checked={authorizedProfessionalIds.includes(p.id)}
+                                onCheckedChange={(checked) => {
+                                  const next = checked
+                                    ? [...authorizedProfessionalIds, p.id]
+                                    : authorizedProfessionalIds.filter((id) => id !== p.id);
+                                  form.setValue('authorized_professional_ids', next);
+                                }}
+                              />
+                              <span className="text-xs truncate">{p.name}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
 
                 {appRole !== 'admin' && (
                   <div className="rounded-lg border bg-card overflow-hidden">

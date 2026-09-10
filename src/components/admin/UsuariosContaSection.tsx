@@ -172,6 +172,15 @@ export function UsuariosContaSection() {
   );
 }
 
+/** Perfis que o administrador da conta pode atribuir aos usuários do plano. */
+const ACCOUNT_ROLES = [
+  { value: 'admin', label: 'Administrador', preset: 'full' as const, hint: 'Acesso total à clínica, igual ao titular.' },
+  { value: 'professional', label: 'Profissional', preset: 'professional' as const, hint: 'Acessa somente os próprios atendimentos e dados.' },
+  { value: 'receptionist', label: 'Funcionário', preset: 'reception' as const, hint: 'Atendimento e recepção, conforme as permissões marcadas.' },
+] as const;
+
+type AccountRole = typeof ACCOUNT_ROLES[number]['value'];
+
 export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
   const navigate = useNavigate();
   const usage = useSeatUsage();
@@ -179,11 +188,21 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [mustChange, setMustChange] = useState(true);
+  const [role, setRole] = useState<AccountRole>('professional');
   const [perms, setPerms] = useState<PermRow[]>(emptyPermissions);
   const [loading, setLoading] = useState(false);
 
+  const selectedRole = ACCOUNT_ROLES.find(r => r.value === role)!;
+
+  const changeRole = (value: AccountRole) => {
+    setRole(value);
+    const preset = ACCOUNT_ROLES.find(r => r.value === value)?.preset ?? 'professional';
+    setPerms(presetPermissions(preset));
+  };
+
   const reset = () => {
-    setEmail(''); setFullName(''); setPassword(''); setMustChange(true); setPerms(emptyPermissions());
+    setEmail(''); setFullName(''); setPassword(''); setMustChange(true);
+    setRole('professional'); setPerms(emptyPermissions());
   };
 
   const noSeats = !!usage && !usage.is_grandfathered && (usage.available ?? 0) <= 0;
@@ -192,6 +211,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
     onOpenChange(false);
     navigate('/assinatura');
   };
+
 
   const submit = async () => {
     if (noSeats) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -259,6 +259,14 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   const financialLocked = financialPermissionsLocked(employmentType);
   const financialLockMessage = financialLockReason(employmentType);
   const authorizedProfessionalIds = form.watch('authorized_professional_ids') || [];
+  const receptionistGrants = useReceptionistGrants(editingId);
+
+  // Carrega a lista de profissionais autorizados da recepção ao editar.
+  useEffect(() => {
+    if (!editingId) return;
+    form.setValue('authorized_professional_ids', receptionistGrants.grantedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, receptionistGrants.grantedIds.join(',')]);
   const permissions = form.watch('permissions');
   const allowedRoomIds = form.watch('allowed_room_ids') || [];
   const allowedEquipmentIds = form.watch('allowed_equipment_ids') || [];
@@ -350,6 +358,9 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
             },
           });
           if (fnErr) throw fnErr;
+        }
+        if (data.app_role === 'receptionist') {
+          await receptionistGrants.save(editingId, data.authorized_professional_ids);
         }
         toast.success('Profissional atualizado com sucesso!');
       } else {

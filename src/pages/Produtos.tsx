@@ -187,6 +187,8 @@ export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
+  const { activePaymentMethods } = usePaymentMethods();
+
   const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();

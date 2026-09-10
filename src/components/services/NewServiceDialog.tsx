@@ -53,6 +53,7 @@ import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
   if (!comps.length) return null;

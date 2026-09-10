@@ -1143,6 +1143,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         const categoryPerms = PERMISSIONS_CONFIG.filter(p => p.category === category.key);
                         if (categoryPerms.length === 0) return null;
                         
+                        const categoryLocked = category.key === 'financial' && financialLocked;
+
                         return (
                           <div key={category.key} className="rounded-lg border bg-card overflow-hidden">
                             <div className="px-3 py-2 bg-muted/50 border-b">
@@ -1151,18 +1153,24 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                 {category.label}
                               </span>
                             </div>
+                            {categoryLocked && financialLockMessage && (
+                              <p className="px-3 py-2 text-[10px] text-primary bg-primary/5 border-b">
+                                {financialLockMessage}
+                              </p>
+                            )}
                             <div className="p-2 space-y-1">
                               {categoryPerms.map((perm) => (
                                 <div 
                                   key={perm.key} 
-                                  className="flex items-center justify-between p-2 rounded hover:bg-muted/30 transition-colors"
+                                  className={`flex items-center justify-between p-2 rounded transition-colors ${categoryLocked ? 'opacity-50' : 'hover:bg-muted/30'}`}
                                 >
                                   <div className="flex-1 min-w-0 pr-3">
                                     <p className="text-xs font-medium truncate">{perm.label}</p>
                                     <p className="text-[10px] text-muted-foreground truncate">{perm.description}</p>
                                   </div>
                                   <Switch
-                                    checked={permissions?.[perm.key] || false}
+                                    disabled={categoryLocked}
+                                    checked={categoryLocked ? false : permissions?.[perm.key] || false}
                                     onCheckedChange={(checked) => {
                                       const newPermissions = { ...permissions, [perm.key]: checked };
                                       

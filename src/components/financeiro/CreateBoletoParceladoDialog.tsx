@@ -204,7 +204,7 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
 
       if (!prof) return;
 
-      const sensitive = await fetchProfessionalSensitiveData(supabase, prof.id);
+      const sensitive = await fetchProfessionalSensitiveData(supabase as never, prof.id);
       const fullAddress = sensitive.beneficiary_address
         || [sensitive.street, sensitive.number, sensitive.neighborhood].filter(Boolean).join(', ')
         || '';

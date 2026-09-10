@@ -95,3 +95,22 @@ export function inferEmploymentType(professional: {
   if (professional.is_commission_based) return 'comissionado';
   return 'funcionario';
 }
+
+/**
+ * Mantém compatibilidade com as regras de banco já existentes: o profissional
+ * independente continua marcado internamente como dono do próprio financeiro e
+ * do próprio caixa, mesmo que essas opções não apareçam mais na tela.
+ */
+export function withCompatFinancialKeys(
+  type: EmploymentType | undefined | null,
+  permissions: Record<string, boolean>,
+): Record<string, boolean> {
+  const next = { ...permissions };
+  const independent = type === 'independente';
+  next.can_access_financial = independent;
+  next.can_manage_own_register = independent;
+  next.can_share_financial_with_admin = false;
+  next.can_view_other_payments = false;
+  next.can_view_other_registers = false;
+  return next;
+}

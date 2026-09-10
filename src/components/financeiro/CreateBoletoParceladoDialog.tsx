@@ -178,44 +178,46 @@ export function CreateBoletoParceladoDialog({ open, onOpenChange }: Props) {
     [activePaymentMethods]
   );
 
-  // Pre-fill beneficiary from logged professional (or first active)
+  // Pre-fill beneficiary from logged professional (or first active).
+  // Os dados sensíveis (CPF/CNPJ e endereço) não podem ser lidos da tabela:
+  // vêm da função protegida `get_professional_sensitive_data`.
   useEffect(() => {
     if (!open || !user?.id) return;
     (async () => {
-      const selectCols = 'id, name, company_name, cnpj, cpf, beneficiary_address, beneficiary_cep, beneficiary_city, beneficiary_state, cep, street, number, neighborhood, city, state';
       let { data: prof } = await supabase
         .from('professionals')
-        .select(selectCols)
+        .select('id, name, company_name')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!prof) {
         const { data: any1 } = await supabase
           .from('professionals')
-          .select(selectCols)
+          .select('id, name, company_name')
           .eq('is_active', true)
           .limit(1)
           .maybeSingle();
-        prof = any1 as any;
+        prof = any1;
       }
 
-      if (prof) {
-        const p: any = prof;
-        const fullAddress = p.beneficiary_address
-          || [p.street, p.number, p.neighborhood].filter(Boolean).join(', ')
-          || '';
-        setBeneficiary({
-          professional_id: p.id,
-          name: p.company_name || p.name || '',
-          cnpj: p.cnpj || p.cpf || '',
-          address: fullAddress,
-          cep: p.beneficiary_cep || p.cep || '',
-          city: p.beneficiary_city || p.city || '',
-          state: p.beneficiary_state || p.state || '',
-        });
-      }
+      if (!prof) return;
+
+      const sensitive = await fetchProfessionalSensitiveData(supabase, prof.id);
+      const fullAddress = sensitive.beneficiary_address
+        || [sensitive.street, sensitive.number, sensitive.neighborhood].filter(Boolean).join(', ')
+        || '';
+      setBeneficiary({
+        professional_id: prof.id,
+        name: prof.company_name || prof.name || '',
+        cnpj: sensitive.cnpj || sensitive.cpf || '',
+        address: fullAddress,
+        cep: sensitive.beneficiary_cep || sensitive.cep || '',
+        city: sensitive.beneficiary_city || sensitive.city || '',
+        state: sensitive.beneficiary_state || sensitive.state || '',
+      });
     })();
   }, [open, user?.id]);
+
 
   // When client is picked, pre-fill payer fields
   const handlePickClient = (clientId: string) => {

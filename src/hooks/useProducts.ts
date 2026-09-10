@@ -89,6 +89,10 @@ export interface ProductPurchase {
   total_price: number;
   supplier: string | null;
   purchase_date: string;
+  /** Forma de pagamento usada para pagar a compra (opcional). */
+  payment_method_id?: string | null;
+  payment_method?: string | null;
+
   started_using_at: string | null;
   finished_at: string | null;
   duration_days: number | null;

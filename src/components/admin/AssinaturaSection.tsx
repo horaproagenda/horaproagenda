@@ -11,6 +11,10 @@ import {
 } from "@/lib/asaasCheckout";
 import { CreditCardDialog } from "@/components/billing/CreditCardDialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { waitForSubscriptionAccess } from "@/lib/subscriptionSync";
+import { notifySubscriptionUpdated } from "@/lib/stripeCheckout";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +48,8 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 export function AssinaturaSection() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
   const { subscription, isTrialing, trialDaysLeft, trialEligible } = useAccountSubscription();
   // Preços oficiais do backend (tabela de planos), com espelho local de fallback.
   const { plans, periods, cycleTotal, trialDays } = usePricing();
@@ -105,10 +111,16 @@ export function AssinaturaSection() {
       } else {
         toast.success("Assinatura criada! A cobrança está sendo processada no cartão cadastrado.");
       }
+      // Libera o aplicativo: espera o acesso valer e abre a agenda.
+      const granted = await waitForSubscriptionAccess({ timeoutMs: 20_000 });
+      notifySubscriptionUpdated();
+      revalidate();
+      if (granted) navigate("/agenda", { replace: true });
     } finally {
       setIsLoading(false);
     }
   };
+
 
   /** Troca o cartão da assinatura e tenta quitar a fatura em aberto. */
   const handleUpdateCard = async (card: CreditCardInput) => {

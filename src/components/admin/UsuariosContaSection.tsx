@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Users, ShieldCheck, ShieldOff, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { PERMISSION_MODULES, normalizeRow, presetPermissions, type PermissionRow } from '@/lib/permissions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { useAccountSubscription } from '@/hooks/useAccountSubscription';
 import { useSeatUsage, useReconcileSeats } from '@/hooks/useSeatUsage';
@@ -293,7 +295,22 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
             <Switch checked={mustChange} onCheckedChange={setMustChange} id="must-change" disabled={noSeats} />
             <Label htmlFor="must-change" className="text-sm">Forçar troca no 1º login</Label>
           </div>
+          <div className="md:col-span-2">
+            <Label>Perfil de acesso</Label>
+            <Select value={role} onValueChange={(v) => changeRole(v as AccountRole)} disabled={noSeats}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ACCOUNT_ROLES.map(r => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">{selectedRole.hint}</p>
+          </div>
         </div>
+
 
         <PermissionsMatrix value={perms} onChange={setPerms} />
 

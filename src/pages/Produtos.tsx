@@ -657,17 +657,23 @@ export default function Produtos() {
                       <Label className="text-xs">Data de Validade</Label>
                       <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
                     </div>
-                    <div className="flex items-center justify-between rounded-md border p-2">
+                    <div className="rounded-md border p-2 space-y-2">
                       <div>
-                        <Label className="text-xs">Iniciar o uso do produto hoje</Label>
-                        <p className="text-[10px] text-muted-foreground">Data: {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                        <Label className="text-xs font-medium">Uso do produto (opcional)</Label>
+                        <p className="text-[10px] text-muted-foreground">Preencha manualmente. Deixe em branco se o uso ainda não começou.</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Não</span>
-                        <Switch checked={purchaseForm.start_using_today} onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, start_using_today: v })} />
-                        <span className="text-xs text-muted-foreground">Sim</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Início do uso</Label>
+                          <SafeDateInput value={purchaseForm.usage_start_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_start_date: v ?? '' })} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Término do uso</Label>
+                          <SafeDateInput value={purchaseForm.usage_end_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_end_date: v ?? '' })} className="h-7 text-xs" />
+                        </div>
                       </div>
                     </div>
+
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
                         <Label className="text-xs">Para Venda ou Uso da Clínica</Label>

@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 
 /**
  * Profissionais que uma recepcionista pode dar baixa. A lista é configurada pelo
@@ -7,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export function useReceptionistGrants(receptionistProfessionalId: string | null) {
   const queryClient = useQueryClient();
+  const accountOwnerId = useAccountOwnerId();
 
   const { data: grantedIds = [], isLoading } = useQuery({
     queryKey: ['receptionist-grants', receptionistProfessionalId],

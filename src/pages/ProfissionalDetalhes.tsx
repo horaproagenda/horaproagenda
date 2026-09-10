@@ -141,11 +141,14 @@ export default function ProfissionalDetalhes() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professionals')
-        .select('*')
+        .select(PROFESSIONAL_SAFE_COLUMNS)
         .eq('id', id)
         .single();
       if (error) throw error;
-      return data;
+      // Campos sensíveis (CPF, endereço, dados de recebimento) só via função
+      // protegida: administrador da clínica ou o próprio profissional.
+      const sensitive = await fetchProfessionalSensitiveData(supabase as never, id!);
+      return { ...(data as Record<string, unknown>), ...sensitive } as typeof data & Record<string, unknown>;
     },
     enabled: !!id,
   });

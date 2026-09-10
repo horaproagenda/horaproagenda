@@ -48,6 +48,8 @@ const CYCLE_META: Record<number, { short: string; long: string; per: string }> =
 export function AssinaturaSection() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
   const { subscription, isTrialing, trialDaysLeft, trialEligible } = useAccountSubscription();
   // Preços oficiais do backend (tabela de planos), com espelho local de fallback.
   const { plans, periods, cycleTotal, trialDays } = usePricing();

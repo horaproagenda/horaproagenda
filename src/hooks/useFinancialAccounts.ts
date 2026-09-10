@@ -104,9 +104,10 @@ export function useFinancialMovements(accountId?: string | null) {
       counterpart_account_id?: string | null;
     }) => {
       const { data: auth } = await supabase.auth.getUser();
+      if (!accountOwnerId) throw new Error('Conta não identificada.');
       const { data, error } = await supabase
         .from('financial_movements')
-        .insert({ ...input, created_by: auth.user?.id ?? null })
+        .insert({ ...input, account_owner_id: accountOwnerId, created_by: auth.user?.id ?? null })
         .select()
         .single();
       if (error) throw error;

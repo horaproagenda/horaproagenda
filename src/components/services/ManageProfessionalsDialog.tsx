@@ -1213,6 +1213,43 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   )}
                 </div>
 
+                {appRole === 'receptionist' && (
+                  <div className="rounded-lg border bg-card overflow-hidden">
+                    <div className="px-3 py-2 bg-muted/50 border-b">
+                      <span className="text-xs font-medium flex items-center gap-2">
+                        <span>🧾</span>
+                        Profissionais que a recepção pode dar baixa
+                      </span>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        A recepção dá baixa apenas nos profissionais marcados aqui. Se nenhum for marcado,
+                        ela movimenta somente a conta da clínica.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {professionals
+                          .filter((p) => p.id !== editingId)
+                          .map((p) => (
+                            <label key={p.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/30 cursor-pointer">
+                              <Checkbox
+                                checked={authorizedProfessionalIds.includes(p.id)}
+                                onCheckedChange={(checked) => {
+                                  const next = checked
+                                    ? [...authorizedProfessionalIds, p.id]
+                                    : authorizedProfessionalIds.filter((id) => id !== p.id);
+                                  form.setValue('authorized_professional_ids', next);
+                                }}
+                              />
+                              <span className="text-xs truncate">{p.name}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
+
                 {appRole !== 'admin' && (
                   <div className="rounded-lg border bg-card overflow-hidden">
                     <div className="px-3 py-2 bg-muted/50 border-b">

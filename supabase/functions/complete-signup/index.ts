@@ -245,7 +245,7 @@ serve(async (req) => {
         message.includes("already") ||
         message.includes("registered") ||
         message.includes("exists") ||
-        (createError as any)?.code === "email_exists"
+        (createError as { code?: string })?.code === "email_exists"
       ) {
         const existingUser = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
         const { data: existingTrial } = await supabaseAdmin

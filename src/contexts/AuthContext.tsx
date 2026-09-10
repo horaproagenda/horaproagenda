@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       // Tenta extrair payload JSON do erro (FunctionsHttpError mantém o body)
-      const payload: any = await readEdgeFunctionError(error);
+      const payload = await readEdgeFunctionError(error);
       if (isEmailExistsCode(payload?.code)) {
         const err = new Error(payload.error || 'E-mail já cadastrado') as Error & { code?: string };
         err.code = 'email_exists';

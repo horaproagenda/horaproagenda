@@ -16,7 +16,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Helmet } from 'react-helmet-async';
 import { isValidCPF } from '@/lib/cpfValidator';
-import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode } from '@/lib/edgeFunctionError';
+import { readEdgeFunctionError, edgeErrorMessage, isEmailExistsCode, type EdgeErrorPayload } from '@/lib/edgeFunctionError';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -203,7 +203,7 @@ function AuthInner() {
     if (user) {
       navigate(postLoginTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, postLoginTarget]);
 
   // Persist terms acceptance
   useEffect(() => {
@@ -295,7 +295,7 @@ function AuthInner() {
         body: { email, type: 'signup' },
       });
       // Detecta e-mail já cadastrado (status 409) — não avança para o passo do código.
-      let payload: any = data;
+      let payload: EdgeErrorPayload | null = data && typeof data === 'object' ? data as EdgeErrorPayload : null;
       if (error) {
         payload = (await readEdgeFunctionError(error)) ?? data;
       }

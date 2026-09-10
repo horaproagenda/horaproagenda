@@ -41,13 +41,20 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, full_name, permissions, must_change_password } = body as {
+    const { email, password, full_name, permissions, must_change_password, role } = body as {
       email: string;
       password: string;
       full_name: string;
       permissions: Array<Record<string, unknown>>;
       must_change_password?: boolean;
+      role?: string;
     };
+
+    // O administrador da conta escolhe o perfil do novo usuário. Nunca aceitamos
+    // super_admin nem valores fora desta lista.
+    const ALLOWED_ROLES = ["admin", "professional", "receptionist"];
+    const assignedRole = ALLOWED_ROLES.includes(String(role ?? "")) ? String(role) : "professional";
+
 
     if (!email || !password || password.length < 8 || !full_name) {
       return new Response(JSON.stringify({ error: "Email, nome e senha (mín. 8) são obrigatórios." }), {
@@ -123,10 +130,11 @@ serve(async (req) => {
       full_name,
     }).eq("id", newUserId);
 
-    // Insere role 'professional' por padrão (não admin) — account_owner_id é obrigatório
+    // Perfil escolhido pelo administrador (padrão: professional) — account_owner_id é obrigatório
     const { error: roleErr } = await supaAdmin
       .from("user_roles")
-      .insert({ user_id: newUserId, role: "professional", account_owner_id: callerId });
+      .insert({ user_id: newUserId, role: assignedRole, account_owner_id: callerId });
+
     if (roleErr) {
       return new Response(JSON.stringify({ success: false, error: roleErr.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

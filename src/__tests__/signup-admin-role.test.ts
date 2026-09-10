@@ -47,11 +47,14 @@ describe('complete-signup grants admin role', () => {
 describe('admin-create-account-user provisions seat users', () => {
   const src = readFn('admin-create-account-user');
 
-  it('assigns the professional role by default (not admin)', () => {
-    expect(src).toMatch(/from\(["']user_roles["']\)[\s\S]{0,200}role:\s*["']professional["']/);
-    // Seat users must never be silently promoted to admin via user_roles insert.
-    expect(src).not.toMatch(/from\(["']user_roles["']\)[\s\S]{0,200}role:\s*["']admin["']/);
+  it('only accepts the roles the account admin may assign, defaulting to professional', () => {
+    expect(src).toMatch(/ALLOWED_ROLES\s*=\s*\[\s*"admin",\s*"professional",\s*"receptionist"\s*\]/);
+    expect(src).toMatch(/:\s*"professional"/);
+    // Elevated platform roles must never be assignable from this endpoint.
+    expect(src).not.toMatch(/role:\s*["']super_admin["']/);
+
   });
+
 
   it('respects the seat_limit before creating the user', () => {
     expect(src).toMatch(/count_account_seats/);

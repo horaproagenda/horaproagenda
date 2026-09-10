@@ -2,7 +2,6 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
-import { TrialBanner } from '@/components/TrialBanner';
 import { OnboardingGate } from '@/components/onboarding/OnboardingWizard';
 import { cn } from '@/lib/utils';
 import { useReminderNotifications } from '@/hooks/useReminderNotifications';
@@ -99,7 +98,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         !isSidebarCollapsed && "md:pl-64"
       )}>
         <div className="flex-shrink-0 pt-safe pl-safe pr-safe">
-          <TrialBanner />
+
           <Header 
             title={title} 
             subtitle={subtitle}

@@ -121,6 +121,21 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     }
   }, [open, isProfessional, ownProfessionalId, form]);
 
+  // Com apenas um profissional ou uma sala cadastrada, já vem preenchido.
+  const activeProfessionalsList = professionals.filter(p => p.is_active);
+  const activeRoomsList = rooms.filter(r => r.is_active);
+  useEffect(() => {
+    if (!open) return;
+    const currentProfessional = form.getValues('professional_id');
+    if (activeProfessionalsList.length === 1 && (!currentProfessional || currentProfessional === '_none')) {
+      form.setValue('professional_id', activeProfessionalsList[0].id, { shouldValidate: false });
+    }
+    const currentRoom = form.getValues('room_id');
+    if (activeRoomsList.length === 1 && (!currentRoom || currentRoom === '_none')) {
+      form.setValue('room_id', activeRoomsList[0].id, { shouldValidate: false });
+    }
+  }, [open, activeProfessionalsList, activeRoomsList, form]);
+
   const watchPrice = form.watch('price');
   const watchTotalSessions = form.watch('total_sessions');
   const watchProfessionalId = form.watch('professional_id');

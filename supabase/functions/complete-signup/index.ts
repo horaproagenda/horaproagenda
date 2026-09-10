@@ -241,12 +241,16 @@ serve(async (req) => {
 
     if (createError) {
       const message = createError.message?.toLowerCase() || "";
-      if (
+      const mayAlreadyExist =
         message.includes("already") ||
         message.includes("registered") ||
         message.includes("exists") ||
-        (createError as { code?: string })?.code === "email_exists"
-      ) {
+        (createError as { code?: string })?.code === "email_exists";
+
+      // GoTrue can return a generic database error when an auth trigger fails.
+      // Always verify whether the user exists before failing, so retries are
+      // idempotent even when the original response was inconclusive.
+      if (mayAlreadyExist || createError.status >= 500) {
         const existingUser = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
         const { data: existingTrial } = await supabaseAdmin
           .from("trial_registrations")
@@ -255,9 +259,9 @@ serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        if (existingUser?.id && (!cpfDigits || existingTrial?.cpf === cpfDigits)) {
+        if (existingUser?.id && (!existingTrial || !cpfDigits || existingTrial.cpf === cpfDigits)) {
           userId = existingUser.id;
-        } else {
+        } else if (mayAlreadyExist) {
           return jsonResponse(
             {
               success: false,

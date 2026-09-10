@@ -65,6 +65,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 interface ServiceAppointment {
   id: string;

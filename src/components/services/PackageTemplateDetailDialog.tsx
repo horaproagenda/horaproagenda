@@ -52,6 +52,7 @@ import { formatCurrency } from '@/lib/utils';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
+import { withoutKitServices } from '@/lib/serviceKind';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),

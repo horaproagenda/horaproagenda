@@ -11,6 +11,10 @@ import {
 } from "@/lib/asaasCheckout";
 import { CreditCardDialog } from "@/components/billing/CreditCardDialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { waitForSubscriptionAccess } from "@/lib/subscriptionSync";
+import { notifySubscriptionUpdated } from "@/lib/stripeCheckout";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

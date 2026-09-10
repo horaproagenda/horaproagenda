@@ -73,6 +73,10 @@ describe('signup verification server contract', () => {
   const verifySource = readFileSync(resolve(__dirname, '../../../supabase/functions/verify-code/index.ts'), 'utf8');
   const completeSource = readFileSync(resolve(__dirname, '../../../supabase/functions/complete-signup/index.ts'), 'utf8');
   const sendSource = readFileSync(resolve(__dirname, '../../../supabase/functions/send-verification-code/index.ts'), 'utf8');
+  const subscriptionStatusMigration = readFileSync(
+    resolve(__dirname, '../../../supabase/migrations/20260910183632_21e2872a-6f4b-418b-bc7f-5cb652a2cb40.sql'),
+    'utf8',
+  );
 
   it('uses one atomic database operation for code confirmation and attempt counting', () => {
     expect(verifySource).toContain('confirm_verification_code');
@@ -88,5 +92,15 @@ describe('signup verification server contract', () => {
     expect(completeSource).toContain('consume_signup_verification_grant');
     expect(completeSource).toContain('signupToken');
     expect(completeSource).not.toMatch(/\.eq\(["']code["']/);
+  });
+
+  it('allows every subscription status used during signup and automatic suspension', () => {
+    expect(subscriptionStatusMigration).toMatch(/CHECK\s*\(status IN\s*\([\s\S]*'pending'/);
+    expect(subscriptionStatusMigration).toMatch(/CHECK\s*\(status IN\s*\([\s\S]*'suspended'/);
+  });
+
+  it('does not expose database internals when account creation fails', () => {
+    expect(completeSource).not.toMatch(/jsonResponse\(\{ success: false, error: createError\.message/);
+    expect(completeSource).toContain('Não foi possível criar sua conta agora. Tente novamente.');
   });
 });

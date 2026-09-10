@@ -18,7 +18,8 @@ export function parseLooseDateToISO(input: string): string | null {
   // dd/mm/yyyy variants
   m = raw.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
   if (m) {
-    let [, d, mo, y] = m;
+    const [, d, mo, rawYear] = m;
+    let y = rawYear;
     if (y.length === 2) y = (parseInt(y, 10) > 30 ? '19' : '20') + y;
     return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }

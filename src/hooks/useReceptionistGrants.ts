@@ -31,10 +31,12 @@ export function useReceptionistGrants(receptionistProfessionalId: string | null)
     if (delError) throw delError;
 
     if (professionalIds.length > 0) {
+      if (!accountOwnerId) throw new Error('Conta não identificada.');
       const { error } = await supabase.from('receptionist_professional_grants').insert(
         professionalIds.map((professional_id) => ({
           receptionist_professional_id: receptionist,
           professional_id,
+          account_owner_id: accountOwnerId,
         })),
       );
       if (error) throw error;

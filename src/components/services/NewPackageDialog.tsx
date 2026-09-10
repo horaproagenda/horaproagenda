@@ -130,7 +130,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
     professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
     room_id: watchRoomId && watchRoomId !== '_none' ? watchRoomId : null,
   };
-  const compatibleServices = activeServices.filter(service => isServiceCompatibleWithPackage(service, packageScope));
+  // Kits de serviço não entram em pacotes: são outra forma de agendamento e cobrança.
+  const compatibleServices = withoutKitServices(activeServices, steps.map(s => s.service_id))
+    .filter(service => isServiceCompatibleWithPackage(service, packageScope));
 
   const sequentialTotalPrice = steps.reduce((total, step) => {
     const service = activeServices.find(s => s.id === step.service_id) as any;

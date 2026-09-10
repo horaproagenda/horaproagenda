@@ -170,10 +170,13 @@ const createEmptyPurchaseForm = () => ({
   supplier_id: '',
   purchase_date: format(new Date(), 'yyyy-MM-dd'),
   expiry_date: '',
-  start_using_today: false,
+  // Datas de uso são SEMPRE manuais (nunca preenchidas automaticamente).
+  usage_start_date: '',
+  usage_end_date: '',
   is_for_sale: false,
   skip_cash_transaction: false,
 });
+
 
 export default function Produtos() {
   const [searchParams, setSearchParams] = useSearchParams();

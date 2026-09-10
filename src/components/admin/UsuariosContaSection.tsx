@@ -231,7 +231,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-create-account-user', {
-        body: { email, password, full_name: fullName, permissions: perms, must_change_password: mustChange },
+        body: { email, password, full_name: fullName, role, permissions: perms, must_change_password: mustChange },
       });
       if (error) throw error;
       if (data?.error) {

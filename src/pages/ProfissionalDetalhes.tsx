@@ -59,6 +59,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { PROFESSIONAL_SAFE_COLUMNS, fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
 
 const PERMISSIONS_CONFIG = [
   { key: 'can_access_financial', label: 'Acessar Financeiro', category: 'financial' },

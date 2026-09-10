@@ -340,25 +340,29 @@ export default function Produtos() {
 
   const handlePurchaseSubmit = async () => {
     if (!purchaseForm.product_id || purchaseForm.quantity <= 0) return;
+    const dateError = validatePurchaseCycleDates({
+      usageStartDate: purchaseForm.usage_start_date,
+      usageEndDate: purchaseForm.usage_end_date,
+    });
+    if (dateError) {
+      toast.error(dateError);
+      return;
+    }
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
-      const today = format(new Date(), 'yyyy-MM-dd');
       const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
       const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
-      // Auto-promove se produto encerrado OU se usuário marcou "começar a usar hoje"
-      const isFinished = !product.started_using_at || !!product.finished_at || (product.current_stock ?? 0) <= 0;
-      const promoteNow = isFinished || purchaseForm.start_using_today;
-      // Início do uso = "hoje" só quando explicitamente marcado; caso contrário, usa a data da compra
-      const cycleStartDate = purchaseForm.start_using_today
-        ? today
-        : (purchaseForm.purchase_date || today);
-      const startedUsingAt = promoteNow ? cycleStartDate : null;
+      // As datas de uso são exclusivamente manuais: sem preenchimento automático.
+      const { startedUsingAt, finishedAt } = resolvePurchaseCycleDates({
+        usageStartDate: purchaseForm.usage_start_date,
+        usageEndDate: purchaseForm.usage_end_date,
+      });
 
-      // Fecha o ciclo anterior antes de promover a nova compra (se aplicável)
-      if (promoteNow && startedUsingAt) {
+      // Fecha o ciclo anterior somente quando um novo início de uso foi informado
+      if (startedUsingAt) {
         await closePreviousActiveCycle(purchaseForm.product_id, startedUsingAt);
       }
 
@@ -370,7 +374,7 @@ export default function Produtos() {
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
         started_using_at: startedUsingAt,
-        finished_at: null,
+        finished_at: finishedAt,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
@@ -388,11 +392,12 @@ export default function Produtos() {
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
         supplier: purchaseForm.supplier || product.supplier,
         purchase_date: purchaseForm.purchase_date,
-        started_using_at: startedUsingAt || product.started_using_at,
         is_for_sale: purchaseForm.is_for_sale,
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
-        ...(promoteNow ? { finished_at: null as any } : {}),
+        // Só altera o ciclo do produto quando o usuário informou as datas manualmente
+        ...(startedUsingAt ? { started_using_at: startedUsingAt, finished_at: finishedAt } : {}),
       });
+
 
       setPurchaseDialogOpen(false);
       setPurchaseForm(createEmptyPurchaseForm());

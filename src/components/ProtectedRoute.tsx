@@ -14,6 +14,8 @@ import { PaymentFailedGate } from '@/components/PaymentFailedGate';
 import { PaymentGraceBanner } from '@/components/PaymentGraceBanner';
 import { RenewalReminderBanner } from '@/components/RenewalReminderBanner';
 import { getBlockReason } from '@/lib/subscriptionAccess';
+import { getRenewalNotice } from '@/lib/subscriptionReminders';
+
 
 
 interface ProtectedRouteProps {
@@ -119,18 +121,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // Um único aviso por vez, na ordem de urgência. Na própria página de
+  // assinatura o aviso não aparece: a página já mostra a situação em detalhe.
+  const renewalNotice = subscription ? getRenewalNotice(subscription) : null;
+  const banner = isOnSubscriptionPage
+    ? null
+    : subscription && inGracePeriod
+      ? <PaymentGraceBanner subscription={subscription} isAdmin={isAdmin} />
+      : subscription && renewalNotice
+        ? <RenewalReminderBanner subscription={subscription} isAdmin={isAdmin} />
+        : <TrialBanner />;
+
   return (
     <>
-      {subscription && inGracePeriod
-        ? <PaymentGraceBanner subscription={subscription} isAdmin={isAdmin} />
-        : (subscription
-            ? <>
-                <RenewalReminderBanner subscription={subscription} isAdmin={isAdmin} />
-                <TrialBanner />
-              </>
-            : <TrialBanner />)}
+      {banner}
       {children}
     </>
   );
 }
+
 

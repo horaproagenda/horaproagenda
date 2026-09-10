@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  SIGNUP_GRANT_TTL_SECONDS,
+  newOpaqueToken,
+  newRequestId,
+  normalizeVerificationCode,
+  normalizeVerificationEmail,
+  sha256,
+  verificationError,
+} from "../_shared/verification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,14 +35,10 @@ serve(async (req) => {
 
   try {
     const body: VerifyRequest = await req.json();
-    const rawEmail = (body?.email ?? "").toString();
-    const rawCode = (body?.code ?? "").toString();
     const wantedType = (body?.type ?? "").toString().trim().toLowerCase();
-
-    // Normalize: trim and strip non-digits from code (defensive against pasted
-    // codes with spaces, dashes, or invisible characters).
-    const email = rawEmail.trim().toLowerCase();
-    const code = rawCode.replace(/\D/g, "").trim();
+    const email = normalizeVerificationEmail(body?.email);
+    const code = normalizeVerificationCode(body?.code);
+    const requestId = newRequestId();
 
     if (!email || code.length !== 6) {
       console.warn("[verify-code] invalid input", { email, codeLen: code.length });
@@ -46,98 +51,44 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Fetch ALL active (unused) codes for this email. E-mails may arrive out of
-    // order and a user may request more than one code, so ANY matching,
-    // unexpired code must be accepted — checking only the newest one caused
-    // false "Código inválido" errors.
-    let query = supabaseClient
-      .from("verification_codes")
-      .select("*")
-      .eq("email", email)
-      .is("used_at", null)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    if (wantedType === "login" || wantedType === "signup") {
-      query = query.eq("type", wantedType);
-    }
-
-    const { data: codes, error: findError } = await query;
-
-    if (findError) {
-      console.error("[verify-code] lookup error", findError);
-      return jsonResponse({ valid: false, error: "Erro ao validar código" }, 500);
-    }
-
-    const now = Date.now();
-    const active = (codes ?? []).filter(
-      (row) => new Date(row.expires_at).getTime() >= now,
-    );
-    const expired = (codes ?? []).filter(
-      (row) => new Date(row.expires_at).getTime() < now,
+    const grantToken = wantedType === "signup" ? newOpaqueToken() : "login-no-grant";
+    const grantExpiresAt = new Date(Date.now() + SIGNUP_GRANT_TTL_SECONDS * 1000).toISOString();
+    const { data: result, error: confirmError } = await supabaseClient.rpc(
+      "confirm_verification_code",
+      {
+        p_email: email,
+        p_code: code,
+        p_type: wantedType,
+        p_token_hash: await sha256(grantToken),
+        p_request_id: requestId,
+        p_grant_expires_at: grantExpiresAt,
+      },
     );
 
-    // Housekeeping: drop expired rows (never blocks validation).
-    if (expired.length > 0) {
-      await supabaseClient
-        .from("verification_codes")
-        .delete()
-        .in("id", expired.map((row) => row.id));
+    if (confirmError) {
+      console.error("[verify-code] confirmation failed", { requestId, message: confirmError.message });
+      return jsonResponse({ valid: false, code: "temporary_error", error: "Não foi possível conferir o código agora.", requestId }, 500);
     }
 
-    if (active.length === 0) {
-      console.warn("[verify-code] no active code for email", { email, wantedType });
+    const outcome = result as { valid?: boolean; code?: string; remaining?: number; expires_at?: string } | null;
+    if (!outcome?.valid) {
+      console.warn("[verify-code] rejected", { requestId, type: wantedType, reason: outcome?.code });
       return jsonResponse({
         valid: false,
-        error: expired.length > 0
-          ? "Código expirado. Solicite um novo código."
-          : "Nenhum código ativo. Solicite um novo código.",
+        code: outcome?.code ?? "temporary_error",
+        error: verificationError(outcome?.code),
+        remaining: outcome?.remaining,
+        requestId,
       });
     }
 
-    const MAX_ATTEMPTS = 5;
-    const match = active.find((row) => (row.code ?? "").toString().trim() === code);
-
-    if (!match) {
-      // Wrong code — count the attempt on the newest active code.
-      const newest = active[0];
-      const attempts = (newest.attempts ?? 0) + 1;
-      if (attempts >= MAX_ATTEMPTS) {
-        await supabaseClient
-          .from("verification_codes")
-          .delete()
-          .in("id", active.map((row) => row.id));
-        return jsonResponse({
-          valid: false,
-          error: "Muitas tentativas. Solicite um novo código.",
-        });
-      }
-      await supabaseClient
-        .from("verification_codes")
-        .update({ attempts })
-        .eq("id", newest.id);
-      console.warn("[verify-code] wrong code", { email, remaining: MAX_ATTEMPTS - attempts });
-      return jsonResponse({
-        valid: false,
-        error: "Código incorreto. Confira os 6 dígitos recebidos por e-mail.",
-      });
-    }
-
-    // Mark the matching code as used
-    const { error: updateError } = await supabaseClient
-      .from("verification_codes")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", match.id);
-
-    if (updateError) {
-      console.error("[verify-code] failed to mark used", updateError);
-      return jsonResponse({ valid: false, error: "Erro ao validar código" }, 500);
-    }
-
-    console.log("[verify-code] success", { email, type: match.type });
+    console.log("[verify-code] success", { requestId, type: wantedType });
     return jsonResponse({
       valid: true,
-      type: match.type,
+      type: wantedType,
+      signupToken: wantedType === "signup" ? grantToken : undefined,
+      expiresAt: outcome.expires_at,
+      requestId,
       message: "Código verificado com sucesso",
     });
 

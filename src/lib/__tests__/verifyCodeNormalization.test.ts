@@ -77,6 +77,12 @@ describe('signup verification server contract', () => {
     resolve(__dirname, '../../../supabase/migrations/20260910183632_21e2872a-6f4b-418b-bc7f-5cb652a2cb40.sql'),
     'utf8',
   );
+  const migrationsDir = resolve(__dirname, '../../../supabase/migrations');
+  const migrationSources = readFileSync(resolve(migrationsDir, '20260910183632_21e2872a-6f4b-418b-bc7f-5cb652a2cb40.sql'), 'utf8');
+  const signupRepairMigration = readFileSync(
+    resolve(migrationsDir, '20260910185936_105cdbd2-a09b-4300-90f0-1317560ccbbd.sql'),
+    'utf8',
+  );
 
   it('uses one atomic database operation for code confirmation and attempt counting', () => {
     expect(verifySource).toContain('confirm_verification_code');
@@ -102,5 +108,25 @@ describe('signup verification server contract', () => {
   it('does not expose database internals when account creation fails', () => {
     expect(completeSource).not.toMatch(/jsonResponse\(\{ success: false, error: createError\.message/);
     expect(completeSource).toContain('Não foi possível criar sua conta agora. Tente novamente.');
+  });
+
+  it('recovers an account created during an inconclusive database response', () => {
+    expect(completeSource).toContain('createError.status >= 500');
+    expect(completeSource).toContain('!existingTrial || !cpfDigits || existingTrial.cpf === cpfDigits');
+  });
+
+  it('keeps subscription signup statuses compatible', () => {
+    expect(migrationSources).toContain("'pending'");
+    expect(migrationSources).toContain("'suspended'");
+  });
+
+  it('uses the current payment-method uniqueness rule during account creation', () => {
+    expect(signupRepairMigration).toContain('CREATE OR REPLACE FUNCTION public.seed_default_payment_methods');
+    expect(signupRepairMigration).toContain('ON CONFLICT DO NOTHING');
+    expect(signupRepairMigration).not.toContain('ON CONFLICT (account_owner_id, lower(name))');
+  });
+
+  it('invalidates older active codes when a replacement code is issued', () => {
+    expect(signupRepairMigration).toMatch(/UPDATE public\.verification_codes[\s\S]*used_at = coalesce\(used_at, now\(\)\)[\s\S]*used_at IS NULL/);
   });
 });

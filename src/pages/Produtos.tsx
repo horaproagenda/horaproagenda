@@ -87,6 +87,8 @@ import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
 import { resolvePurchaseCycleDates, validatePurchaseCycleDates } from '@/lib/productPurchaseCycle';
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+
 import { useServices } from '@/hooks/useServices';
 import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -173,9 +175,11 @@ const createEmptyPurchaseForm = () => ({
   // Datas de uso são SEMPRE manuais (nunca preenchidas automaticamente).
   usage_start_date: '',
   usage_end_date: '',
+  payment_method_id: '',
   is_for_sale: false,
   skip_cash_transaction: false,
 });
+
 
 
 export default function Produtos() {
@@ -183,6 +187,8 @@ export default function Produtos() {
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();
   const { activeSuppliers } = useSuppliers();
+  const { activePaymentMethods } = usePaymentMethods();
+
   const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
   const { hasRole } = useAuth();
@@ -373,6 +379,9 @@ export default function Produtos() {
         total_price: normalizedTotalPrice,
         supplier: purchaseForm.supplier || null,
         purchase_date: purchaseForm.purchase_date,
+        payment_method_id: purchaseForm.payment_method_id || null,
+        payment_method: activePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
+
         started_using_at: startedUsingAt,
         finished_at: finishedAt,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
@@ -653,10 +662,26 @@ export default function Produtos() {
                         <SafeDateInput value={purchaseForm.purchase_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, purchase_date: v ?? format(new Date(), 'yyyy-MM-dd') })} className="h-7 text-xs" />
                       </div>
                     </div>
-                    <div>
-                      <Label className="text-xs">Data de Validade</Label>
-                      <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Forma de Pagamento</Label>
+                        <Select
+                          value={purchaseForm.payment_method_id || 'none'}
+                          onValueChange={(v) => setPurchaseForm({ ...purchaseForm, payment_method_id: v === 'none' ? '' : v })}
+                        >
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-sm">Não informada</SelectItem>
+                            {activePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Data de Validade</Label>
+                        <SafeDateInput value={purchaseForm.expiry_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, expiry_date: v ?? '' })} className="h-7 text-xs" />
+                      </div>
                     </div>
+
                     <div className="rounded-md border p-2 space-y-2">
                       <div>
                         <Label className="text-xs font-medium">Uso do produto (opcional)</Label>

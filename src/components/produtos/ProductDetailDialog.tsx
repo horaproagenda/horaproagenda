@@ -1553,6 +1553,8 @@ export function ProductDetailDialog({
                     <TableHead>Quantidade</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Fornecedor</TableHead>
+                    <TableHead>Pagamento</TableHead>
+
                     <TableHead>Uso</TableHead>
                     {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                       <TableHead className="text-right">Ações</TableHead>
@@ -1733,6 +1735,8 @@ export function ProductDetailDialog({
                             </div>
                           </TableCell>
                           <TableCell>{purchase.supplier || '-'}</TableCell>
+                          <TableCell>{purchase.payment_method || '-'}</TableCell>
+
                           <TableCell>
                             {purchase.started_using_at ? (
                               <div className="text-sm">

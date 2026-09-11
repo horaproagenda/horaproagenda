@@ -90,6 +90,7 @@ import type { ProductDailyConsumption } from '@/hooks/useProductDailyConsumption
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -238,6 +239,7 @@ export function ProductDetailDialog({
 }: ProductDetailDialogProps) {
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
+  const { activePaymentMethods } = usePaymentMethods();
   const { templates } = usePackageTemplates();
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
@@ -294,6 +296,8 @@ export function ProductDetailDialog({
     started_using_at: '',
     finished_at: '',
     notes: '',
+    payment_method_id: '' as string | null,
+    payment_method: '' as string | null,
   });
 
   // Filter purchases for this product
@@ -1564,7 +1568,7 @@ export function ProductDetailDialog({
                 <TableBody>
                   {productPurchases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                         <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhuma compra registrada
                       </TableCell>
@@ -1645,6 +1649,29 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
+                              <Select
+                                value={purchaseEditForm.payment_method_id || 'none'}
+                                onValueChange={(v) => {
+                                  const method = activePaymentMethods.find(m => m.id === v);
+                                  setPurchaseEditForm({
+                                    ...purchaseEditForm,
+                                    payment_method_id: v === 'none' ? null : v,
+                                    payment_method: v === 'none' ? null : (method?.name || null),
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs w-28">
+                                  <SelectValue placeholder="Forma" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhuma</SelectItem>
+                                  {activePaymentMethods.map(m => (
+                                    <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex flex-col gap-1">
                                 <SafeDateInput
                                   value={purchaseEditForm.started_using_at || ''}
@@ -1676,6 +1703,8 @@ export function ProductDetailDialog({
                                         supplier: purchaseEditForm.supplier || null,
                                         started_using_at: purchaseEditForm.started_using_at || null,
                                         finished_at: purchaseEditForm.finished_at || null,
+                                        payment_method_id: purchaseEditForm.payment_method_id || null,
+                                        payment_method: purchaseEditForm.payment_method || null,
                                       });
                                     }
                                     // Mantém product.started_using_at / finished_at em sincronia
@@ -1776,6 +1805,8 @@ export function ProductDetailDialog({
                                         started_using_at: purchase.started_using_at || '',
                                         finished_at: purchase.finished_at || '',
                                         notes: purchase.notes || '',
+                                        payment_method_id: purchase.payment_method_id || null,
+                                        payment_method: purchase.payment_method || null,
                                       });
                                     }}
                                   >

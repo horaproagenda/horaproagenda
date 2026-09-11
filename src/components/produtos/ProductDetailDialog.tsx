@@ -239,6 +239,7 @@ export function ProductDetailDialog({
 }: ProductDetailDialogProps) {
   const { suppliers, activeSuppliers } = useSuppliers();
   const { services, activeServices } = useServices();
+  const { activePaymentMethods } = usePaymentMethods();
   const { templates } = usePackageTemplates();
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
@@ -1648,9 +1649,30 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
+                              <Select
+                                value={purchaseEditForm.payment_method_id || 'none'}
+                                onValueChange={(v) => {
+                                  const method = activePaymentMethods.find(m => m.id === v);
+                                  setPurchaseEditForm({
+                                    ...purchaseEditForm,
+                                    payment_method_id: v === 'none' ? null : v,
+                                    payment_method: v === 'none' ? null : (method?.name || null),
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs w-28">
+                                  <SelectValue placeholder="Forma" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhuma</SelectItem>
+                                  {activePaymentMethods.map(m => (
+                                    <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex flex-col gap-1">
-                                <SafeDateInput
-                                  value={purchaseEditForm.started_using_at || ''}
                                   onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
                                   className="h-8 text-xs w-28"
                                 />

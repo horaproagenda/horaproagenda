@@ -1568,7 +1568,7 @@ export function ProductDetailDialog({
                 <TableBody>
                   {productPurchases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                         <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         Nenhuma compra registrada
                       </TableCell>
@@ -1701,6 +1701,8 @@ export function ProductDetailDialog({
                                         supplier: purchaseEditForm.supplier || null,
                                         started_using_at: purchaseEditForm.started_using_at || null,
                                         finished_at: purchaseEditForm.finished_at || null,
+                                        payment_method_id: purchaseEditForm.payment_method_id || null,
+                                        payment_method: purchaseEditForm.payment_method || null,
                                       });
                                     }
                                     // Mantém product.started_using_at / finished_at em sincronia
@@ -1801,6 +1803,8 @@ export function ProductDetailDialog({
                                         started_using_at: purchase.started_using_at || '',
                                         finished_at: purchase.finished_at || '',
                                         notes: purchase.notes || '',
+                                        payment_method_id: purchase.payment_method_id || null,
+                                        payment_method: purchase.payment_method || null,
                                       });
                                     }}
                                   >

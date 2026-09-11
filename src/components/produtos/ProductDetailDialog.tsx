@@ -90,6 +90,7 @@ import type { ProductDailyConsumption } from '@/hooks/useProductDailyConsumption
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -294,6 +295,8 @@ export function ProductDetailDialog({
     started_using_at: '',
     finished_at: '',
     notes: '',
+    payment_method_id: '' as string | null,
+    payment_method: '' as string | null,
   });
 
   // Filter purchases for this product

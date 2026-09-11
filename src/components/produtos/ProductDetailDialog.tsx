@@ -1673,6 +1673,8 @@ export function ProductDetailDialog({
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
+                                <SafeDateInput
+                                  value={purchaseEditForm.started_using_at || ''}
                                   onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
                                   className="h-8 text-xs w-28"
                                 />

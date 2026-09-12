@@ -498,10 +498,12 @@ Até breve! ✨`;
     return data;
   };
 
-  // New: Propagate date changes to following appointments in a series
-  const propagateSeriesDates = useMutation({
-    mutationFn: async (params: PropagateSeriesDatesParams) => {
+  // Shared implementation: keeps each occurrence on its own date and applies
+  // only the requested time (or recalculated interval) to the following ones.
+  const runPropagateSeriesDates = async (params: PropagateSeriesDatesParams) => {
+    {
       const { data: { user } } = await supabase.auth.getUser();
+
       
       if (!user) {
         throw new Error('Não autenticado');

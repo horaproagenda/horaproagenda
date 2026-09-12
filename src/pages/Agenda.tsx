@@ -1849,6 +1849,15 @@ const Agenda = () => {
         subtitle=""
       >
         {/* Barra financeira removida da agenda mobile — informações financeiras pertencem às páginas Caixa/Financeiro. */}
+        {!hasProfessionalLink && (
+          <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+            <p className="text-foreground">
+              Seu acesso ainda não está vinculado a um cadastro de profissional. Por isso a agenda aparece vazia e
+              novos agendamentos não podem ser salvos. Peça ao administrador para vincular seu acesso.
+            </p>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 space-y-3">
             <div className="h-8 w-8 rounded-full border-4 border-muted animate-spin border-t-primary" />

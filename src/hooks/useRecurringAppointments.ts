@@ -756,8 +756,14 @@ Até breve! ✨`;
         updated: updatedAppointments.length,
         appointments: updatedAppointments,
       };
-    },
+    }
+  };
+
+  // New: Propagate date changes to following appointments in a series
+  const propagateSeriesDates = useMutation({
+    mutationFn: runPropagateSeriesDates,
     onSuccess: (result) => {
+
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['package_appointments'] });

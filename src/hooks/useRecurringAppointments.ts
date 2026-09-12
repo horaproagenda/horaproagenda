@@ -740,10 +740,14 @@ Até breve! ✨`;
           .select()
           .single();
 
-        if (!updateError && updated) {
-          updatedAppointments.push(updated);
-          currentDate = newAptStart; // Use this as base for next calculation
+        if (updateError || !updated) {
+          throw new Error(
+            `Falha ao atualizar o agendamento de ${format(originalAptStart, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}: ${updateError?.message || 'erro desconhecido'}`,
+          );
         }
+        updatedAppointments.push(updated);
+        currentDate = newAptStart; // Use this as base for next calculation
+
       }
 
       return {

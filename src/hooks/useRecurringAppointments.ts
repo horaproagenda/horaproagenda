@@ -320,10 +320,11 @@ Até breve! ✨`;
           .single();
 
         if (updateError) {
-          console.error(`Error updating appointment ${apt.id}:`, updateError);
-        } else {
-          updatedAppointments.push(updated);
+          throw new Error(
+            `Falha ao reagendar o agendamento (sessão de ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm")}): ${updateError.message}`,
+          );
         }
+        updatedAppointments.push(updated);
       }
 
       // Send WhatsApp notification if requested

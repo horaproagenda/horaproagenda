@@ -409,7 +409,7 @@ export function useAppointments() {
         .eq('id', id)
         .maybeSingle();
       if (currentError) throw currentError;
-      if (!current) throw new AppointmentConflictError();
+      if (!current) throw await resolveBlockedWriteError(id);
 
       const normalize = (key: string, value: unknown) => {
         if (value === null || value === undefined || value === '') return null;
@@ -455,7 +455,7 @@ export function useAppointments() {
         });
 
         if (error) throw error;
-        if (!rpcData) throw new AppointmentConflictError();
+        if (!rpcData) throw await resolveBlockedWriteError(id);
 
         if (updates.status === undefined) {
           return { ...(rpcData as Appointment), sessionReleased: false };
@@ -497,7 +497,7 @@ export function useAppointments() {
           .eq('id', id)
           .maybeSingle();
 
-        if (!latest) throw new AppointmentConflictError();
+        if (!latest) throw await resolveBlockedWriteError(id);
 
         const sameUser = latest.updated_by && user?.id && latest.updated_by === user.id;
         if (sameUser) {
@@ -509,7 +509,7 @@ export function useAppointments() {
             // Fallback: force update without version guard for same user
             const force = await runUpdate(undefined);
             if (force.error) throw force.error;
-            if (!force.data) throw new AppointmentConflictError();
+            if (!force.data) throw await resolveBlockedWriteError(id);
             data = force.data;
           }
         } else {
@@ -517,7 +517,7 @@ export function useAppointments() {
         }
       }
 
-      if (!data) throw new AppointmentConflictError();
+      if (!data) throw await resolveBlockedWriteError(id);
 
       // If status changed to completed and this appointment is linked to a package session,
       // update the package_appointment status as well

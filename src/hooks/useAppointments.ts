@@ -57,7 +57,7 @@ export interface AppointmentUpdate {
 }
 
 
-class AppointmentConflictError extends Error {
+export class AppointmentConflictError extends Error {
   constructor() {
     super('Este agendamento foi alterado por outro usuário. A agenda será atualizada com a versão mais recente.');
     this.name = 'AppointmentConflictError';
@@ -65,7 +65,7 @@ class AppointmentConflictError extends Error {
 }
 
 /** O registro existe, mas as permissões atuais não deixam o usuário alterá-lo. */
-class AppointmentPermissionError extends Error {
+export class AppointmentPermissionError extends Error {
   constructor() {
     super('Você não tem permissão para alterar este agendamento. Fale com o administrador da conta.');
     this.name = 'AppointmentPermissionError';
@@ -73,7 +73,7 @@ class AppointmentPermissionError extends Error {
 }
 
 /** Usuário com função de profissional sem cadastro de profissional vinculado. */
-class MissingProfessionalLinkError extends Error {
+export class MissingProfessionalLinkError extends Error {
   constructor() {
     super('Seu acesso ainda não está vinculado a um cadastro de profissional, por isso a agenda aparece vazia e o salvamento é bloqueado. Peça ao administrador para vincular seu acesso ao seu cadastro de profissional.');
     this.name = 'MissingProfessionalLinkError';
@@ -85,7 +85,7 @@ class MissingProfessionalLinkError extends Error {
  * culpar concorrência: falta de vínculo do profissional, bloqueio por
  * permissão ou registro realmente inexistente.
  */
-async function resolveBlockedWriteError(appointmentId: string): Promise<Error> {
+export async function resolveBlockedWriteError(appointmentId: string): Promise<Error> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.id) return new AppointmentConflictError();

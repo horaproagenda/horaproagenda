@@ -211,7 +211,7 @@ const Agenda = () => {
 
   const { appointments, isLoading: isLoadingAppointments, updatePayment, updateAppointment } = useAppointments();
   const { professionals, isLoading: isLoadingProfessionals } = useProfessionals();
-  const { professionalId: currentProfessionalId } = useCurrentProfessional();
+  const { professionalId: currentProfessionalId, hasProfessionalLink } = useCurrentProfessional();
   const { rooms, isLoading: isLoadingRooms } = useRooms();
   const { equipment, isLoading: isLoadingEquipment } = useEquipment();
   const { settings, generateTimeSlotsForDay, isLoading: isLoadingSettings } = useBusinessSettings();
@@ -1985,7 +1985,18 @@ const Agenda = () => {
     <div className="flex h-full overflow-y-auto">
       {/* Main Agenda Content */}
       <div className="flex-1 min-w-0 overflow-y-auto">
+      {!hasProfessionalLink && (
+        <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs sm:text-sm">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+          <p className="text-foreground">
+            Seu acesso ainda não está vinculado a um cadastro de profissional. Por isso a agenda aparece vazia e
+            novos agendamentos não podem ser salvos. Peça ao administrador da clínica para vincular seu acesso ao
+            seu cadastro de profissional.
+          </p>
+        </div>
+      )}
       <div className="space-y-1.5 mb-2">
+
         {/* Row 1: Search + Actions - Single Line on Mobile */}
         <div className="flex items-center gap-1">
           <div className="relative flex-1 min-w-0">

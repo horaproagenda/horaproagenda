@@ -288,44 +288,46 @@ Até breve! ✨`;
       }
 
       const originalApt = seriesAppointments![originalIndex];
-      const originalStart = new Date(originalApt.start_time);
-      const newStart = params.new_start_time;
-      
-      // Calculate the time difference
-      const timeDiff = newStart.getTime() - originalStart.getTime();
-      
+
       const updatedAppointments: any[] = [];
-      const appointmentsToUpdate = params.reschedule_following 
-        ? seriesAppointments!.slice(originalIndex)
-        : [originalApt];
 
-      // Update appointments
-      for (let i = 0; i < appointmentsToUpdate.length; i++) {
-        const apt = appointmentsToUpdate[i];
-        const aptStart = new Date(apt.start_time);
-        const aptEnd = new Date(apt.end_time);
-        
-        const newAptStart = new Date(aptStart.getTime() + timeDiff);
-        const newAptEnd = new Date(aptEnd.getTime() + timeDiff);
+      // 1) Update the edited occurrence exactly as chosen by the user.
+      const originalDuration =
+        new Date(originalApt.end_time).getTime() - new Date(originalApt.start_time).getTime();
+      const newStart = params.new_start_time;
+      const newEnd = params.new_end_time ?? new Date(newStart.getTime() + originalDuration);
 
-        const { data: updated, error: updateError } = await supabase
-          .from('appointments')
-          .update({
-            start_time: newAptStart.toISOString(),
-            end_time: newAptEnd.toISOString(),
-            updated_by: user.id,
-          })
-          .eq('id', apt.id)
-          .select()
-          .single();
+      const { data: updatedOriginal, error: updateError } = await supabase
+        .from('appointments')
+        .update({
+          start_time: newStart.toISOString(),
+          end_time: newEnd.toISOString(),
+          updated_by: user.id,
+        })
+        .eq('id', originalApt.id)
+        .select()
+        .single();
 
-        if (updateError) {
-          throw new Error(
-            `Falha ao reagendar o agendamento (sessão de ${format(new Date(apt.start_time), "dd/MM/yyyy 'às' HH:mm")}): ${updateError.message}`,
-          );
-        }
-        updatedAppointments.push(updated);
+      if (updateError || !updatedOriginal) {
+        throw new Error(
+          `Falha ao reagendar o agendamento (sessão de ${format(new Date(originalApt.start_time), "dd/MM/yyyy 'às' HH:mm")}): ${updateError?.message || 'erro desconhecido'}`,
+        );
       }
+      updatedAppointments.push(updatedOriginal);
+
+      // 2) Following occurrences keep their own dates: only the time of day changes.
+      if (params.reschedule_following) {
+        const propagated = await runPropagateSeriesDates({
+          appointment_id: originalApt.id,
+          new_start_time: newStart,
+          new_end_time: newEnd,
+          propagate_type: 'recurring',
+          recurring_group_id: params.recurring_group_id,
+          time_only: true,
+        });
+        updatedAppointments.push(...propagated.appointments);
+      }
+
 
       // Send WhatsApp notification if requested
       if (params.send_whatsapp && params.client_phone && updatedAppointments.length > 0) {

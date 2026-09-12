@@ -57,12 +57,71 @@ export interface AppointmentUpdate {
 }
 
 
-class AppointmentConflictError extends Error {
+export class AppointmentConflictError extends Error {
   constructor() {
     super('Este agendamento foi alterado por outro usuário. A agenda será atualizada com a versão mais recente.');
     this.name = 'AppointmentConflictError';
   }
 }
+
+/** O registro existe, mas as permissões atuais não deixam o usuário alterá-lo. */
+export class AppointmentPermissionError extends Error {
+  constructor() {
+    super('Você não tem permissão para alterar este agendamento. Fale com o administrador da conta.');
+    this.name = 'AppointmentPermissionError';
+  }
+}
+
+/** Usuário com função de profissional sem cadastro de profissional vinculado. */
+export class MissingProfessionalLinkError extends Error {
+  constructor() {
+    super('Seu acesso ainda não está vinculado a um cadastro de profissional, por isso a agenda aparece vazia e o salvamento é bloqueado. Peça ao administrador para vincular seu acesso ao seu cadastro de profissional.');
+    this.name = 'MissingProfessionalLinkError';
+  }
+}
+
+/**
+ * Quando uma leitura/gravação volta vazia, descobre o motivo real antes de
+ * culpar concorrência: falta de vínculo do profissional, bloqueio por
+ * permissão ou registro realmente inexistente.
+ */
+export async function resolveBlockedWriteError(appointmentId: string): Promise<Error> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) return new AppointmentConflictError();
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    const roleList = (roles ?? []).map(r => r.role as string);
+    const isPrivileged = roleList.includes('admin') || roleList.includes('receptionist') || roleList.includes('super_admin');
+
+    if (!isPrivileged && roleList.includes('professional')) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: linkedId } = await (supabase as any).rpc('get_professional_id_by_user_or_email', {
+        _user_id: user.id,
+      });
+      if (!linkedId) return new MissingProfessionalLinkError();
+    }
+
+    // Sem privilégios e sem conseguir ler o registro: o bloqueio vem das regras
+    // de acesso, não de uma edição simultânea.
+    if (!isPrivileged) {
+      const { count } = await supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('id', appointmentId);
+      if ((count ?? 0) === 0) return new AppointmentPermissionError();
+    }
+  } catch (checkError) {
+    console.warn('Não foi possível classificar o bloqueio do agendamento:', checkError);
+  }
+
+  return new AppointmentConflictError();
+}
+
+
 
 interface EdgeFunctionError {
   field: string;
@@ -350,7 +409,7 @@ export function useAppointments() {
         .eq('id', id)
         .maybeSingle();
       if (currentError) throw currentError;
-      if (!current) throw new AppointmentConflictError();
+      if (!current) throw await resolveBlockedWriteError(id);
 
       const normalize = (key: string, value: unknown) => {
         if (value === null || value === undefined || value === '') return null;
@@ -396,7 +455,7 @@ export function useAppointments() {
         });
 
         if (error) throw error;
-        if (!rpcData) throw new AppointmentConflictError();
+        if (!rpcData) throw await resolveBlockedWriteError(id);
 
         if (updates.status === undefined) {
           return { ...(rpcData as Appointment), sessionReleased: false };
@@ -438,7 +497,7 @@ export function useAppointments() {
           .eq('id', id)
           .maybeSingle();
 
-        if (!latest) throw new AppointmentConflictError();
+        if (!latest) throw await resolveBlockedWriteError(id);
 
         const sameUser = latest.updated_by && user?.id && latest.updated_by === user.id;
         if (sameUser) {
@@ -450,7 +509,7 @@ export function useAppointments() {
             // Fallback: force update without version guard for same user
             const force = await runUpdate(undefined);
             if (force.error) throw force.error;
-            if (!force.data) throw new AppointmentConflictError();
+            if (!force.data) throw await resolveBlockedWriteError(id);
             data = force.data;
           }
         } else {
@@ -458,7 +517,7 @@ export function useAppointments() {
         }
       }
 
-      if (!data) throw new AppointmentConflictError();
+      if (!data) throw await resolveBlockedWriteError(id);
 
       // If status changed to completed and this appointment is linked to a package session,
       // update the package_appointment status as well
@@ -569,6 +628,10 @@ export function useAppointments() {
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
+      if (error instanceof MissingProfessionalLinkError || error instanceof AppointmentPermissionError) {
+        toast.error(error.message);
+        return;
+      }
       if (error instanceof AppointmentConflictError) {
         queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'all' });
         queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'all' });

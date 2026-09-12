@@ -6,7 +6,7 @@ export function useCurrentProfessional() {
   const { user, hasRole } = useAuth();
   const isProfessional = hasRole('professional') && !hasRole('admin') && !hasRole('receptionist');
 
-  const { data: professionalId, isLoading } = useQuery({
+  const { data: professionalId, isLoading, isFetched } = useQuery({
     queryKey: ['current-professional', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
@@ -51,5 +51,12 @@ export function useCurrentProfessional() {
     professionalId: isProfessional ? professionalId : null,
     isProfessional,
     isLoading,
+    /**
+     * Falso somente quando já consultamos o banco e nem o vínculo direto nem o
+     * fallback por e-mail encontraram cadastro de profissional para o usuário.
+     * Nesse caso as regras de acesso escondem os dados e a agenda fica vazia.
+     */
+    hasProfessionalLink: isProfessional ? (isFetched ? !!professionalId : true) : true,
   };
 }
+

@@ -628,6 +628,10 @@ export function useAppointments() {
       toast.success('Agendamento atualizado!');
     },
     onError: (error) => {
+      if (error instanceof MissingProfessionalLinkError || error instanceof AppointmentPermissionError) {
+        toast.error(error.message);
+        return;
+      }
       if (error instanceof AppointmentConflictError) {
         queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'all' });
         queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'all' });

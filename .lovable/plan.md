@@ -1,22 +1,35 @@
-# Correção definitiva das datas de uso dos produtos
+# Mensagens claras quando falta vínculo de profissional
 
-## Objetivo
-Separar totalmente o registro de compra do registro de uso: comprar apenas aumenta o estoque; início e término do uso só são gravados quando a pessoa informa e confirma as respectivas datas.
+## Problema
 
-## Implementação
-- Remover da nova compra a opção e a lógica que iniciam um ciclo automaticamente, inclusive para produtos sem ciclo ativo ou com estoque zerado.
-- Ao registrar uma compra, salvar `started_using_at` e `finished_at` como vazios e preservar no produto qualquer ciclo que já esteja ativo.
-- Manter início e término no painel de detalhes, sempre mediante escolha manual da data e confirmação.
-- Remover mensagens e comportamentos que prometem iniciar automaticamente a próxima compra após o término.
-- Fortalecer a regra no banco para impedir que uma simples inclusão de compra preencha datas de uso por gatilhos ou sincronizações antigas.
-- Corrigir inconsistências diretamente ligadas a esse fluxo, sem alterar regras de consumo, estoque ou financeiro fora do necessário.
+Um usuário com função de profissional que não tem cadastro correspondente na lista de profissionais fica sem nenhum agendamento visível (as regras de acesso escondem tudo) e, ao tentar salvar, recebe a mensagem enganosa "Este agendamento foi alterado por outro usuário".
 
-## Proteção contra regressão
-- Criar testes cobrindo compra inicial, reposição com ciclo ativo e produto com ciclo encerrado, garantindo que nenhuma compra inicie ou termine uso.
-- Testar início e término manuais, preservação do estoque e sincronização do ciclo ativo.
-- Validar tipos, testes de publicação, compilação e o fluxo visível da página de Produtos.
+Causa: quando as regras de acesso escondem a linha, a gravação simplesmente não retorna nada, e o aplicativo interpreta isso como disputa de edição entre usuários.
+
+## O que muda
+
+### 1. Aviso quando falta o vínculo
+- Ao entrar na agenda, se o usuário tem função de profissional mas nenhum cadastro de profissional vinculado, aparece um aviso fixo no topo da página: explica que o cadastro dele ainda não está vinculado, que por isso a agenda aparece vazia, e orienta pedir ao administrador para vincular o acesso ao cadastro do profissional.
+- O aviso substitui o texto genérico de "nenhum agendamento encontrado" nesse caso, para não parecer que a agenda está apenas vazia.
+
+### 2. Mensagem correta ao salvar
+- Ao salvar/editar/reagendar um agendamento, quando o salvamento é bloqueado por falta de permissão, a mensagem passa a ser de permissão — e, se o motivo for a ausência do vínculo, a mensagem diz exatamente isso e o que pedir ao administrador.
+- A mensagem de "alterado por outro usuário" fica reservada para o caso real de outra pessoa ter alterado o registro.
 
 ## Detalhes técnicos
-- Centralizar a montagem dos dados da compra em uma função pura testável.
-- Ajustar as operações da página e, se necessário, funções/gatilhos de `products` e `product_purchases` por migração aprovada.
-- Manter atualização em tempo real das consultas relacionadas aos produtos e ciclos.
+
+- `src/hooks/useCurrentProfessional.ts`: expor um estado explícito `hasProfessionalLink` (falso quando nem o vínculo direto nem o fallback por e-mail encontram cadastro), já resolvido antes das telas decidirem o que mostrar.
+- `src/hooks/useAppointments.ts`: criar `AppointmentPermissionError` e `MissingProfessionalLinkError` ao lado do `AppointmentConflictError`. Antes de lançar conflito (nos pontos onde a linha ou o retorno vem vazio: leitura inicial, RPC de pacote, guarda de versão e fallback final), distinguir os casos:
+  1. registro realmente não existe mais → conflito/registro removido;
+  2. registro existe para o servidor mas não é retornado ao usuário → erro de permissão;
+  3. usuário com função de profissional e sem cadastro vinculado → erro de vínculo ausente.
+  A checagem 3 usa a mesma resolução por `user_id`/e-mail já existente (`get_professional_id_for_user`).
+- `src/lib/humanError.ts`: mapear os novos erros e os códigos de violação de política (`42501`, `PGRST301`) para textos de permissão em linguagem clara, sem códigos.
+- Agenda (`src/pages/Index.tsx` / componentes de agenda) e diálogos de agendamento: renderizar o aviso de vínculo ausente e usar a mensagem tratada nos `onError`.
+- Nenhuma alteração de banco, de regras de acesso ou de permissões: só mensagens e um aviso na interface.
+
+## Testes
+
+- Teste de regressão garantindo que retorno vazio por permissão não produz mais a mensagem de concorrência.
+- Teste garantindo que usuário profissional sem cadastro vinculado recebe a mensagem de vínculo ausente.
+- Verificação de tipos e compilação.

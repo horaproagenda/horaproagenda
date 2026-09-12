@@ -64,6 +64,62 @@ class AppointmentConflictError extends Error {
   }
 }
 
+/** O registro existe, mas as permissões atuais não deixam o usuário alterá-lo. */
+class AppointmentPermissionError extends Error {
+  constructor() {
+    super('Você não tem permissão para alterar este agendamento. Fale com o administrador da conta.');
+    this.name = 'AppointmentPermissionError';
+  }
+}
+
+/** Usuário com função de profissional sem cadastro de profissional vinculado. */
+class MissingProfessionalLinkError extends Error {
+  constructor() {
+    super('Seu acesso ainda não está vinculado a um cadastro de profissional, por isso a agenda aparece vazia e o salvamento é bloqueado. Peça ao administrador para vincular seu acesso ao seu cadastro de profissional.');
+    this.name = 'MissingProfessionalLinkError';
+  }
+}
+
+/**
+ * Quando uma leitura/gravação volta vazia, descobre o motivo real antes de
+ * culpar concorrência: falta de vínculo do profissional, bloqueio por
+ * permissão ou registro realmente inexistente.
+ */
+async function resolveBlockedWriteError(appointmentId: string): Promise<Error> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      const roleList = (roles ?? []).map(r => r.role as string);
+      const isPrivileged = roleList.includes('admin') || roleList.includes('receptionist') || roleList.includes('super_admin');
+
+      if (!isPrivileged && roleList.includes('professional')) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: linkedId } = await (supabase as any).rpc('get_professional_id_by_user_or_email', {
+          _user_id: user.id,
+        });
+        if (!linkedId) return new MissingProfessionalLinkError();
+      }
+    }
+
+    // O registro ainda existe (mesmo que invisível na listagem do usuário)?
+    const { count } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('id', appointmentId);
+
+    if ((count ?? 0) === 0) return new AppointmentPermissionError();
+  } catch (checkError) {
+    console.warn('Não foi possível classificar o bloqueio do agendamento:', checkError);
+  }
+
+  return new AppointmentConflictError();
+}
+
+
 interface EdgeFunctionError {
   field: string;
   message: string;

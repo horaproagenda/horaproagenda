@@ -88,36 +88,39 @@ class MissingProfessionalLinkError extends Error {
 async function resolveBlockedWriteError(appointmentId: string): Promise<Error> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-      const roleList = (roles ?? []).map(r => r.role as string);
-      const isPrivileged = roleList.includes('admin') || roleList.includes('receptionist') || roleList.includes('super_admin');
+    if (!user?.id) return new AppointmentConflictError();
 
-      if (!isPrivileged && roleList.includes('professional')) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: linkedId } = await (supabase as any).rpc('get_professional_id_by_user_or_email', {
-          _user_id: user.id,
-        });
-        if (!linkedId) return new MissingProfessionalLinkError();
-      }
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    const roleList = (roles ?? []).map(r => r.role as string);
+    const isPrivileged = roleList.includes('admin') || roleList.includes('receptionist') || roleList.includes('super_admin');
+
+    if (!isPrivileged && roleList.includes('professional')) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: linkedId } = await (supabase as any).rpc('get_professional_id_by_user_or_email', {
+        _user_id: user.id,
+      });
+      if (!linkedId) return new MissingProfessionalLinkError();
     }
 
-    // O registro ainda existe (mesmo que invisível na listagem do usuário)?
-    const { count } = await supabase
-      .from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .eq('id', appointmentId);
-
-    if ((count ?? 0) === 0) return new AppointmentPermissionError();
+    // Sem privilégios e sem conseguir ler o registro: o bloqueio vem das regras
+    // de acesso, não de uma edição simultânea.
+    if (!isPrivileged) {
+      const { count } = await supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('id', appointmentId);
+      if ((count ?? 0) === 0) return new AppointmentPermissionError();
+    }
   } catch (checkError) {
     console.warn('Não foi possível classificar o bloqueio do agendamento:', checkError);
   }
 
   return new AppointmentConflictError();
 }
+
 
 
 interface EdgeFunctionError {

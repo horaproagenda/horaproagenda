@@ -13,6 +13,7 @@ import { TrialBanner } from '@/components/TrialBanner';
 import { PaymentFailedGate } from '@/components/PaymentFailedGate';
 import { PaymentGraceBanner } from '@/components/PaymentGraceBanner';
 import { RenewalReminderBanner } from '@/components/RenewalReminderBanner';
+import { ChromeBannerSlot } from '@/components/layout/ChromeBannerSlot';
 import { getBlockReason } from '@/lib/subscriptionAccess';
 import { getRenewalNotice } from '@/lib/subscriptionReminders';
 
@@ -134,7 +135,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return (
     <>
-      {banner}
+      {banner ? <ChromeBannerSlot>{banner}</ChromeBannerSlot> : null}
       {children}
     </>
   );

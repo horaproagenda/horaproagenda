@@ -70,7 +70,8 @@ describe('diálogos mantêm o rodapé de ações visível', () => {
     expect(indexCss).toMatch(/\[role="dialog"\]\s*\{\s*max-height:\s*calc\(\s*100dvh/);
   });
 
-  it('não force tamanho de fonte em textos de diálogo', () => {
-    expect(indexCss).not.toMatch(/\[role="dialog"\] label \{[\s\S]{0,80}font-size/);
+  it('não force tamanho de fonte em parágrafos/spans de diálogo', () => {
+    expect(indexCss).not.toMatch(/\[role="dialog"\] span[\s\S]{0,80}font-size/);
+    expect(indexCss).not.toMatch(/\[role="dialog"\] p,/);
   });
 });

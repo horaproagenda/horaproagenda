@@ -664,20 +664,23 @@ input[type="number"] {
     padding: 0.1rem 0.35rem !important;
   }
 
-  /* Dialog/Sheet content */
+  /* Dialog/Sheet content.
+     ATENÇÃO: usar dvh + teclado + safe-area. Com `90vh` o rodapé com os
+     botões Salvar/Cancelar ficava atrás da barra do navegador/teclado. */
   [role="dialog"] {
-    max-height: 90vh !important;
+    max-height: calc(
+      100dvh - var(--kb-inset, 0px) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem
+    ) !important;
   }
 
   [role="dialog"] h2 {
     font-size: 1rem !important;
   }
 
-  [role="dialog"] p,
-  [role="dialog"] span,
-  [role="dialog"] label {
-    font-size: 0.75rem !important;
-  }
+  /* NÃO forçar font-size em p/span/label dentro de diálogos:
+     a regra atropelava rótulos, badges e valores (texto desalinhado e
+     sobreposto em telas estreitas). A densidade vem do espaçamento. */
+
 
   /* Sidebar hidden on mobile - handled by component */
 
@@ -892,21 +895,53 @@ input[type="number"] {
   @media (min-width: 1536px) { .page-container { max-width: 1400px; } }
 }
 
-/* Grids existentes não estouram em mobile/tablet pequeno */
+/* Grids existentes não estouram em mobile/tablet pequeno.
+   IMPORTANTE: barras de abas ([role="tablist"]) e barras de ação
+   ([data-action-row]) ficam FORA desta regra. Colapsar uma faixa de abas de
+   5 colunas para 2/3 criava uma segunda linha que escrevia por cima do
+   conteúdo (bug "Pacotes/Consumo sobrepostos" nos detalhes do produto). */
 @media (max-width: 767px) {
-  .grid.grid-cols-3:not(.no-mobile-collapse),
-  .grid.grid-cols-4:not(.no-mobile-collapse),
-  .grid.grid-cols-5:not(.no-mobile-collapse),
-  .grid.grid-cols-6:not(.no-mobile-collapse) {
+  .grid.grid-cols-3:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]),
+  .grid.grid-cols-4:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]),
+  .grid.grid-cols-5:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]),
+  .grid.grid-cols-6:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]) {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: var(--density-grid-gap) !important;
   }
 }
 
 @media (min-width: 480px) and (max-width: 767px) {
-  .grid.grid-cols-5:not(.no-mobile-collapse),
-  .grid.grid-cols-6:not(.no-mobile-collapse) {
+  .grid.grid-cols-5:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]),
+  .grid.grid-cols-6:not(.no-mobile-collapse):not([role="tablist"]):not([data-action-row]) {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Barras de abas no celular/tablet pequeno: sempre UMA linha rolável.
+   Nunca quebrar em duas linhas (sobrepõe o conteúdo) nem comprimir os
+   rótulos até ficarem ilegíveis. */
+@media (max-width: 767px) {
+  [role="tablist"] {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    height: auto !important;
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  [role="tablist"]::-webkit-scrollbar {
+    display: none !important;
+  }
+  [role="tablist"] > [role="tab"] {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    white-space: nowrap !important;
+    scroll-snap-align: start;
   }
 }
 

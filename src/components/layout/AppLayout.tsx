@@ -68,18 +68,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
 
   return (
     <div
-      className="overflow-hidden bg-background"
-      style={{
-        // 100dvh acompanha barra de URL do Safari mobile em tempo real.
-        // Safe-area é reservada dentro do layout via .pt-safe/.pb-safe nos
-        // filhos, para NÃO subtrair da altura total (isso deixava faixa em
-        // branco no rodapé em notebooks/desktop).
-        // `--app-banner-h` é a altura real do aviso do topo (teste gratuito,
-        // carência, renovação), medida em ChromeBannerSlot. Sem descontá-la, o
-        // conteúdo ficava empurrado para fora da tela no celular.
-        height: 'calc(100dvh - var(--kb-inset, 0px) - var(--app-banner-h, 0px))',
-        maxHeight: 'calc(100dvh - var(--kb-inset, 0px) - var(--app-banner-h, 0px))',
-      }}
+      className="h-full max-h-full overflow-hidden bg-background"
     >
 
 
@@ -100,7 +89,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <div className="flex-shrink-0 pt-safe pl-safe pr-safe">
+        <div data-app-header-safe className="flex-shrink-0 pt-safe pl-safe pr-safe">
 
           <Header 
             title={title} 

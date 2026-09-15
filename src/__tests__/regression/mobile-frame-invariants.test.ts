@@ -20,9 +20,11 @@ const bannerSlot = read('src/components/layout/ChromeBannerSlot.tsx');
 const tabs = read('src/components/ui/tabs.tsx');
 
 describe('aviso do topo não corta a tela', () => {
-  it('AppLayout desconta a altura do aviso e o teclado', () => {
-    expect(appLayout).toMatch(/height:\s*'calc\(100dvh - var\(--kb-inset, 0px\) - var\(--app-banner-h, 0px\)\)'/);
-    expect(appLayout).toMatch(/maxHeight:\s*'calc\(100dvh - var\(--kb-inset, 0px\) - var\(--app-banner-h, 0px\)\)'/);
+  it('usa uma única coluna visual e o AppLayout ocupa somente o espaço restante', () => {
+    expect(protectedRoute).toContain('data-app-frame');
+    expect(protectedRoute).toContain('100dvh-var(--kb-inset,0px)');
+    expect(appLayout).toContain('h-full max-h-full');
+    expect(appLayout).not.toContain('--app-banner-h');
   });
 
   it('o aviso é renderizado dentro do ChromeBannerSlot', () => {
@@ -30,10 +32,30 @@ describe('aviso do topo não corta a tela', () => {
     expect(protectedRoute).toMatch(/<ChromeBannerSlot>\{banner\}<\/ChromeBannerSlot>/);
   });
 
-  it('o slot mede a altura e reserva a safe-area do topo', () => {
-    expect(bannerSlot).toContain('--app-banner-h');
-    expect(bannerSlot).toContain('ResizeObserver');
+  it('o slot reserva a safe-area sem medição indireta de altura', () => {
     expect(bannerSlot).toContain('pt-safe');
+    expect(bannerSlot).not.toContain('--app-banner-h');
+    expect(bannerSlot).not.toContain('ResizeObserver');
+  });
+
+  it('não cria slot vazio para assinatura ativa e não duplica o notch', () => {
+    expect(protectedRoute).toContain("subscription.status !== 'active'");
+    expect(protectedRoute).toMatch(/banner \? <ChromeBannerSlot>/);
+    expect(indexCss).toContain('[data-app-frame][data-has-banner="true"] [data-app-header-safe]');
+    expect(indexCss).toMatch(/\[data-app-frame\][^{]+\{\s*padding-top:\s*0/);
+  });
+});
+
+describe('menu lateral ocupa toda a altura do celular', () => {
+  const sidebar = read('src/components/layout/Sidebar.tsx');
+
+  it('identifica o menu e usa a altura visual completa', () => {
+    expect(sidebar).toContain('data-app-sidebar');
+    expect(sidebar).toContain('h-[100dvh] max-h-[100dvh]');
+  });
+
+  it('o limite global de janelas não alcança o menu', () => {
+    expect(indexCss).toContain('[role="dialog"]:not([data-app-sidebar])');
   });
 });
 
@@ -67,7 +89,7 @@ describe('abas nunca sobrepõem o conteúdo no celular', () => {
 describe('diálogos mantêm o rodapé de ações visível', () => {
   it('altura máxima usa dvh com teclado e safe-area (nunca 90vh)', () => {
     expect(indexCss).not.toMatch(/max-height:\s*90vh/);
-    expect(indexCss).toMatch(/\[role="dialog"\]\s*\{\s*max-height:\s*calc\(\s*100dvh/);
+    expect(indexCss).toMatch(/\[role="dialog"\]:not\(\[data-app-sidebar\]\)\s*\{\s*max-height:\s*calc\(\s*100dvh/);
   });
 
   it('não force tamanho de fonte em parágrafos/spans de diálogo', () => {

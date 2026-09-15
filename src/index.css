@@ -74,6 +74,12 @@ html.fonts-ready [data-fonts-gate] {
   }
 }
 
+/* O aviso já ocupa a área segura superior. Não a repetir no cabeçalho: no
+   iPhone isso criava uma faixa vazia entre o aviso e o título da página. */
+[data-app-frame][data-has-banner="true"] [data-app-header-safe] {
+  padding-top: 0;
+}
+
 /* Inputs: 16px em todas plataformas — alinha altura e evita zoom */
 input:not([type="checkbox"]):not([type="radio"]),
 select,
@@ -667,7 +673,7 @@ input[type="number"] {
   /* Dialog/Sheet content.
      ATENÇÃO: usar dvh + teclado + safe-area. Com `90vh` o rodapé com os
      botões Salvar/Cancelar ficava atrás da barra do navegador/teclado. */
-  [role="dialog"] {
+  [role="dialog"]:not([data-app-sidebar]) {
     max-height: calc(
       100dvh - var(--kb-inset, 0px) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem
     ) !important;

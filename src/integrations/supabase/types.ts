@@ -1176,36 +1176,57 @@ export type Database = {
           account_owner_id: string
           affects_cash: boolean | null
           amount: number | null
+          cash_register_id: string | null
           client_id: string | null
           created_at: string | null
           created_by: string | null
           id: string
           payment_method: string | null
+          professional_id: string | null
           single_sale_id: string | null
         }
         Insert: {
           account_owner_id?: string
           affects_cash?: boolean | null
           amount?: number | null
+          cash_register_id?: string | null
           client_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           payment_method?: string | null
+          professional_id?: string | null
           single_sale_id?: string | null
         }
         Update: {
           account_owner_id?: string
           affects_cash?: boolean | null
           amount?: number | null
+          cash_register_id?: string | null
           client_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           payment_method?: string | null
+          professional_id?: string | null
           single_sale_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cash_register_entries_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_register_entries_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cash_registers: {
         Row: {
@@ -2440,6 +2461,8 @@ export type Database = {
           recurring_frequency: string | null
           root_entry_id: string | null
           sale_id: string | null
+          source_id: string | null
+          source_type: string | null
           status: string
           type: string
           updated_at: string
@@ -2473,6 +2496,8 @@ export type Database = {
           recurring_frequency?: string | null
           root_entry_id?: string | null
           sale_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -2506,6 +2531,8 @@ export type Database = {
           recurring_frequency?: string | null
           root_entry_id?: string | null
           sale_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -6858,6 +6885,10 @@ export type Database = {
       }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
       security_check_temp_password_protected: { Args: never; Returns: boolean }
+      seed_default_document_templates: {
+        Args: { p_account_owner_id: string }
+        Returns: undefined
+      }
       seed_default_payment_methods: {
         Args: { _owner_id: string }
         Returns: undefined
@@ -6971,6 +7002,10 @@ export type Database = {
       sync_appointments_with_paid_sale: {
         Args: { _sale_id: string }
         Returns: number
+      }
+      sync_product_purchase_finance: {
+        Args: { _purchase_id: string }
+        Returns: undefined
       }
       sync_recurring_session_notes: {
         Args: { p_recurring_group_id: string }

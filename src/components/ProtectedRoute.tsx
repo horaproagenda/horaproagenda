@@ -125,19 +125,28 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Um único aviso por vez, na ordem de urgência. Na própria página de
   // assinatura o aviso não aparece: a página já mostra a situação em detalhe.
   const renewalNotice = subscription ? getRenewalNotice(subscription) : null;
+  const trialBannerVisible = !!subscription
+    && subscription.status !== 'active'
+    && subscription.status !== 'grandfathered';
   const banner = isOnSubscriptionPage
     ? null
     : subscription && inGracePeriod
       ? <PaymentGraceBanner subscription={subscription} isAdmin={isAdmin} />
       : subscription && renewalNotice
         ? <RenewalReminderBanner subscription={subscription} isAdmin={isAdmin} />
-        : <TrialBanner />;
+        : trialBannerVisible
+          ? <TrialBanner />
+          : null;
 
   return (
-    <>
+    <div
+      data-app-frame
+      data-has-banner={banner ? 'true' : 'false'}
+      className="flex h-[calc(100dvh-var(--kb-inset,0px))] max-h-[calc(100dvh-var(--kb-inset,0px))] flex-col overflow-hidden"
+    >
       {banner ? <ChromeBannerSlot>{banner}</ChromeBannerSlot> : null}
-      {children}
-    </>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+    </div>
   );
 }
 

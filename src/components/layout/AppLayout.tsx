@@ -74,8 +74,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         // Safe-area é reservada dentro do layout via .pt-safe/.pb-safe nos
         // filhos, para NÃO subtrair da altura total (isso deixava faixa em
         // branco no rodapé em notebooks/desktop).
-        height: 'calc(100dvh - var(--kb-inset, 0px))',
-        maxHeight: 'calc(100dvh - var(--kb-inset, 0px))',
+        // `--app-banner-h` é a altura real do aviso do topo (teste gratuito,
+        // carência, renovação), medida em ChromeBannerSlot. Sem descontá-la, o
+        // conteúdo ficava empurrado para fora da tela no celular.
+        height: 'calc(100dvh - var(--kb-inset, 0px) - var(--app-banner-h, 0px))',
+        maxHeight: 'calc(100dvh - var(--kb-inset, 0px) - var(--app-banner-h, 0px))',
       }}
     >
 

@@ -12,7 +12,10 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      // h-auto + min-h-10: nunca cortar as abas quando o texto é longo.
+      // No celular a faixa rola horizontalmente (regra global em index.css)
+      // em vez de quebrar em duas linhas e escrever por cima do conteúdo.
+      "inline-flex h-auto min-h-10 max-w-full items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className,
     )}
     {...props}

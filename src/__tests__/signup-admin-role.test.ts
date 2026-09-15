@@ -69,4 +69,16 @@ describe('admin-create-account-user provisions seat users', () => {
   it('binds the new profile to the caller account_owner_id', () => {
     expect(src).toMatch(/account_owner_id:\s*callerId/);
   });
+
+  it('creates a linked professionals row for professional seats', () => {
+    expect(src).toMatch(/assignedRole === "professional"/);
+    expect(src).toMatch(/from\("professionals"\)\.insert\(\{[\s\S]{0,200}user_id:\s*newUserId/);
+  });
+
+  it('rolls back the created user when the professional record fails', () => {
+    expect(src).toMatch(/const rollback = async/);
+    expect(src).toMatch(/profErr[\s\S]{0,120}await rollback\(\)/);
+    expect(src).toMatch(/professional_record_failed/);
+  });
 });
+

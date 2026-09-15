@@ -130,15 +130,55 @@ serve(async (req) => {
       full_name,
     }).eq("id", newUserId);
 
+    // Desfaz a criação do usuário quando alguma etapa obrigatória falha, para não
+    // deixar contas pela metade (sem papel ou sem cadastro de profissional).
+    const rollback = async () => {
+      try { await supaAdmin.from("user_roles").delete().eq("user_id", newUserId); } catch (_) { /* best-effort */ }
+      try { await supaAdmin.auth.admin.deleteUser(newUserId); } catch (_) { /* best-effort */ }
+    };
+
     // Perfil escolhido pelo administrador (padrão: professional) — account_owner_id é obrigatório
     const { error: roleErr } = await supaAdmin
       .from("user_roles")
       .insert({ user_id: newUserId, role: assignedRole, account_owner_id: callerId });
 
     if (roleErr) {
+      await rollback();
       return new Response(JSON.stringify({ success: false, error: roleErr.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // Usuário com perfil de profissional precisa de um cadastro em `professionals`
+    // vinculado ao seu user_id: sem ele as regras de acesso filtram tudo e a
+    // agenda aparece vazia.
+    if (assignedRole === "professional") {
+      const { data: existingProf } = await supaAdmin
+        .from("professionals")
+        .select("id")
+        .eq("user_id", newUserId)
+        .maybeSingle();
+
+      if (!existingProf) {
+        const { error: profErr } = await supaAdmin.from("professionals").insert({
+          name: full_name,
+          email,
+          user_id: newUserId,
+          account_owner_id: callerId,
+          active: true,
+        });
+
+        if (profErr) {
+          await rollback();
+          return new Response(JSON.stringify({
+            success: false,
+            code: "professional_record_failed",
+            error: "Não foi possível criar o cadastro do profissional. Nenhum usuário foi criado — tente novamente.",
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+    }
+
+
 
 
     // Insere permissões

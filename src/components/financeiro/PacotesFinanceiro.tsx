@@ -641,6 +641,24 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                   />
                 </div>
               </div>
+
+              {/* Situação */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Situação
+                </p>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                  <SelectTrigger className="h-7 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="andamento" className="text-xs">Em andamento</SelectItem>
+                    <SelectItem value="concluidos" className="text-xs">Concluídos</SelectItem>
+                    <SelectItem value="cancelados" className="text-xs">Cancelados</SelectItem>
+                    <SelectItem value="todos" className="text-xs">Todos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </PopoverContent>
         </Popover>

@@ -22,8 +22,11 @@ describe('venda do pacote registrada no Financeiro', () => {
 
   it('verificação automática regulariza e nunca apaga pacote sem venda', () => {
     const src = read('src/hooks/useSaleFlowIntegrityAutoCheck.ts');
-    expect(src).toContain('heal_packages_without_sale');
+    expect(src).toContain('healPackagesWithoutSale');
     expect(src).not.toContain('heal_orphan_service_packages');
     expect(src).not.toMatch(/\.delete\(\)/);
+    const rpc = read('src/lib/healPackagesWithoutSale.ts');
+    expect(rpc).toContain('heal_packages_without_sale');
+    expect(rpc).not.toMatch(/\.delete\(\)/);
   });
 });

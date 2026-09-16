@@ -258,6 +258,26 @@ export function PackageConsistencyReport() {
             </Card>
           </div>
 
+          {/* Pacotes sem registro no Financeiro (regularização, nunca exclusão) */}
+          {(report?.packagesWithoutSale.length || 0) > 0 && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-700">Pacotes fora do Financeiro</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {report?.packagesWithoutSale.length} pacote(s) de cliente ainda não têm registro em Financeiro &gt; Pacotes.
+                </span>
+                <Button variant="outline" size="sm" onClick={handleHealPackagesWithoutSale} disabled={isHealing}>
+                  {isHealing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando...</>
+                  ) : (
+                    <><Wrench className="h-4 w-4 mr-2" />Registrar no Financeiro</>
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Inconsistencies Alert */}
           {hasInconsistencies && (
             <Alert variant="destructive">

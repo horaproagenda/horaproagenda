@@ -343,9 +343,13 @@ export function useClientPackages(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
     },
     onError: (error) => {
-      toast.error('Erro ao criar pacote do cliente: ' + error.message);
+      toast.error('Não foi possível registrar o pacote agora. Tente novamente.');
     },
   });
 

@@ -1428,8 +1428,9 @@ export function NewAppointmentDialog({
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
         // Check if package has payment_methods filled (indicates it was paid via caixa sale)
-        const isPackagePaid = isClientPackageSelected && existingClientPackage && 
-          existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0;
+        const isPackagePaid = existingClientPackage
+          ? !!(isClientPackageSelected && existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0)
+          : packageAlreadyPaid;
         
         // When auto-schedule is enabled, use the FIRST previewed date so the
         // user's edits in the preview list drive the first appointment as well.

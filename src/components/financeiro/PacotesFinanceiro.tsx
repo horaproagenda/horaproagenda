@@ -201,7 +201,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
 
   
 
-  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (statusFilter !== 'andamento' ? 1 : 0);
 
   const deletePackageMutation = useMutation({
     mutationFn: async (row: PackageSaleRow) => {

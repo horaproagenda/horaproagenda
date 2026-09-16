@@ -87,13 +87,41 @@ export function PackageConsistencyReport() {
         }
       }
 
+      // Pacotes de cliente sem registro de venda no Financeiro.
+      const saleIdsByPackage = new Set((packageSales || []).map(s => s.package_id).filter(Boolean) as string[]);
+      const packagesWithoutSale = (clientPackages || []).filter(cp => !saleIdsByPackage.has(cp.id));
+
       return {
         totalSales: packageSales?.length || 0,
         consistent,
         inconsistencies,
+        packagesWithoutSale,
       };
     },
   });
+
+  const handleHealPackagesWithoutSale = async () => {
+    setIsHealing(true);
+    try {
+      const { data, error } = await (supabase as any).rpc('heal_packages_without_sale');
+      if (error) throw error;
+      const created = data?.created_sales ?? 0;
+      toast.success(
+        created > 0
+          ? `${created} pacote(s) agora aparecem no Financeiro.`
+          : 'Nenhum pacote pendente de registro.'
+      );
+      queryClient.invalidateQueries({ queryKey: ['package_consistency_report'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      refetch();
+    } catch {
+      toast.error('Não foi possível registrar os pacotes agora. Tente novamente.');
+    } finally {
+      setIsHealing(false);
+    }
+  };
 
   const handleFixInconsistencies = async () => {
     if (!report?.inconsistencies.length) return;

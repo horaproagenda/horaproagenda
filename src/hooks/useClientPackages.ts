@@ -293,6 +293,47 @@ export function useClientPackages(clientId: string | null) {
 
       if (sessionsError) throw sessionsError;
 
+      // Registro financeiro da venda do pacote (mesma operação).
+      // Se falhar, o pacote e as sessões são revertidos para não sobrar pacote
+      // invisível no Financeiro.
+      const { data: { user } } = await supabase.auth.getUser();
+      const isPaid = !!data.payment?.isPaid;
+      const total = Number(data.templateData.total_price) || 0;
+      const saleDate = data.payment?.saleDate || new Date().toISOString().slice(0, 10);
+
+      const { error: saleError } = await (supabase as any)
+        .from('single_sales')
+        .insert({
+          client_id: data.clientId,
+          package_id: newPackage.id,
+          item_type: 'package',
+          description: data.templateData.name,
+          original_amount: total,
+          discount_amount: 0,
+          final_amount: total,
+          payment_method_id: data.payment?.paymentMethodId || null,
+          sale_date: saleDate,
+          paid_at: isPaid ? new Date().toISOString() : null,
+          paid_by: isPaid ? user?.id ?? null : null,
+          created_by: user?.id ?? null,
+        });
+
+      if (saleError) {
+        await (supabase as any).from('package_appointments').delete().eq('package_id', newPackage.id);
+        await (supabase as any).from('service_packages').delete().eq('id', newPackage.id);
+        throw saleError;
+      }
+
+      if (isPaid && (data.payment?.paymentMethodName || data.payment?.paymentMethodId)) {
+        await (supabase as any)
+          .from('service_packages')
+          .update({
+            payment_method: data.payment?.paymentMethodName || null,
+            payment_methods: data.payment?.paymentMethodName ? [data.payment.paymentMethodName] : [],
+          })
+          .eq('id', newPackage.id);
+      }
+
       return newPackage;
     },
     onSuccess: () => {

@@ -144,6 +144,9 @@ export function NewAppointmentDialog({
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
   // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
   const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
+  // Pagamento do pacote (novo pacote do cliente): pendente por padrão
+  const [packageAlreadyPaid, setPackageAlreadyPaid] = useState(false);
+  const [packagePaymentMethodId, setPackagePaymentMethodId] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);

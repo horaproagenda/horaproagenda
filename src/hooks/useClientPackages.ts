@@ -301,7 +301,7 @@ export function useClientPackages(clientId: string | null) {
       const total = Number(data.templateData.total_price) || 0;
       const saleDate = data.payment?.saleDate || new Date().toISOString().slice(0, 10);
 
-      const { error: saleError } = await (supabase as any)
+      const { error: saleError } = await supabase
         .from('single_sales')
         .insert({
           client_id: data.clientId,
@@ -319,13 +319,13 @@ export function useClientPackages(clientId: string | null) {
         });
 
       if (saleError) {
-        await (supabase as any).from('package_appointments').delete().eq('package_id', newPackage.id);
-        await (supabase as any).from('service_packages').delete().eq('id', newPackage.id);
+        await supabase.from('package_appointments').delete().eq('package_id', newPackage.id);
+        await supabase.from('service_packages').delete().eq('id', newPackage.id);
         throw saleError;
       }
 
       if (isPaid && (data.payment?.paymentMethodName || data.payment?.paymentMethodId)) {
-        await (supabase as any)
+        await supabase
           .from('service_packages')
           .update({
             payment_method: data.payment?.paymentMethodName || null,

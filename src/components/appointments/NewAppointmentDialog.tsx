@@ -195,7 +195,7 @@ export function NewAppointmentDialog({
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createKit } = useKitAppointments();
   const { paymentMethods } = usePaymentMethods();
-  const activePaymentMethods = (paymentMethods || []).filter((m: any) => m.is_active !== false);
+  const activePaymentMethods = (paymentMethods || []).filter((m) => m.is_active !== false);
 
   const { createRecurringAppointments } = useRecurringAppointments();
   const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
@@ -1410,7 +1410,7 @@ export function NewAppointmentDialog({
               isPaid: packageAlreadyPaid,
               paymentMethodId: packageAlreadyPaid ? (packagePaymentMethodId || null) : null,
               paymentMethodName: packageAlreadyPaid
-                ? (activePaymentMethods.find((m: any) => m.id === packagePaymentMethodId)?.name || null)
+                ? (activePaymentMethods.find((m) => m.id === packagePaymentMethodId)?.name || null)
                 : null,
               saleDate: (date ?? new Date()).toISOString().slice(0, 10),
             },
@@ -2908,7 +2908,7 @@ Até breve! ✨`;
                               <SelectValue placeholder="Selecione" />
                             </SelectTrigger>
                             <SelectContent>
-                              {activePaymentMethods.map((m: any) => (
+                              {activePaymentMethods.map((m) => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
                               ))}
                             </SelectContent>

@@ -194,6 +194,8 @@ export function NewAppointmentDialog({
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createKit } = useKitAppointments();
+  const { paymentMethods } = usePaymentMethods();
+  const activePaymentMethods = (paymentMethods || []).filter((m: any) => m.is_active !== false);
 
   const { createRecurringAppointments } = useRecurringAppointments();
   const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());

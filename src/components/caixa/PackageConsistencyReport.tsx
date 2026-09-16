@@ -26,6 +26,7 @@ interface InconsistentSale {
 export function PackageConsistencyReport() {
   const queryClient = useQueryClient();
   const [isFixing, setIsFixing] = useState(false);
+  const [isHealing, setIsHealing] = useState(false);
   const [showFixDialog, setShowFixDialog] = useState(false);
 
   const { data: report, isLoading, refetch } = useQuery({

@@ -388,7 +388,7 @@ serve(async (req) => {
           is_commission_based: false,
           permissions: {
             can_manage_products: true,
-            can_view_other_products: true,
+            can_manage_own_products: false,
             can_view_all_documents: true,
             can_manage_clinic_financial: true,
             can_open_close_register: true,

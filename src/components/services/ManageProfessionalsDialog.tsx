@@ -62,6 +62,7 @@ import {
   normalizePermissionsForEmployment,
   withCompatFinancialKeys,
 } from '@/lib/employmentType';
+import { normalizeProductPermissions } from '@/lib/productPermissions';
 import { useReceptionistGrants } from '@/hooks/useReceptionistGrants';
 
 const AGENDA_COLORS = AGENDA_COLOR_PALETTE;
@@ -85,10 +86,8 @@ const PERMISSIONS_CONFIG = [
   { key: 'can_view_other_agendas', label: 'Ver agenda de todos', description: 'Visualizar agendamentos de todos', category: 'agenda' },
   { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
   { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
-  { key: 'can_manage_products', label: 'Cadastrar e editar produtos', description: 'Gerenciar estoque de produtos', category: 'products' },
-  { key: 'can_manage_own_products', label: 'Produtos próprios', description: 'Todo profissional pode criar e editar produtos privados para seus serviços e pacotes', category: 'products' },
-  { key: 'can_view_other_products', label: 'Ver produtos de todos', description: 'Acesso a todos os produtos da agenda', category: 'products' },
-  { key: 'can_view_only_own_products', label: 'Ver somente próprios produtos', description: 'Vê apenas os produtos que cadastrou', category: 'products' },
+  { key: 'can_manage_own_products', label: 'Produtos próprios', description: 'Estoque separado: cria, edita e vincula somente os produtos dele. Compras e valores não entram na clínica, e os produtos da clínica e de outros profissionais não aparecem para ele', category: 'products' },
+  { key: 'can_manage_products', label: 'Cadastrar e editar produtos da clínica', description: 'Vê, cadastra, edita, registra entradas e saídas e vincula os produtos da clínica a serviços e pacotes', category: 'products' },
   { key: 'can_share_documents_with_admin', label: 'Compartilhar seus documentos com administrador e recepção', description: 'Se desligado, os documentos e modelos criados por ele ficam visíveis apenas para ele', category: 'documents' },
   { key: 'can_view_all_documents', label: 'Acessar todos os documentos da clínica', description: 'Ver e usar documentos e modelos de toda a equipe', category: 'documents' },
   { key: 'can_manage_own_documents', label: 'Documentos próprios', description: 'Todo profissional pode criar e editar documentos privados; esta opção não interfere nos documentos da clínica', category: 'documents' },
@@ -115,8 +114,6 @@ const defaultPermissions = {
   can_modify_agenda: false,
   can_manage_products: false,
   can_manage_own_products: true,
-  can_view_other_products: false,
-  can_view_only_own_products: true,
   can_share_documents_with_admin: true,
   can_view_all_documents: false,
   can_manage_own_documents: true,
@@ -334,12 +331,16 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
         is_active: data.is_active,
         allowed_room_ids: data.app_role === 'admin' ? [] : data.allowed_room_ids,
         allowed_equipment_ids: data.app_role === 'admin' ? [] : data.allowed_equipment_ids,
-        permissions: data.app_role === 'admin'
-          ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
-          : withCompatFinancialKeys(
-              data.employment_type,
-              normalizePermissionsForEmployment(data.employment_type, data.permissions),
-            ),
+        // Produtos: sempre uma única opção salva (próprios OU da clínica) e
+        // sem as chaves antigas de visualização.
+        permissions: normalizeProductPermissions(
+          (data.app_role === 'admin'
+            ? Object.fromEntries(PERMISSIONS_CONFIG.map(p => [p.key, true]))
+            : withCompatFinancialKeys(
+                data.employment_type,
+                normalizePermissionsForEmployment(data.employment_type, data.permissions),
+              )) as Record<string, boolean>,
+        ),
       };
 
       if (editingId) {
@@ -428,7 +429,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       commission_frequency: professional.commission_frequency || 'monthly',
       commission_payment_day: professional.commission_payment_day || 1,
       is_active: professional.is_active,
-      permissions: { ...defaultPermissions, ...existingPermissions },
+      permissions: normalizeProductPermissions({ ...defaultPermissions, ...existingPermissions }),
       allowed_room_ids: professional.allowed_room_ids || [],
       allowed_equipment_ids: professional.allowed_equipment_ids || [],
     });
@@ -1205,20 +1206,21 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                       if (perm.key === 'can_view_only_own_agenda' && checked) {
                                         newPermissions.can_view_other_agendas = false;
                                       }
-                                      if (perm.key === 'can_view_other_products' && checked) {
-                                        newPermissions.can_view_only_own_products = false;
-                                      }
-                                      if (perm.key === 'can_view_only_own_products' && checked) {
-                                        newPermissions.can_view_other_products = false;
-                                      }
                                       if (perm.key === 'can_view_other_reports' && checked) {
                                         newPermissions.can_view_only_own_reports = false;
                                       }
                                       if (perm.key === 'can_view_only_own_reports' && checked) {
                                         newPermissions.can_view_other_reports = false;
                                       }
-                                      
-                                      form.setValue('permissions', newPermissions);
+
+                                      // Produtos: próprios OU da clínica, nunca os dois.
+                                      form.setValue(
+                                        'permissions',
+                                        normalizeProductPermissions(
+                                          newPermissions as Record<string, boolean>,
+                                          perm.key,
+                                        ),
+                                      );
                                     }}
                                   />
                                 </div>

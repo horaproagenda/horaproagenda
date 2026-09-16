@@ -79,11 +79,15 @@ export interface Product {
   updated_by: string | null;
   /** Privacidade do cadastro (private/shared/clinic). */
   visibility?: 'private' | 'shared' | 'clinic' | null;
+  /** Profissional dono do produto. Nulo = produto da clínica. */
+  owner_professional_id?: string | null;
 }
 
 export interface ProductPurchase {
   id: string;
   product_id: string;
+  /** Profissional dono do produto comprado. Nulo = compra da clínica. */
+  owner_professional_id?: string | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -116,7 +120,7 @@ export interface ProductPurchase {
 export function useProducts() {
   const queryClient = useQueryClient();
   const { user, hasRole } = useAuth();
-  const { professionalId, onlyOwnProducts } = useProfessionalScopeFlags();
+  const { professionalId, productScope, onlyOwnProducts } = useProfessionalScopeFlags();
   useProductsRealtime();
 
   // Resolve scope: admin/receptionist always see all; professionals respect their own permissions flag.
@@ -135,12 +139,20 @@ export function useProducts() {
     },
   });
 
-  // Escopo: admin/recepção veem tudo. Profissional com "Ver produtos de todos"
-  // também vê tudo; só filtra por autoria quem está limitado aos próprios.
+  // Escopo: admin/recepção e quem tem "produtos da clínica" enxergam o estoque
+  // da clínica. Quem tem "produtos próprios" tem estoque totalmente separado:
+  // só os produtos dele, nunca os da clínica nem de outro profissional.
   const products = useMemo(() => {
-    if (isPrivileged || !user?.id || !onlyOwnProducts) return allProducts;
-    return allProducts.filter((p) => p.created_by === user.id);
-  }, [allProducts, isPrivileged, onlyOwnProducts, user?.id]);
+    if (isPrivileged || productScope === 'clinic') {
+      return allProducts.filter((p) => !p.owner_professional_id || p.owner_professional_id === professionalId);
+    }
+    if (!user?.id && !professionalId) return [];
+    return allProducts.filter((p) =>
+      professionalId && p.owner_professional_id
+        ? p.owner_professional_id === professionalId
+        : !p.owner_professional_id && !!user?.id && p.created_by === user.id,
+    );
+  }, [allProducts, isPrivileged, productScope, professionalId, user?.id]);
 
 
   const createProduct = useMutation({
@@ -152,8 +164,13 @@ export function useProducts() {
         .insert({
           ...product,
           created_by: user?.id,
-          ...(!isPrivileged && professionalId
+          // Produtos próprios ficam no estoque do profissional (privados);
+          // produtos da clínica ficam sem dono, visíveis para a clínica.
+          ...(!isPrivileged && professionalId && productScope === 'own'
             ? { owner_professional_id: professionalId, visibility: 'private' as const }
+            : {}),
+          ...(!isPrivileged && productScope === 'clinic'
+            ? { owner_professional_id: null, visibility: 'clinic' as const }
             : {}),
         })
         .select()
@@ -166,8 +183,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto cadastrado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao cadastrar produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao cadastrar produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -192,8 +209,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto atualizado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao atualizar produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao atualizar produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -210,8 +227,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto excluído com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao excluir produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao excluir produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -270,12 +287,22 @@ export function useProductPurchases(productId?: string) {
 
       // Only create cash transaction if not skipped (for products already paid before using the system)
       if (!skip_cash_transaction) {
-        // Get current open cash register
-        const { data: openRegister } = await supabase
+        // Caixa correto: produto próprio do profissional sai do caixa dele;
+        // produto da clínica sai do caixa da clínica.
+        const ownerProfessionalId = (data as { owner_professional_id?: string | null }).owner_professional_id
+          ?? data.product?.owner_professional_id
+          ?? null;
+
+        let registerQuery = supabase
           .from('cash_registers')
           .select('id')
-          .eq('status', 'open')
-          .maybeSingle();
+          .eq('status', 'open');
+        registerQuery = ownerProfessionalId
+          ? registerQuery.eq('professional_id', ownerProfessionalId)
+          : registerQuery.is('professional_id', null);
+
+        const { data: openRegisters } = await registerQuery.limit(1);
+        const openRegister = openRegisters?.[0] ?? null;
 
         // If there's an open register, create a cash transaction (expense)
         if (openRegister) {
@@ -301,8 +328,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       toast.success('Compra registrada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao registrar compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao registrar compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -327,8 +354,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       toast.success('Compra atualizada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao atualizar compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao atualizar compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -345,8 +372,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       toast.success('Compra excluída com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao excluir compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao excluir compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 

@@ -3,23 +3,34 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * Regressão: profissional com a permissão "Ver produtos de todos" precisa
- * enxergar todos os produtos da agenda. O filtro por autoria só vale para
- * quem está limitado aos próprios produtos.
+ * Regressão: estoques separados.
+ * - "Produtos próprios": o profissional só enxerga os produtos dele.
+ * - "Produtos da clínica": enxerga o estoque da clínica.
+ * O filtro é pelo dono do produto (owner_professional_id), nunca só por autoria.
  */
 describe('escopo da lista de produtos', () => {
   const source = readFileSync(resolve(process.cwd(), 'src/hooks/useProducts.ts'), 'utf8');
 
-  it('usa a permissão onlyOwnProducts para decidir o filtro', () => {
-    expect(source).toContain('onlyOwnProducts');
-    expect(source).toMatch(/if \(isPrivileged \|\| !user\?\.id \|\| !onlyOwnProducts\) return allProducts;/);
+  it('decide o filtro pelo escopo de produtos do profissional', () => {
+    expect(source).toContain('productScope');
+    expect(source).toMatch(/if \(isPrivileged \|\| productScope === 'clinic'\)/);
   });
 
-  it('não filtra por autoria sem consultar a permissão', () => {
-    const filterLine = source
-      .split('\n')
-      .find((line) => line.includes("p.created_by === user.id"));
-    expect(filterLine).toBeTruthy();
-    expect(source).toMatch(/onlyOwnProducts[\s\S]{0,200}created_by === user\.id/);
+  it('filtra pelo dono do produto', () => {
+    expect(source).toContain('owner_professional_id === professionalId');
+  });
+
+  it('não mostra o estoque da clínica para quem tem produtos próprios', () => {
+    expect(source).toMatch(/!p\.owner_professional_id && !!user\?\.id && p\.created_by === user\.id/);
+  });
+
+  it('grava o dono ao cadastrar produto próprio e deixa sem dono o da clínica', () => {
+    expect(source).toMatch(/productScope === 'own'[\s\S]{0,160}owner_professional_id: professionalId/);
+    expect(source).toMatch(/productScope === 'clinic'[\s\S]{0,160}owner_professional_id: null/);
+  });
+
+  it('usa o caixa do dono do produto na compra', () => {
+    expect(source).toContain("registerQuery.eq('professional_id', ownerProfessionalId)");
+    expect(source).toContain("registerQuery.is('professional_id', null)");
   });
 });

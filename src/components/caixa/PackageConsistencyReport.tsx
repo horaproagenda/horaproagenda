@@ -104,9 +104,8 @@ export function PackageConsistencyReport() {
   const handleHealPackagesWithoutSale = async () => {
     setIsHealing(true);
     try {
-      const { data, error } = await (supabase as any).rpc('heal_packages_without_sale');
-      if (error) throw error;
-      const created = data?.created_sales ?? 0;
+      const data = await healPackagesWithoutSale();
+      const created = data.created_sales ?? 0;
       toast.success(
         created > 0
           ? `${created} pacote(s) agora aparecem no Financeiro.`

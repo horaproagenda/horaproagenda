@@ -61,8 +61,8 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
-  // Pacotes finalizados e cancelados não são mais exibidos nesta página —
-  // só pacotes em andamento (com sessões ainda por usar).
+  // Por padrão só pacotes em andamento; o filtro permite ver concluídos e cancelados.
+  const [statusFilter, setStatusFilter] = useState<'andamento' | 'concluidos' | 'cancelados' | 'todos'>('andamento');
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -190,17 +190,18 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      // Pacotes finalizados/cancelados nunca aparecem aqui — apenas em andamento.
-      if (r.isCancelled || r.isCompleted) return false;
+      if (statusFilter === 'andamento' && (r.isCancelled || r.isCompleted)) return false;
+      if (statusFilter === 'concluidos' && !(r.isCompleted && !r.isCancelled)) return false;
+      if (statusFilter === 'cancelados' && !r.isCancelled) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, dateFrom, dateTo]);
+  }, [rows, search, dateFrom, dateTo, statusFilter]);
 
   
 
-  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (statusFilter !== 'andamento' ? 1 : 0);
 
   const deletePackageMutation = useMutation({
     mutationFn: async (row: PackageSaleRow) => {
@@ -605,6 +606,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                   onClick={() => {
                     setDateFrom('');
                     setDateTo('');
+                    setStatusFilter('andamento');
                   }}
                 >
                   <X className="h-3 w-3" />
@@ -638,6 +640,24 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                     className="h-7 text-[11px]"
                   />
                 </div>
+              </div>
+
+              {/* Situação */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  Situação
+                </p>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                  <SelectTrigger className="h-7 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="andamento" className="text-xs">Em andamento</SelectItem>
+                    <SelectItem value="concluidos" className="text-xs">Concluídos</SelectItem>
+                    <SelectItem value="cancelados" className="text-xs">Cancelados</SelectItem>
+                    <SelectItem value="todos" className="text-xs">Todos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </PopoverContent>

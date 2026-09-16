@@ -210,6 +210,18 @@ export function useClientPackages(clientId: string | null) {
       autoSchedule: boolean;
       preferredDayOfWeek?: number;
       preferredTime?: string;
+      /**
+       * Pagamento do pacote informado no formulário.
+       * REGRESSÃO PROTEGIDA: todo pacote de cliente precisa gerar um registro de
+       * venda (single_sales) — sem ele o pacote não aparece em Financeiro > Pacotes
+       * e as rotinas de integridade o enxergam como "pacote sem venda".
+       */
+      payment?: {
+        isPaid?: boolean;
+        paymentMethodId?: string | null;
+        paymentMethodName?: string | null;
+        saleDate?: string | null;
+      };
     }) => {
       // If templateId is provided, verify it exists in package_templates
       // Otherwise, don't set template_id (it's optional)
@@ -281,6 +293,47 @@ export function useClientPackages(clientId: string | null) {
 
       if (sessionsError) throw sessionsError;
 
+      // Registro financeiro da venda do pacote (mesma operação).
+      // Se falhar, o pacote e as sessões são revertidos para não sobrar pacote
+      // invisível no Financeiro.
+      const { data: { user } } = await supabase.auth.getUser();
+      const isPaid = !!data.payment?.isPaid;
+      const total = Number(data.templateData.total_price) || 0;
+      const saleDate = data.payment?.saleDate || new Date().toISOString().slice(0, 10);
+
+      const { error: saleError } = await supabase
+        .from('single_sales')
+        .insert({
+          client_id: data.clientId,
+          package_id: newPackage.id,
+          item_type: 'package',
+          description: data.templateData.name,
+          original_amount: total,
+          discount_amount: 0,
+          final_amount: total,
+          payment_method_id: data.payment?.paymentMethodId || null,
+          sale_date: saleDate,
+          paid_at: isPaid ? new Date().toISOString() : null,
+          paid_by: isPaid ? user?.id ?? null : null,
+          created_by: user?.id ?? null,
+        });
+
+      if (saleError) {
+        await supabase.from('package_appointments').delete().eq('package_id', newPackage.id);
+        await supabase.from('service_packages').delete().eq('id', newPackage.id);
+        throw saleError;
+      }
+
+      if (isPaid && (data.payment?.paymentMethodName || data.payment?.paymentMethodId)) {
+        await supabase
+          .from('service_packages')
+          .update({
+            payment_method: data.payment?.paymentMethodName || null,
+            payment_methods: data.payment?.paymentMethodName ? [data.payment.paymentMethodName] : [],
+          })
+          .eq('id', newPackage.id);
+      }
+
       return newPackage;
     },
     onSuccess: () => {
@@ -290,9 +343,13 @@ export function useClientPackages(clientId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['client_credits'] });
       queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
     },
     onError: (error) => {
-      toast.error('Erro ao criar pacote do cliente: ' + error.message);
+      toast.error('Não foi possível registrar o pacote agora. Tente novamente.');
     },
   });
 

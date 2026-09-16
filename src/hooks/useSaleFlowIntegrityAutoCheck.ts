@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logSyncEvent } from '@/lib/syncAudit';
+import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 
 const MIN_INTERVAL_MS = 120_000; // 2 min throttle
 
@@ -44,6 +45,18 @@ export function useSaleFlowIntegrityAutoCheck() {
         }
 
         logSyncEvent('sale-flow:needs-review', 'skipped', { trigger, ghostSales: ghostSales.length, orphanPackages: orphanPackages.length });
+
+        // Pacote sem venda é REGULARIZADO (cria registro de venda pendente),
+        // nunca apagado — assim ele aparece em Financeiro > Pacotes.
+        if (orphanPackages.length > 0) {
+          try {
+            const healed = await healPackagesWithoutSale();
+            logSyncEvent('sale-flow:healed', 'ok', { trigger, createdSales: healed.created_sales ?? 0 });
+          } catch (healError) {
+            logSyncEvent('sale-flow:heal-error', 'error', { trigger, error: String((healError as Error)?.message ?? healError) });
+          }
+        }
+
 
       } catch (e) {
         logSyncEvent('sale-flow:error', 'error', { trigger, error: String(e) });

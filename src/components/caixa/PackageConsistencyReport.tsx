@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 import { AlertTriangle, CheckCircle, Package, RefreshCw, Wrench, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,6 +27,7 @@ interface InconsistentSale {
 export function PackageConsistencyReport() {
   const queryClient = useQueryClient();
   const [isFixing, setIsFixing] = useState(false);
+  const [isHealing, setIsHealing] = useState(false);
   const [showFixDialog, setShowFixDialog] = useState(false);
 
   const { data: report, isLoading, refetch } = useQuery({
@@ -87,13 +89,40 @@ export function PackageConsistencyReport() {
         }
       }
 
+      // Pacotes de cliente sem registro de venda no Financeiro.
+      const saleIdsByPackage = new Set((packageSales || []).map(s => s.package_id).filter(Boolean) as string[]);
+      const packagesWithoutSale = (clientPackages || []).filter(cp => !saleIdsByPackage.has(cp.id));
+
       return {
         totalSales: packageSales?.length || 0,
         consistent,
         inconsistencies,
+        packagesWithoutSale,
       };
     },
   });
+
+  const handleHealPackagesWithoutSale = async () => {
+    setIsHealing(true);
+    try {
+      const data = await healPackagesWithoutSale();
+      const created = data.created_sales ?? 0;
+      toast.success(
+        created > 0
+          ? `${created} pacote(s) agora aparecem no Financeiro.`
+          : 'Nenhum pacote pendente de registro.'
+      );
+      queryClient.invalidateQueries({ queryKey: ['package_consistency_report'] });
+      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      refetch();
+    } catch {
+      toast.error('Não foi possível registrar os pacotes agora. Tente novamente.');
+    } finally {
+      setIsHealing(false);
+    }
+  };
 
   const handleFixInconsistencies = async () => {
     if (!report?.inconsistencies.length) return;
@@ -228,6 +257,26 @@ export function PackageConsistencyReport() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Pacotes sem registro no Financeiro (regularização, nunca exclusão) */}
+          {(report?.packagesWithoutSale.length || 0) > 0 && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-700">Pacotes fora do Financeiro</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {report?.packagesWithoutSale.length} pacote(s) de cliente ainda não têm registro em Financeiro &gt; Pacotes.
+                </span>
+                <Button variant="outline" size="sm" onClick={handleHealPackagesWithoutSale} disabled={isHealing}>
+                  {isHealing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registrando...</>
+                  ) : (
+                    <><Wrench className="h-4 w-4 mr-2" />Registrar no Financeiro</>
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Inconsistencies Alert */}
           {hasInconsistencies && (

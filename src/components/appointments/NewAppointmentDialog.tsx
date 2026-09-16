@@ -66,6 +66,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useKitAppointments } from '@/hooks/useKitAppointments';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -143,6 +144,9 @@ export function NewAppointmentDialog({
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
   // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
   const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
+  // Pagamento do pacote (novo pacote do cliente): pendente por padrão
+  const [packageAlreadyPaid, setPackageAlreadyPaid] = useState(false);
+  const [packagePaymentMethodId, setPackagePaymentMethodId] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
@@ -190,6 +194,8 @@ export function NewAppointmentDialog({
   const { absences } = useProfessionalAbsences();
   const { sendMessage: sendWhatsappMessage, connectionStatus } = useWhatsapp();
   const { createKit } = useKitAppointments();
+  const { paymentMethods } = usePaymentMethods();
+  const activePaymentMethods = (paymentMethods || []).filter((m) => m.is_active !== false);
 
   const { createRecurringAppointments } = useRecurringAppointments();
   const { getHolidayForDate } = useBrazilianHolidays(date?.getFullYear());
@@ -1400,6 +1406,14 @@ export function NewAppointmentDialog({
             autoSchedule: autoScheduleEnabled,
             preferredDayOfWeek: preferredDayOfWeek ?? undefined,
             preferredTime: preferredTime || time,
+            payment: {
+              isPaid: packageAlreadyPaid,
+              paymentMethodId: packageAlreadyPaid ? (packagePaymentMethodId || null) : null,
+              paymentMethodName: packageAlreadyPaid
+                ? (activePaymentMethods.find((m) => m.id === packagePaymentMethodId)?.name || null)
+                : null,
+              saleDate: (date ?? new Date()).toISOString().slice(0, 10),
+            },
           });
           clientPackageId = newPackage.id;
         }
@@ -1414,8 +1428,9 @@ export function NewAppointmentDialog({
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
         // Check if package has payment_methods filled (indicates it was paid via caixa sale)
-        const isPackagePaid = isClientPackageSelected && existingClientPackage && 
-          existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0;
+        const isPackagePaid = existingClientPackage
+          ? !!(isClientPackageSelected && existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0)
+          : packageAlreadyPaid;
         
         // When auto-schedule is enabled, use the FIRST previewed date so the
         // user's edits in the preview list drive the first appointment as well.
@@ -1863,6 +1878,8 @@ Até breve! ✨`;
     kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
+    setPackageAlreadyPaid(false);
+    setPackagePaymentMethodId('');
     setPreferredDayOfWeek(null);
     setPreferredTime('');
     setShowPreview(false);
@@ -2861,6 +2878,45 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
+                  {/* Pagamento do pacote — só para pacote novo do cliente.
+                      O registro da venda é criado junto com o pacote, para que ele
+                      apareça em Financeiro > Pacotes. */}
+                  {selectedClient && !existingClientPackage && (
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Pagamento do pacote</Label>
+                          <p className="text-xs text-muted-foreground">
+                            {packageAlreadyPaid
+                              ? 'Registrado como pago. Nenhum valor entra no caixa por aqui.'
+                              : 'Fica pendente: aparece no Financeiro aguardando o recebimento.'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={packageAlreadyPaid}
+                          onCheckedChange={(v) => {
+                            setPackageAlreadyPaid(v);
+                            if (!v) setPackagePaymentMethodId('');
+                          }}
+                        />
+                      </div>
+                      {packageAlreadyPaid && (
+                        <div className="space-y-1 pt-2 border-t">
+                          <Label className="text-xs">Forma de pagamento</Label>
+                          <Select value={packagePaymentMethodId} onValueChange={setPackagePaymentMethodId}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activePaymentMethods.map((m) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {selectedPackageData?.package_type === 'sequential' && nextPackageStepService && (
                     <div className="flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>

@@ -2876,6 +2876,45 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
+                  {/* Pagamento do pacote — só para pacote novo do cliente.
+                      O registro da venda é criado junto com o pacote, para que ele
+                      apareça em Financeiro > Pacotes. */}
+                  {selectedClient && !existingClientPackage && (
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium">Pagamento do pacote</Label>
+                          <p className="text-xs text-muted-foreground">
+                            {packageAlreadyPaid
+                              ? 'Registrado como pago. Nenhum valor entra no caixa por aqui.'
+                              : 'Fica pendente: aparece no Financeiro aguardando o recebimento.'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={packageAlreadyPaid}
+                          onCheckedChange={(v) => {
+                            setPackageAlreadyPaid(v);
+                            if (!v) setPackagePaymentMethodId('');
+                          }}
+                        />
+                      </div>
+                      {packageAlreadyPaid && (
+                        <div className="space-y-1 pt-2 border-t">
+                          <Label className="text-xs">Forma de pagamento</Label>
+                          <Select value={packagePaymentMethodId} onValueChange={setPackagePaymentMethodId}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activePaymentMethods.map((m: any) => (
+                                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {selectedPackageData?.package_type === 'sequential' && nextPackageStepService && (
                     <div className="flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>

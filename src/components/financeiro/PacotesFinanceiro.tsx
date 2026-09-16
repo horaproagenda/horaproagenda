@@ -190,13 +190,14 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           r.paymentMethodName.toLowerCase().includes(q);
         if (!matchesQ) return false;
       }
-      // Pacotes finalizados/cancelados nunca aparecem aqui — apenas em andamento.
-      if (r.isCancelled || r.isCompleted) return false;
+      if (statusFilter === 'andamento' && (r.isCancelled || r.isCompleted)) return false;
+      if (statusFilter === 'concluidos' && !(r.isCompleted && !r.isCancelled)) return false;
+      if (statusFilter === 'cancelados' && !r.isCancelled) return false;
       if (dateFrom && r.saleDate && r.saleDate < dateFrom) return false;
       if (dateTo && r.saleDate && r.saleDate > dateTo) return false;
       return true;
     });
-  }, [rows, search, dateFrom, dateTo]);
+  }, [rows, search, dateFrom, dateTo, statusFilter]);
 
   
 

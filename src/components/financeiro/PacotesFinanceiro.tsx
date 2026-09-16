@@ -61,8 +61,8 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
   const queryClient = useQueryClient();
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
-  // Pacotes finalizados e cancelados não são mais exibidos nesta página —
-  // só pacotes em andamento (com sessões ainda por usar).
+  // Por padrão só pacotes em andamento; o filtro permite ver concluídos e cancelados.
+  const [statusFilter, setStatusFilter] = useState<'andamento' | 'concluidos' | 'cancelados' | 'todos'>('andamento');
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');

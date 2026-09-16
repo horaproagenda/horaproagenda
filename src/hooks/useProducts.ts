@@ -183,8 +183,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto cadastrado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao cadastrar produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao cadastrar produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -209,8 +209,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto atualizado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao atualizar produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao atualizar produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -227,8 +227,8 @@ export function useProducts() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Produto excluído com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao excluir produto: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao excluir produto: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -328,8 +328,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
       toast.success('Compra registrada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao registrar compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao registrar compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -354,8 +354,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       toast.success('Compra atualizada com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao atualizar compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao atualizar compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 
@@ -372,8 +372,8 @@ export function useProductPurchases(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
       toast.success('Compra excluída com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao excluir compra: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao excluir compra: ' + (error instanceof Error ? error.message : ''));
     },
   });
 

@@ -97,3 +97,17 @@ Nenhuma correção validada pode existir sem teste que a proteja.
 - O vínculo (`asaas_customer_id`/`asaas_subscription_id`) é gravado imediatamente após a criação no gateway, antes de qualquer outro passo.
 - Falha de gravação local **não** devolve erro ao usuário depois de o cartão ir ao gateway: grava-se o mínimo (status + vínculo), responde `local_sync: "pending"` e o webhook completa.
 - Regressão: `src/lib/__tests__/asaasSubscriptionFlow.test.ts`.
+
+## Venda do pacote registrada no Financeiro (2026-09-16)
+
+- Todo pacote de cliente criado pela agenda ou pelo perfil do cliente gera, na mesma
+  operação, um registro de venda (`single_sales`, `item_type='package'`). Se a venda
+  falhar, o pacote e as sessões são revertidos — nunca fica pacote invisível no
+  Financeiro.
+- O formulário de agendamento pergunta se o pacote já foi pago (pendente por padrão)
+  e, quando pago, qual a forma de pagamento.
+- A verificação automática de integridade de vendas apenas REGULARIZA pacotes sem
+  venda (`heal_packages_without_sale`); ela nunca apaga pacotes nem sessões.
+- Financeiro > Pacotes mostra pacotes em andamento por padrão, com filtro de situação
+  (em andamento, concluídos, cancelados, todos).
+- Regressão: `src/__tests__/regression/package-sale-registration.test.ts`.

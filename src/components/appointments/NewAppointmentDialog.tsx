@@ -1406,6 +1406,14 @@ export function NewAppointmentDialog({
             autoSchedule: autoScheduleEnabled,
             preferredDayOfWeek: preferredDayOfWeek ?? undefined,
             preferredTime: preferredTime || time,
+            payment: {
+              isPaid: packageAlreadyPaid,
+              paymentMethodId: packageAlreadyPaid ? (packagePaymentMethodId || null) : null,
+              paymentMethodName: packageAlreadyPaid
+                ? (activePaymentMethods.find((m: any) => m.id === packagePaymentMethodId)?.name || null)
+                : null,
+              saleDate: (date ?? new Date()).toISOString().slice(0, 10),
+            },
           });
           clientPackageId = newPackage.id;
         }

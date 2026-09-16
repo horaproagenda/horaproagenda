@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logSyncEvent } from '@/lib/syncAudit';
+import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 
 const MIN_INTERVAL_MS = 120_000; // 2 min throttle
 

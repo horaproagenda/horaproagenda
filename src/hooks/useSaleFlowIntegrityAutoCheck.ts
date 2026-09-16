@@ -48,11 +48,11 @@ export function useSaleFlowIntegrityAutoCheck() {
         // Pacote sem venda é REGULARIZADO (cria registro de venda pendente),
         // nunca apagado — assim ele aparece em Financeiro > Pacotes.
         if (orphanPackages.length > 0) {
-          const { data: healed, error: healError } = await (supabase as any).rpc('heal_packages_without_sale');
-          if (healError) {
-            logSyncEvent('sale-flow:heal-error', 'error', { trigger, error: String(healError.message ?? healError) });
-          } else {
-            logSyncEvent('sale-flow:healed', 'ok', { trigger, createdSales: healed?.created_sales ?? 0 });
+          try {
+            const healed = await healPackagesWithoutSale();
+            logSyncEvent('sale-flow:healed', 'ok', { trigger, createdSales: healed.created_sales ?? 0 });
+          } catch (healError) {
+            logSyncEvent('sale-flow:heal-error', 'error', { trigger, error: String((healError as Error)?.message ?? healError) });
           }
         }
 

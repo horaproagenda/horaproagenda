@@ -66,6 +66,7 @@ import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { useKitAppointments } from '@/hooks/useKitAppointments';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';

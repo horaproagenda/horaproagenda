@@ -145,7 +145,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       className="flex h-[calc(100dvh-var(--kb-inset,0px))] max-h-[calc(100dvh-var(--kb-inset,0px))] flex-col overflow-hidden"
     >
       {banner ? <ChromeBannerSlot>{banner}</ChromeBannerSlot> : null}
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      {/* overflow-y-auto: páginas sem AppLayout (ex.: /assinatura*) não têm
+          container de rolagem próprio; sem isto o conteúdo fica cortado no celular. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }

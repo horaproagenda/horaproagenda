@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { inferEmploymentType, type EmploymentType } from '@/lib/employmentType';
+import { resolveProductScope, type ProductScope } from '@/lib/productPermissions';
 
 /**
  * Flags de escopo do profissional logado.
@@ -25,9 +26,11 @@ export interface ProfessionalScopeFlags {
   isCommissionBased: boolean;
   /** Pode cadastrar/editar produtos de toda a clínica. */
   canManageProducts: boolean;
-  /** Pode cadastrar/editar apenas os produtos que ele criou. Todo profissional pode. */
+  /** Tem estoque próprio: cadastra/edita apenas os produtos dele. */
   canManageOwnProducts: boolean;
-  /** Vê somente os produtos que criou. */
+  /** Escopo de produtos: estoque próprio ou estoque da clínica. */
+  productScope: ProductScope;
+  /** Compatibilidade: true quando o escopo é o estoque próprio. */
   onlyOwnProducts: boolean;
   /** Vê todos os documentos e modelos da clínica. */
   canViewAllDocuments: boolean;
@@ -88,13 +91,12 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
   const isIndependent = employmentType === 'independente';
   const isCommissionBased = employmentType === 'comissionado';
 
-  const canManageProducts = isPrivileged || perms.can_manage_products === true;
   const isProfessional = hasRole('professional');
-  const canManageOwnProducts = !isPrivileged && isProfessional;
-  const onlyOwnProducts =
-    !isPrivileged &&
-    perms.can_view_other_products !== true &&
-    (perms.can_view_only_own_products !== false || isProfessional);
+  // Duas opções mutuamente exclusivas: produtos próprios ou produtos da clínica.
+  const productScope: ProductScope = isPrivileged ? 'clinic' : resolveProductScope(perms);
+  const canManageProducts = isPrivileged || productScope === 'clinic';
+  const canManageOwnProducts = !isPrivileged && isProfessional && productScope === 'own';
+  const onlyOwnProducts = productScope === 'own';
 
   const canViewAllDocuments = isPrivileged || perms.can_view_all_documents === true;
   const canManageOwnDocuments = !isPrivileged && isProfessional;
@@ -116,6 +118,7 @@ export function useProfessionalScopeFlags(): ProfessionalScopeFlags {
     isCommissionBased,
     canManageProducts,
     canManageOwnProducts,
+    productScope,
     onlyOwnProducts,
     canViewAllDocuments,
     canManageOwnDocuments,

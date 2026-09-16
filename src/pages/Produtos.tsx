@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 
 import { ResumePositionBanner } from '@/components/shared/ResumePositionBanner';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
@@ -84,7 +85,7 @@ import {
 import { cn, normalizeBrazilianCurrency, parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
-import { resolvePurchaseCycleDates, validatePurchaseCycleDates } from '@/lib/productPurchaseCycle';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
@@ -172,11 +173,7 @@ const createEmptyPurchaseForm = () => ({
   supplier_id: '',
   purchase_date: format(new Date(), 'yyyy-MM-dd'),
   expiry_date: '',
-  // Datas de uso são SEMPRE manuais (nunca preenchidas automaticamente).
-  usage_start_date: '',
-  usage_end_date: '',
   payment_method_id: '',
-  is_for_sale: false,
   skip_cash_transaction: false,
 });
 
@@ -191,8 +188,10 @@ export default function Produtos() {
 
   const { serviceProducts, createServiceProduct: createSPMutation, updateServiceProduct: updateSPMutation, deleteServiceProduct: deleteSPMutation } = useServiceProducts();
   const { appointments } = useAppointments();
-  const { hasRole } = useAuth();
-  const { canManageProducts, canManageOwnProducts } = useProfessionalScopeFlags();
+  const { hasRole, user, profile } = useAuth();
+  const accountOwnerId = useAccountOwnerId();
+  const { canManageProducts, canManageOwnProducts, productScope } = useProfessionalScopeFlags();
+  const stockOwnerName = profile?.full_name || user?.email || '—';
   // O profissional pode cadastrar e editar produtos quando o administrador
   // libera a gestão geral ou a gestão dos próprios produtos.
   const canEdit = hasRole('admin') || hasRole('receptionist') || canManageProducts || canManageOwnProducts;
@@ -324,21 +323,6 @@ export default function Produtos() {
     }
   };
 
-  // Fecha o ciclo anterior (compra ativa anterior) ao iniciar um novo ciclo.
-  // Garante que "Ciclo anterior" passe a aparecer e seja atualizado automaticamente.
-  const closePreviousActiveCycle = async (productId: string, newCycleStartDate: string) => {
-    const prev = purchases
-      .filter(p => p.product_id === productId && p.started_using_at && !p.finished_at)
-      .sort((a, b) => (b.started_using_at || '').localeCompare(a.started_using_at || ''))[0];
-    if (!prev) return;
-    if ((prev.started_using_at || '') >= newCycleStartDate) return;
-    // finished_at = dia anterior ao novo ciclo, sem permitir valor menor que started_using_at
-    const d = parseISO(newCycleStartDate + 'T00:00:00');
-    d.setDate(d.getDate() - 1);
-    const candidate = format(d, 'yyyy-MM-dd');
-    const finishedAt = candidate < (prev.started_using_at || '') ? prev.started_using_at! : candidate;
-    await supabase.from('product_purchases').update({ finished_at: finishedAt }).eq('id', prev.id);
-  };
 
 
 
@@ -346,14 +330,6 @@ export default function Produtos() {
 
   const handlePurchaseSubmit = async () => {
     if (!purchaseForm.product_id || purchaseForm.quantity <= 0) return;
-    const dateError = validatePurchaseCycleDates({
-      usageStartDate: purchaseForm.usage_start_date,
-      usageEndDate: purchaseForm.usage_end_date,
-    });
-    if (dateError) {
-      toast.error(dateError);
-      return;
-    }
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
@@ -361,17 +337,8 @@ export default function Produtos() {
       const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
       const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
-      // As datas de uso são exclusivamente manuais: sem preenchimento automático.
-      const { startedUsingAt, finishedAt } = resolvePurchaseCycleDates({
-        usageStartDate: purchaseForm.usage_start_date,
-        usageEndDate: purchaseForm.usage_end_date,
-      });
-
-      // Fecha o ciclo anterior somente quando um novo início de uso foi informado
-      if (startedUsingAt) {
-        await closePreviousActiveCycle(purchaseForm.product_id, startedUsingAt);
-      }
-
+      // A compra não mexe no uso do produto: início e término de uso são
+      // registrados no ciclo de uso, dentro dos detalhes do produto.
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
@@ -382,8 +349,8 @@ export default function Produtos() {
         payment_method_id: purchaseForm.payment_method_id || null,
         payment_method: activePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
 
-        started_using_at: startedUsingAt,
-        finished_at: finishedAt,
+        started_using_at: null,
+        finished_at: null,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
@@ -401,10 +368,8 @@ export default function Produtos() {
         unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
         supplier: purchaseForm.supplier || product.supplier,
         purchase_date: purchaseForm.purchase_date,
-        is_for_sale: purchaseForm.is_for_sale,
+        // "Venda ou uso da clínica" vem do cadastro do produto, não da compra.
         expiry_date: purchaseForm.expiry_date || product.expiry_date,
-        // Só altera o ciclo do produto quando o usuário informou as datas manualmente
-        ...(startedUsingAt ? { started_using_at: startedUsingAt, finished_at: finishedAt } : {}),
       });
 
 
@@ -471,7 +436,6 @@ export default function Produtos() {
       product_id: productId,
       supplier: supplier?.name || product?.supplier || '',
       supplier_id: supplier?.id || product?.supplier_id || '',
-      is_for_sale: product?.is_for_sale || false,
     }));
   };
 
@@ -490,6 +454,24 @@ export default function Produtos() {
     <AppLayout title="Produtos" subtitle="Gerenciamento de produtos e estoque">
       <div className="space-y-2.5 page-enter">
         <ResumePositionBanner state={resumeState} onResume={handleResumePos} onDismiss={dismissPos} />
+
+        {/* Identificação: de quem é este estoque */}
+        <div className="rounded-md border bg-muted/30 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <span>
+              <strong className="text-foreground">Usuário:</strong> {stockOwnerName}
+            </span>
+            <span>
+              <strong className="text-foreground">ID do usuário:</strong> {user?.id ?? '—'}
+            </span>
+            <span>
+              <strong className="text-foreground">ID da clínica:</strong> {accountOwnerId ?? '—'}
+            </span>
+            <Badge variant={productScope === 'own' ? 'outline' : 'secondary'} className="h-5 text-[10px]">
+              {productScope === 'own' ? 'Produtos próprios' : 'Produtos da clínica'}
+            </Badge>
+          </div>
+        </div>
         {/* Search */}
         <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -682,33 +664,6 @@ export default function Produtos() {
                       </div>
                     </div>
 
-                    <div className="rounded-md border p-2 space-y-2">
-                      <div>
-                        <Label className="text-xs font-medium">Uso do produto (opcional)</Label>
-                        <p className="text-[10px] text-muted-foreground">Preencha manualmente. Deixe em branco se o uso ainda não começou.</p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">Início do uso</Label>
-                          <SafeDateInput value={purchaseForm.usage_start_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_start_date: v ?? '' })} className="h-7 text-xs" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Término do uso</Label>
-                          <SafeDateInput value={purchaseForm.usage_end_date} onCommit={(v) => setPurchaseForm({ ...purchaseForm, usage_end_date: v ?? '' })} className="h-7 text-xs" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-md border p-2">
-                      <div>
-                        <Label className="text-xs">Para Venda ou Uso da Clínica</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Clínica</span>
-                        <Switch checked={purchaseForm.is_for_sale} onCheckedChange={(v) => setPurchaseForm({ ...purchaseForm, is_for_sale: v })} />
-                        <span className="text-xs text-muted-foreground">Venda</span>
-                      </div>
-                    </div>
                     <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
                       <div>
                         <Label className="text-xs font-medium">Produto já pago</Label>

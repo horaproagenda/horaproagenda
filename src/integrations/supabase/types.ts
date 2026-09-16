@@ -3747,6 +3747,7 @@ export type Database = {
           finished_at: string | null
           id: string
           notes: string | null
+          owner_professional_id: string | null
           payment_method: string | null
           payment_method_id: string | null
           product_id: string
@@ -3772,6 +3773,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          owner_professional_id?: string | null
           payment_method?: string | null
           payment_method_id?: string | null
           product_id: string
@@ -3797,6 +3799,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           notes?: string | null
+          owner_professional_id?: string | null
           payment_method?: string | null
           payment_method_id?: string | null
           product_id?: string
@@ -3811,6 +3814,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_purchases_owner_professional_id_fkey"
+            columns: ["owner_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_purchases_payment_method_id_fkey"
             columns: ["payment_method_id"]
@@ -6765,6 +6775,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      product_scope_is_clinic: { Args: never; Returns: boolean }
       professional_permission: { Args: { _key: string }; Returns: boolean }
       professional_share_flag: {
         Args: { _module: string; _owner: string }

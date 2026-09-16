@@ -606,6 +606,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                   onClick={() => {
                     setDateFrom('');
                     setDateTo('');
+                    setStatusFilter('andamento');
                   }}
                 >
                   <X className="h-3 w-3" />

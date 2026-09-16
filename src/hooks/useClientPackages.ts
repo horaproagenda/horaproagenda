@@ -210,6 +210,18 @@ export function useClientPackages(clientId: string | null) {
       autoSchedule: boolean;
       preferredDayOfWeek?: number;
       preferredTime?: string;
+      /**
+       * Pagamento do pacote informado no formulário.
+       * REGRESSÃO PROTEGIDA: todo pacote de cliente precisa gerar um registro de
+       * venda (single_sales) — sem ele o pacote não aparece em Financeiro > Pacotes
+       * e as rotinas de integridade o enxergam como "pacote sem venda".
+       */
+      payment?: {
+        isPaid?: boolean;
+        paymentMethodId?: string | null;
+        paymentMethodName?: string | null;
+        saleDate?: string | null;
+      };
     }) => {
       // If templateId is provided, verify it exists in package_templates
       // Otherwise, don't set template_id (it's optional)

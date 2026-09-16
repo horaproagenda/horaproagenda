@@ -6661,6 +6661,7 @@ export type Database = {
         Args: { _package_id: string }
         Returns: Json
       }
+      heal_packages_without_sale: { Args: never; Returns: Json }
       heal_phantom_package_sessions: { Args: never; Returns: number }
       is_account_active: { Args: { _user_id: string }; Returns: boolean }
       is_account_admin: { Args: { _user_id?: string }; Returns: boolean }

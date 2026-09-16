@@ -1878,6 +1878,8 @@ Até breve! ✨`;
     kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
+    setPackageAlreadyPaid(false);
+    setPackagePaymentMethodId('');
     setPreferredDayOfWeek(null);
     setPreferredTime('');
     setShowPreview(false);

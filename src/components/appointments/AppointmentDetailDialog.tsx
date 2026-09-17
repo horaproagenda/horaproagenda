@@ -196,7 +196,7 @@ export function AppointmentDetailDialog({
   const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
-  const { currentOpenRegister } = useCashRegisters();
+  const { currentOpenRegister, cashRegisters } = useCashRegisters();
   const { settings } = useBusinessSettings();
   // Fetch real package_appointments to compute realized count for the refund flow
   const { appointments: pkgSessions } = usePackageAppointments(

@@ -229,6 +229,26 @@ export function AppointmentDetailDialog({
     staleTime: 15_000,
   });
   const shouldRedirectToBoleto = !!packageBoletoInfo?.hasBoleto && !!packageBoletoInfo?.hasOpen;
+
+  // Profissional independente recebe na própria conta financeira e no próprio caixa.
+  const { data: appointmentProfessionalEmployment } = useQuery({
+    queryKey: ['appointment-professional-employment', appointment?.professional_id],
+    enabled: open && !!appointment?.professional_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('professionals')
+        .select('employment_type')
+        .eq('id', appointment!.professional_id!)
+        .maybeSingle();
+      return (data?.employment_type as string | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+  const isIndependentProfessional = appointmentProfessionalEmployment === 'independente';
+  const professionalOpenRegister = appointment?.professional_id
+    ? cashRegisters.find((r) => r.professional_id === appointment.professional_id && r.status === 'open')
+    : undefined;
+  const paymentTargetRegister = isIndependentProfessional ? professionalOpenRegister : currentOpenRegister;
   const { data: appointmentHistory = [] } = useQuery({
     queryKey: ['appointment-history', appointment?.id],
     enabled: open && !!appointment?.id,

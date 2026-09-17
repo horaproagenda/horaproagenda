@@ -686,6 +686,7 @@ serve(async (req) => {
         appointment_id: body.appointment_id,
         notes: 'Troco deixado como saldo do cliente',
         created_by: userId,
+        professional_id: targetProfessionalId,
       });
 
       if (creditEntryError) {

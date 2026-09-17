@@ -1570,8 +1570,12 @@ export function AppointmentDetailDialog({
     }
 
     // For courtesy-only, we don't need cash register (no financial impact)
-    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !currentOpenRegister) {
-      toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
+    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !paymentTargetRegister) {
+      toast.error(
+        isIndependentProfessional
+          ? 'Abra o caixa do profissional antes de registrar este pagamento.'
+          : 'É necessário abrir o caixa antes de registrar pagamentos!'
+      );
       return;
     }
     

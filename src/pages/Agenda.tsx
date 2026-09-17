@@ -47,7 +47,6 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
-import { AppointmentCard } from '@/components/appointments/AppointmentCard';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { ProfessionalAbsenceDialog } from '@/components/appointments/ProfessionalAbsenceDialog';

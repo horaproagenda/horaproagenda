@@ -314,8 +314,76 @@ serve(async (req) => {
       }
     }
 
-    // 3. Verify cash register is open if provided
-    if (body.cash_register_id) {
+    // 3. Resolve where the money goes: independent professionals receive in their
+    // OWN financial account and OWN cash register; every other employment type
+    // (administrador, funcionario, comissionado) keeps using the clinic's.
+    const appointmentProfessionalId: string | null = appointment.professional_id || null;
+    let appointmentEmploymentType: string | null = null;
+
+    if (appointmentProfessionalId) {
+      const { data: professionalRow } = await supabase
+        .from('professionals')
+        .select('id, employment_type')
+        .eq('id', appointmentProfessionalId)
+        .eq('account_owner_id', callerOwner)
+        .maybeSingle();
+      appointmentEmploymentType = professionalRow?.employment_type ?? null;
+    }
+
+    const isIndependentProfessional = appointmentEmploymentType === 'independente';
+
+    // Financial account that must receive the entry
+    let targetFinancialAccountId: string | null = null;
+    // Professional stamped on financial records (null = clinic)
+    const targetProfessionalId: string | null = isIndependentProfessional ? appointmentProfessionalId : null;
+    // Cash register that must receive the movement
+    let targetCashRegisterId: string | null = body.cash_register_id || null;
+
+    const loadFinancialAccount = async () => {
+      const query = supabase
+        .from('financial_accounts')
+        .select('id')
+        .eq('account_owner_id', callerOwner);
+      const { data } = isIndependentProfessional && appointmentProfessionalId
+        ? await query.eq('professional_id', appointmentProfessionalId).maybeSingle()
+        : await query.is('professional_id', null).maybeSingle();
+      return data?.id ?? null;
+    };
+
+    targetFinancialAccountId = await loadFinancialAccount();
+    if (!targetFinancialAccountId) {
+      // Accounts are created automatically; make sure they exist before writing.
+      await supabase.rpc('ensure_financial_accounts', { _owner: callerOwner });
+      targetFinancialAccountId = await loadFinancialAccount();
+    }
+
+    if (isIndependentProfessional && appointmentProfessionalId) {
+      const { data: ownRegister } = await supabase
+        .from('cash_registers')
+        .select('id, status')
+        .eq('account_owner_id', callerOwner)
+        .eq('professional_id', appointmentProfessionalId)
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!ownRegister) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            errors: [{
+              field: 'cash_register_id',
+              message: 'Abra o caixa do profissional antes de registrar este pagamento.',
+            }],
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Ignore a clinic register sent by the client: independent money never lands there.
+      targetCashRegisterId = ownRegister.id;
+    } else if (body.cash_register_id) {
       const { data: cashRegister, error: cashError } = await supabase
         .from('cash_registers')
         .select('id, status')

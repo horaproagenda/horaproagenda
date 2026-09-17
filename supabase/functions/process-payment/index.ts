@@ -956,6 +956,7 @@ serve(async (req) => {
         client_id: appointment.client?.id,
         appointment_id: body.appointment_id,
         created_by: userId,
+        professional_id: targetProfessionalId,
       });
 
       if (pendingError) {

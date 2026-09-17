@@ -712,6 +712,27 @@ serve(async (req) => {
           console.error('Error creating saldo cash transaction:', creditCashError);
         }
       }
+
+      if (targetFinancialAccountId) {
+        const { error: creditMovementError } = await supabase.from('financial_movements').insert({
+          account_owner_id: callerOwner,
+          financial_account_id: targetFinancialAccountId,
+          cash_session_id: targetCashRegisterId,
+          professional_id: targetProfessionalId,
+          appointment_id: body.appointment_id,
+          movement_type: 'entrada',
+          status: 'confirmado',
+          amount: body.client_credit,
+          category: 'saldo_cliente',
+          description: `Saldo/Troco: ${serviceName} - ${clientName}`,
+          movement_date: today,
+          created_by: userId,
+        });
+
+        if (creditMovementError) {
+          console.error('Error creating saldo financial movement:', creditMovementError);
+        }
+      }
     }
 
     // 7a2. Add COURTESY (courtesy_credit) - gift/bonus - NOT registered in cash/financial

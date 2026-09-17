@@ -137,7 +137,7 @@ export function useCashRegisters() {
         .insert({
           opening_balance: openingBalance,
           opened_by: user?.id,
-          professional_id: null,
+          professional_id: ownRegisterMode ? professionalId : null,
           status: 'open',
         } as any)
         .select()

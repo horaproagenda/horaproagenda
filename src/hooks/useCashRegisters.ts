@@ -122,7 +122,7 @@ export function useCashRegisters() {
   const myRegisters = professionalId
     ? cashRegisters.filter(r => r.professional_id === professionalId)
     : [];
-  const scopedRegisters = clinicRegisters;
+  const scopedRegisters = ownRegisterMode ? myRegisters : clinicRegisters;
   const currentOpenRegister = scopedRegisters.find(r => r.status === 'open');
   const clinicOpenRegister = clinicRegisters.find(r => r.status === 'open');
   const myOpenRegister = myRegisters.find(r => r.status === 'open');

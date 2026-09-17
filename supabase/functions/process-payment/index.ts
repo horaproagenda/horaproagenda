@@ -837,6 +837,7 @@ serve(async (req) => {
           payment_method_id: primaryPaymentMethodId,
           notes: breakdownNotes,
           created_by: userId,
+          professional_id: targetProfessionalId,
         });
 
         if (entryError) {

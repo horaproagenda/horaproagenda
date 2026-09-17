@@ -853,9 +853,10 @@ serve(async (req) => {
         }
 
         // Create cash transaction if register is open - use payment_method_name for proper categorization
-        if (body.cash_register_id) {
+        if (targetCashRegisterId) {
           const { error: cashError } = await supabase.from('cash_transactions').insert({
-            cash_register_id: body.cash_register_id,
+            cash_register_id: targetCashRegisterId,
+            professional_id: targetProfessionalId,
             type: 'income',
             category: 'sale',
             description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,

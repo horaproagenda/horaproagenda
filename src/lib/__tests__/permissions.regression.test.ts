@@ -308,11 +308,12 @@ describe('regressão: isolamento pessoal e permissões independentes', () => {
     expect(canWriteRecord({ rows, module: 'produtos', action: 'edit', ownerProfessionalId: PROF_A, myProfessionalId: PROF_B })).toBe(false);
   });
 
-  it('financeiro próprio não cria caixa paralelo e caixa da clínica exige permissão própria', () => {
+  it('caixa segue o vínculo do profissional e caixa da clínica exige permissão própria', () => {
     const hook = readFileSync(join(process.cwd(), 'src/hooks/useCashRegisters.ts'), 'utf8');
     const panel = readFileSync(join(process.cwd(), 'src/components/caixa/CashRegisterPanel.tsx'), 'utf8');
-    expect(hook).toContain('const ownRegisterMode = false');
-    expect(hook).toContain('professional_id: null');
+    expect(hook).toContain('const ownRegisterMode = isIndependent && !!professionalId');
+    expect(hook).toContain('ownRegisterMode ? myRegisters : clinicRegisters');
+    expect(hook).toContain('professional_id: ownRegisterMode ? professionalId : null');
     expect(panel).toContain('const canOpenRegister = canOpenCloseRegister');
     expect(panel).not.toContain('canOpenCloseRegister || canManageOwnRegister');
   });

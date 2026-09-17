@@ -37,10 +37,10 @@ export interface CashRegister {
 
 export function useCashRegisters() {
   const queryClient = useQueryClient();
-  const { professionalId } = useProfessionalScopeFlags();
-  // Caixa é sempre o caixa da clínica. O financeiro pessoal é isolado nas
-  // categorias, contas, bancos, boletos e taxas — nunca em outro caixa físico.
-  const ownRegisterMode = false;
+  const { professionalId, isIndependent } = useProfessionalScopeFlags();
+  // O vínculo manda: profissional independente tem caixa próprio, separado da
+  // clínica. Os demais vínculos operam o caixa da clínica.
+  const ownRegisterMode = isIndependent && !!professionalId;
 
   // Track if initial load is done to avoid notifications on mount
   const initialLoadDone = useRef(false);
@@ -122,7 +122,7 @@ export function useCashRegisters() {
   const myRegisters = professionalId
     ? cashRegisters.filter(r => r.professional_id === professionalId)
     : [];
-  const scopedRegisters = clinicRegisters;
+  const scopedRegisters = ownRegisterMode ? myRegisters : clinicRegisters;
   const currentOpenRegister = scopedRegisters.find(r => r.status === 'open');
   const clinicOpenRegister = clinicRegisters.find(r => r.status === 'open');
   const myOpenRegister = myRegisters.find(r => r.status === 'open');
@@ -137,7 +137,7 @@ export function useCashRegisters() {
         .insert({
           opening_balance: openingBalance,
           opened_by: user?.id,
-          professional_id: null,
+          professional_id: ownRegisterMode ? professionalId : null,
           status: 'open',
         } as any)
         .select()

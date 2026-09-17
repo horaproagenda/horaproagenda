@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 const Index = () => {
   const isSmartphone = useIsSmartphone();
+  const navigate = useNavigate();
   const today = new Date();
   const [selectedProfessional, setSelectedProfessional] = useLocalStorage<string | null>('dashboard-professional', null);
   

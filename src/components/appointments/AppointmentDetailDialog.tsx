@@ -1633,7 +1633,7 @@ export function AppointmentDetailDialog({
         validPayments, 
         finalClientCredit, // Saldo: troco real registrado no caixa/financeiro
         finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
-        currentOpenRegister?.id,
+        paymentTargetRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
         discount > 0 ? discount : undefined, // Desconto aplicado
         clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method,

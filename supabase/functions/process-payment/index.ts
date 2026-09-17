@@ -881,8 +881,33 @@ serve(async (req) => {
             );
           }
         }
+
+        // Movimentação na conta financeira do destino (profissional independente
+        // recebe na própria conta; demais vínculos na conta da clínica).
+        if (targetFinancialAccountId) {
+          const { error: movementError } = await supabase.from('financial_movements').insert({
+            account_owner_id: callerOwner,
+            financial_account_id: targetFinancialAccountId,
+            cash_session_id: targetCashRegisterId,
+            professional_id: targetProfessionalId,
+            appointment_id: body.appointment_id,
+            movement_type: 'entrada',
+            status: 'confirmado',
+            amount: newCashPaymentAmount,
+            category: 'atendimento',
+            payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
+            description: `Pagamento: ${serviceName} - ${clientName} ${paymentFingerprint}`,
+            movement_date: today,
+            created_by: userId,
+          });
+
+          if (movementError) {
+            console.error('Error creating financial movement:', movementError);
+          }
+        }
       }
     }
+
 
     // Saldo a receber: recalculado SEMPRE (mesmo sem dinheiro novo, ex.: só desconto).
     // Desconto nunca gera saldo em aberto porque já foi abatido de totalRequiredAmount.

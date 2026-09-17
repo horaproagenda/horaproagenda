@@ -180,7 +180,8 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
+  const { hasRole, roles } = useAuth();
+  const { professionalId: currentProfessionalId } = useCurrentProfessional();
   const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
   const queryClient = useQueryClient();
   const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);

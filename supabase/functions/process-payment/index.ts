@@ -694,9 +694,10 @@ serve(async (req) => {
       }
 
       // Create cash transaction for the credit (saldo/troco)
-      if (body.cash_register_id) {
+      if (targetCashRegisterId) {
         const { error: creditCashError } = await supabase.from('cash_transactions').insert({
-          cash_register_id: body.cash_register_id,
+          cash_register_id: targetCashRegisterId,
+          professional_id: targetProfessionalId,
           type: 'income',
           category: 'client_credit',
           description: `Saldo/Troco: ${serviceName} - ${clientName}`,

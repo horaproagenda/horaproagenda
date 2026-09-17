@@ -314,8 +314,76 @@ serve(async (req) => {
       }
     }
 
-    // 3. Verify cash register is open if provided
-    if (body.cash_register_id) {
+    // 3. Resolve where the money goes: independent professionals receive in their
+    // OWN financial account and OWN cash register; every other employment type
+    // (administrador, funcionario, comissionado) keeps using the clinic's.
+    const appointmentProfessionalId: string | null = appointment.professional_id || null;
+    let appointmentEmploymentType: string | null = null;
+
+    if (appointmentProfessionalId) {
+      const { data: professionalRow } = await supabase
+        .from('professionals')
+        .select('id, employment_type')
+        .eq('id', appointmentProfessionalId)
+        .eq('account_owner_id', callerOwner)
+        .maybeSingle();
+      appointmentEmploymentType = professionalRow?.employment_type ?? null;
+    }
+
+    const isIndependentProfessional = appointmentEmploymentType === 'independente';
+
+    // Financial account that must receive the entry
+    let targetFinancialAccountId: string | null = null;
+    // Professional stamped on financial records (null = clinic)
+    const targetProfessionalId: string | null = isIndependentProfessional ? appointmentProfessionalId : null;
+    // Cash register that must receive the movement
+    let targetCashRegisterId: string | null = body.cash_register_id || null;
+
+    const loadFinancialAccount = async () => {
+      const query = supabase
+        .from('financial_accounts')
+        .select('id')
+        .eq('account_owner_id', callerOwner);
+      const { data } = isIndependentProfessional && appointmentProfessionalId
+        ? await query.eq('professional_id', appointmentProfessionalId).maybeSingle()
+        : await query.is('professional_id', null).maybeSingle();
+      return data?.id ?? null;
+    };
+
+    targetFinancialAccountId = await loadFinancialAccount();
+    if (!targetFinancialAccountId) {
+      // Accounts are created automatically; make sure they exist before writing.
+      await supabase.rpc('ensure_financial_accounts', { _owner: callerOwner });
+      targetFinancialAccountId = await loadFinancialAccount();
+    }
+
+    if (isIndependentProfessional && appointmentProfessionalId) {
+      const { data: ownRegister } = await supabase
+        .from('cash_registers')
+        .select('id, status')
+        .eq('account_owner_id', callerOwner)
+        .eq('professional_id', appointmentProfessionalId)
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!ownRegister) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            errors: [{
+              field: 'cash_register_id',
+              message: 'Abra o caixa do profissional antes de registrar este pagamento.',
+            }],
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Ignore a clinic register sent by the client: independent money never lands there.
+      targetCashRegisterId = ownRegister.id;
+    } else if (body.cash_register_id) {
       const { data: cashRegister, error: cashError } = await supabase
         .from('cash_registers')
         .select('id, status')
@@ -618,6 +686,7 @@ serve(async (req) => {
         appointment_id: body.appointment_id,
         notes: 'Troco deixado como saldo do cliente',
         created_by: userId,
+        professional_id: targetProfessionalId,
       });
 
       if (creditEntryError) {
@@ -625,9 +694,10 @@ serve(async (req) => {
       }
 
       // Create cash transaction for the credit (saldo/troco)
-      if (body.cash_register_id) {
+      if (targetCashRegisterId) {
         const { error: creditCashError } = await supabase.from('cash_transactions').insert({
-          cash_register_id: body.cash_register_id,
+          cash_register_id: targetCashRegisterId,
+          professional_id: targetProfessionalId,
           type: 'income',
           category: 'client_credit',
           description: `Saldo/Troco: ${serviceName} - ${clientName}`,
@@ -640,6 +710,27 @@ serve(async (req) => {
 
         if (creditCashError) {
           console.error('Error creating saldo cash transaction:', creditCashError);
+        }
+      }
+
+      if (targetFinancialAccountId) {
+        const { error: creditMovementError } = await supabase.from('financial_movements').insert({
+          account_owner_id: callerOwner,
+          financial_account_id: targetFinancialAccountId,
+          cash_session_id: targetCashRegisterId,
+          professional_id: targetProfessionalId,
+          appointment_id: body.appointment_id,
+          movement_type: 'entrada',
+          status: 'confirmado',
+          amount: body.client_credit,
+          category: 'saldo_cliente',
+          description: `Saldo/Troco: ${serviceName} - ${clientName}`,
+          movement_date: today,
+          created_by: userId,
+        });
+
+        if (creditMovementError) {
+          console.error('Error creating saldo financial movement:', creditMovementError);
         }
       }
     }
@@ -769,6 +860,7 @@ serve(async (req) => {
           payment_method_id: primaryPaymentMethodId,
           notes: breakdownNotes,
           created_by: userId,
+          professional_id: targetProfessionalId,
         });
 
         if (entryError) {
@@ -784,9 +876,10 @@ serve(async (req) => {
         }
 
         // Create cash transaction if register is open - use payment_method_name for proper categorization
-        if (body.cash_register_id) {
+        if (targetCashRegisterId) {
           const { error: cashError } = await supabase.from('cash_transactions').insert({
-            cash_register_id: body.cash_register_id,
+            cash_register_id: targetCashRegisterId,
+            professional_id: targetProfessionalId,
             type: 'income',
             category: 'sale',
             description: `${serviceName} - ${clientName}${discountAmount > 0 ? ` (desc. R$ ${discountAmount.toFixed(2)})` : ''}${additionalItemsTotal > 0 ? ` + adicionais R$ ${additionalItemsTotal.toFixed(2)}` : ''}`,
@@ -811,8 +904,33 @@ serve(async (req) => {
             );
           }
         }
+
+        // Movimentação na conta financeira do destino (profissional independente
+        // recebe na própria conta; demais vínculos na conta da clínica).
+        if (targetFinancialAccountId) {
+          const { error: movementError } = await supabase.from('financial_movements').insert({
+            account_owner_id: callerOwner,
+            financial_account_id: targetFinancialAccountId,
+            cash_session_id: targetCashRegisterId,
+            professional_id: targetProfessionalId,
+            appointment_id: body.appointment_id,
+            movement_type: 'entrada',
+            status: 'confirmado',
+            amount: newCashPaymentAmount,
+            category: 'atendimento',
+            payment_method: primaryPaymentMethodName || primaryPaymentMethodId,
+            description: `Pagamento: ${serviceName} - ${clientName} ${paymentFingerprint}`,
+            movement_date: today,
+            created_by: userId,
+          });
+
+          if (movementError) {
+            console.error('Error creating financial movement:', movementError);
+          }
+        }
       }
     }
+
 
     // Saldo a receber: recalculado SEMPRE (mesmo sem dinheiro novo, ex.: só desconto).
     // Desconto nunca gera saldo em aberto porque já foi abatido de totalRequiredAmount.
@@ -838,6 +956,7 @@ serve(async (req) => {
         client_id: appointment.client?.id,
         appointment_id: body.appointment_id,
         created_by: userId,
+        professional_id: targetProfessionalId,
       });
 
       if (pendingError) {

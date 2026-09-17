@@ -196,7 +196,7 @@ export function AppointmentDetailDialog({
   const { productsForSale } = useProducts();
   const { activePaymentMethods } = usePaymentMethods();
   const { activeCardBrands } = useCardBrands();
-  const { currentOpenRegister } = useCashRegisters();
+  const { currentOpenRegister, cashRegisters } = useCashRegisters();
   const { settings } = useBusinessSettings();
   // Fetch real package_appointments to compute realized count for the refund flow
   const { appointments: pkgSessions } = usePackageAppointments(
@@ -229,6 +229,26 @@ export function AppointmentDetailDialog({
     staleTime: 15_000,
   });
   const shouldRedirectToBoleto = !!packageBoletoInfo?.hasBoleto && !!packageBoletoInfo?.hasOpen;
+
+  // Profissional independente recebe na própria conta financeira e no próprio caixa.
+  const { data: appointmentProfessionalEmployment } = useQuery({
+    queryKey: ['appointment-professional-employment', appointment?.professional_id],
+    enabled: open && !!appointment?.professional_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('professionals')
+        .select('employment_type')
+        .eq('id', appointment!.professional_id!)
+        .maybeSingle();
+      return (data?.employment_type as string | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+  const isIndependentProfessional = appointmentProfessionalEmployment === 'independente';
+  const professionalOpenRegister = appointment?.professional_id
+    ? cashRegisters.find((r) => r.professional_id === appointment.professional_id && r.status === 'open')
+    : undefined;
+  const paymentTargetRegister = isIndependentProfessional ? professionalOpenRegister : currentOpenRegister;
   const { data: appointmentHistory = [] } = useQuery({
     queryKey: ['appointment-history', appointment?.id],
     enabled: open && !!appointment?.id,
@@ -1550,8 +1570,12 @@ export function AppointmentDetailDialog({
     }
 
     // For courtesy-only, we don't need cash register (no financial impact)
-    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !currentOpenRegister) {
-      toast.error('É necessário abrir o caixa antes de registrar pagamentos!');
+    if (!isCourtesyOnly && moneyPaymentAmount > 0 && !paymentTargetRegister) {
+      toast.error(
+        isIndependentProfessional
+          ? 'Abra o caixa do profissional antes de registrar este pagamento.'
+          : 'É necessário abrir o caixa antes de registrar pagamentos!'
+      );
       return;
     }
     
@@ -1609,7 +1633,7 @@ export function AppointmentDetailDialog({
         validPayments, 
         finalClientCredit, // Saldo: troco real registrado no caixa/financeiro
         finalCourtesyCredit, // Cortesia: brinde sem entrada financeira
-        currentOpenRegister?.id,
+        paymentTargetRegister?.id,
         clientCreditUsed > 0 ? clientCreditUsed : undefined,
         discount > 0 ? discount : undefined, // Desconto aplicado
         clientCreditPaymentMethod?.methodId || clientCreditPaymentMethod?.method,

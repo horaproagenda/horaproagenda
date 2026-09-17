@@ -87,6 +87,8 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
+import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
+import { APPOINTMENT_EDIT_DENIED_MESSAGE, canEditAppointment } from '@/lib/appointmentEditAccess';
 import { renderTemplate } from '@/lib/whatsappLink';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { usePackageAppointments } from '@/hooks/useServicePackages';
@@ -180,7 +182,8 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
+  const { hasRole, roles } = useAuth();
+  const { professionalId: currentProfessionalId } = useCurrentProfessional();
   const { updateAppointment, deleteAppointment, deletePackageAppointments, reversePayment } = useAppointments();
   const queryClient = useQueryClient();
   const [confirmReverseOpen, setConfirmReverseOpen] = useState(false);
@@ -385,7 +388,13 @@ export function AppointmentDetailDialog({
   // Early return moved AFTER all hooks for React Rules of Hooks compliance
   const canAddClientCredit = hasRole('admin');
   const canDelete = hasRole('admin');
-  const canEdit = hasRole('admin') || hasRole('receptionist');
+  // Regra alinhada às políticas de gravação do banco: administrador e recepção
+  // editam tudo; o profissional edita os agendamentos que ele atende.
+  const canEdit = canEditAppointment({
+    roles,
+    professionalId: currentProfessionalId,
+    appointment,
+  });
   
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [payments, setPayments] = useState<{ method: string; methodId?: string; cardBrandId?: string; installments?: number; amount: string }[]>([
@@ -1127,6 +1136,10 @@ export function AppointmentDetailDialog({
   };
 
   const handleStartEdit = async () => {
+    if (!canEdit) {
+      toast.error(APPOINTMENT_EDIT_DENIED_MESSAGE);
+      return;
+    }
     const locked = await acquireLock();
     if (!locked) {
       toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
@@ -1724,9 +1737,17 @@ export function AppointmentDetailDialog({
                   </Badge>
                 )}
                 <div className="flex items-center gap-1.5">
-                  {canEdit && !isEditing && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleStartEdit} disabled={isLockedByOther || isAcquiring}>
+                  {!isEditing && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="appointment-edit-button"
+                      className="h-9 min-h-9 gap-1.5 px-3 text-xs"
+                      onClick={handleStartEdit}
+                      disabled={isLockedByOther || isAcquiring}
+                    >
                       <Edit className="h-3.5 w-3.5" />
+                      Editar
                     </Button>
                   )}
                   <Select value={appointment.status} onValueChange={(v) => handleStatusChange(v as AppointmentStatus)} disabled={isLockedByOther}>

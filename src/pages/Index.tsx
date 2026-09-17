@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, isSameDay } from 'date-fns';
 import { useIsSmartphone } from '@/hooks/use-mobile';
 import { ptBR } from 'date-fns/locale';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 const Index = () => {
   const isSmartphone = useIsSmartphone();
+  const navigate = useNavigate();
   const today = new Date();
   const [selectedProfessional, setSelectedProfessional] = useLocalStorage<string | null>('dashboard-professional', null);
   
@@ -134,7 +136,17 @@ const Index = () => {
                     style={{ animationDelay: `${index * 50}ms` }}
                     className="animate-fade-in"
                   >
-                    <AppointmentCard appointment={appointment} />
+                    <AppointmentCard
+                      appointment={appointment}
+                      onEdit={(item) =>
+                        navigate('/agenda', {
+                          state: {
+                            openAppointmentId: item.id,
+                            appointmentDate: format(new Date(item.start_time), 'yyyy-MM-dd'),
+                          },
+                        })
+                      }
+                    />
                   </div>
                 ))}
               </div>

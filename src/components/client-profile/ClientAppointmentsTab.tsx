@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square, MessageCircle } from 'lucide-react';
+import { Clock, Calendar, Package, Sparkles, Filter, FileDown, CheckSquare, Square, MessageCircle, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -29,6 +29,7 @@ interface ClientAppointmentsTabProps {
   clientName?: string;
   clientCpf?: string;
   clientPhone?: string;
+  onEditAppointment?: (appointment: Appointment) => void;
 }
 
 const statusOptions = [
@@ -69,7 +70,7 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '' }: ClientAppointmentsTabProps) {
+export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '', onEditAppointment }: ClientAppointmentsTabProps) {
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
@@ -486,6 +487,21 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}>
                           {status.label}
                         </Badge>
+                        {onEditAppointment && !isSelectionMode && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid="client-appointment-edit"
+                            className="h-8 min-h-8 gap-1 px-2 text-[11px] shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditAppointment(appointment);
+                            }}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Editar
+                          </Button>
+                        )}
                       </div>
                     </div>
 

@@ -164,6 +164,7 @@ export default function ClienteDetalhes() {
               clientName={client.name}
               clientCpf={client.cpf || ''}
               clientPhone={client.phone || ''}
+              onEditAppointment={setEditingAppointment}
             />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">

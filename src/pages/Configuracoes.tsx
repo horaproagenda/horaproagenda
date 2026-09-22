@@ -26,6 +26,7 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
 import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferenciasSettings';
+import { AvisosCelularSettings } from '@/components/settings/AvisosCelularSettings';
 
 import { useAuth } from '@/contexts/AuthContext';
 

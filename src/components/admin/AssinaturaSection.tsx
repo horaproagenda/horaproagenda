@@ -201,6 +201,13 @@ export function AssinaturaSection() {
                 </p>
               </div>
             </div>
+            <Button
+              data-testid="go-to-agenda"
+              onClick={() => navigate("/agenda", { replace: true })}
+              className="w-full sm:w-auto"
+            >
+              Ir para a Agenda
+            </Button>
           </CardContent>
         </Card>
       )}

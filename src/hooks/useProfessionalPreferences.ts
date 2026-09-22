@@ -26,6 +26,12 @@ export interface ProfessionalPreferences {
   reminder_hours_before: number[] | null;
   quiet_hours_start: number | null;
   quiet_hours_end: number | null;
+  // Avisos no celular/tablet (Web Push)
+  push_enabled: boolean | null;
+  push_appointment_new: boolean | null;
+  push_appointment_confirmed: boolean | null;
+  push_appointment_cancelled: boolean | null;
+  push_reminders: boolean | null;
 }
 
 export interface EffectiveBusinessSettings {

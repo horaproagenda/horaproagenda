@@ -196,6 +196,8 @@ const Configuracoes = () => {
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           <MinhasPreferenciasSettings />
 
+          <AvisosCelularSettings />
+
           {/* Informações da Clínica */}
           {isAdmin && (
             <Card className="card-hover">

@@ -41,8 +41,8 @@ export function SaveToPhoneBanner() {
     }
   };
 
-  const handleOpenBrowser = () => {
-    const result = openInSystemBrowser();
+  const handleOpenBrowser = async () => {
+    const result = await openInSystemBrowser();
     if (result === 'copied') {
       toast.success('Link copiado. Abra o Safari e cole o endereço para salvar o aplicativo.');
     } else if (result === 'unavailable') {

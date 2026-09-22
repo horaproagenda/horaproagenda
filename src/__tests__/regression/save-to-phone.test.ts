@@ -34,3 +34,23 @@ describe('última tela usada', () => {
     expect(readRememberedRoute()).toBe('/agenda?dia=2026-09-22');
   });
 });
+
+describe('abrir no navegador do sistema', () => {
+  it('avisa quando o mensageiro bloqueia a troca (nunca fica inerte)', async () => {
+    vi.useFakeTimers();
+    const { openInSystemBrowser } = await import('@/lib/inAppBrowser');
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Linux; Android 14) WhatsApp/2.24',
+      configurable: true,
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText }, share: undefined });
+
+    const promise = openInSystemBrowser();
+    await vi.advanceTimersByTimeAsync(5000);
+    const result = await promise;
+    vi.useRealTimers();
+
+    expect(['copied', 'unavailable']).toContain(result);
+  });
+});

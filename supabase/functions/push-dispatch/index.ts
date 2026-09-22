@@ -257,9 +257,9 @@ Deno.serve(async (req) => {
     }
 
     if (mode === 'reminders') {
-      const cronSecret = Deno.env.get('CRON_SECRET');
+      const accepted = [Deno.env.get('PUSH_CRON_SECRET'), Deno.env.get('CRON_SECRET')].filter(Boolean);
       const provided = req.headers.get('x-cron-secret');
-      if (cronSecret && provided !== cronSecret) return json({ error: 'nao_autorizado' }, 401);
+      if (accepted.length && !accepted.includes(provided || '')) return json({ error: 'nao_autorizado' }, 401);
       return await handleReminders();
     }
 

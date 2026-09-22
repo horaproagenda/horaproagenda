@@ -10,6 +10,7 @@ import { bootVersionGuard } from "./lib/bootVersionGuard";
 import { installChunkErrorRecovery } from "./lib/chunkErrorRecovery";
 import { initKeyboardInsetTracking } from "./lib/keyboardInset";
 import { initInstallPromptCapture } from "./lib/installPrompt";
+import { restoreRememberedRouteIfInstalled } from "./lib/lastRoute";
 
 // Recupera de chunks obsoletos após deploy (clicar em rota e carregar
 // chunk antigo do cache): força um reload único quando detecta o erro.
@@ -30,6 +31,9 @@ void bootVersionGuard();
 // Restore URL (route) saved before a version-update reload, so the app
 // boots on the same screen the user was viewing — must run BEFORE Router mounts.
 restoreUrlIfNeeded();
+
+// Aplicativo aberto pelo ícone da tela inicial: volta para a última tela usada.
+restoreRememberedRouteIfInstalled();
 
 // Apply persisted appearance (primary color, dark mode, animations) before render
 bootstrapAppearance();

@@ -30,25 +30,61 @@ export function isAndroidDevice(ua = typeof navigator !== 'undefined' ? navigato
   return /android/i.test(ua);
 }
 
+export function isIOSDevice(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  return /iphone|ipad|ipod/i.test(ua);
+}
+
+export type OpenBrowserResult = 'opened' | 'shared' | 'copied' | 'unavailable';
+
 /**
- * No Android é possível pedir ao sistema para reabrir o endereço atual no
- * Chrome. No iPhone isso não existe: só copiar o link e abrir no Safari.
+ * Tenta reabrir o endereço atual no navegador do sistema com um único toque.
+ * Android: intent direto para o Chrome (com qualquer navegador como reserva).
+ * iPhone: tenta o Google Chrome e, se não existir, abre o menu de
+ * compartilhamento do próprio celular (Safari, Google, Siri/Atalhos).
+ * Em último caso, copia o endereço.
  */
-export function openInSystemBrowser(): 'opened' | 'copied' | 'unavailable' {
+export async function openInSystemBrowser(): Promise<OpenBrowserResult> {
   if (typeof window === 'undefined') return 'unavailable';
   const url = window.location.href;
+  const withoutScheme = url.replace(/^https?:\/\//, '');
+
   if (isAndroidDevice()) {
-    const withoutScheme = url.replace(/^https?:\/\//, '');
-    const intent = `intent://${withoutScheme}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`;
-    try {
-      window.location.href = intent;
-      return 'opened';
-    } catch {
-      /* segue para a cópia do link */
+    const fallback = encodeURIComponent(url);
+    const intents = [
+      `intent://${withoutScheme}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`,
+      `intent://${withoutScheme}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${fallback};end`,
+    ];
+    for (const intent of intents) {
+      try {
+        window.location.href = intent;
+        return 'opened';
+      } catch {
+        /* tenta a próxima forma */
+      }
     }
   }
+
+  if (isIOSDevice()) {
+    try {
+      window.location.href = `googlechromes://${withoutScheme}`;
+      return 'opened';
+    } catch {
+      /* segue para o menu de compartilhamento */
+    }
+  }
+
+  const share = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;
+  if (typeof share === 'function') {
+    try {
+      await share.call(navigator, { title: 'Hora Pro', url });
+      return 'shared';
+    } catch {
+      /* usuário fechou ou não suportado */
+    }
+  }
+
   try {
-    void navigator.clipboard?.writeText(url);
+    await navigator.clipboard?.writeText(url);
     return 'copied';
   } catch {
     return 'unavailable';

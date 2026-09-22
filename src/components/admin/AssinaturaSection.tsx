@@ -232,6 +232,14 @@ export function AssinaturaSection() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
+                data-testid="go-to-agenda-active"
+                onClick={() => navigate("/agenda", { replace: true })}
+                className="w-full sm:w-auto"
+              >
+                Ir para a Agenda
+              </Button>
+
+              <Button
                 variant="outline"
                 onClick={() => setCardDialog("update")}
                 className="w-full sm:w-auto"

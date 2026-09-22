@@ -41,8 +41,8 @@ export function SaveToPhoneBanner() {
     }
   };
 
-  const handleOpenBrowser = () => {
-    const result = openInSystemBrowser();
+  const handleOpenBrowser = async () => {
+    const result = await openInSystemBrowser();
     if (result === 'copied') {
       toast.success('Link copiado. Abra o Safari e cole o endereço para salvar o aplicativo.');
     } else if (result === 'unavailable') {
@@ -69,7 +69,7 @@ export function SaveToPhoneBanner() {
           data-testid="open-system-browser"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          {isAndroidDevice() ? 'Abrir no Chrome' : 'Copiar link'}
+          {isAndroidDevice() ? 'Abrir no Chrome' : 'Abrir no navegador'}
         </Button>
         <InstallAppButton label="Salvar no celular" />
         <Button

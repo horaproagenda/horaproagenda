@@ -50,6 +50,11 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
     setIsMobileSidebarOpen(false);
   }, [location.pathname]);
 
+  // Guarda a última tela para o aplicativo instalado reabrir onde parou.
+  useEffect(() => {
+    rememberRoute(location.pathname, location.search);
+  }, [location.pathname, location.search]);
+
   // Recalcula alturas dinâmicas em rotação (iOS Safari nem sempre dispara resize).
   useEffect(() => {
     const onOrient = () => {

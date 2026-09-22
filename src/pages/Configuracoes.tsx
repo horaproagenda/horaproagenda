@@ -26,6 +26,7 @@ import { BulkDeleteDialog } from '@/components/settings/BulkDeleteDialog';
 import { DeleteMyAccountDialog } from '@/components/settings/DeleteMyAccountDialog';
 import { ChangeMyPasswordCard } from '@/components/auth/ChangeMyPasswordCard';
 import { MinhasPreferenciasSettings } from '@/components/settings/MinhasPreferenciasSettings';
+import { AvisosCelularSettings } from '@/components/settings/AvisosCelularSettings';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -195,6 +196,8 @@ const Configuracoes = () => {
       <PageTransition>
         <div className="mx-auto w-full max-w-4xl space-y-4 text-xs settings-page">
           <MinhasPreferenciasSettings />
+
+          <AvisosCelularSettings />
 
           {/* Informações da Clínica */}
           {isAdmin && (

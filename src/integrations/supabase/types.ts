@@ -4155,6 +4155,11 @@ export type Database = {
           drag_and_drop_enabled: boolean | null
           opening_time: string | null
           primary_color: string | null
+          push_appointment_cancelled: boolean
+          push_appointment_confirmed: boolean
+          push_appointment_new: boolean
+          push_enabled: boolean
+          push_reminders: boolean
           quiet_hours_end: number | null
           quiet_hours_start: number | null
           reminder_hours_before: number[] | null
@@ -4193,6 +4198,11 @@ export type Database = {
           drag_and_drop_enabled?: boolean | null
           opening_time?: string | null
           primary_color?: string | null
+          push_appointment_cancelled?: boolean
+          push_appointment_confirmed?: boolean
+          push_appointment_new?: boolean
+          push_enabled?: boolean
+          push_reminders?: boolean
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           reminder_hours_before?: number[] | null
@@ -4231,6 +4241,11 @@ export type Database = {
           drag_and_drop_enabled?: boolean | null
           opening_time?: string | null
           primary_color?: string | null
+          push_appointment_cancelled?: boolean
+          push_appointment_confirmed?: boolean
+          push_appointment_new?: boolean
+          push_enabled?: boolean
+          push_reminders?: boolean
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
           reminder_hours_before?: number[] | null
@@ -4561,6 +4576,87 @@ export type Database = {
           must_change_password?: boolean
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      push_notification_log: {
+        Row: {
+          body: string | null
+          created_at: string
+          dedupe_key: string
+          delivered_count: number
+          id: string
+          title: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          dedupe_key: string
+          delivered_count?: number
+          id?: string
+          title?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          dedupe_key?: string
+          delivered_count?: number
+          id?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          account_owner_id: string | null
+          auth: string
+          created_at: string
+          enabled: boolean
+          endpoint: string
+          failure_count: number
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          account_owner_id?: string | null
+          auth: string
+          created_at?: string
+          enabled?: boolean
+          endpoint: string
+          failure_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          account_owner_id?: string | null
+          auth?: string
+          created_at?: string
+          enabled?: boolean
+          endpoint?: string
+          failure_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }

@@ -95,3 +95,7 @@ project_id = "nsgcllrbswodjoadybsj"
     verify_jwt = false
   [functions.asaas-check-subscription]
     verify_jwt = false
+
+  # Avisos no celular: chamada automática da agenda (trigger) e cron de lembretes.
+  [functions.push-dispatch]
+    verify_jwt = false

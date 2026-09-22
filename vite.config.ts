@@ -74,6 +74,9 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Avisos no celular/tablet: handlers de push e de clique na notificação.
+        // Precisam morar dentro do service worker para funcionar com o app fechado.
+        importScripts: ["/push-listener.js"],
         // Pré-cacheia somente arquivos estáveis (ícones, manifest, fontes).
         // JS e CSS com hash NÃO entram no precache: cada deploy muda o hash,
         // e precache cruzado entre versões podia fazer o navegador servir o

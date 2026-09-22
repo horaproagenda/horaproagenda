@@ -95,7 +95,8 @@ export function CreditCardDialog({
     /^\d{3,4}$/.test(digitsOnly(ccv)) &&
     [11, 14].includes(digitsOnly(cpfCnpj).length) &&
     digitsOnly(postalCode).length === 8 &&
-    addressNumber.trim().length > 0;
+    addressNumber.trim().length > 0 &&
+    [10, 11].includes(digitsOnly(phone).length);
 
   const handleSubmit = async () => {
     if (!valid || loading) return;
@@ -215,15 +216,19 @@ export function CreditCardDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cc-phone">Telefone do titular (opcional)</Label>
+            <Label htmlFor="cc-phone">Telefone do titular com DDD</Label>
             <Input
               id="cc-phone"
               inputMode="tel"
-              placeholder="(00) 90000-0000"
+              autoComplete="tel"
+              placeholder="(11) 99999-9999"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               disabled={loading}
             />
+            <p className="text-xs text-muted-foreground">
+              O banco exige o telefone do titular com DDD para autorizar o cartão.
+            </p>
           </div>
 
           <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">

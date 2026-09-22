@@ -111,11 +111,17 @@ export function AssinaturaSection() {
       } else {
         toast.success("Assinatura criada! A cobrança está sendo processada no cartão cadastrado.");
       }
-      // Libera o aplicativo: espera o acesso valer e abre a agenda.
-      const granted = await waitForSubscriptionAccess({ timeoutMs: 20_000 });
+      // Libera o aplicativo e abre a agenda. A assinatura já foi criada no
+      // gateway: esperamos um instante pela confirmação e seguimos de todo
+      // jeito — o usuário nunca fica preso na tela de cobrança.
       notifySubscriptionUpdated();
       revalidate();
-      if (granted) navigate("/agenda", { replace: true });
+      await waitForSubscriptionAccess({ timeoutMs: 8_000 });
+      notifySubscriptionUpdated();
+      revalidate();
+      setIsLoading(false);
+      navigate("/agenda", { replace: true });
+      return;
     } finally {
       setIsLoading(false);
     }

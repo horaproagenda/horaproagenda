@@ -12,6 +12,7 @@ import { asaasFetch, onlyDigits } from "../_shared/asaas.ts";
 import { response } from "../_shared/response.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { detectCardBrand, luhnValid } from "../_shared/billingPlans.ts";
+import { friendlyAsaasError } from "../_shared/asaasErrors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -67,6 +68,7 @@ Deno.serve(async (req) => {
     if (!isValidCpfCnpj(holderCpfCnpj)) cardErrors.push("CPF/CNPJ do titular");
     if (holderPostalCode.length !== 8) cardErrors.push("CEP do titular");
     if (!holderAddressNumber) cardErrors.push("número do endereço");
+    if (![10, 11].includes(holderPhone.length)) cardErrors.push("telefone do titular com DDD");
     if (cardErrors.length > 0) {
       return response(400, { error: "invalid_card", message: `Revise os dados: ${cardErrors.join(", ")}.` });
     }
@@ -103,7 +105,8 @@ Deno.serve(async (req) => {
       cpfCnpj: holderCpfCnpj,
       postalCode: holderPostalCode,
       addressNumber: holderAddressNumber,
-      phone: holderPhone || undefined,
+      phone: holderPhone,
+      mobilePhone: holderPhone,
     };
 
     // 1) Troca o cartão da assinatura (tokenização no gateway).
@@ -211,9 +214,10 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("[asaas-update-card] erro:", e);
     const msg = e instanceof Error ? e.message : "unknown_error";
-    const friendly = msg.startsWith("Asaas")
-      ? "O gateway recusou a atualização. Revise os dados do cartão e tente novamente."
-      : msg;
-    return response(500, { error: friendly });
+    const friendly = friendlyAsaasError(
+      msg,
+      "O gateway recusou a atualização. Revise os dados do cartão e tente novamente.",
+    );
+    return response(500, { error: friendly, message: friendly });
   }
 });

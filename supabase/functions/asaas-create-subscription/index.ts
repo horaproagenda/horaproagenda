@@ -26,6 +26,7 @@ import {
   planForSeats,
   quoteCycle,
 } from "../_shared/billingPlans.ts";
+import { friendlyAsaasError } from "../_shared/asaasErrors.ts";
 import {
   pickReusableSubscription,
   subscriptionExternalReference,
@@ -236,6 +237,25 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (roleRow?.role !== "admin") return response(403, { error: "not_account_admin" });
 
+    // O Asaas exige telefone com DDD do titular para autorizar o cartão.
+    // Se o formulário não trouxe, tentamos o telefone salvo no perfil.
+    let effectivePhone = holderPhone;
+    if (![10, 11].includes(effectivePhone.length)) {
+      const { data: profileRow } = await admin
+        .from("profiles")
+        .select("phone")
+        .eq("id", user.id)
+        .maybeSingle();
+      const fallbackPhone = onlyDigits(text(profileRow?.phone));
+      if ([10, 11].includes(fallbackPhone.length)) effectivePhone = fallbackPhone;
+    }
+    if (![10, 11].includes(effectivePhone.length)) {
+      return response(400, {
+        error: "invalid_card",
+        message: "Informe o telefone do titular com DDD (por exemplo 11 99999-9999).",
+      });
+    }
+
     const isTrialEligible = subRow.status === "pending" && !subRow.trial_start_at && !subRow.asaas_subscription_id;
 
     // ── Cliente no Asaas (idempotente) ────────────────────────────────────
@@ -256,7 +276,8 @@ Deno.serve(async (req) => {
           name: holderFullName,
           email: userEmail,
           cpfCnpj: holderCpfCnpj,
-          mobilePhone: holderPhone || undefined,
+          phone: effectivePhone,
+          mobilePhone: effectivePhone,
           externalReference: externalRef,
           notificationDisabled: false,
         }),
@@ -265,7 +286,7 @@ Deno.serve(async (req) => {
     } else {
       await asaasFetch(`/customers/${customerId}`, {
         method: "PUT",
-        body: JSON.stringify({ cpfCnpj: holderCpfCnpj, name: holderFullName, mobilePhone: holderPhone || undefined }),
+        body: JSON.stringify({ cpfCnpj: holderCpfCnpj, name: holderFullName, phone: effectivePhone, mobilePhone: effectivePhone }),
       }).catch((e) => console.warn("[asaas-create-subscription] atualização do cliente falhou:", e));
     }
 
@@ -316,7 +337,8 @@ Deno.serve(async (req) => {
         cpfCnpj: holderCpfCnpj,
         postalCode: holderPostalCode,
         addressNumber: holderAddressNumber,
-        phone: holderPhone || undefined,
+        phone: effectivePhone,
+        mobilePhone: effectivePhone,
       },
       remoteIp,
     };
@@ -495,9 +517,10 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error("[asaas-create-subscription] erro:", e);
     const msg = e instanceof Error ? e.message : "unknown_error";
-    const friendly = msg.startsWith("Asaas")
-      ? "Não foi possível concluir com os dados informados. Revise o cartão e tente novamente."
-      : msg;
-    return response(500, { error: friendly });
+    const friendly = friendlyAsaasError(
+      msg,
+      "Não foi possível concluir com os dados informados. Revise o cartão e tente novamente.",
+    );
+    return response(500, { error: friendly, message: friendly });
   }
 });

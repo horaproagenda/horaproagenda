@@ -11,6 +11,8 @@ import { useBillingNotifications } from '@/hooks/useBillingNotifications';
 import { useLocation } from 'react-router-dom';
 import { hydrateDismissalsFromDb } from '@/lib/notificationDismissal';
 import { useLayoutWatchdog } from '@/hooks/useLayoutWatchdog';
+import { SaveToPhoneBanner } from '@/components/pwa/SaveToPhoneBanner';
+import { rememberRoute } from '@/lib/lastRoute';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -90,6 +92,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         !isSidebarCollapsed && "md:pl-64"
       )}>
         <div data-app-header-safe className="flex-shrink-0 pt-safe pl-safe pr-safe">
+          <SaveToPhoneBanner />
 
           <Header 
             title={title} 

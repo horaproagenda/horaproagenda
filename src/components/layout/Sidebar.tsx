@@ -30,6 +30,7 @@ import { APP_VERSION, APP_VERSION_LABEL } from '@/lib/version';
 import { BRAND, PRIMARY_TAGLINE } from '@/content/brand';
 import horaProIcon from '@/assets/horapro-icon.png';
 import { prefetchRoute, prefetchRoutes } from '@/lib/routePrefetch';
+import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -325,6 +326,15 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
               )
             ))}
           </nav>
+
+          {/* Salvar o aplicativo no celular */}
+          <div className={cn('px-2 py-1', effectiveCollapsed && 'flex justify-center')}>
+            <InstallAppButton
+              compact={effectiveCollapsed}
+              className={effectiveCollapsed ? undefined : 'w-full justify-start'}
+              label="Salvar no celular"
+            />
+          </div>
 
           {/* Logout Button */}
           <div className={cn("px-2 py-1", effectiveCollapsed && "px-2")}>

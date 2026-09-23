@@ -76,7 +76,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
-import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
+import { calculateAppointmentTimesInTimeZone } from '@/lib/appointmentScheduling';
+import { useAvailabilityCheck, type AvailabilitySlot } from '@/lib/availabilityCheck';
 import {
   ProfessionalCommissionField,
   saveCommissionOverride,

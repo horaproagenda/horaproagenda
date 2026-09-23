@@ -76,7 +76,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
-import { calculateAppointmentTimesInTimeZone, getAvailabilityConflictReason } from '@/lib/appointmentScheduling';
+import { calculateAppointmentTimesInTimeZone } from '@/lib/appointmentScheduling';
+import { useAvailabilityCheck, type AvailabilitySlot } from '@/lib/availabilityCheck';
 import {
   ProfessionalCommissionField,
   saveCommissionOverride,
@@ -592,66 +593,52 @@ export function NewAppointmentDialog({
     setKitSchedule((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
   };
 
-  // Valida cada etapa do kit: data/horário preenchidos, dia trabalhado,
-  // expediente, conflito com a agenda e choque entre as próprias etapas.
-  const kitStepProblems = useMemo(() => {
-    if (!isKitService) return {} as Record<number, string>;
+  // Valida cada etapa do kit apenas com as regras do formulário: data/horário
+  // preenchidos, dia trabalhado, expediente e choque entre as próprias etapas.
+  // A disponibilidade de profissional/sala/equipamento é verificada mais abaixo,
+  // pela verificação única do banco.
+  const kitFormValidation = useMemo(() => {
     const problems: Record<number, string> = {};
-    const ranges: Array<{ start: Date; end: Date }> = [];
+    const ranges: Array<{ index: number; start: Date; end: Date } | null> = [];
+    if (!isKitService) return { problems, ranges };
+    const placed: Array<{ start: Date; end: Date }> = [];
     kitComponents.forEach((component, index) => {
       const step = kitSchedule[index];
       if (!step?.date || !step?.time) {
         problems[index] = 'Informe data e horário.';
+        ranges.push(null);
         return;
       }
       const start = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
       const end = new Date(start.getTime() + component.duration * 60_000);
       if (!isWorkDay(step.date)) {
         problems[index] = 'O estabelecimento não atende neste dia.';
+        ranges.push(null);
         return;
       }
       const businessHoursIssue = checkBusinessHoursForRange(start, end);
       if (businessHoursIssue) {
         problems[index] = businessHoursIssue;
+        ranges.push(null);
         return;
       }
-      if (ranges.some((range) => start < range.end && end > range.start)) {
+      if (placed.some((range) => start < range.end && end > range.start)) {
         problems[index] = 'Este horário se choca com outra etapa do kit.';
+        ranges.push(null);
         return;
       }
-      const conflict = getAvailabilityConflictReason(start, end, {
-        appointments: appointments as any,
-        absences: absences as any,
-        selectedProfessional,
-        selectedRoom,
-      });
-      if (conflict) {
-        problems[index] = `${conflict}.`;
-        return;
-      }
-      ranges.push({ start, end });
+      placed.push({ start, end });
+      ranges.push({ index, start, end });
     });
-    return problems;
+    return { problems, ranges };
   }, [
-    absences,
-    appointments,
     checkBusinessHoursForRange,
     isKitService,
     isWorkDay,
     kitComponents,
     kitSchedule,
-    selectedProfessional,
-    selectedRoom,
     settings?.timezone,
   ]);
-
-  const kitStepIssues = useMemo(
-    () =>
-      Object.entries(kitStepProblems).map(
-        ([index, message]) => `${Number(index) + 1}. ${kitComponents[Number(index)]?.service_name || 'Etapa'}: ${message}`,
-      ),
-    [kitComponents, kitStepProblems],
-  );
 
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;
@@ -916,152 +903,179 @@ export function NewAppointmentDialog({
   };
 
 
-  // Helper function to check conflicts for a specific date/time
-  const checkConflictsForDateTime = (checkStart: Date, checkEnd: Date): ConflictInfo[] => {
-    const foundConflicts: ConflictInfo[] = [];
+  // ─── Verificação ÚNICA de disponibilidade ────────────────────────────────
+  // Profissional ocupado, sala ocupada, equipamento em uso e ausência do
+  // profissional são decididos EXCLUSIVAMENTE pela regra do banco (a mesma que
+  // bloqueia o salvamento). Nada disso é recalculado aqui: se a tela calculasse
+  // por conta própria, poderia liberar um horário que o banco recusa.
+  // Somente regras do próprio formulário continuam locais: fora do expediente,
+  // dia não atendido e choque entre as sessões da série em edição.
+  const availabilityScope = useMemo(() => ({
+    professionalId: selectedProfessional || null,
+    roomId: selectedRoom || null,
+    equipmentId: selectedEquipment.find((id) => id && id !== '_none') || null,
+  }), [selectedProfessional, selectedRoom, selectedEquipment]);
 
-    // Check for professional absence
-    if (selectedProfessional) {
-      absences.forEach(absence => {
-        // Guarda: só considerar ausências válidas do profissional selecionado.
-        // Bug anterior mostrava "profissional ausente" quando havia ausência
-        // com datas inválidas/invertidas ou de outro profissional cacheada.
-        if (!absence?.professional_id || absence.professional_id !== selectedProfessional) return;
-        const absenceStart = new Date(absence.start_time);
-        const absenceEnd = new Date(absence.end_time);
-        if (isNaN(absenceStart.getTime()) || isNaN(absenceEnd.getTime())) return;
-        if (absenceEnd <= absenceStart) return;
-
-        const overlaps = checkStart < absenceEnd && checkEnd > absenceStart;
-        if (overlaps) {
-          const prof = professionals.find(p => p.id === selectedProfessional);
-          foundConflicts.push({
-            type: 'absence',
-            message: `${prof?.name || 'Profissional'} está ausente neste horário (${absence.reason || 'sem motivo informado'})`,
-          });
-        }
-      });
-    }
-
-    appointments.forEach(apt => {
-      // Ignore appointments that no longer occupy a slot (cancelled, missed,
-      // rescheduled or already-deleted rows still cached). Sem esse filtro,
-      // agendamentos cancelados geravam falsos "conflitos" em datas livres.
-      if (apt.status && ['cancelled', 'missed', 'rescheduled', 'deleted'].includes(apt.status)) return;
-
-      const aptStart = new Date(apt.start_time);
-      const aptEnd = new Date(apt.end_time);
-      if (isNaN(aptStart.getTime()) || isNaN(aptEnd.getTime())) return;
-
-      // Check if times overlap
-      const overlaps = checkStart < aptEnd && checkEnd > aptStart;
-      if (!overlaps) return;
-
-      // Check professional conflict
-      const aptProfId = apt.professional_id || apt.service?.professional_id;
-      if (selectedProfessional && aptProfId === selectedProfessional) {
-        const prof = professionals.find(p => p.id === selectedProfessional);
-        foundConflicts.push({
-          type: 'professional',
-          message: `${prof?.name || 'Profissional'} já tem agendamento às ${format(aptStart, 'HH:mm')} com ${apt.client?.name}`,
-          appointment: apt,
-        });
-      }
-
-      // Check room conflict
-      const aptRoomId = apt.room_id || apt.service?.room_id;
-      if (selectedRoom && aptRoomId === selectedRoom) {
-        const room = rooms.find(r => r.id === selectedRoom);
-        foundConflicts.push({
-          type: 'room',
-          message: `${room?.name || 'Sala'} já está ocupada às ${format(aptStart, 'HH:mm')}`,
-          appointment: apt,
-        });
-      }
+  const previewRanges = useMemo(() => {
+    if (!autoScheduleEnabled || editablePreviewDates.length === 0) return [];
+    return editablePreviewDates.map((start, index) => {
+      const duration = serviceType === 'service'
+        ? currentAppointmentDuration
+        : getPackageStepDuration(index);
+      return { start, end: new Date(start.getTime() + duration * 60_000), duration };
     });
+  }, [autoScheduleEnabled, editablePreviewDates, serviceType, currentAppointmentDuration, getPackageStepDuration]);
 
-    return foundConflicts;
-  };
+  const serviceRanges = useMemo(() => {
+    if (!repeatServiceEnabled || serviceType !== 'service' || editableServiceDates.length === 0) return [];
+    const duration = selectedServiceData?.duration || 60;
+    return editableServiceDates.map((start) => ({
+      start,
+      end: new Date(start.getTime() + duration * 60_000),
+      duration,
+    }));
+  }, [repeatServiceEnabled, serviceType, editableServiceDates, selectedServiceData?.duration]);
+
+  const plannedSlots = useMemo<AvailabilitySlot[]>(() => {
+    const slots: AvailabilitySlot[] = [];
+    if (appointmentTimes) {
+      slots.push({ ...availabilityScope, start: appointmentTimes.startTime, end: appointmentTimes.endTime });
+    }
+    previewRanges.forEach((r) => slots.push({ ...availabilityScope, start: r.start, end: r.end }));
+    serviceRanges.forEach((r) => slots.push({ ...availabilityScope, start: r.start, end: r.end }));
+    return slots;
+  }, [appointmentTimes, availabilityScope, previewRanges, serviceRanges]);
+
+  const plannedAvailability = useAvailabilityCheck(plannedSlots, open);
+  const plannedReasonFor = plannedAvailability.reasonFor;
+
+  // Conflito de recurso vindo do banco, no formato exibido pela tela.
+  const resourceConflicts = useCallback((start: Date, end: Date): ConflictInfo[] => {
+    const reason = plannedReasonFor({ ...availabilityScope, start, end });
+    return reason ? [{ type: 'professional', message: reason }] : [];
+  }, [plannedReasonFor, availabilityScope]);
+
+  // Regras do formulário (não dependem da agenda de outras pessoas).
+  const formRuleConflicts = useCallback((start: Date, end: Date): ConflictInfo[] => {
+    const out: ConflictInfo[] = [];
+    const bhError = checkBusinessHoursForRange(start, end);
+    if (bhError) out.push({ type: 'business_hours', message: bhError });
+    if (!isWorkDay(start)) {
+      const dow = start.getDay();
+      const dayName = dow === 0 ? 'domingo' : dow === 6 ? 'sábado' : 'este dia';
+      out.push({ type: 'closed_day', message: `Estabelecimento não atende ${dayName}` });
+    }
+    return out;
+  }, [checkBusinessHoursForRange, isWorkDay]);
 
   // Check for conflicts for the main appointment
   const conflicts = useMemo<ConflictInfo[]>(() => {
     if (!appointmentTimes) return [];
-    return checkConflictsForDateTime(appointmentTimes.startTime, appointmentTimes.endTime);
-  }, [appointmentTimes, appointments, absences, selectedProfessional, selectedRoom, professionals, rooms]);
+    return resourceConflicts(appointmentTimes.startTime, appointmentTimes.endTime);
+  }, [appointmentTimes, resourceConflicts]);
+
+  const siblingConflicts = (
+    ranges: { start: Date; end: Date }[],
+    index: number,
+    type: 'sibling' | 'series',
+  ): ConflictInfo[] => {
+    const current = ranges[index];
+    const out: ConflictInfo[] = [];
+    ranges.forEach((other, otherIndex) => {
+      if (otherIndex === index) return;
+      if (current.start < other.end && current.end > other.start) {
+        out.push({
+          type,
+          message: type === 'sibling'
+            ? `Conflita com a sessão ${otherIndex + 1} (${format(other.start, 'dd/MM HH:mm')})`
+            : `Conflito com a sessão ${otherIndex + 1} desta série (${format(other.start, 'dd/MM HH:mm')})`,
+        });
+      }
+    });
+    return out;
+  };
+
+  const previewBaseConflicts = useMemo(
+    () => previewRanges.map((range, index) => [
+      ...resourceConflicts(range.start, range.end),
+      ...formRuleConflicts(range.start, range.end),
+      ...siblingConflicts(previewRanges, index, 'sibling'),
+    ]),
+    [previewRanges, resourceConflicts, formRuleConflicts],
+  );
+
+  const serviceBaseConflicts = useMemo(
+    () => serviceRanges.map((range, index) => [
+      ...resourceConflicts(range.start, range.end),
+      ...formRuleConflicts(range.start, range.end),
+      ...siblingConflicts(serviceRanges, index, 'series'),
+    ]),
+    [serviceRanges, resourceConflicts, formRuleConflicts],
+  );
+
+  // Alternativas possíveis para as sessões em conflito. Também passam pela
+  // MESMA verificação do banco, numa única consulta.
+  const candidateEntries = useMemo(() => {
+    const entries: { group: 'preview' | 'service'; index: number; start: Date; end: Date; duration: number }[] = [];
+    const addCandidates = (
+      group: 'preview' | 'service',
+      ranges: { start: Date; end: Date; duration: number }[],
+      baseConflicts: ConflictInfo[][],
+    ) => {
+      ranges.forEach((range, index) => {
+        if ((baseConflicts[index]?.length ?? 0) === 0) return;
+        const slotIndex = timeSlots.findIndex((slot) => slot === format(range.start, 'HH:mm'));
+        for (let i = slotIndex + 1; i < timeSlots.length; i++) {
+          const start = createDateTimeInTimeZone(range.start, timeSlots[i], settings?.timezone);
+          entries.push({ group, index, start, end: new Date(start.getTime() + range.duration * 60_000), duration: range.duration });
+        }
+        let tryDate = addDays(range.start, 1);
+        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+          entries.push({ group, index, start: tryDate, end: new Date(tryDate.getTime() + range.duration * 60_000), duration: range.duration });
+          tryDate = addDays(tryDate, 1);
+        }
+      });
+    };
+    addCandidates('preview', previewRanges, previewBaseConflicts);
+    addCandidates('service', serviceRanges, serviceBaseConflicts);
+    return entries;
+  }, [previewRanges, previewBaseConflicts, serviceRanges, serviceBaseConflicts, timeSlots, settings?.timezone]);
+
+  const candidateSlots = useMemo<AvailabilitySlot[]>(
+    () => candidateEntries.map((entry) => ({ ...availabilityScope, start: entry.start, end: entry.end })),
+    [candidateEntries, availabilityScope],
+  );
+
+  const candidateAvailability = useAvailabilityCheck(candidateSlots, open && candidateSlots.length > 0);
+  const candidateReasonFor = candidateAvailability.reasonFor;
+
+  const pickSuggestion = useCallback((
+    group: 'preview' | 'service',
+    index: number,
+    ranges: { start: Date; end: Date; duration: number }[],
+  ): Date | null => {
+    const candidates = candidateEntries.filter((entry) => entry.group === group && entry.index === index);
+    for (const candidate of candidates) {
+      if (candidateReasonFor({ ...availabilityScope, start: candidate.start, end: candidate.end })) continue;
+      if (!isWorkDay(candidate.start)) continue;
+      if (checkBusinessHoursForRange(candidate.start, candidate.end)) continue;
+      const collides = ranges.some((other, otherIndex) =>
+        otherIndex !== index && candidate.start < other.end && candidate.end > other.start);
+      if (collides) continue;
+      return candidate.start;
+    }
+    return null;
+  }, [candidateEntries, candidateReasonFor, availabilityScope, isWorkDay, checkBusinessHoursForRange]);
 
   // Check conflicts for auto-scheduled dates and suggest alternatives
-  const previewDateConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
-    if (!autoScheduleEnabled || editablePreviewDates.length === 0) return [];
-
-    // Pré-calcula início/fim de cada sessão para detectar choques internos
-    // (uma etapa do pacote agendada em cima da outra) além dos conflitos
-    // externos (agenda, ausências). Sem isso, o formulário deixava passar
-    // colisões dentro da própria série e o backend rejeitava depois.
-    const ranges = editablePreviewDates.map((previewDate, index) => {
-      const duration = serviceType === 'service'
-        ? currentAppointmentDuration
-        : getPackageStepDuration(index);
-      const endTime = new Date(previewDate);
-      endTime.setMinutes(endTime.getMinutes() + duration);
-      return { start: previewDate, end: endTime, duration };
-    });
-
-    return ranges.map(({ start: previewDate, end: endTime, duration }, index) => {
-      const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
-
-      // Fora do expediente: bloqueia salvar e alerta na pré-visualização.
-      const bhError = checkBusinessHoursForRange(previewDate, endTime);
-      if (bhError) {
-        dateConflicts.push({ type: 'business_hours', message: bhError } as ConflictInfo);
-      }
-      // Dia não trabalhado (ex.: domingo sem work_sundays).
-      if (!isWorkDay(previewDate)) {
-        const dow = previewDate.getDay();
-        const dayName = dow === 0 ? 'domingo' : dow === 6 ? 'sábado' : 'este dia';
-        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dayName}` } as ConflictInfo);
-      }
-
-      // Sibling collisions dentro da própria série
-      ranges.forEach((other, otherIndex) => {
-        if (otherIndex === index) return;
-        const overlaps = previewDate < other.end && endTime > other.start;
-        if (!overlaps) return;
-        dateConflicts.push({
-          type: 'sibling',
-          message: `Conflita com a sessão ${otherIndex + 1} (${format(other.start, 'dd/MM HH:mm')})`,
-        });
-      });
-
-      // Find alternative if there are conflicts
-      let suggestedDate: Date | null = null;
-      const slotIsFree = (candidate: Date) => {
-        const candidateEnd = new Date(candidate);
-        candidateEnd.setMinutes(candidateEnd.getMinutes() + duration);
-        if (checkConflictsForDateTime(candidate, candidateEnd).length > 0) return false;
-        return !ranges.some((other, otherIndex) => {
-          if (otherIndex === index) return false;
-          return candidate < other.end && candidateEnd > other.start;
-        });
-      };
-
-      if (dateConflicts.length > 0) {
-        const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
-        for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
-          if (slotIsFree(testDate)) { suggestedDate = testDate; break; }
-        }
-        if (!suggestedDate) {
-          let tryDate = addDays(previewDate, 1);
-          for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-            if (isWorkDay(tryDate) && slotIsFree(tryDate)) { suggestedDate = tryDate; break; }
-            tryDate = addDays(tryDate, 1);
-          }
-        }
-      }
-
-      return { index, conflicts: dateConflicts, suggestedDate };
-    });
-  }, [editablePreviewDates, autoScheduleEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, currentAppointmentDuration, getPackageStepDuration, timeSlots, settings?.timezone, checkBusinessHoursForRange, isWorkDay]);
+  const previewDateConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(
+    () => previewBaseConflicts.map((dateConflicts, index) => ({
+      index,
+      conflicts: dateConflicts,
+      suggestedDate: dateConflicts.length > 0 ? pickSuggestion('preview', index, previewRanges) : null,
+    })),
+    [previewBaseConflicts, previewRanges, pickSuggestion],
+  );
 
   // Check if any preview date has conflicts
   const hasPreviewConflicts = previewDateConflicts.some(pc => pc.conflicts.length > 0);
@@ -1081,83 +1095,49 @@ export function NewAppointmentDialog({
   );
   const hasServiceIntervalViolations = serviceIntervalViolations.length > 0;
 
-
-
-
   // Check conflicts for recurring service dates and suggest alternatives
-  const servicePreviewConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(() => {
-    if (!repeatServiceEnabled || editableServiceDates.length === 0 || serviceType !== 'service') return [];
-    
-    const duration = selectedServiceData?.duration || 60;
-    
-    return editableServiceDates.map((previewDate, index) => {
-      const endTime = new Date(previewDate);
-      endTime.setMinutes(endTime.getMinutes() + duration);
-
-      const dateConflicts = checkConflictsForDateTime(previewDate, endTime);
-
-      const bhErr = checkBusinessHoursForRange(previewDate, endTime);
-      if (bhErr) dateConflicts.push({ type: 'business_hours', message: bhErr } as ConflictInfo);
-      if (!isWorkDay(previewDate)) {
-        const dw = previewDate.getDay();
-        const dn = dw === 0 ? 'domingo' : dw === 6 ? 'sábado' : 'este dia';
-        dateConflicts.push({ type: 'closed_day', message: `Estabelecimento não atende ${dn}` } as ConflictInfo);
-      }
-
-      // Detect overlap with siblings within the same series being created
-      editableServiceDates.forEach((other, otherIdx) => {
-        if (otherIdx === index) return;
-        const otherEnd = new Date(other.getTime() + duration * 60_000);
-        if (previewDate < otherEnd && endTime > other) {
-          dateConflicts.push({
-            type: 'series',
-            message: `Conflito com a sessão ${otherIdx + 1} desta série (${format(other, 'dd/MM HH:mm')})`,
-          } as ConflictInfo);
-        }
-      });
-      
-      // Find alternative if there are conflicts
-      let suggestedDate: Date | null = null;
-      if (dateConflicts.length > 0) {
-        // Try to find an available slot on the same day first
-        const timeSlotIndex = timeSlots.findIndex(slot => slot === format(previewDate, 'HH:mm'));
-        
-        // Try next slots on the same day
-        for (let i = timeSlotIndex + 1; i < timeSlots.length; i++) {
-          const testDate = createDateTimeInTimeZone(previewDate, timeSlots[i], settings?.timezone);
-          const testEnd = new Date(testDate);
-          testEnd.setMinutes(testEnd.getMinutes() + duration);
-          
-          if (checkConflictsForDateTime(testDate, testEnd).length === 0) {
-            suggestedDate = testDate;
-            break;
-          }
-        }
-        
-        // If no slot available on the same day, try next day at the same time
-        if (!suggestedDate) {
-          let tryDate = addDays(previewDate, 1);
-          for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-            if (isWorkDay(tryDate)) {
-              const testEnd = new Date(tryDate);
-              testEnd.setMinutes(testEnd.getMinutes() + duration);
-              
-              if (checkConflictsForDateTime(tryDate, testEnd).length === 0) {
-                suggestedDate = tryDate;
-                break;
-              }
-            }
-            tryDate = addDays(tryDate, 1);
-          }
-        }
-      }
-      
-      return { index, conflicts: dateConflicts, suggestedDate };
-    });
-  }, [editableServiceDates, repeatServiceEnabled, appointments, absences, selectedProfessional, selectedRoom, serviceType, selectedServiceData, timeSlots, isWorkDay, settings?.timezone, checkBusinessHoursForRange]);
+  const servicePreviewConflicts = useMemo<{ index: number; conflicts: ConflictInfo[]; suggestedDate: Date | null }[]>(
+    () => serviceBaseConflicts.map((dateConflicts, index) => ({
+      index,
+      conflicts: dateConflicts,
+      suggestedDate: dateConflicts.length > 0 ? pickSuggestion('service', index, serviceRanges) : null,
+    })),
+    [serviceBaseConflicts, serviceRanges, pickSuggestion],
+  );
 
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
+
+  // Etapas do kit: disponibilidade pela mesma verificação do banco.
+  const kitCheckableRanges = useMemo(
+    () => kitFormValidation.ranges.filter((r): r is { index: number; start: Date; end: Date } => !!r),
+    [kitFormValidation.ranges],
+  );
+  const kitAvailability = useAvailabilityCheck(
+    useMemo(
+      () => kitCheckableRanges.map((r) => ({ ...availabilityScope, start: r.start, end: r.end })),
+      [kitCheckableRanges, availabilityScope],
+    ),
+    open && isKitService && kitCheckableRanges.length > 0,
+  );
+  const kitReasonFor = kitAvailability.reasonFor;
+
+  const kitStepProblems = useMemo(() => {
+    const problems: Record<number, string> = { ...kitFormValidation.problems };
+    kitCheckableRanges.forEach(({ index, start, end }) => {
+      const reason = kitReasonFor({ ...availabilityScope, start, end });
+      if (reason) problems[index] = `${reason}.`;
+    });
+    return problems;
+  }, [kitFormValidation.problems, kitCheckableRanges, kitReasonFor, availabilityScope]);
+
+  const kitStepIssues = useMemo(
+    () =>
+      Object.entries(kitStepProblems).map(
+        ([index, message]) => `${Number(index) + 1}. ${kitComponents[Number(index)]?.service_name || 'Etapa'}: ${message}`,
+      ),
+    [kitComponents, kitStepProblems],
+  );
 
   // Business hours validation - check if selected date/time is within business hours
   const businessHoursError = useMemo(() => {
@@ -1222,20 +1202,32 @@ export function NewAppointmentDialog({
       .filter(Boolean) as (typeof services[0] & { bookingCount: number })[];
   }, [selectedClient, appointments, services]);
 
-  // Get available time slots for the selected date
-  const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
+  // Horários do dia selecionado — disponibilidade vinda da MESMA regra do banco.
+  const daySlotRanges = useMemo(() => {
+    if (!date) return [];
     const duration = selectedServiceData?.duration || 60;
-    
-    return timeSlots.map(slot => {
-      if (!date) return { slot, isAvailable: true, conflictReason: '' };
-
-      const { startTime: slotStart, endTime: slotEnd } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
-      const conflictReason = getAvailabilityConflictReason(slotStart, slotEnd, { appointments, absences, selectedProfessional, selectedRoom });
-      const isAvailable = !conflictReason;
-
-      return { slot, isAvailable, conflictReason };
+    return timeSlots.map((slot) => {
+      const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
+      return { slot, start: startTime, end: endTime };
     });
-  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots, settings?.timezone]);
+  }, [date, selectedServiceData?.duration, timeSlots, settings?.timezone]);
+
+  const daySlotAvailability = useAvailabilityCheck(
+    useMemo(
+      () => daySlotRanges.map((r) => ({ ...availabilityScope, start: r.start, end: r.end })),
+      [daySlotRanges, availabilityScope],
+    ),
+    open && daySlotRanges.length > 0,
+  );
+  const daySlotReasonFor = daySlotAvailability.reasonFor;
+
+  const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
+    if (!date) return timeSlots.map((slot) => ({ slot, isAvailable: true, conflictReason: '' }));
+    return daySlotRanges.map(({ slot, start, end }) => {
+      const conflictReason = daySlotReasonFor({ ...availabilityScope, start, end }) || '';
+      return { slot, isAvailable: !conflictReason, conflictReason };
+    });
+  }, [date, timeSlots, daySlotRanges, daySlotReasonFor, availabilityScope]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

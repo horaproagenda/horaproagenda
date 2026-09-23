@@ -6688,6 +6688,7 @@ export type Database = {
           twilio_from_number: string
         }[]
       }
+      get_sequential_package_integrity_report: { Args: never; Returns: Json }
       get_shared_resource_bookings: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -6948,6 +6949,7 @@ export type Database = {
         Returns: undefined
       }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
+      repair_all_sequential_packages: { Args: never; Returns: Json }
       repair_client_package_schedule_and_history: {
         Args: { _client_id?: string }
         Returns: Json
@@ -6957,6 +6959,10 @@ export type Database = {
         Returns: Json
       }
       repair_payment_integrity: { Args: never; Returns: number }
+      repair_sequential_package_steps: {
+        Args: { _package_id: string }
+        Returns: Json
+      }
       reschedule_kit_appointments: {
         Args: {
           p_appointment_id: string

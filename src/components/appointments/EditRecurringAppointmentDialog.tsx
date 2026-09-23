@@ -114,21 +114,37 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   };
 
 
+  // Inicializa o formulário apenas quando o diálogo abre ou quando muda o
+  // agendamento (id). Re-renderizações do pai (nova referência do objeto,
+  // refetch em tempo real) NÃO podem sobrescrever o que o usuário digitou.
+  const initializedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (appointment) {
-      const start = parseISO(appointment.start_time);
-      const end = parseISO(appointment.end_time);
-      const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
-      setOriginalDuration(durationMinutes);
-      setDate(format(start, 'yyyy-MM-dd'));
-      setStartTime(format(start, 'HH:mm'));
-      setEndTime(format(end, 'HH:mm'));
-      setProfessionalId(appointment.professional_id || 'none');
-      setRoomId(appointment.room_id || 'none');
-      const room = rooms.find(r => r.id === appointment.room_id);
-      setSelectedEquipment(room?.equipment || []);
+    if (!open) {
+      initializedKeyRef.current = null;
+      return;
     }
-  }, [appointment, rooms]);
+    if (!appointment) return;
+    const key = appointment.id;
+    if (initializedKeyRef.current === key) return;
+    initializedKeyRef.current = key;
+    const start = parseISO(appointment.start_time);
+    const end = parseISO(appointment.end_time);
+    const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+    setOriginalDuration(durationMinutes);
+    setDate(format(start, 'yyyy-MM-dd'));
+    setStartTime(format(start, 'HH:mm'));
+    setEndTime(format(end, 'HH:mm'));
+    setProfessionalId(appointment.professional_id || 'none');
+    setRoomId(appointment.room_id || 'none');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, appointment?.id]);
+
+  useEffect(() => {
+    if (!open || !appointment) return;
+    const room = rooms.find(r => r.id === (roomId === 'none' ? null : roomId));
+    setSelectedEquipment(room?.equipment || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, rooms, roomId]);
 
   const handleStartTimeChange = (newStartTime: string) => {
     setStartTime(newStartTime);

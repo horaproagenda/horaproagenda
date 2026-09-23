@@ -1170,20 +1170,32 @@ export function NewAppointmentDialog({
       .filter(Boolean) as (typeof services[0] & { bookingCount: number })[];
   }, [selectedClient, appointments, services]);
 
-  // Get available time slots for the selected date
-  const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
+  // Horários do dia selecionado — disponibilidade vinda da MESMA regra do banco.
+  const daySlotRanges = useMemo(() => {
+    if (!date) return [];
     const duration = selectedServiceData?.duration || 60;
-    
-    return timeSlots.map(slot => {
-      if (!date) return { slot, isAvailable: true, conflictReason: '' };
-
-      const { startTime: slotStart, endTime: slotEnd } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
-      const conflictReason = getAvailabilityConflictReason(slotStart, slotEnd, { appointments, absences, selectedProfessional, selectedRoom });
-      const isAvailable = !conflictReason;
-
-      return { slot, isAvailable, conflictReason };
+    return timeSlots.map((slot) => {
+      const { startTime, endTime } = calculateAppointmentTimesInTimeZone(date, slot, duration, settings?.timezone);
+      return { slot, start: startTime, end: endTime };
     });
-  }, [date, selectedServiceData, appointments, absences, selectedProfessional, selectedRoom, timeSlots, settings?.timezone]);
+  }, [date, selectedServiceData?.duration, timeSlots, settings?.timezone]);
+
+  const daySlotAvailability = useAvailabilityCheck(
+    useMemo(
+      () => daySlotRanges.map((r) => ({ ...availabilityScope, start: r.start, end: r.end })),
+      [daySlotRanges, availabilityScope],
+    ),
+    open && daySlotRanges.length > 0,
+  );
+  const daySlotReasonFor = daySlotAvailability.reasonFor;
+
+  const availableSlots = useMemo<{ slot: string; isAvailable: boolean; conflictReason: string }[]>(() => {
+    if (!date) return timeSlots.map((slot) => ({ slot, isAvailable: true, conflictReason: '' }));
+    return daySlotRanges.map(({ slot, start, end }) => {
+      const conflictReason = daySlotReasonFor({ ...availabilityScope, start, end }) || '';
+      return { slot, isAvailable: !conflictReason, conflictReason };
+    });
+  }, [date, timeSlots, daySlotRanges, daySlotReasonFor, availabilityScope]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

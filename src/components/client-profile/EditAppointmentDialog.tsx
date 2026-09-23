@@ -144,7 +144,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     try {
       const { data: paList } = await supabase
         .from('package_appointments')
-        .select('id, appointment_id, session_number, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status)')
+        .select('id, appointment_id, session_number, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status, professional_id, room_id, equipment_id)')
         .eq('package_id', packageId)
         .order('sequence_order', { ascending: true })
         .order('session_number', { ascending: true });
@@ -155,30 +155,24 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
         if (!apt || ['completed', 'missed', 'cancelled'].includes(apt.status)) continue;
         if (apt.id === appointment!.id) continue;
 
-        // Check conflict using preview RPC: try shifting by +1 day until free (max 14 attempts)
+        // Verificação ÚNICA de disponibilidade (regra do banco): desloca +1 dia
+        // até encontrar horário livre (máx. 14 tentativas).
         let attempts = 0;
         let curStart = new Date(apt.start_time);
         let curEnd = new Date(apt.end_time);
 
         while (attempts < 14) {
-          const { data: conflictsData } = await (supabase as any).rpc('check_appointment_conflict', {
-            _appointment_id: apt.id,
-            _start_time: curStart.toISOString(),
-            _end_time: curEnd.toISOString(),
-          }).maybeSingle?.() ?? { data: null };
+          const reason = await checkAvailabilitySlot({
+            id: apt.id,
+            professionalId: apt.professional_id ?? appointment!.professional_id ?? null,
+            roomId: apt.room_id ?? null,
+            equipmentId: apt.equipment_id ?? null,
+            start: curStart,
+            end: curEnd,
+            status: apt.status,
+          });
 
-          // Fallback: just query appointments overlapping (excluding self)
-          const { data: overlap } = await supabase
-            .from('appointments')
-            .select('id')
-            .neq('id', apt.id)
-            .eq('professional_id', appointment!.professional_id)
-            .not('status', 'in', '(cancelled,missed,rescheduled)')
-            .lt('start_time', curEnd.toISOString())
-            .gt('end_time', curStart.toISOString())
-            .limit(1);
-
-          if (!overlap || overlap.length === 0) break;
+          if (!reason) break;
 
           // Shift +1 day
           curStart = new Date(curStart.getTime() + 24 * 60 * 60 * 1000);

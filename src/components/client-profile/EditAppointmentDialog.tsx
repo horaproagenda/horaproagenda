@@ -19,6 +19,7 @@ import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar'
 import { supabase } from '@/integrations/supabase/client';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { nonWorkingDayMessage } from '@/lib/workingDays';
+import { checkAvailabilitySlot } from '@/lib/availabilityCheck';
 
 interface EditAppointmentDialogProps {
   appointment: Appointment | null;

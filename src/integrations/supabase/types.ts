@@ -6275,6 +6275,7 @@ export type Database = {
         }
         Returns: string
       }
+      appointment_conflict_reasons: { Args: { p_slots: Json }; Returns: Json }
       appointment_has_conflict: {
         Args: {
           p_end: string

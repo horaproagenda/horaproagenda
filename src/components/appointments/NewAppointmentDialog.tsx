@@ -1107,6 +1107,37 @@ export function NewAppointmentDialog({
   // Check if any service preview date has conflicts
   const hasServicePreviewConflicts = servicePreviewConflicts.some(pc => pc.conflicts.length > 0);
 
+  // Etapas do kit: disponibilidade pela mesma verificação do banco.
+  const kitCheckableRanges = useMemo(
+    () => kitFormValidation.ranges.filter((r): r is { index: number; start: Date; end: Date } => !!r),
+    [kitFormValidation.ranges],
+  );
+  const kitAvailability = useAvailabilityCheck(
+    useMemo(
+      () => kitCheckableRanges.map((r) => ({ ...availabilityScope, start: r.start, end: r.end })),
+      [kitCheckableRanges, availabilityScope],
+    ),
+    open && isKitService && kitCheckableRanges.length > 0,
+  );
+  const kitReasonFor = kitAvailability.reasonFor;
+
+  const kitStepProblems = useMemo(() => {
+    const problems: Record<number, string> = { ...kitFormValidation.problems };
+    kitCheckableRanges.forEach(({ index, start, end }) => {
+      const reason = kitReasonFor({ ...availabilityScope, start, end });
+      if (reason) problems[index] = `${reason}.`;
+    });
+    return problems;
+  }, [kitFormValidation.problems, kitCheckableRanges, kitReasonFor, availabilityScope]);
+
+  const kitStepIssues = useMemo(
+    () =>
+      Object.entries(kitStepProblems).map(
+        ([index, message]) => `${Number(index) + 1}. ${kitComponents[Number(index)]?.service_name || 'Etapa'}: ${message}`,
+      ),
+    [kitComponents, kitStepProblems],
+  );
+
   // Business hours validation - check if selected date/time is within business hours
   const businessHoursError = useMemo(() => {
     if (!date || !time || !settings) return null;

@@ -592,66 +592,52 @@ export function NewAppointmentDialog({
     setKitSchedule((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
   };
 
-  // Valida cada etapa do kit: data/horário preenchidos, dia trabalhado,
-  // expediente, conflito com a agenda e choque entre as próprias etapas.
-  const kitStepProblems = useMemo(() => {
-    if (!isKitService) return {} as Record<number, string>;
+  // Valida cada etapa do kit apenas com as regras do formulário: data/horário
+  // preenchidos, dia trabalhado, expediente e choque entre as próprias etapas.
+  // A disponibilidade de profissional/sala/equipamento é verificada mais abaixo,
+  // pela verificação única do banco.
+  const kitFormValidation = useMemo(() => {
     const problems: Record<number, string> = {};
-    const ranges: Array<{ start: Date; end: Date }> = [];
+    const ranges: Array<{ index: number; start: Date; end: Date } | null> = [];
+    if (!isKitService) return { problems, ranges };
+    const placed: Array<{ start: Date; end: Date }> = [];
     kitComponents.forEach((component, index) => {
       const step = kitSchedule[index];
       if (!step?.date || !step?.time) {
         problems[index] = 'Informe data e horário.';
+        ranges.push(null);
         return;
       }
       const start = createDateTimeInTimeZone(step.date, step.time, settings?.timezone);
       const end = new Date(start.getTime() + component.duration * 60_000);
       if (!isWorkDay(step.date)) {
         problems[index] = 'O estabelecimento não atende neste dia.';
+        ranges.push(null);
         return;
       }
       const businessHoursIssue = checkBusinessHoursForRange(start, end);
       if (businessHoursIssue) {
         problems[index] = businessHoursIssue;
+        ranges.push(null);
         return;
       }
-      if (ranges.some((range) => start < range.end && end > range.start)) {
+      if (placed.some((range) => start < range.end && end > range.start)) {
         problems[index] = 'Este horário se choca com outra etapa do kit.';
+        ranges.push(null);
         return;
       }
-      const conflict = getAvailabilityConflictReason(start, end, {
-        appointments: appointments as any,
-        absences: absences as any,
-        selectedProfessional,
-        selectedRoom,
-      });
-      if (conflict) {
-        problems[index] = `${conflict}.`;
-        return;
-      }
-      ranges.push({ start, end });
+      placed.push({ start, end });
+      ranges.push({ index, start, end });
     });
-    return problems;
+    return { problems, ranges };
   }, [
-    absences,
-    appointments,
     checkBusinessHoursForRange,
     isKitService,
     isWorkDay,
     kitComponents,
     kitSchedule,
-    selectedProfessional,
-    selectedRoom,
     settings?.timezone,
   ]);
-
-  const kitStepIssues = useMemo(
-    () =>
-      Object.entries(kitStepProblems).map(
-        ([index, message]) => `${Number(index) + 1}. ${kitComponents[Number(index)]?.service_name || 'Etapa'}: ${message}`,
-      ),
-    [kitComponents, kitStepProblems],
-  );
 
   const appointmentTimes = useMemo(() => {
     if (!date || !time) return null;

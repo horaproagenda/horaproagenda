@@ -18,6 +18,7 @@ import { useAutoHealing } from "@/hooks/useAutoHealing";
 import { useAgendaIntegrityAutoCheck } from "@/hooks/useAgendaIntegrityAutoCheck";
 import { useSaleFlowIntegrityAutoCheck } from "@/hooks/useSaleFlowIntegrityAutoCheck";
 import { usePaymentIntegrityAutoCheck } from "@/hooks/usePaymentIntegrityAutoCheck";
+import { useSequentialPackageIntegrityAutoCheck } from "@/hooks/useSequentialPackageIntegrityAutoCheck";
 import { useLayoutWatchdog } from "@/hooks/useLayoutWatchdog";
 import { recordQuery } from "@/lib/perfMetrics";
 
@@ -156,6 +157,7 @@ function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
   useAgendaIntegrityAutoCheck();
   useSaleFlowIntegrityAutoCheck();
   usePaymentIntegrityAutoCheck();
+  useSequentialPackageIntegrityAutoCheck();
   return <>{children}</>;
 }
 

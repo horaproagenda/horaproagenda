@@ -111,3 +111,14 @@ Nenhuma correção validada pode existir sem teste que a proteja.
 - Financeiro > Pacotes mostra pacotes em andamento por padrão, com filtro de situação
   (em andamento, concluídos, cancelados, todos).
 - Regressão: `src/__tests__/regression/package-sale-registration.test.ts`.
+
+## Etapas de pacote sequencial imutáveis
+
+- O serviço de cada aplicação de um pacote sequencial vem da etapa do modelo
+  (`original_session_number`). Mudar data/hora de uma aplicação nunca renumera as
+  etapas nem troca serviços entre elas.
+- Trava no banco: `trg_protect_sequential_package_step`; reparo:
+  `repair_sequential_package_steps` / `repair_all_sequential_packages`;
+  diagnóstico: `get_sequential_package_integrity_report`.
+- Verificação automática no app: `useSequentialPackageIntegrityAutoCheck` (ligada em `App.tsx`).
+- Teste: `src/__tests__/regression/sequential-package-step-immutability.test.ts`.

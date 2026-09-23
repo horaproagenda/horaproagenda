@@ -449,10 +449,12 @@ serve(async (req) => {
 
     // 8. Conflitos de profissional, sala, equipamento e ausências.
     // Fonte única da verdade: a função do banco `appointment_conflict_reason`,
-    // a mesma usada pelos gatilhos e pelo reagendamento. Ela já ignora status
-    // que não bloqueiam agenda (cancelado, remarcado, falta) e devolve a
-    // explicação em português.
-    if (!body.legacy) {
+    // a mesma usada pelos gatilhos, pelas telas e pelo reagendamento. Ela já
+    // ignora status que não bloqueiam agenda (cancelado, remarcado, falta) e
+    // devolve a explicação em português.
+    // Vale SEMPRE — inclusive no modo `legacy` — para que a tela e o banco
+    // nunca discordem sobre um horário estar livre.
+    {
       const { data: conflictReason, error: conflictError } = await supabase.rpc(
         'appointment_conflict_reason',
         {

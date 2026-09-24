@@ -66,6 +66,7 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     });
 
     const ok = await received;
+    clearTimeout(timer);
     expect(ok).toBe(true);
   });
 });

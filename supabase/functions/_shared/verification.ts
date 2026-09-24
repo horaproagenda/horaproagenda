@@ -33,3 +33,54 @@ export function verificationError(code: unknown): string {
     default: return 'Não foi possível conferir o código. Solicite um novo código.';
   }
 }
+export type VerificationType = 'signup' | 'login';
+
+export function normalizeVerificationType(value: unknown): VerificationType {
+  return String(value ?? '').trim().toLowerCase() === 'login' ? 'login' : 'signup';
+}
+
+/** Comparação em tempo constante (não revela quantos dígitos batem). */
+export function verificationCodesMatch(a: unknown, b: unknown): boolean {
+  const x = normalizeVerificationCode(a);
+  const y = normalizeVerificationCode(b);
+  if (x.length !== 6 || y.length !== 6) return false;
+  let diff = 0;
+  for (let i = 0; i < 6; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return diff === 0;
+}
+
+// deno-lint-ignore no-explicit-any
+type Client = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: any; error: any }> };
+
+/**
+ * Confere o código (com contagem de tentativas no banco). Para 'login'
+ * (redefinição de senha) NÃO marca como usado — isso só acontece em
+ * consumeVerificationCode, depois que a senha foi trocada.
+ */
+export async function checkVerificationCode(
+  client: Client,
+  params: { email: unknown; code: unknown; type: unknown; tokenHash?: string; requestId?: string; grantExpiresAt?: string },
+): Promise<{ valid: boolean; code?: string; remaining?: number; expires_at?: string; error?: unknown }> {
+  const email = normalizeVerificationEmail(params.email);
+  const code = normalizeVerificationCode(params.code);
+  if (!email || code.length !== 6) return { valid: false, code: 'invalid_input' };
+  const { data, error } = await client.rpc('confirm_verification_code', {
+    p_email: email,
+    p_code: code,
+    p_type: normalizeVerificationType(params.type),
+    p_token_hash: params.tokenHash ?? await sha256('login-no-grant'),
+    p_request_id: params.requestId ?? newRequestId(),
+    p_grant_expires_at: params.grantExpiresAt ?? new Date(Date.now() + SIGNUP_GRANT_TTL_SECONDS * 1000).toISOString(),
+  });
+  if (error) return { valid: false, code: 'temporary_error', error };
+  return (data ?? { valid: false, code: 'temporary_error' });
+}
+
+/** Marca o código como usado. Chamar SOMENTE após concluir a ação protegida. */
+export async function consumeVerificationCode(client: Client, params: { email: unknown; code: unknown; type: unknown }) {
+  return client.rpc('consume_verification_code', {
+    p_email: normalizeVerificationEmail(params.email),
+    p_code: normalizeVerificationCode(params.code),
+    p_type: normalizeVerificationType(params.type),
+  });
+}

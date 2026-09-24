@@ -65,15 +65,23 @@ describeIfCreds('Smoke: pacotes standard e sequential', () => {
     pkgIds.push(pkg!.id);
 
     const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-    const { error: stepErr } = await c.from('package_appointments').insert({
-      package_id: pkg!.id,
-      service_id: ctx.serviceId,
-      sequence_order: 1,
-      session_number: 1,
-      interval_after_days: 7,
-      scheduled_date: date,
-      status: 'pending',
-    });
+    const { data: step, error: stepErr } = await c
+      .from('package_appointments')
+      .insert({
+        package_id: pkg!.id,
+        service_id: ctx.serviceId,
+        sequence_order: 1,
+        session_number: 1,
+        interval_after_days: 7,
+        scheduled_date: date,
+        status: 'pending',
+      })
+      .select('id, session_number')
+      .single();
     expect(stepErr).toBeNull();
+    // Triggers de integridade podem renumerar a sessão; o que importa é
+    // que a etapa exista e esteja vinculada ao pacote.
+    expect(step).toBeTruthy();
+    expect(step!.session_number).toBeGreaterThanOrEqual(1);
   });
 });

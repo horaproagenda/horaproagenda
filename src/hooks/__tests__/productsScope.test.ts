@@ -30,7 +30,6 @@ describe('escopo da lista de produtos', () => {
   });
 
   it('usa o caixa do dono do produto na compra', () => {
-    expect(source).toContain("registerQuery.eq('professional_id', ownerProfessionalId)");
-    expect(source).toContain("registerQuery.is('professional_id', null)");
+    expect(source).toContain('resolveFinancialDestination(ownerProfessionalId)');
   });
 });

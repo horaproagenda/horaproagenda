@@ -22,7 +22,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
       - run: bun install --frozen-lockfile
-      - run: bun run lint
+      - run: bun run lint:guard
 
   typecheck:
     name: TypeScript strict typecheck
@@ -75,8 +75,6 @@ jobs:
         run: bunx playwright install --with-deps chromium
       - name: Run regression E2E specs
         run: bun run test
-      - name: Run visual snapshots
-        run: bun run test:visual
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4

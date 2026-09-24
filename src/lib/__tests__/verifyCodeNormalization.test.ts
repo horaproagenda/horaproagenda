@@ -85,7 +85,9 @@ describe('signup verification server contract', () => {
   );
 
   it('uses one atomic database operation for code confirmation and attempt counting', () => {
-    expect(verifySource).toContain('confirm_verification_code');
+    const sharedSource = readFileSync(resolve(__dirname, '../../../supabase/functions/_shared/verification.ts'), 'utf8');
+    expect(verifySource).toContain('checkVerificationCode');
+    expect(sharedSource).toContain('confirm_verification_code');
     expect(verifySource).not.toContain('.from("verification_codes")');
   });
 

@@ -1,3 +1,4 @@
+import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -59,11 +60,8 @@ export function useSingleSales() {
       const { data: { user } } = await supabase.auth.getUser();
       
       // 1. Get the current open cash register
-      const { data: openCashRegister } = await supabase
-        .from('cash_registers')
-        .select('id')
-        .eq('status', 'open')
-        .maybeSingle();
+      const dest = await resolveFinancialDestinationForPackage((sale as any).package_id ?? null);
+      const openCashRegister = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
 
       // 2. Create the sale record
       const { data: saleData, error: saleError } = await supabase

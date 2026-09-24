@@ -1,3 +1,4 @@
+import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -425,13 +426,8 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
 
       // 1. Register refund in cash_transactions (caixa) — only if not already registered
       if (!refundAlreadyRegistered && refundAmount > 0) {
-        const { data: openReg } = await supabase
-          .from('cash_registers')
-          .select('id')
-          .is('closed_at', null)
-          .order('opened_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const dest = await resolveFinancialDestinationForPackage((selected as any).packageId ?? null);
+        const openReg = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
         if (openReg?.id) {
           const { error: txErr } = await supabase.from('cash_transactions').insert({
             cash_register_id: openReg.id,

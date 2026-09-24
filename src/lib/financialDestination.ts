@@ -31,3 +31,17 @@ export async function resolveFinancialDestination(
     cashRegisterId: row?.cash_register_id ?? null,
   };
 }
+
+/** Mesmo destino, a partir do pacote vendido (usa o profissional do pacote). */
+export async function resolveFinancialDestinationForPackage(packageId?: string | null) {
+  let professionalId: string | null = null;
+  if (packageId) {
+    const { data } = await supabase
+      .from('service_packages')
+      .select('professional_id')
+      .eq('id', packageId)
+      .maybeSingle();
+    professionalId = (data as any)?.professional_id ?? null;
+  }
+  return resolveFinancialDestination(professionalId);
+}

@@ -1,3 +1,4 @@
+import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useState, useMemo, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { addMinutes, parse as parseDate, isValid as isValidDate } from 'date-fns';
@@ -409,11 +410,8 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       //     register and the method is not client credit — otherwise the
       //     payment shows in "Financeiro" but is missing in "Caixa".
       if (!isCreditPayment) {
-        const { data: openCash } = await supabase
-          .from('cash_registers')
-          .select('id')
-          .eq('status', 'open')
-          .maybeSingle();
+        const dest = await resolveFinancialDestination(professionalId || null);
+        const openCash = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
         if (openCash?.id) {
           await supabase.from('cash_transactions').insert({
             cash_register_id: openCash.id,

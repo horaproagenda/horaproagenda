@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { VERIFICATION_CODE_TTL_SECONDS, newRequestId, normalizeVerificationEmail } from "../_shared/verification.ts";
+import { VERIFICATION_CODE_TTL_SECONDS, newRequestId, normalizeVerificationEmail, normalizeVerificationType } from "../_shared/verification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,7 +63,7 @@ serve(async (req) => {
 
     const { email, type }: VerificationRequest = await req.json();
     const normalizedEmail = normalizeVerificationEmail(email);
-    const normalizedType = type === "login" ? "login" : "signup";
+    const normalizedType = normalizeVerificationType(type);
     const requestId = newRequestId();
 
     if (!normalizedEmail) {

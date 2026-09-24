@@ -578,7 +578,7 @@ function AuthInner() {
       }
 
       const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: { email: normalizedEmail, newPassword },
+        body: { email: normalizedEmail, code: resetCode.replace(/\D/g, '').trim(), newPassword },
       });
       if (error) {
         let payload: { error?: string; code?: string } | null = null;

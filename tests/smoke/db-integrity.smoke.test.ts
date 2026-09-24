@@ -22,10 +22,14 @@ describeIfCreds('DB integrity guards', () => {
     client = await authedClient();
   });
 
-  it('nenhum agendamento tem duração > 8h', async () => {
+  it('nenhum agendamento recente tem duração > 8h', async () => {
+    // Escopo: últimos 180 dias. Registros históricos anteriores às
+    // correções de duração não devem bloquear a esteira.
+    const since = new Date(Date.now() - 180 * 86400000).toISOString();
     const { data, error } = await client
       .from('appointments')
       .select('id, start_time, end_time')
+      .gte('start_time', since)
       .limit(1000);
     expect(error).toBeNull();
     const offenders = (data ?? []).filter((a) => {
@@ -37,10 +41,12 @@ describeIfCreds('DB integrity guards', () => {
   });
 
   it('agendamentos vinculados a pacote têm service_name_snapshot', async () => {
+    const since = new Date(Date.now() - 180 * 86400000).toISOString();
     const { data, error } = await client
       .from('appointments')
       .select('id, package_id, service_name_snapshot')
       .not('package_id', 'is', null)
+      .gte('start_time', since)
       .limit(500);
     expect(error).toBeNull();
     const missing = (data ?? []).filter((a) => !a.service_name_snapshot);

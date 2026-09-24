@@ -13,6 +13,15 @@ const ISSUE_KEYS = [
 
 const MIN_INTERVAL_MS = 60_000;
 
+const PACKAGE_QUERY_KEYS = [
+  'appointments',
+  'client-appointments',
+  'service_packages',
+  'client_packages',
+  'package_appointments',
+  'package_details',
+] as const;
+
 /**
  * Verificação automática das etapas dos pacotes sequenciais.
  *
@@ -45,14 +54,23 @@ export function useSequentialPackageIntegrityAutoCheck() {
         const issues = ISSUE_KEYS.reduce((sum, key) => sum + Number(report[key] || 0), 0);
 
         if (issues > 0) {
-          const { error: repairError } = await supabase.rpc('repair_all_sequential_packages' as never);
+          const { data: repairData, error: repairError } = await supabase.rpc('repair_all_sequential_packages' as never);
           if (repairError) throw repairError;
-          await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
-          logSyncEvent('sequential-package-integrity:repair', 'ok', { trigger, issues });
-          toast.success('Pacotes sequenciais sincronizados', {
-            description: 'Os serviços de cada aplicação foram conferidos e ajustados.',
-            duration: 5000,
-          });
+          const repair = (repairData || {}) as Record<string, number>;
+          const recordsChanged = Number(repair.recordsChanged || 0);
+
+          if (recordsChanged > 0) {
+            await Promise.all(PACKAGE_QUERY_KEYS.map((queryKey) =>
+              queryClient.invalidateQueries({ queryKey: [queryKey], refetchType: 'active' })
+            ));
+            logSyncEvent('sequential-package-integrity:repair', 'ok', { trigger, issues, recordsChanged });
+            toast.success('Pacotes sequenciais sincronizados', {
+              description: 'Os serviços de cada aplicação foram conferidos e ajustados.',
+              duration: 5000,
+            });
+          } else {
+            logSyncEvent('sequential-package-integrity:unresolved', 'error', { trigger, issues });
+          }
         } else {
           logSyncEvent('sequential-package-integrity:healthy', 'ok', { trigger });
         }

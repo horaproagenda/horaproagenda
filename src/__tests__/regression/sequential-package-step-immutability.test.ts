@@ -44,8 +44,11 @@ describe('etapas de pacote sequencial são imutáveis', () => {
     const sql = latestWith('get_sequential_package_integrity_report');
     expect(sql).toMatch(/repair_sequential_package_steps/);
     expect(sql).toMatch(/duplicateSteps/);
+    expect(sql).toMatch(/sp\.is_active = true/);
+    expect(sql).toMatch(/pa\.appointment_id IS NULL/);
     const repairSql = latestWith('repair_all_sequential_packages');
     expect(repairSql).toMatch(/packagesRepaired/);
+    expect(repairSql).toMatch(/recordsChanged/);
   });
 
   it('a verificação automática está ligada no app', () => {
@@ -57,5 +60,8 @@ describe('etapas de pacote sequencial são imutáveis', () => {
     );
     expect(hook).toMatch(/get_sequential_package_integrity_report/);
     expect(hook).toMatch(/repair_all_sequential_packages/);
+    expect(hook).toMatch(/recordsChanged > 0/);
+    expect(hook).toMatch(/PACKAGE_QUERY_KEYS/);
+    expect(hook).not.toMatch(/predicate:\s*\(\) => true/);
   });
 });

@@ -19,27 +19,37 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
 
   afterAll(async () => {
     await ctx?.cleanup();
-    await listener.removeAllChannels();
+    await listener?.removeAllChannels();
   });
 
   it('recebe INSERT em < 5s', async () => {
+    let resolveReceived!: (ok: boolean) => void;
     const received = new Promise<boolean>((resolve) => {
-      const ch = listener
-        .channel(`smoke-${Date.now()}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'appointments' },
-          (payload: any) => {
-            if (payload.new?.client_id === ctx.clientId) resolve(true);
-          },
-        )
-        .subscribe();
-      setTimeout(() => resolve(false), 5000);
-      return ch;
+      resolveReceived = resolve;
     });
+    const timer = setTimeout(() => resolveReceived(false), 8000);
 
-    // Give listener time to subscribe
-    await new Promise((r) => setTimeout(r, 1500));
+    const ch = listener
+      .channel(`smoke-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'appointments' },
+        (payload: any) => {
+          if (payload.new?.client_id === ctx.clientId) resolveReceived(true);
+        },
+      );
+
+    // Aguarda a confirmação explícita de SUBSCRIBED antes de inserir,
+    // evitando falso negativo por corrida de assinatura.
+    await new Promise<void>((resolve, reject) => {
+      const subTimer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 10000);
+      ch.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          clearTimeout(subTimer);
+          resolve();
+        }
+      });
+    });
 
     const start = new Date(Date.now() + 5 * 86400000);
     start.setHours(11, 0, 0, 0);

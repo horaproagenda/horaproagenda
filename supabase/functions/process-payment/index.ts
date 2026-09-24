@@ -318,55 +318,27 @@ serve(async (req) => {
     // OWN financial account and OWN cash register; every other employment type
     // (administrador, funcionario, comissionado) keeps using the clinic's.
     const appointmentProfessionalId: string | null = appointment.professional_id || null;
-    let appointmentEmploymentType: string | null = null;
-
-    if (appointmentProfessionalId) {
-      const { data: professionalRow } = await supabase
-        .from('professionals')
-        .select('id, employment_type')
-        .eq('id', appointmentProfessionalId)
-        .eq('account_owner_id', callerOwner)
-        .maybeSingle();
-      appointmentEmploymentType = professionalRow?.employment_type ?? null;
-    }
-
-    const isIndependentProfessional = appointmentEmploymentType === 'independente';
-
-    // Financial account that must receive the entry
-    let targetFinancialAccountId: string | null = null;
-    // Professional stamped on financial records (null = clinic)
-    const targetProfessionalId: string | null = isIndependentProfessional ? appointmentProfessionalId : null;
-    // Cash register that must receive the movement
-    let targetCashRegisterId: string | null = body.cash_register_id || null;
-
-    const loadFinancialAccount = async () => {
-      const query = supabase
-        .from('financial_accounts')
-        .select('id')
-        .eq('account_owner_id', callerOwner);
-      const { data } = isIndependentProfessional && appointmentProfessionalId
-        ? await query.eq('professional_id', appointmentProfessionalId).maybeSingle()
-        : await query.is('professional_id', null).maybeSingle();
-      return data?.id ?? null;
-    };
-
-    targetFinancialAccountId = await loadFinancialAccount();
-    if (!targetFinancialAccountId) {
-      // Accounts are created automatically; make sure they exist before writing.
+    // Destino único (mesma regra do app): resolve_financial_destination lê o vínculo.
+    let { data: destRows } = await supabase.rpc('resolve_financial_destination', {
+      p_professional_id: appointmentProfessionalId,
+      p_owner: callerOwner,
+    });
+    let dest: any = Array.isArray(destRows) ? destRows[0] : destRows;
+    if (!dest?.financial_account_id) {
       await supabase.rpc('ensure_financial_accounts', { _owner: callerOwner });
-      targetFinancialAccountId = await loadFinancialAccount();
+      ({ data: destRows } = await supabase.rpc('resolve_financial_destination', {
+        p_professional_id: appointmentProfessionalId,
+        p_owner: callerOwner,
+      }));
+      dest = Array.isArray(destRows) ? destRows[0] : destRows;
     }
+    const isIndependentProfessional = dest?.employment_type === 'independente';
+    const targetFinancialAccountId: string | null = dest?.financial_account_id ?? null;
+    const targetProfessionalId: string | null = dest?.professional_id ?? null;
+    let targetCashRegisterId: string | null = body.cash_register_id || dest?.cash_register_id || null;
 
     if (isIndependentProfessional && appointmentProfessionalId) {
-      const { data: ownRegister } = await supabase
-        .from('cash_registers')
-        .select('id, status')
-        .eq('account_owner_id', callerOwner)
-        .eq('professional_id', appointmentProfessionalId)
-        .eq('status', 'open')
-        .order('opened_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const ownRegister = dest?.cash_register_id ? { id: dest.cash_register_id } : null;
 
       if (!ownRegister) {
         return new Response(
@@ -389,6 +361,7 @@ serve(async (req) => {
         .select('id, status')
         .eq('id', body.cash_register_id)
         .eq('account_owner_id', callerOwner)
+        .is('professional_id', null)
         .single();
 
       if (cashError || !cashRegister) {

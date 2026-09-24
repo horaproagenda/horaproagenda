@@ -1,3 +1,4 @@
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useState, useEffect, useMemo } from 'react';
 import { format, parseISO, addDays, addMinutes, isWithinInterval, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -468,14 +469,11 @@ export function PackageSessionsManager({
           previousScheduledDate = safeDate;
 
           if (session.appointment_id) {
-            const { error: aptError } = await supabase.rpc('reschedule_package_appointment_safely', {
-              p_appointment_id: session.appointment_id,
-              p_new_start: safeDate.toISOString(),
-              p_new_end: addMinutes(safeDate, duration).toISOString(),
-              p_expected_version: null,
+            await rescheduleAppointment({
+              appointmentId: session.appointment_id,
+              start: safeDate,
+              end: addMinutes(safeDate, duration),
             });
-
-            if (aptError) throw aptError;
           }
 
           // Update the package_appointment
@@ -532,14 +530,11 @@ Até breve! ✨`;
         }
 
         if (selectedSession.appointment_id) {
-          const { error: aptError } = await supabase.rpc('reschedule_package_appointment_safely', {
-            p_appointment_id: selectedSession.appointment_id,
-            p_new_start: newDateTime.toISOString(),
-            p_new_end: addMinutes(newDateTime, singleDuration).toISOString(),
-            p_expected_version: null,
+          await rescheduleAppointment({
+            appointmentId: selectedSession.appointment_id,
+            start: newDateTime,
+            end: addMinutes(newDateTime, singleDuration),
           });
-
-          if (aptError) throw aptError;
         }
 
         const { error: sessionError } = await supabase

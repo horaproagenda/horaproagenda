@@ -1,3 +1,4 @@
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -445,16 +446,17 @@ export function useAppointments() {
       // Sessões de pacote (comum, sequencial ou kit) alteram data/hora e recursos
       // sempre pela operação atômica: ela valida o conflito real com o novo
       // profissional/sala/equipamento e não move as demais aplicações.
-      if (currentPackageAppointmentId && (hasTimeChange || Object.keys(fieldUpdates).length > 0)) {
-        const { data: rpcData, error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
-          p_appointment_id: id,
-          p_new_start: hasTimeChange ? (updates.start_time ?? current.start_time) : null,
-          p_new_end: hasTimeChange ? (updates.end_time ?? current.end_time) : null,
-          p_expected_version: expectedVersion ?? null,
-          p_field_updates: fieldUpdates,
+      // Toda troca de data/hora (avulso, série ou pacote) passa pela função
+      // única de reagendamento.
+      if (hasTimeChange || (currentPackageAppointmentId && Object.keys(fieldUpdates).length > 0)) {
+        const rpcData = await rescheduleAppointment({
+          appointmentId: id,
+          start: hasTimeChange ? (updates.start_time ?? current.start_time) : null,
+          end: hasTimeChange ? (updates.end_time ?? current.end_time) : null,
+          expectedVersion: expectedVersion ?? null,
+          fieldUpdates: fieldUpdates as any,
         });
 
-        if (error) throw error;
         if (!rpcData) throw await resolveBlockedWriteError(id);
 
         if (updates.status === undefined) {

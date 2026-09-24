@@ -1,3 +1,4 @@
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -811,13 +812,12 @@ export function AppointmentDetailDialog({
 
     try {
       // Pacote: usar RPC segura para preservar a mesma sessão (não duplicar).
-      const { error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
-        p_appointment_id: appointment.id,
-        p_new_start: newStartTime.toISOString(),
-        p_new_end: newEndTime.toISOString(),
-        p_expected_version: appointment.version,
+      await rescheduleAppointment({
+        appointmentId: appointment.id,
+        start: newStartTime,
+        end: newEndTime,
+        expectedVersion: appointment.version,
       });
-      if (error) throw error;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['appointments'] }),
         queryClient.invalidateQueries({ queryKey: ['service_packages'] }),
@@ -904,13 +904,12 @@ export function AppointmentDetailDialog({
       if (appointment.package_appointment) {
         const proceed = await runPackageRescheduleAudit(newStart.toISOString());
         if (!proceed) return;
-        const { error } = await (supabase as any).rpc('reschedule_package_appointment_safely', {
-          p_appointment_id: appointment.id,
-          p_new_start: newStart.toISOString(),
-          p_new_end: newEnd.toISOString(),
-          p_expected_version: appointment.version,
+        await rescheduleAppointment({
+          appointmentId: appointment.id,
+          start: newStart,
+          end: newEnd,
+          expectedVersion: appointment.version,
         });
-        if (error) throw error;
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['appointments'] }),
           queryClient.invalidateQueries({ queryKey: ['service_packages'] }),

@@ -1,3 +1,4 @@
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -182,10 +183,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
         }
 
         if (attempts > 0 && attempts < 14) {
-          await supabase
-            .from('appointments')
-            .update({ start_time: curStart.toISOString(), end_time: curEnd.toISOString() })
-            .eq('id', apt.id);
+          await rescheduleAppointment({ appointmentId: apt.id, start: curStart, end: curEnd });
           shifted++;
           toast.warning(`Sessão #${pa.session_number}: choque detectado, reagendada para ${format(curStart, "dd/MM/yyyy 'às' HH:mm")}.`);
         }

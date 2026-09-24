@@ -6963,6 +6963,55 @@ export type Database = {
         Args: { _package_id: string }
         Returns: Json
       }
+      reschedule_appointment: {
+        Args: {
+          p_appointment_id: string
+          p_expected_version?: number
+          p_field_updates?: Json
+          p_new_end?: string
+          p_new_start?: string
+        }
+        Returns: {
+          account_owner_id: string
+          amount_paid: number | null
+          client_id: string
+          composite_group_id: string | null
+          composite_sequence_order: number | null
+          confirmation_responded_at: string | null
+          confirmation_token: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          end_time: string
+          equipment_id: string | null
+          financial_model:
+            | Database["public"]["Enums"]["appointment_financial_model"]
+            | null
+          id: string
+          notes: string | null
+          package_appointment_id: string | null
+          package_name_snapshot: string | null
+          payment_date: string | null
+          payment_methods: string[] | null
+          payment_status: string | null
+          professional_id: string | null
+          recurring_group_id: string | null
+          room_id: string | null
+          service_id: string | null
+          service_name_snapshot: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reschedule_kit_appointments: {
         Args: {
           p_appointment_id: string

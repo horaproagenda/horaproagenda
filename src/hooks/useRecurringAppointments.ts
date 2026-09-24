@@ -1,3 +1,4 @@
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -297,16 +298,7 @@ Até breve! ✨`;
       const newStart = params.new_start_time;
       const newEnd = params.new_end_time ?? new Date(newStart.getTime() + originalDuration);
 
-      const { data: updatedOriginal, error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          start_time: newStart.toISOString(),
-          end_time: newEnd.toISOString(),
-          updated_by: user.id,
-        })
-        .eq('id', originalApt.id)
-        .select()
-        .single();
+      const { data: updatedOriginal, error: updateError } = await rescheduleAppointment({ appointmentId: originalApt.id, start: newStart.toISOString(), end: newEnd.toISOString() }).then((data) => ({ data, error: null as any }), (error) => ({ data: null as any, error }));
 
       if (updateError || !updatedOriginal) {
         throw new Error(
@@ -676,24 +668,12 @@ Até breve! ✨`;
         const rollback: Array<{ id: string; start: string; end: string }> = [];
         for (const p of proposed) {
           rollback.push({ id: p.apt.id, start: p.apt.start_time, end: p.apt.end_time });
-          const { data: updated, error: updErr } = await supabase
-            .from('appointments')
-            .update({
-              start_time: p.start.toISOString(),
-              end_time: p.end.toISOString(),
-              updated_by: user.id,
-            })
-            .eq('id', p.apt.id)
-            .select()
-            .single();
+          const { data: updated, error: updErr } = await rescheduleAppointment({ appointmentId: p.apt.id, start: p.start.toISOString(), end: p.end.toISOString() }).then((data) => ({ data, error: null as any }), (error) => ({ data: null as any, error }));
 
           if (updErr || !updated) {
             // Rollback previously applied updates
             for (const rb of rollback.slice(0, -1)) {
-              await supabase
-                .from('appointments')
-                .update({ start_time: rb.start, end_time: rb.end })
-                .eq('id', rb.id);
+              await rescheduleAppointment({ appointmentId: rb.id, start: rb.start, end: rb.end }).catch(() => undefined);
             }
             throw new Error(
               `Falha ao atualizar etapa ${p.pa.session_number ?? '?'}: ${updErr?.message || 'erro desconhecido'}. Alterações revertidas.`
@@ -733,16 +713,7 @@ Até breve! ✨`;
         );
         const newAptEnd = new Date(newAptStart.getTime() + duration);
 
-        const { data: updated, error: updateError } = await supabase
-          .from('appointments')
-          .update({
-            start_time: newAptStart.toISOString(),
-            end_time: newAptEnd.toISOString(),
-            updated_by: user.id,
-          })
-          .eq('id', apt.id)
-          .select()
-          .single();
+        const { data: updated, error: updateError } = await rescheduleAppointment({ appointmentId: apt.id, start: newAptStart.toISOString(), end: newAptEnd.toISOString() }).then((data) => ({ data, error: null as any }), (error) => ({ data: null as any, error }));
 
         if (updateError || !updated) {
           throw new Error(

@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    # Permite disparar manualmente pelo botão "Run workflow" no GitHub.
 
 concurrency:
   group: ci-${{ github.ref }}

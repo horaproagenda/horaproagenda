@@ -50,7 +50,7 @@ export function verificationCodesMatch(a: unknown, b: unknown): boolean {
 }
 
 // deno-lint-ignore no-explicit-any
-type Client = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: any; error: any }> };
+type Client = any;
 
 /**
  * Confere o código (com contagem de tentativas no banco). Para 'login'

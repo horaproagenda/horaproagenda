@@ -32,7 +32,10 @@ Precisam de credenciais no GitHub → Settings → Secrets:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-Sem os secrets, o job passa (`describe.skip`) — mas recomendamos configurar.
+Sem os secrets, o job **falha** (trava `SMOKE_REQUIRE_CREDS=1` + checagem de
+testes pulados). Localmente, sem credenciais, os testes são pulados com aviso
+explícito de que isso não é aprovação. Use uma conta de teste dedicada
+(Administrador, e-mail confirmado, com registro de profissional).
 
 ## Rodar tudo localmente antes de subir
 

@@ -29,7 +29,29 @@ export function tag(label: string) {
   return `${label} ${SMOKE_TAG}`;
 }
 
-/** Skip wrapper that prints helpful message when creds are missing */
+/**
+ * Trava contra falso positivo: no CI (ou com SMOKE_REQUIRE_CREDS=1) a
+ * ausência de credenciais FALHA a execução em vez de pular os testes.
+ * Localmente, sem a flag, os testes são pulados com aviso explícito.
+ */
+export const requireCreds =
+  process.env.SMOKE_REQUIRE_CREDS === '1' || process.env.CI === 'true';
+
+if (!hasCreds && requireCreds) {
+  throw new Error(
+    'Smoke tests: SMOKE_TEST_EMAIL e SMOKE_TEST_PASSWORD são obrigatórios. ' +
+      'Configure-os em GitHub > Settings > Secrets and variables > Actions. ' +
+      'Os testes de permissão não serão pulados silenciosamente.',
+  );
+}
+
+if (!hasCreds) {
+  console.warn(
+    '\n⚠️  Smoke tests autenticados PULADOS: defina SMOKE_TEST_EMAIL/SMOKE_TEST_PASSWORD. ' +
+      'Isto NÃO é uma aprovação.\n',
+  );
+}
+
 export const describeIfCreds = hasCreds
   ? describe
   : (name: string, fn: () => void) =>

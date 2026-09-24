@@ -6445,6 +6445,10 @@ export type Database = {
         Args: { p_email: string; p_token_hash: string }
         Returns: Json
       }
+      consume_verification_code: {
+        Args: { p_code: string; p_email: string; p_type: string }
+        Returns: boolean
+      }
       convert_product_quantity: {
         Args: { _from: string; _to: string; _value: number }
         Returns: number

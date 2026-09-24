@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { checkVerificationCode, consumeVerificationCode, normalizeVerificationEmail, verificationError } from "../_shared/verification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 interface ResetPasswordRequest {
   email: string;
+  code: string;
   newPassword: string;
 }
 
@@ -147,11 +149,11 @@ serve(async (req) => {
   }
 
   try {
-    const { email, newPassword }: ResetPasswordRequest = await req.json();
-    const normalizedEmail = (email ?? "").toString().trim().toLowerCase();
+    const { email, code, newPassword }: ResetPasswordRequest = await req.json();
+    const normalizedEmail = normalizeVerificationEmail(email);
 
-    if (!normalizedEmail || !newPassword) {
-      return jsonResponse({ code: "missing_fields", error: "Informe o e-mail e a nova senha." }, 400);
+    if (!normalizedEmail || !newPassword || !code) {
+      return jsonResponse({ code: "missing_fields", error: "Informe o e-mail, o código e a nova senha." }, 400);
     }
 
     const policyError = validatePassword(newPassword);
@@ -166,37 +168,20 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // SEGURANÇA: exige um código de verificação confirmado recentemente para
-    // este e-mail. Janela de 15 min (passe de redefinição) para que o usuário
-    // possa tentar salvar a senha mais de uma vez sem pedir um novo código.
-    const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const { data: usedCode, error: codeError } = await supabaseAdmin
-      .from("verification_codes")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .not("used_at", "is", null)
-      .gte("used_at", windowStart)
-      .order("used_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (codeError) {
-      console.error("[reset-password] code check failed:", codeError);
+    // SEGURANÇA: confere o código de novo aqui (mesma regra de verify-code).
+    // Conferir NÃO gasta o código; ele só é marcado como usado depois que a
+    // senha for trocada com sucesso.
+    const check = await checkVerificationCode(supabaseAdmin, { email: normalizedEmail, code, type: "login" });
+    if (check.code === "temporary_error") {
+      console.error("[reset-password] code check failed:", check.error);
       return jsonResponse(
         { code: "code_check_failed", error: "Não foi possível confirmar o código agora. Tente novamente." },
         500,
       );
     }
-
-    if (!usedCode) {
-      console.warn("[reset-password] no confirmed code in window", { email: normalizedEmail });
-      return jsonResponse(
-        {
-          code: "code_expired",
-          error: "O código expirou. Solicite um novo código e confirme novamente para trocar a senha.",
-        },
-        400,
-      );
+    if (!check.valid) {
+      console.warn("[reset-password] code rejected", { email: normalizedEmail, reason: check.code });
+      return jsonResponse({ code: "code_expired", reason: check.code, error: verificationError(check.code) }, 400);
     }
 
     console.log("[reset-password] code confirmed, locating user", { email: normalizedEmail });
@@ -231,8 +216,9 @@ serve(async (req) => {
       return jsonResponse({ code: classified.code, error: classified.error }, classified.status);
     }
 
-    // Só consome o código depois do sucesso real.
-    await supabaseAdmin.from("verification_codes").delete().eq("email", normalizedEmail);
+    // Só consome o código depois que a senha foi efetivamente trocada.
+    const { error: consumeError } = await consumeVerificationCode(supabaseAdmin, { email: normalizedEmail, code, type: "login" });
+    if (consumeError) console.error("[reset-password] consume failed", consumeError.message);
 
     console.log("[reset-password] password updated", { email: normalizedEmail });
 

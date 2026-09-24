@@ -4,8 +4,10 @@ import {
   SIGNUP_GRANT_TTL_SECONDS,
   newOpaqueToken,
   newRequestId,
+  checkVerificationCode,
   normalizeVerificationCode,
   normalizeVerificationEmail,
+  normalizeVerificationType,
   sha256,
   verificationError,
 } from "../_shared/verification.ts";
@@ -35,7 +37,7 @@ serve(async (req) => {
 
   try {
     const body: VerifyRequest = await req.json();
-    const wantedType = (body?.type ?? "").toString().trim().toLowerCase();
+    const wantedType = normalizeVerificationType(body?.type);
     const email = normalizeVerificationEmail(body?.email);
     const code = normalizeVerificationCode(body?.code);
     const requestId = newRequestId();
@@ -53,17 +55,15 @@ serve(async (req) => {
 
     const grantToken = wantedType === "signup" ? newOpaqueToken() : "login-no-grant";
     const grantExpiresAt = new Date(Date.now() + SIGNUP_GRANT_TTL_SECONDS * 1000).toISOString();
-    const { data: result, error: confirmError } = await supabaseClient.rpc(
-      "confirm_verification_code",
-      {
-        p_email: email,
-        p_code: code,
-        p_type: wantedType,
-        p_token_hash: await sha256(grantToken),
-        p_request_id: requestId,
-        p_grant_expires_at: grantExpiresAt,
-      },
-    );
+    const result = await checkVerificationCode(supabaseClient, {
+      email,
+      code,
+      type: wantedType,
+      tokenHash: await sha256(grantToken),
+      requestId,
+      grantExpiresAt,
+    });
+    const confirmError = result.code === 'temporary_error' ? (result.error as { message?: string }) ?? { message: 'rpc' } : null;
 
     if (confirmError) {
       console.error("[verify-code] confirmation failed", { requestId, message: confirmError.message });

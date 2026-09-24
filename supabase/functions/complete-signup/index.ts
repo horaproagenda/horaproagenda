@@ -367,14 +367,21 @@ serve(async (req) => {
       console.warn("complete-signup business_settings insert failed:", e);
     }
 
-    // Cria o primeiro profissional vinculado ao admin
-    try {
-      const { count: profCount } = await supabaseAdmin
+    // Cria o primeiro profissional vinculado ao admin.
+    // OBRIGATÓRIO: sem este registro a conta fica com a agenda vazia. Se falhar,
+    // a conta criada agora é desfeita e o cadastro falha de forma evidente.
+    {
+      const { data: existingProf, error: profLookupError } = await supabaseAdmin
         .from("professionals")
-        .select("id", { count: "exact", head: true })
-        .eq("account_owner_id", userId);
-      if ((profCount ?? 0) === 0) {
-        await supabaseAdmin.from("professionals").insert({
+        .select("id")
+        .eq("account_owner_id", userId)
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
+
+      let profError: unknown = profLookupError;
+      if (!profLookupError && !existingProf) {
+        const { error } = await supabaseAdmin.from("professionals").insert({
           name: fullName.trim(),
           email: normalizedEmail,
           phone: phoneE164 || clinicPhone?.trim() || null,
@@ -404,10 +411,23 @@ serve(async (req) => {
           city: clinicCity?.trim() || city?.trim() || null,
           state: (clinicState || state || "").toUpperCase() || null,
         });
-
+        profError = error;
       }
-    } catch (e) {
-      console.warn("complete-signup first professional insert failed:", e);
+
+      if (profError) {
+        console.error("complete-signup first professional insert failed:", profError);
+        // Só desfaz a conta se ela foi criada nesta chamada (retentativas mantêm a existente).
+        if (created?.user?.id === userId) {
+          try { await supabaseAdmin.from("user_roles").delete().eq("user_id", userId); } catch (_) { /* segue */ }
+          try { await supabaseAdmin.from("profiles").delete().eq("id", userId); } catch (_) { /* segue */ }
+          try { await supabaseAdmin.auth.admin.deleteUser(userId); } catch (_) { /* segue */ }
+        }
+        return jsonResponse({
+          success: false,
+          code: "professional_record_failed",
+          error: "Não foi possível concluir seu cadastro agora. Nenhuma conta foi criada — tente novamente.",
+        }, 500);
+      }
     }
 
     // Cria/atualiza cliente no Stripe (best-effort — não bloqueia signup se falhar)

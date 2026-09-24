@@ -164,7 +164,7 @@ serve(async (req) => {
           email,
           user_id: newUserId,
           account_owner_id: callerId,
-          active: true,
+          is_active: true,
         });
 
         if (profErr) {

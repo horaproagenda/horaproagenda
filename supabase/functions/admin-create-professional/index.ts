@@ -109,6 +109,8 @@ serve(async (req) => {
     } else {
       userId = created.user?.id ?? null;
     }
+    // Usuário criado nesta chamada: se o cadastro do profissional falhar, é desfeito.
+    const createdNowId: string | null = created?.user?.id ?? null;
     if (!userId) throw new Error('Falha ao obter user id.');
 
     // 2. Resolve caller's tenant (account_owner_id) for tenant isolation
@@ -132,6 +134,11 @@ serve(async (req) => {
     for (const k of ALLOWED_FIELDS) {
       if (p[k] !== undefined) safePayload[k] = p[k];
     }
+    // A coluna real é is_active.
+    if (safePayload.active !== undefined) {
+      safePayload.is_active = !!safePayload.active;
+      delete safePayload.active;
+    }
     const EMPLOYMENT_TYPES = ['independente', 'comissionado', 'funcionario', 'administrador'];
     if (safePayload.employment_type && !EMPLOYMENT_TYPES.includes(safePayload.employment_type)) {
       delete safePayload.employment_type;
@@ -148,7 +155,17 @@ serve(async (req) => {
         account_owner_id: callerOwnerId, // always from server context
       };
       const { data: inserted, error: insErr } = await supaAdmin.from('professionals').insert(insertPayload).select('id').single();
-      if (insErr) throw insErr;
+      if (insErr || !inserted) {
+        console.error('[admin-create-professional] professional insert failed', insErr);
+        if (createdNowId) {
+          try { await supaAdmin.auth.admin.deleteUser(createdNowId); } catch (_) { /* segue */ }
+        }
+        return new Response(JSON.stringify({
+          success: false,
+          code: 'professional_record_failed',
+          error: 'Não foi possível criar o cadastro do profissional. Nenhum usuário foi criado — tente novamente.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       profId = inserted.id;
     } else {
       // Tenant check: target professional must belong to caller's account

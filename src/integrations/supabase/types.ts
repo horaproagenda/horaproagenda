@@ -7070,6 +7070,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resolve_financial_destination: {
+        Args: { p_owner?: string; p_professional_id?: string }
+        Returns: {
+          cash_register_id: string
+          employment_type: string
+          financial_account_id: string
+          professional_id: string
+        }[]
+      }
       resolve_service_id_for_package: {
         Args: { _package_id: string; _sequence_order?: number }
         Returns: string

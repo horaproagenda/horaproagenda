@@ -7,13 +7,13 @@ const dialog = readFileSync(resolve(__dirname, '../../components/appointments/Ap
 
 describe('baixa de pagamento: profissional independente recebe na própria conta e caixa', () => {
   it('consulta o tipo de vínculo do profissional do atendimento', () => {
-    expect(fn).toContain("select('id, employment_type')");
-    expect(fn).toContain("appointmentEmploymentType === 'independente'");
+    expect(fn).toContain("rpc('resolve_financial_destination'");
+    expect(fn).toContain("dest?.employment_type === 'independente'");
   });
 
   it('bloqueia a baixa quando o independente não tem caixa próprio aberto', () => {
     expect(fn).toContain('Abra o caixa do profissional antes de registrar este pagamento.');
-    expect(fn).toMatch(/\.eq\('professional_id', appointmentProfessionalId\)\s*\n\s*\.eq\('status', 'open'\)/);
+    expect(fn).toContain('const ownRegister = dest?.cash_register_id ? { id: dest.cash_register_id } : null;');
   });
 
   it('nunca usa o caixa enviado pelo cliente quando o profissional é independente', () => {
@@ -32,7 +32,7 @@ describe('baixa de pagamento: profissional independente recebe na própria conta
 
   it('marca o profissional nos registros financeiros e de caixa', () => {
     expect(fn).toContain('professional_id: targetProfessionalId,');
-    expect(fn).toContain("const targetProfessionalId: string | null = isIndependentProfessional ? appointmentProfessionalId : null;");
+    expect(fn).toContain("const targetProfessionalId: string | null = dest?.professional_id ?? null;");
   });
 
   it('cria as contas financeiras quando ainda não existem', () => {

@@ -1,3 +1,4 @@
+import { resolveFinancialDestination } from '@/lib/financialDestination';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { deductStockForSale } from '@/lib/saleStockDeduction';
 import { format } from 'date-fns';
@@ -781,11 +782,17 @@ export function SaleForm() {
         ? `Boleto Bancário ${boletoInstallments}x: ${itemNames} - ${selectedClient?.name}`
         : `${itemNames} - ${selectedClient?.name}`;
       
-      if (currentOpenRegister && !isClientCredit) {
+      // Destino único: caixa de acordo com o vínculo do profissional da venda.
+      const saleDest = await resolveFinancialDestination(selectedProfessionalId || null);
+      const saleRegister = saleDest.cashRegisterId ? { id: saleDest.cashRegisterId } : null;
+      if (!saleRegister && !isClientCredit && !isBoleto && !isCheque) {
+        throw new Error('Abra o caixa do profissional antes de registrar esta venda.');
+      }
+      if (saleRegister && !isClientCredit) {
         // Skip cash entry for boleto/cheque - money not received yet
         if (!isBoleto && !isCheque) {
           await supabase.from('cash_transactions').insert({
-            cash_register_id: currentOpenRegister.id,
+            cash_register_id: saleRegister.id,
             type: 'income',
             category: 'sale',
             description: isDinheiro ? `${saleDescription} (Dinheiro físico)` : saleDescription,
@@ -801,7 +808,7 @@ export function SaleForm() {
             if (changeMethod === 'cash') {
               // Cash change goes out of register
               await supabase.from('cash_transactions').insert({
-                cash_register_id: currentOpenRegister.id,
+                cash_register_id: saleRegister.id,
                 type: 'expense',
                 category: 'change',
                 description: `Troco em dinheiro: ${selectedClient?.name}`,
@@ -812,7 +819,7 @@ export function SaleForm() {
             } else if (changeMethod === 'pix') {
               // PIX change - recorded as outgoing PIX transfer
               await supabase.from('cash_transactions').insert({
-                cash_register_id: currentOpenRegister.id,
+                cash_register_id: saleRegister.id,
                 type: 'expense',
                 category: 'change',
                 description: `Troco via PIX: ${selectedClient?.name}`,

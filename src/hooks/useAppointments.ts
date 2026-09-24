@@ -1,3 +1,4 @@
+import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -780,13 +781,8 @@ export function useAppointments() {
         const today = new Date().toISOString().split('T')[0];
 
         // Find an open cash register to attach the outflow to (optional)
-        const { data: openRegister } = await supabase
-          .from('cash_registers')
-          .select('id')
-          .eq('status', 'open')
-          .order('opened_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const dest = await resolveFinancialDestinationForPackage(packageId);
+        const openRegister = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
 
         const { data: { user } } = await supabase.auth.getUser();
 

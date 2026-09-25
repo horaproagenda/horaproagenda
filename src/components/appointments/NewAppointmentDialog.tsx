@@ -2744,12 +2744,7 @@ Até breve! ✨`;
                                 </Alert>
                               )}
 
-                              {hasServiceIntervalViolations && (
-                                <Alert className="mb-2 py-2">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                    <span>
-                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
+                               estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
                                     </span>
                                     <Button
                                       type="button"

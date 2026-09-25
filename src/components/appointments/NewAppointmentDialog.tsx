@@ -1414,8 +1414,22 @@ export function NewAppointmentDialog({
         // Existing sequential packages may already have sessions linked by the
         // legacy-history flow, so start from the next pending step instead of
         // always using step 1.
+        // ID ÚNICO DE ETAPA: busca as etapas pendentes do pacote em ordem
+        // original. A data i do formulário é vinculada exatamente à etapa
+        // pendingSteps[i] — nunca à "próxima livre" — preservando serviço e número.
+        let pendingSteps: Array<{ id: string; service_id: string | null; step: number }> = [];
+        if (clientPackageId) {
+          const { data: paRows } = await supabase
+            .from('package_appointments')
+            .select('id, service_id, status, appointment_id, original_session_number, sequence_order, session_number')
+            .eq('package_id', clientPackageId);
+          pendingSteps = ((paRows || []) as any[])
+            .filter((r) => !r.appointment_id && !['completed', 'missed', 'cancelled'].includes(r.status))
+            .map((r) => ({ id: r.id, service_id: r.service_id, step: Number(r.original_session_number || r.sequence_order || r.session_number || 0) }))
+            .sort((a, b) => a.step - b.step);
+        }
         const firstSequenceStep = packageSequenceSteps[nextPackageStepIndex];
-        const packageServiceId = firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
+        const packageServiceId = pendingSteps[0]?.service_id || firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
         
         // Package is only "paid" if it's an existing client package that was purchased
         // A client package is created when sold through the sales flow
@@ -1457,6 +1471,7 @@ export function NewAppointmentDialog({
             await incrementPackageSession.mutateAsync({
               packageId: clientPackageId,
               appointmentId: appointmentResult.id,
+              packageAppointmentId: pendingSteps[0]?.id ?? null,
             });
           } catch (linkError) {
             await supabase.from('appointments').delete().eq('id', appointmentResult.id);
@@ -1501,61 +1516,15 @@ export function NewAppointmentDialog({
           ];
 
           for (let i = 1; i <= sessionsToCreate; i++) {
-            // Use editable dates instead of calculated dates
-            let futureDate = editablePreviewDates[i];
-            const futureServiceId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
+            // Data e horário exatamente como o profissional escolheu (já
+            // verificados no formulário). Nada de empurrar datas aqui: isso
+            // gerava falsa "indisponibilidade" em horários não conferidos.
+            const futureDate = editablePreviewDates[i];
+            const targetStep = pendingSteps[i];
+            const futureServiceId = targetStep?.service_id || packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
             const futureService = services.find(service => service.id === futureServiceId);
             const futureDuration = getPackageStepDuration(i) || futureService?.duration || duration;
-
-            let futureEnd = new Date(futureDate);
-            futureEnd.setMinutes(futureEnd.getMinutes() + futureDuration);
-
-            // Guarda de intervalo: a sessão nunca pode ficar mais perto da
-            // anterior do que o intervalo configurado (bug "29/08 → 30/08").
-            const previousStart = createdRanges[createdRanges.length - 1]?.start;
-            const requiredGap = autoScheduleIntervals[i - 1];
-            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
-              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
-              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
-            }
-
-            // Fresh snapshot including sessions just created in this loop so we
-            // don't rely on stale WebSocket state for real-time conflict checks.
-            const liveAppointments = ((queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[])
-              .concat(createdRanges.map((r, idx) => ({
-                id: `__local_${idx}`,
-                start_time: r.start.toISOString(),
-                end_time: r.end.toISOString(),
-                professional_id: selectedProfessional || packageData?.professional_id || null,
-                room_id: selectedRoom || packageData?.room_id || null,
-                status: 'scheduled',
-              })));
-
-            // If the requested slot collides with anything, shift automatically to
-            // the next free slot instead of failing with "conflito de horário".
-            try {
-              const safeStart = findNextAvailablePackageSlot(
-                futureDate,
-                futureDuration,
-                liveAppointments,
-                {
-                  professional_id: selectedProfessional || packageData?.professional_id || null,
-                  room_id: selectedRoom || packageData?.room_id || null,
-                },
-              );
-              if (safeStart.getTime() !== futureDate.getTime()) {
-                futureDate = safeStart;
-                futureEnd = new Date(safeStart.getTime() + futureDuration * 60000);
-              }
-            } catch (slotErr) {
-              console.warn(`Auto-slot falhou na sessão ${i + 1}:`, slotErr);
-            }
-
-            // Reconfirma o intervalo após o ajuste de slot livre.
-            if (previousStart && calendarDayDiff(previousStart, futureDate) < (requiredGap || 0)) {
-              futureDate = nextChainDate(previousStart, requiredGap, autoScheduleChainOptions);
-              futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
-            }
+            const futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
 
 
             try {
@@ -1575,6 +1544,7 @@ export function NewAppointmentDialog({
                   await incrementPackageSession.mutateAsync({
                     packageId: clientPackageId,
                     appointmentId: futureAppointment.id,
+                    packageAppointmentId: targetStep?.id ?? null,
                   });
                 } catch (linkError) {
                   await supabase.from('appointments').delete().eq('id', futureAppointment.id);
@@ -1586,7 +1556,7 @@ export function NewAppointmentDialog({
               createdCount++;
             } catch (error) {
               console.error(`Error creating session ${i + 1}:`, error);
-              failedSessions.push(i + 1);
+              failedSessions.push(targetStep?.step || i + 1);
               const reason = (error as any)?.message ? String((error as any).message) : '';
               if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
               // Continue creating other sessions even if one fails

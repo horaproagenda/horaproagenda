@@ -354,12 +354,13 @@ export function useClientPackages(clientId: string | null) {
   });
 
   const incrementPackageSession = useMutation({
-    mutationFn: async ({ packageId, appointmentId }: { packageId: string; appointmentId: string }) => {
-      // Use RPC that links session + appointment atomically, fixes service_id,
-      // updates notes/status/payment and recalculates sessions_scheduled.
+    mutationFn: async ({ packageId, appointmentId, packageAppointmentId }: { packageId: string; appointmentId: string; packageAppointmentId?: string | null }) => {
+      // Vínculo pelo ID único da etapa (package_appointments.id): a etapa 6
+      // sempre recebe o agendamento da etapa 6, mesmo se outra ficou faltando.
       const { data, error } = await (supabase as any).rpc('link_package_session_to_appointment', {
         _package_id: packageId,
         _appointment_id: appointmentId,
+        _package_appointment_id: packageAppointmentId ?? null,
       });
       if (error) throw error;
       return data;

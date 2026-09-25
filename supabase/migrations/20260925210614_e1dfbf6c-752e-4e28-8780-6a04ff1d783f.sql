@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.link_package_session_to_appointment(uuid, uuid, uuid) FROM PUBLIC, anon;

@@ -6820,7 +6820,11 @@ export type Database = {
       }
       link_current_user_professional: { Args: never; Returns: string }
       link_package_session_to_appointment: {
-        Args: { _appointment_id: string; _package_id: string }
+        Args: {
+          _appointment_id: string
+          _package_appointment_id?: string
+          _package_id: string
+        }
         Returns: Json
       }
       list_account_seat_usage_admin: {

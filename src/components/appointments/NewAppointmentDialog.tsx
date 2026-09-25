@@ -2744,25 +2744,6 @@ Até breve! ✨`;
                                 </Alert>
                               )}
 
-                               estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 text-[10px] px-2"
-                                      onClick={() => {
-                                        setEditableServiceDates((prev) => enforceChainMinimums(prev, serviceChainOptions));
-                                        toast.success('Intervalos corrigidos.');
-                                      }}
-                                    >
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Usar intervalo padrão
-                                    </Button>
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-
 
                               
                               <div className="space-y-1.5">

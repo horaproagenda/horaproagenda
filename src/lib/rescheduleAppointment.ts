@@ -18,14 +18,31 @@ export interface RescheduleInput {
 const iso = (v?: Date | string | null) =>
   v == null ? null : v instanceof Date ? v.toISOString() : new Date(v).toISOString();
 
-export async function rescheduleAppointment(input: RescheduleInput) {
-  const { data, error } = await (supabase as any).rpc('reschedule_appointment', {
+const callRpc = (input: RescheduleInput, version: number | null) =>
+  (supabase as any).rpc('reschedule_appointment', {
     p_appointment_id: input.appointmentId,
     p_new_start: iso(input.start),
     p_new_end: iso(input.end),
-    p_expected_version: input.expectedVersion ?? null,
+    p_expected_version: version,
     p_field_updates: input.fieldUpdates ?? {},
   });
-  if (error) throw error;
-  return data;
+
+const isVersionConflict = (e: any) =>
+  /atualizado em outro dispositivo/i.test(String(e?.message ?? ''));
+
+export async function rescheduleAppointment(input: RescheduleInput) {
+  const { data, error } = await callRpc(input, input.expectedVersion ?? null);
+  if (!error) return data;
+  if (!isVersionConflict(error) || input.expectedVersion == null) throw error;
+
+  // Versão em cache desatualizada: se a última alteração foi do próprio
+  // usuário, repete com a versão atual em vez de bloquear o salvamento.
+  const [{ data: row }, { data: auth }] = await Promise.all([
+    (supabase as any).from('appointments').select('version, updated_by').eq('id', input.appointmentId).maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+  if (!row || !auth?.user || (row.updated_by && row.updated_by !== auth.user.id)) throw error;
+  const retry = await callRpc(input, row.version ?? null);
+  if (retry.error) throw retry.error;
+  return retry.data;
 }

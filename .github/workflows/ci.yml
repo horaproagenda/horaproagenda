@@ -111,13 +111,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: latest }
       - run: bun install --frozen-lockfile
-      - name: Run smoke tests (credentials required)
-        run: bun run test:smoke
-      - name: Fail if any smoke test was skipped
+      - name: Run smoke tests once and reject skipped checks
         run: |
-          bunx vitest run --config vitest.smoke.config.ts --reporter=json --outputFile=/tmp/smoke.json || true
-          skipped=$(node -e "const r=require('/tmp/smoke.json');console.log(r.numPendingTests+r.numTodoTests)")
+          set +e
+          bunx vitest run --config vitest.smoke.config.ts --reporter=default --reporter=json --outputFile.json=/tmp/smoke.json
+          test_status=$?
+          set -e
+          skipped=$(node -e "const r=require('/tmp/smoke.json');console.log((r.numPendingTests || 0)+(r.numTodoTests || 0))")
           if [ "$skipped" != "0" ]; then echo "::error::$skipped smoke tests foram pulados."; exit 1; fi
+          exit "$test_status"
 
   regression-guard:
     name: Regression Guard (all checks green)

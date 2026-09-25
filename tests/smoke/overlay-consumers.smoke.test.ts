@@ -83,7 +83,8 @@ describeIfCreds('overlay consumers (agenda + reminders + gap + occupancy)', () =
     const slots = generateSlots(open, close, e.slot_interval);
     expect(slots[0]).toBe('07:15');
     expect(slots).toContain('08:00');
-    expect(slots).toContain('21:00');
+    expect(slots).toContain('20:45');
+    expect(slots).toContain('21:30');
     expect(slots[slots.length - 1] < '21:45').toBe(true);
   });
 

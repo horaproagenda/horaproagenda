@@ -8,3 +8,4 @@
 - [x] Adicionar testes de regressão para permissões ligadas e desligadas
 - [x] Validar banco, testes, typecheck, build e fluxos autenticados possíveis
 - [x] Validar confirmação de e-mail e conclusão idempotente do cadastro
+- [x] Corrigir falsos negativos nos testes autenticados do GitHub Actions

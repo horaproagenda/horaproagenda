@@ -783,8 +783,11 @@ export function SaleForm() {
         : `${itemNames} - ${selectedClient?.name}`;
       
       // Destino único: caixa de acordo com o vínculo do profissional da venda.
-      const saleDest = await resolveFinancialDestination(selectedProfessionalId || null);
-      const saleRegister = saleDest.cashRegisterId ? { id: saleDest.cashRegisterId } : null;
+      const saleProfessionalId =
+        saleInfo.items.find(item => item.professionalId)?.professionalId || selectedProfessionalId || null;
+      const saleDest = await resolveFinancialDestination(saleProfessionalId);
+      const saleRegisterId = saleDest.cashRegisterId || currentOpenRegister?.id || null;
+      const saleRegister = saleRegisterId ? { id: saleRegisterId } : null;
       if (!saleRegister && !isClientCredit && !isBoleto && !isCheque) {
         throw new Error('Abra o caixa do profissional antes de registrar esta venda.');
       }

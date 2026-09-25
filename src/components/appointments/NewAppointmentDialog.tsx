@@ -874,7 +874,7 @@ export function NewAppointmentDialog({
   // Ao alterar qualquer data, TODAS as sessões seguintes são reencadeadas para
   // manter o intervalo de dias configurado (evita gaps de 1 dia).
   const updateEditableDate = (index: number, newDate: Date) => {
-    setEditablePreviewDates(prev => rebuildChainFromIndex(prev, index, newDate, autoScheduleChainOptions));
+    setEditablePreviewDates(prev => prev.map((d, i) => (i === index ? new Date(newDate.getTime()) : d)));
     // Ao editar a primeira etapa, sincroniza com os campos principais
     // (data/horário) para evitar confusão de informações.
     if (index === 0) {
@@ -891,7 +891,7 @@ export function NewAppointmentDialog({
   // Update a specific date in the editable service dates.
   // Reencadeia todas as repetições seguintes respeitando o intervalo de dias.
   const updateEditableServiceDate = (index: number, newDate: Date) => {
-    setEditableServiceDates(prev => rebuildChainFromIndex(prev, index, newDate, serviceChainOptions));
+    setEditableServiceDates(prev => prev.map((d, i) => (i === index ? new Date(newDate.getTime()) : d)));
     if (index === 0) {
       const synced = new Date(newDate);
       synced.setHours(0, 0, 0, 0);
@@ -2744,30 +2744,6 @@ Até breve! ✨`;
                                 </Alert>
                               )}
 
-                              {hasServiceIntervalViolations && (
-                                <Alert className="mb-2 py-2">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                    <span>
-                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 text-[10px] px-2"
-                                      onClick={() => {
-                                        setEditableServiceDates((prev) => enforceChainMinimums(prev, serviceChainOptions));
-                                        toast.success('Intervalos corrigidos.');
-                                      }}
-                                    >
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Usar intervalo padrão
-                                    </Button>
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-
 
                               
                               <div className="space-y-1.5">
@@ -3050,9 +3026,7 @@ Até breve! ✨`;
                                               next[pc.index] = pc.suggestedDate;
                                             }
                                           });
-                                          // Após mover datas, reforça o intervalo mínimo
-                                          // configurado entre as sessões.
-                                          return enforceChainMinimums(next, autoScheduleChainOptions);
+                                          return next;
                                         });
 
                                         toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
@@ -3064,30 +3038,6 @@ Até breve! ✨`;
                                   </AlertDescription>
                                 </Alert>
                               )}
-                              {hasIntervalViolations && (
-                                <Alert className="mb-2 py-2">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  <AlertDescription className="text-xs flex items-center justify-between gap-2">
-                                    <span>
-                                      {`Sessões ${previewIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 text-[10px] px-2"
-                                      onClick={() => {
-                                        setEditablePreviewDates((prev) => enforceChainMinimums(prev, autoScheduleChainOptions));
-                                        toast.success('Intervalos corrigidos conforme o pacote.');
-                                      }}
-                                    >
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Usar intervalo padrão
-                                    </Button>
-                                  </AlertDescription>
-                                </Alert>
-                              )}
-
                               <div className="space-y-2">
                                 {editablePreviewDates.map((previewDate, index) => {
                                   const conflictInfo = previewDateConflicts.find(pc => pc.index === index);

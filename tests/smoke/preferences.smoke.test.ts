@@ -27,7 +27,7 @@ describeIfCreds('preferences overlay (get_effective_business_settings)', () => {
   afterAll(async () => {
     await c.from('professional_preferences').delete().eq('user_id', userId);
     if (original) {
-      await c.from('professional_preferences').insert(original as any);
+      await c.from('professional_preferences').insert(original);
     }
   });
 

@@ -552,15 +552,8 @@ export function useAppointments() {
           console.error('Error preserving package session schedule:', pkgScheduleError);
         }
 
-        if (updates.start_time) {
-          const { error: cascadeError } = await supabase.rpc('recalculate_package_minimum_intervals', {
-            _package_appointment_id: data.package_appointment_id,
-          });
-
-          if (cascadeError) {
-            console.error('Error recalculating package cascade:', cascadeError);
-          }
-        }
+        // Editar um horário altera SOMENTE esta sessão. As seguintes só mudam
+        // quando o usuário escolhe explicitamente "ajustar seguintes".
       }
 
       // If status changed to cancelled/missed/rescheduled, clean up financial entries

@@ -1544,6 +1544,7 @@ export function NewAppointmentDialog({
                   await incrementPackageSession.mutateAsync({
                     packageId: clientPackageId,
                     appointmentId: futureAppointment.id,
+                    packageAppointmentId: targetStep?.id ?? null,
                   });
                 } catch (linkError) {
                   await supabase.from('appointments').delete().eq('id', futureAppointment.id);
@@ -1555,7 +1556,7 @@ export function NewAppointmentDialog({
               createdCount++;
             } catch (error) {
               console.error(`Error creating session ${i + 1}:`, error);
-              failedSessions.push(i + 1);
+              failedSessions.push(targetStep?.step || i + 1);
               const reason = (error as any)?.message ? String((error as any).message) : '';
               if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
               // Continue creating other sessions even if one fails

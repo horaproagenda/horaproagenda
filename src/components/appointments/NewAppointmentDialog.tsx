@@ -2745,11 +2745,11 @@ Até breve! ✨`;
                               )}
 
                               {hasServiceIntervalViolations && (
-                                <Alert variant="destructive" className="mb-2 py-2">
+                                <Alert className="mb-2 py-2">
                                   <AlertTriangle className="h-3 w-3" />
                                   <AlertDescription className="text-xs flex items-center justify-between gap-2">
                                     <span>
-                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                      {`Agendamentos ${serviceIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
                                     </span>
                                     <Button
                                       type="button"
@@ -2762,7 +2762,7 @@ Até breve! ✨`;
                                       }}
                                     >
                                       <CheckCircle className="h-3 w-3 mr-1" />
-                                      Corrigir intervalos
+                                      Usar intervalo padrão
                                     </Button>
                                   </AlertDescription>
                                 </Alert>
@@ -3065,11 +3065,11 @@ Até breve! ✨`;
                                 </Alert>
                               )}
                               {hasIntervalViolations && (
-                                <Alert variant="destructive" className="mb-2 py-2">
+                                <Alert className="mb-2 py-2">
                                   <AlertTriangle className="h-3 w-3" />
                                   <AlertDescription className="text-xs flex items-center justify-between gap-2">
                                     <span>
-                                      {`Sessões ${previewIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado.`}
+                                      {`Sessões ${previewIntervalViolations.map((i) => i + 1).join(', ')} estão com intervalo menor que o configurado. Você pode salvar assim ou ajustar.`}
                                     </span>
                                     <Button
                                       type="button"
@@ -3082,7 +3082,7 @@ Até breve! ✨`;
                                       }}
                                     >
                                       <CheckCircle className="h-3 w-3 mr-1" />
-                                      Corrigir intervalos
+                                      Usar intervalo padrão
                                     </Button>
                                   </AlertDescription>
                                 </Alert>
@@ -3344,9 +3344,9 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || hasIntervalViolations || hasServiceIntervalViolations || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (hasIntervalViolations || hasServiceIntervalViolations) ? 'Corrija os intervalos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
 
 
               </Button>

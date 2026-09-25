@@ -10,7 +10,7 @@ import { authedClient, describeIfCreds } from './setup';
 describeIfCreds('preferences overlay (get_effective_business_settings)', () => {
   let c: SupabaseClient;
   let userId: string;
-  let originalOpening: string | null = null;
+  let original: Record<string, unknown> | null = null;
 
   beforeAll(async () => {
     c = await authedClient();
@@ -18,23 +18,25 @@ describeIfCreds('preferences overlay (get_effective_business_settings)', () => {
     userId = u.user!.id;
     const { data: existing } = await c
       .from('professional_preferences')
-      .select('opening_time')
+      .select('*')
       .eq('user_id', userId)
       .maybeSingle();
-    originalOpening = (existing?.opening_time as string | null) ?? null;
+    original = existing as Record<string, unknown> | null;
   });
 
   afterAll(async () => {
-    // Restore original state
-    await c
-      .from('professional_preferences')
-      .upsert({ user_id: userId, opening_time: originalOpening }, { onConflict: 'user_id' });
+    await c.from('professional_preferences').delete().eq('user_id', userId);
+    if (original) {
+      await c.from('professional_preferences').insert(original as any);
+    }
   });
 
   it('returns global settings when no override is set', async () => {
-    await c
+    const { error: deleteError } = await c
       .from('professional_preferences')
-      .upsert({ user_id: userId, opening_time: null }, { onConflict: 'user_id' });
+      .delete()
+      .eq('user_id', userId);
+    expect(deleteError).toBeNull();
 
     const { data: global } = await c
       .from('business_settings')

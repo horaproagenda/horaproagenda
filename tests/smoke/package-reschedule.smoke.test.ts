@@ -123,7 +123,8 @@ describeIfCreds('Smoke: reagendamento de pacote — integridade', () => {
       .select('start_time, end_time, status, package_appointment_id')
       .eq('id', appt!.id)
       .single();
-    expect(apptAfter.data!.start_time).toBe(newStart.toISOString());
+    expect(new Date(apptAfter.data!.start_time).getTime()).toBe(newStart.getTime());
+    expect(new Date(apptAfter.data!.end_time).getTime()).toBe(newEnd.getTime());
     expect(apptAfter.data!.package_appointment_id).toBe(pa!.id);
   });
 

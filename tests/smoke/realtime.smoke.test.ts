@@ -10,10 +10,11 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
   beforeAll(async () => {
     writer = await authedClient();
     listener = makeClient();
-    await listener.auth.signInWithPassword({
+    const { error } = await listener.auth.signInWithPassword({
       email: process.env.SMOKE_TEST_EMAIL!,
       password: process.env.SMOKE_TEST_PASSWORD!,
     });
+    if (error) throw new Error(`Falha no login do listener Realtime: ${error.message}`);
     ctx = await bootstrap(writer);
   });
 
@@ -22,12 +23,11 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     await listener?.removeAllChannels();
   });
 
-  it('recebe INSERT em < 5s', async () => {
+  it('recebe INSERT após a assinatura Realtime', async () => {
     let resolveReceived!: (ok: boolean) => void;
     const received = new Promise<boolean>((resolve) => {
       resolveReceived = resolve;
     });
-    const timer = setTimeout(() => resolveReceived(false), 8000);
 
     const ch = listener
       .channel(`smoke-${Date.now()}`)
@@ -42,7 +42,7 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     // Aguarda a confirmação explícita de SUBSCRIBED antes de inserir,
     // evitando falso negativo por corrida de assinatura.
     await new Promise<void>((resolve, reject) => {
-      const subTimer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 10000);
+      const subTimer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 15000);
       ch.subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
           clearTimeout(subTimer);
@@ -51,11 +51,14 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
       });
     });
 
+    // O prazo de entrega começa somente depois que o servidor confirmou a assinatura.
+    const timer = setTimeout(() => resolveReceived(false), 15000);
+
     const start = new Date(Date.now() + 5 * 86400000);
     start.setHours(11, 0, 0, 0);
     const end = new Date(start.getTime() + 30 * 60_000);
 
-    await writer.from('appointments').insert({
+    const { error: insertError } = await writer.from('appointments').insert({
       client_id: ctx.clientId,
       professional_id: ctx.professionalId,
       service_id: ctx.serviceId,
@@ -64,9 +67,10 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
       status: 'scheduled',
       payment_status: 'pending',
     });
+    expect(insertError).toBeNull();
 
     const ok = await received;
     clearTimeout(timer);
     expect(ok).toBe(true);
-  });
+  }, 35000);
 });

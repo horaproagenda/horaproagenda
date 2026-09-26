@@ -642,7 +642,7 @@ export default function Produtos() {
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none" className="text-sm">Não informada</SelectItem>
-                            {activePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
+                            {purchasePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

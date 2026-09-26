@@ -65,10 +65,14 @@ describe('nenhuma rotina em segundo plano apaga pacotes agendados', () => {
     expect(src).not.toMatch(/\.delete\(/);
   });
 
-  it('o vínculo da sessão reverte o agendamento em caso de falha', () => {
+  it('o agendamento do pacote grava tudo numa transação única (nada parcial)', () => {
     const src = read('src/components/appointments/NewAppointmentDialog.tsx');
-    const rollbacks = src.match(/catch \(linkError\)/g) || [];
-    expect(rollbacks.length).toBeGreaterThanOrEqual(2);
-    expect(src).toMatch(/package_appointments'\)\s*\n?\s*\.select\('appointment_id'\)/);
+    // A criação e o vínculo acontecem dentro da mesma função do banco:
+    // se uma etapa falhar, nenhuma é salva.
+    expect(src).toContain('schedulePackageSessionsBatch');
+    expect(src).toContain('verifyAndHealPackageSchedule');
+    const lib = read('src/lib/packageBatchScheduling.ts');
+    expect(lib).toContain('schedule_package_sessions_batch');
+    expect(lib).toContain('package_appointment_id');
   });
 });

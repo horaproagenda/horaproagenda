@@ -7,8 +7,10 @@ const hook = readFileSync('src/hooks/useClientPackages.ts', 'utf8');
 describe('Etapa de pacote vinculada pelo ID único', () => {
   it('o vínculo envia o ID da etapa ao banco', () => {
     expect(hook).toContain('_package_appointment_id');
-    expect(dialog).toContain('packageAppointmentId: pendingSteps[0]?.id');
-    expect(dialog).toContain('packageAppointmentId: targetStep?.id');
+    // O formulário grava tudo numa transação única, já vinculando cada
+    // data ao ID único da etapa correspondente.
+    expect(dialog).toContain('packageAppointmentId: targetStep.id');
+    expect(dialog).toContain('schedulePackageSessionsBatch');
   });
   it('as datas escolhidas não são empurradas ao salvar', () => {
     expect(dialog).not.toContain('Reconfirma o intervalo após o ajuste de slot livre');

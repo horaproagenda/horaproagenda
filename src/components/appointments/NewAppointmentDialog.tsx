@@ -77,7 +77,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
 import { calculateAppointmentTimesInTimeZone } from '@/lib/appointmentScheduling';
-import { useAvailabilityCheck, type AvailabilitySlot } from '@/lib/availabilityCheck';
+import { useAvailabilityCheck, checkAvailabilitySlots, type AvailabilitySlot } from '@/lib/availabilityCheck';
+import {
+  schedulePackageSessionsBatch,
+  verifyAndHealPackageSchedule,
+  autohealPackageSchedule,
+  type PackageBatchItem,
+} from '@/lib/packageBatchScheduling';
 import {
   ProfessionalCommissionField,
   saveCommissionOverride,
@@ -172,6 +178,10 @@ export function NewAppointmentDialog({
   // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
   const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
   const kitGroupIdRef = useRef<string | null>(null);
+  // Identificador da tentativa de agendar o pacote: repetir o envio não duplica.
+  const packageBatchKeyRef = useRef<string | null>(null);
+  // Salvando: evita clique duplo enquanto a gravação única roda no banco.
+  const [isSavingAppointment, setIsSavingAppointment] = useState(false);
   // Agendamento automático do kit (mesma ideia dos pacotes)
   const [kitAutoScheduleEnabled, setKitAutoScheduleEnabled] = useState(true);
   const [kitPreferredDayOfWeek, setKitPreferredDayOfWeek] = useState<number | null>(null);
@@ -1305,54 +1315,61 @@ export function NewAppointmentDialog({
       }
 
       const datesToCheck = repeatServiceEnabled ? editableServiceDates : editablePreviewDates;
-      const freshAppointments = (queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[];
 
-      const conflictingSessions: number[] = [];
-      const seen: { start: Date; end: Date }[] = [];
-      for (let i = 0; i < datesToCheck.length; i++) {
-        const start = datesToCheck[i];
-        const duration = repeatServiceEnabled
+      // VERIFICAÇÃO ÚNICA: a mesma regra do banco usada na gravação
+      // (`appointment_conflict_reason`). A tela nunca recalcula conflito de
+      // profissional, sala, equipamento ou ausência por conta própria.
+      const rangesToCheck = datesToCheck.map((start, i) => {
+        const stepDuration = repeatServiceEnabled
           ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, 60)
           : serviceType === 'package'
             ? getPackageStepDuration(i)
             : currentAppointmentDuration;
-        const end = new Date(start.getTime() + duration * 60_000);
-        // Sibling collision within this series
-        const siblingCollision = seen.some((s) => start < s.end && end > s.start);
-        // External collision (professional/room busy or professional absent)
-        const externalCollision = freshAppointments.some((apt) => {
-          if (['cancelled', 'rescheduled', 'missed'].includes(apt.status)) return false;
-          const aptStart = new Date(apt.start_time);
-          const aptEnd = new Date(apt.end_time);
-          const overlaps = start < aptEnd && end > aptStart;
-          if (!overlaps) return false;
-          const aptProfId = apt.professional_id || apt.service?.professional_id;
-          const aptRoomId = apt.room_id || apt.service?.room_id;
-          if (selectedProfessional && aptProfId === selectedProfessional) return true;
-          if (selectedRoom && aptRoomId === selectedRoom) return true;
-          return false;
-        });
-        const absenceCollision = selectedProfessional && absences.some((abs) => {
-          if (!abs?.professional_id || abs.professional_id !== selectedProfessional) return false;
-          const aStart = new Date(abs.start_time);
-          const aEnd = new Date(abs.end_time);
-          if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
-          return start < aEnd && end > aStart;
-        });
-        // Fora do expediente ou dia fechado devem bloquear o salvar também —
-        // caso contrário o backend rejeita depois com "conflito de horário".
-        const businessHoursIssue = checkBusinessHoursForRange(start, end);
-        const closedDayIssue = !isWorkDay(start);
-        if (siblingCollision || externalCollision || absenceCollision || businessHoursIssue || closedDayIssue) {
-          conflictingSessions.push(i + 1);
-        }
-        seen.push({ start, end });
+        return { start, end: new Date(start.getTime() + stepDuration * 60_000) };
+      });
+
+      const conflictingSessions: number[] = [];
+      const conflictMessages: string[] = [];
+      const seen: { start: Date; end: Date }[] = [];
+
+      let dbReasons: (string | null)[] = rangesToCheck.map(() => null);
+      try {
+        dbReasons = await checkAvailabilitySlots(
+          rangesToCheck.map((range) => ({
+            professionalId: selectedProfessional || null,
+            roomId: selectedRoom || null,
+            equipmentId: selectedEquipment.find((id) => id && id !== '_none') || null,
+            start: range.start,
+            end: range.end,
+          })),
+        );
+      } catch (err) {
+        console.warn('Falha ao verificar disponibilidade antes de salvar:', err);
       }
+
+      rangesToCheck.forEach((range, i) => {
+        const problems: string[] = [];
+        if (seen.some((s) => range.start < s.end && range.end > s.start)) {
+          problems.push('choca com outra sessão desta série');
+        }
+        if (!isWorkDay(range.start)) {
+          problems.push('o estabelecimento não atende neste dia');
+        }
+        const businessHoursIssue = checkBusinessHoursForRange(range.start, range.end);
+        if (businessHoursIssue) problems.push(businessHoursIssue);
+        if (dbReasons[i]) problems.push(String(dbReasons[i]));
+
+        if (problems.length > 0) {
+          conflictingSessions.push(i + 1);
+          conflictMessages.push(`Sessão ${i + 1}: ${problems[0]}`);
+        }
+        seen.push(range);
+      });
 
       if (conflictingSessions.length > 0) {
         toast.error(
-          `Sessões ${conflictingSessions.join(', ')} estão fora do expediente ou em conflito. Ajuste as datas na pré-visualização antes de salvar.`,
-          { duration: 8000 },
+          `${conflictMessages.join('. ')}. Ajuste as datas na pré-visualização antes de salvar.`,
+          { duration: 9000 },
         );
         return;
       }
@@ -1364,6 +1381,8 @@ export function NewAppointmentDialog({
       setShowHolidayConfirm(true);
       return;
     }
+
+    setIsSavingAppointment(true);
 
     const duration = currentAppointmentDuration || serviceOrPackage.duration || 60;
     const startTime = appointmentTimes?.startTime ?? createDateTimeInTimeZone(date, time, settings?.timezone);
@@ -1410,206 +1429,132 @@ export function NewAppointmentDialog({
           clientPackageId = newPackage.id;
         }
 
-        // Create the first/next appointment.
-        // Existing sequential packages may already have sessions linked by the
-        // legacy-history flow, so start from the next pending step instead of
-        // always using step 1.
-        // ID ÚNICO DE ETAPA: busca as etapas pendentes do pacote em ordem
-        // original. A data i do formulário é vinculada exatamente à etapa
-        // pendingSteps[i] — nunca à "próxima livre" — preservando serviço e número.
-        let pendingSteps: Array<{ id: string; service_id: string | null; step: number }> = [];
-        if (clientPackageId) {
+        // ===================================================================
+        // TRANSAÇÃO ÚNICA: todas as aplicações do pacote são gravadas de uma
+        // só vez pelo banco (`schedule_package_sessions_batch`). Se qualquer
+        // uma tiver choque de horário, NADA é salvo e o profissional recebe
+        // a etapa e o motivo exatos — nunca sobra pacote pela metade.
+        // ID ÚNICO DE ETAPA: cada data é vinculada à etapa pendingSteps[i],
+        // preservando serviço, número e ordem originais.
+        // ===================================================================
+        if (!clientPackageId) {
+          throw new Error('Não foi possível identificar o pacote deste cliente. Tente novamente.');
+        }
+
+        const loadPendingSteps = async () => {
           const { data: paRows } = await supabase
             .from('package_appointments')
             .select('id, service_id, status, appointment_id, original_session_number, sequence_order, session_number')
-            .eq('package_id', clientPackageId);
-          pendingSteps = ((paRows || []) as any[])
+            .eq('package_id', clientPackageId as string);
+          return ((paRows || []) as any[])
             .filter((r) => !r.appointment_id && !['completed', 'missed', 'cancelled'].includes(r.status))
-            .map((r) => ({ id: r.id, service_id: r.service_id, step: Number(r.original_session_number || r.sequence_order || r.session_number || 0) }))
+            .map((r) => ({
+              id: r.id as string,
+              service_id: (r.service_id ?? null) as string | null,
+              step: Number(r.original_session_number || r.sequence_order || r.session_number || 0),
+            }))
             .sort((a, b) => a.step - b.step);
+        };
+
+        let pendingSteps = await loadPendingSteps();
+
+        // Correção automática: se não houver etapa livre, o sistema conserta
+        // vínculos quebrados sozinho antes de desistir.
+        if (pendingSteps.length === 0) {
+          await autohealPackageSchedule(clientPackageId);
+          pendingSteps = await loadPendingSteps();
         }
-        const firstSequenceStep = packageSequenceSteps[nextPackageStepIndex];
-        const packageServiceId = pendingSteps[0]?.service_id || firstSequenceStep?.service_id || selectedPackageData?.service_id || null;
-        
-        // Package is only "paid" if it's an existing client package that was purchased
-        // A client package is created when sold through the sales flow
-        // Check if package has payment_methods filled (indicates it was paid via caixa sale)
+        if (pendingSteps.length === 0) {
+          throw new Error('Este pacote não tem aplicações disponíveis para agendar.');
+        }
+
+        const packageData = existingClientPackage || selectedPackageData;
+        const clientData = clients.find((c) => c.id === selectedClient);
+
         const isPackagePaid = existingClientPackage
           ? !!(isClientPackageSelected && existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0)
           : packageAlreadyPaid;
-        
-        // When auto-schedule is enabled, use the FIRST previewed date so the
-        // user's edits in the preview list drive the first appointment as well.
-        // Falls back to the top-level date/time when auto-schedule is disabled
-        // or the preview is empty.
-        let firstStart = startTime;
-        let firstEnd = endTime;
-        if (autoScheduleEnabled && editablePreviewDates.length > 0) {
-          const previewFirst = editablePreviewDates[0];
-          const firstDuration = getPackageStepDuration(0) || nextPackageStepService?.duration || duration;
-          firstStart = previewFirst;
-          firstEnd = new Date(previewFirst.getTime() + firstDuration * 60000);
+
+        // Datas exatamente como o profissional escolheu — nenhuma é empurrada.
+        const plannedDates = autoScheduleEnabled && editablePreviewDates.length > 0
+          ? editablePreviewDates
+          : [startTime];
+
+        const batchItems: PackageBatchItem[] = plannedDates
+          .slice(0, pendingSteps.length)
+          .map((stepStart, i) => {
+            const targetStep = pendingSteps[i];
+            const stepServiceId = targetStep.service_id
+              || packageSequenceSteps[nextPackageStepIndex + i]?.service_id
+              || selectedPackageData?.service_id
+              || null;
+            const stepService = services.find((s) => s.id === stepServiceId);
+            const stepDuration = getPackageStepDuration(i) || stepService?.duration || duration;
+            const stepLabel = stepService?.name || resolveSessionServiceLabel({
+              index: nextPackageStepIndex + i,
+              steps: packageSequenceSteps,
+              services,
+              pkg: packageData || selectedPackageData || null,
+            });
+            return {
+              packageAppointmentId: targetStep.id,
+              serviceId: stepServiceId,
+              professionalId: selectedProfessional || packageData?.professional_id || null,
+              roomId: selectedRoom || packageData?.room_id || null,
+              start: stepStart,
+              end: new Date(stepStart.getTime() + stepDuration * 60000),
+              notes: `${stepLabel ? stepLabel + ' — ' : ''}${packageData?.name || selectedPackageData?.name || 'Pacote'}${notes ? ' - ' + notes : ''}`,
+              paymentStatus: isPackagePaid ? 'paid' : 'pending',
+              step: targetStep.step,
+            } as PackageBatchItem;
+          });
+
+        if (batchItems.length === 0) {
+          throw new Error('Nenhuma data foi informada para agendar as aplicações.');
         }
 
-        const appointmentResult = await createAppointment.mutateAsync({
-          client_id: selectedClient,
-          service_id: packageServiceId,
-          start_time: firstStart.toISOString(),
-          end_time: firstEnd.toISOString(),
-          notes: `${nextPackageStepService?.name ? nextPackageStepService.name + ' — ' : ''}${selectedPackageData.name}${notes ? ' - ' + notes : ''}`, // Session number will be added by incrementPackageSession
-          professional_id: selectedProfessional || selectedPackageData.professional_id || undefined,
-          room_id: selectedRoom || selectedPackageData.room_id || undefined,
-          payment_status: isPackagePaid ? 'paid' : 'pending',
+        if (!packageBatchKeyRef.current) packageBatchKeyRef.current = crypto.randomUUID();
+
+        const batchResult = await schedulePackageSessionsBatch({
+          clientId: selectedClient,
+          packageId: clientPackageId,
+          items: batchItems,
+          batchKey: packageBatchKeyRef.current,
+        });
+        packageBatchKeyRef.current = null;
+
+        // Conferência automática: data, horário e serviço gravados x formulário.
+        // Se algo divergir, o sistema corrige sozinho e confere de novo.
+        const remainingIssues = await verifyAndHealPackageSchedule(clientPackageId, batchItems);
+
+        ['appointments', 'client-appointments', 'client_packages', 'service_packages', 'package_appointments', 'package_details'].forEach((key) => {
+          queryClient.invalidateQueries({ queryKey: [key] });
         });
 
-        // Link the appointment to the package session.
-        // REGRESSÃO PROTEGIDA: se o vínculo falhar, o agendamento é revertido —
-        // agendamento solto fazia as rotinas de integridade enxergarem
-        // "pacote sem sessões" e apagarem tudo em segundo plano.
-        if (clientPackageId) {
-          try {
-            await incrementPackageSession.mutateAsync({
-              packageId: clientPackageId,
-              appointmentId: appointmentResult.id,
-              packageAppointmentId: pendingSteps[0]?.id ?? null,
-            });
-          } catch (linkError) {
-            await supabase.from('appointments').delete().eq('id', appointmentResult.id);
-            throw linkError;
-          }
+        onOpenChange(false);
+
+        if (remainingIssues.length > 0) {
+          toast.error(
+            `${remainingIssues.map((issue) => issue.problem).join(' ')} Ajuste as aplicações pendentes na agenda.`,
+            { duration: 10000 },
+          );
+        } else {
+          const total = batchResult.createdCount + batchResult.alreadyScheduled.length;
+          toast.success(`${total} agendamento(s) criados e conferidos na agenda!`);
         }
 
+        // WhatsApp: prévia com as datas realmente agendadas (sem envio automático)
+        if (sendWhatsappNotification && clientData?.phone && batchItems.length > 0) {
+          const sessionsList = batchItems.map((item, i) => {
+            const svcName = services.find((s) => s.id === item.serviceId)?.name || `Sessão ${i + 1}`;
+            return `📅 Sessão ${item.step ?? i + 1} — ${svcName}: ${format(item.start, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+          }).join('\n');
 
-        // If auto-schedule is enabled, create the remaining pending sessions.
-        // This must also work after importing completed sessions via Histórico
-        // Antigo, when the package has already started but still has available
-        // applications to schedule.
-        const packageData = existingClientPackage || selectedPackageData;
-        const totalSessions = existingClientPackage
-          ? Math.max(1, autoScheduleSessionCount || 1)
-          : packageData?.total_sessions || 1;
-        
-        // Get client info for WhatsApp
-        const clientData = clients.find(c => c.id === selectedClient);
-        
-        if (autoScheduleEnabled && totalSessions > 1 && editablePreviewDates.length > 1) {
-          const sessionsToCreate = editablePreviewDates.length - 1;
-          let createdCount = 0;
-          const failedSessions: number[] = [];
-          const failureReasons: string[] = [];
-          // IDs criados NESTA execução (1ª sessão + sessões do laço): a
-          // confirmação final deve contar só estes, nunca sessões antigas.
-          const createdAppointmentIds: string[] = [appointmentResult.id];
-
-          // Fecha o formulário imediatamente; os agendamentos seguintes são
-          // criados em segundo plano com auto-reagendamento em caso de conflito.
-          onOpenChange(false);
-          toast.info(`Agendando ${editablePreviewDates.length} sessões em segundo plano...`);
-
-
-          // Create appointments sequentially to ensure proper conflict detection
-          // Each appointment must complete before the next one starts to avoid race conditions
-          // Track created appointments in this run to prevent sibling collisions
-          // when the server hasn't refreshed the appointments cache yet.
-          const createdRanges: { start: Date; end: Date }[] = [
-            { start: firstStart, end: firstEnd },
-          ];
-
-          for (let i = 1; i <= sessionsToCreate; i++) {
-            // Data e horário exatamente como o profissional escolheu (já
-            // verificados no formulário). Nada de empurrar datas aqui: isso
-            // gerava falsa "indisponibilidade" em horários não conferidos.
-            const futureDate = editablePreviewDates[i];
-            const targetStep = pendingSteps[i];
-            const futureServiceId = targetStep?.service_id || packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
-            const futureService = services.find(service => service.id === futureServiceId);
-            const futureDuration = getPackageStepDuration(i) || futureService?.duration || duration;
-            const futureEnd = new Date(futureDate.getTime() + futureDuration * 60000);
-
-
-            try {
-              const futureAppointment = await createAppointment.mutateAsync({
-                client_id: selectedClient,
-                service_id: futureServiceId,
-                start_time: futureDate.toISOString(),
-                end_time: futureEnd.toISOString(),
-                notes: `${resolveSessionServiceLabel({ index: nextPackageStepIndex + i, steps: packageSequenceSteps, services, pkg: packageData || selectedPackageData || null })} — ${packageData?.name || selectedPackageData?.name || 'Pacote'}${notes ? ' - ' + notes : ''}`,
-                professional_id: selectedProfessional || packageData?.professional_id || undefined,
-                room_id: selectedRoom || packageData?.room_id || undefined,
-                payment_status: isPackagePaid ? 'paid' : 'pending',
-              });
-
-              if (clientPackageId) {
-                try {
-                  await incrementPackageSession.mutateAsync({
-                    packageId: clientPackageId,
-                    appointmentId: futureAppointment.id,
-                    packageAppointmentId: targetStep?.id ?? null,
-                  });
-                } catch (linkError) {
-                  await supabase.from('appointments').delete().eq('id', futureAppointment.id);
-                  throw linkError;
-                }
-              }
-              createdRanges.push({ start: futureDate, end: futureEnd });
-              createdAppointmentIds.push(futureAppointment.id);
-              createdCount++;
-            } catch (error) {
-              console.error(`Error creating session ${i + 1}:`, error);
-              failedSessions.push(targetStep?.step || i + 1);
-              const reason = (error as any)?.message ? String((error as any).message) : '';
-              if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
-              // Continue creating other sessions even if one fails
-            }
-          }
-
-          // Confirmação real: consulta no banco quantas sessões do pacote têm
-          // agendamento vinculado antes de informar o total ao usuário.
-          let confirmedSessions: number | null = null;
-          if (clientPackageId) {
-            try {
-              const { data: linkedSessions } = await supabase
-                .from('package_appointments')
-                .select('appointment_id')
-                .eq('package_id', clientPackageId)
-                .in('appointment_id', createdAppointmentIds);
-              confirmedSessions = (linkedSessions || []).length;
-            } catch (verifyError) {
-              console.warn('Não foi possível confirmar as sessões agendadas:', verifyError);
-            }
-          }
-
-          const expectedTotal = sessionsToCreate + 1;
-          const reportedTotal = confirmedSessions ?? (createdCount + 1);
-
-          if (failedSessions.length > 0 || reportedTotal < expectedTotal) {
-            const faltantes = failedSessions.length > 0 ? `Sessões ${failedSessions.join(', ')} não foram agendadas. ` : '';
-            const motivo = failureReasons.length > 0 ? `Motivo: ${failureReasons.join(' / ')} ` : '';
-            toast.error(`${faltantes}${motivo}${reportedTotal} de ${expectedTotal} agendamentos ficaram confirmados. Verifique a agenda e reagende as sessões que faltam.`, { duration: 9000 });
-          } else {
-            toast.success(`${reportedTotal} agendamentos criados e confirmados na agenda!`);
-          }
-
-
-          // Compose WhatsApp notification and open preview (do NOT auto-send)
-          if (sendWhatsappNotification && clientData?.phone) {
-            const sessionsList = editablePreviewDates.map((d, i) => {
-              const stepSvcId = packageSequenceSteps[nextPackageStepIndex + i]?.service_id || packageServiceId;
-              const stepSvc = services.find((s) => s.id === stepSvcId);
-              const svcName = stepSvc?.name || resolveSessionServiceLabel({
-                index: nextPackageStepIndex + i,
-                steps: packageSequenceSteps,
-                services,
-                pkg: packageData || selectedPackageData || null,
-              });
-              return `📅 Sessão ${i + 1} — ${svcName}: ${format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
-            }).join('\n');
-
-            const message = `Olá ${clientData.name}! 👋
+          const message = `Olá ${clientData.name}! 👋
 
 Seu pacote *${packageData?.name}* foi agendado com sucesso! 🎉
 
-Confira as datas das suas ${totalSessions} sessões:
+Confira as datas das suas ${batchItems.length} sessões:
 
 ${sessionsList}
 
@@ -1617,10 +1562,9 @@ Se precisar reagendar alguma sessão, entre em contato conosco.
 
 Até breve! ✨`;
 
-            setWhatsappPreviewPhone(clientData.phone);
-            setWhatsappPreviewMessage(message);
-            setWhatsappPreviewOpen(true);
-          }
+          setWhatsappPreviewPhone(clientData.phone);
+          setWhatsappPreviewMessage(message);
+          setWhatsappPreviewOpen(true);
         }
       } else {
         // Regular service appointment
@@ -1819,6 +1763,8 @@ Até breve! ✨`;
       toast.error(error instanceof Error && error.message
         ? error.message
         : 'Não foi possível salvar o agendamento agora. Tente novamente.');
+    } finally {
+      setIsSavingAppointment(false);
     }
 
   };
@@ -3264,9 +3210,9 @@ Até breve! ✨`;
               <Button 
                 type="submit" 
                 className="flex-1"
-                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
+                disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || isSavingAppointment || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(isSavingAppointment || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
 
 
               </Button>

@@ -374,7 +374,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl p-0 overflow-hidden" onCloseAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="flex flex-col items-center justify-center gap-1 px-6 pt-6 text-center">
               <div className="flex items-center justify-center gap-2">

@@ -60,8 +60,8 @@ describe('utilitários de layout compartilhados', () => {
 describe('ResponsiveTable existe e é o padrão para tabelas no celular', () => {
   const src = read('src/components/ui/responsive-table.tsx');
 
-  it('renderiza cartões no celular e tabela em telas largas', () => {
-    expect(src).toContain('useIsMobile');
+  it('renderiza cartões no celular/tablet e tabela em telas largas', () => {
+    expect(src).toContain('useIsTabletOrSmaller');
     expect(src).toContain('data-responsive-cards');
     expect(src).toContain('<Table');
   });

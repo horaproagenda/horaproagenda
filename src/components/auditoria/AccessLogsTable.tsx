@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Eye, Edit3, Trash2, Plus, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 
 export interface AccessLog {
@@ -74,58 +74,82 @@ export function AccessLogsTable() {
             Nenhum acesso registrado ainda.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px]">Data/Hora</TableHead>
-                  <TableHead className="text-[11px]">Usuário</TableHead>
-                  <TableHead className="text-[11px]">Papel</TableHead>
-                  <TableHead className="text-[11px]">Módulo</TableHead>
-                  <TableHead className="text-[11px]">Ação</TableHead>
-                  <TableHead className="text-[11px]">Campos exibidos</TableHead>
-                  <TableHead className="text-[11px]">Campos alterados</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => {
+          <ResponsiveTable
+            data={logs}
+            getRowKey={(log) => log.id}
+            minWidthClassName="min-w-[900px]"
+            emptyMessage="Nenhum acesso registrado ainda."
+            rowClassName={() => 'hover:bg-muted/50'}
+            columns={[
+              {
+                key: 'action',
+                header: 'Ação',
+                priority: 'primary',
+                hideLabelOnCard: true,
+                className: 'py-2',
+                headClassName: 'text-[11px]',
+                cell: (log) => {
                   const a = actionMap[log.action] ?? { label: log.action, icon: null, variant: 'outline' as const };
                   return (
-                    <TableRow key={log.id} className="hover:bg-muted/50">
-                      <TableCell className="text-xs whitespace-nowrap py-2 tabular-nums">
-                        {format(new Date(log.created_at), "dd/MM/yy HH:mm:ss", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="text-xs py-2 truncate max-w-[180px]">
-                        {log.user_email || '—'}
-                      </TableCell>
-                      <TableCell className="text-xs py-2">
-                        {log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs py-2">
-                        {moduleLabels[log.module] ?? log.module}
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <Badge variant={a.variant} className="text-[10px] h-5 gap-1">
-                          {a.icon}
-                          {a.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-[11px] py-2 max-w-[260px]">
-                        {log.fields_viewed && log.fields_viewed.length > 0
-                          ? log.fields_viewed.join(', ')
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="text-[11px] py-2 max-w-[260px]">
-                        {log.fields_changed && log.fields_changed.length > 0
-                          ? log.fields_changed.join(', ')
-                          : '—'}
-                      </TableCell>
-                    </TableRow>
+                    <Badge variant={a.variant} className="text-[10px] h-5 gap-1">
+                      {a.icon}
+                      {a.label}
+                    </Badge>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                },
+              },
+              {
+                key: 'user',
+                header: 'Usuário',
+                priority: 'primary',
+                className: 'text-xs py-2 truncate max-w-[180px]',
+                headClassName: 'text-[11px]',
+                cell: (log) => log.user_email || '—',
+              },
+              {
+                key: 'created_at',
+                header: 'Data/Hora',
+                priority: 'secondary',
+                className: 'text-xs whitespace-nowrap py-2 tabular-nums',
+                headClassName: 'text-[11px]',
+                cell: (log) => format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: ptBR }),
+              },
+              {
+                key: 'role',
+                header: 'Papel',
+                priority: 'secondary',
+                className: 'text-xs py-2',
+                headClassName: 'text-[11px]',
+                cell: (log) => (log.user_role ? (roleLabels[log.user_role] ?? log.user_role) : '—'),
+              },
+              {
+                key: 'module',
+                header: 'Módulo',
+                priority: 'secondary',
+                className: 'text-xs py-2',
+                headClassName: 'text-[11px]',
+                cell: (log) => moduleLabels[log.module] ?? log.module,
+              },
+              {
+                key: 'fields_viewed',
+                header: 'Campos exibidos',
+                priority: 'secondary',
+                className: 'text-[11px] py-2 max-w-[260px]',
+                headClassName: 'text-[11px]',
+                cell: (log) =>
+                  log.fields_viewed && log.fields_viewed.length > 0 ? log.fields_viewed.join(', ') : '—',
+              },
+              {
+                key: 'fields_changed',
+                header: 'Campos alterados',
+                priority: 'secondary',
+                className: 'text-[11px] py-2 max-w-[260px]',
+                headClassName: 'text-[11px]',
+                cell: (log) =>
+                  log.fields_changed && log.fields_changed.length > 0 ? log.fields_changed.join(', ') : '—',
+              },
+            ]}
+          />
         )}
       </CardContent>
     </Card>

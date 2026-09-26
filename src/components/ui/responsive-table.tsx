@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsTabletOrSmaller } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -13,10 +13,10 @@ import {
 /**
  * Tabela responsiva compartilhada.
  *
- * Desktop/tablet largo: renderiza a `Table` normal (rolagem horizontal fica
+ * Desktop (>=1024px): renderiza a `Table` normal (rolagem horizontal fica
  * confinada ao próprio componente, via [data-table-wrapper]).
  *
- * Celular (<768px): cada linha vira um cartão vertical com rótulo + valor.
+ * Celular e tablet (<1024px): cada linha vira um cartão vertical com rótulo + valor.
  * Nenhuma coluna é descartada — colunas marcadas como `secondary` aparecem
  * abaixo das principais, e `actions` vai para o rodapé do cartão.
  *
@@ -69,8 +69,8 @@ export function ResponsiveTable<T>({
   className,
   forceCards,
 }: ResponsiveTableProps<T>) {
-  const isMobile = useIsMobile();
-  const asCards = forceCards ?? isMobile;
+  const isTabletOrSmaller = useIsTabletOrSmaller();
+  const asCards = forceCards ?? isTabletOrSmaller;
 
   if (data.length === 0) {
     return (

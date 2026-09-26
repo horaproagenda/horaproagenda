@@ -80,3 +80,26 @@ export function useDeviceType(): DeviceType {
 
   return deviceType;
 }
+
+// Tablets in portrait/landscape up to 1024px wide (iPad and similar).
+const TABLET_MAX_BREAKPOINT = 1024;
+
+/**
+ * True for phones AND tablets (<1024px). Usada pela tabela responsiva para
+ * exibir cartões em qualquer dispositivo de toque, não só celulares.
+ */
+export function useIsTabletOrSmaller() {
+  const [isTabletOrSmaller, setIsTabletOrSmaller] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${TABLET_MAX_BREAKPOINT - 1}px)`);
+    const onChange = () => {
+      setIsTabletOrSmaller(window.innerWidth < TABLET_MAX_BREAKPOINT);
+    };
+    mql.addEventListener("change", onChange);
+    setIsTabletOrSmaller(window.innerWidth < TABLET_MAX_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return !!isTabletOrSmaller;
+}

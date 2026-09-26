@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Download, Calendar, Clock, DollarSign, Edit, XCircle, AlertCircle, Filter, Trash2, FileText, RefreshCw } from 'lucide-react';
@@ -581,7 +580,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <ScrollArea className="h-[460px] rounded border">
+            <div className="h-[460px] rounded border overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/40">
@@ -683,9 +682,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                   })}
                 </TableBody>
               </Table>
-              <ScrollBar orientation="horizontal" />
-              <ScrollBar orientation="vertical" />
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportToCSV } from '@/lib/exportUtils';
@@ -260,56 +260,80 @@ export function ConciliacaoPagamentos() {
         <Card>
           <CardContent className="p-0">
             <ScrollArea className="h-[520px]">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    <TableHead className="w-full min-w-0 sm:w-[110px]">Data</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="text-right">Agend.</TableHead>
-                    <TableHead className="text-right">Financeiro</TableHead>
-                    <TableHead className="text-right">Caixa</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-full min-w-0 sm:w-[80px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((r) => (
-                    <TableRow key={r.key}>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {r.date ? format(parseISO(r.date + 'T12:00:00'), 'dd/MM/yyyy') : '—'}
-                      </TableCell>
-                      <TableCell className="font-medium">{r.clientName}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {money(r.appointmentAmount)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {money(r.financialAmount)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {money(r.cashAmount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={KIND_BADGE[r.divergence]}>
-                          {r.divergence !== 'ok' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                          {KIND_LABEL[r.divergence]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {r.clientId ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2"
-                            onClick={() => navigate(`/clientes/${r.clientId}`)}
-                          >
-                            <User className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : null}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={filtered}
+                getRowKey={(r) => r.key}
+                minWidthClassName="min-w-[760px]"
+                columns={[
+                  {
+                    key: 'client',
+                    header: 'Cliente',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (r) => r.clientName,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: (r) => (
+                      <Badge variant="outline" className={KIND_BADGE[r.divergence]}>
+                        {r.divergence !== 'ok' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                        {KIND_LABEL[r.divergence]}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'date',
+                    header: 'Data',
+                    priority: 'secondary',
+                    className: 'text-xs text-muted-foreground',
+                    headClassName: 'w-full min-w-0 sm:w-[110px]',
+                    cell: (r) => (r.date ? format(parseISO(r.date + 'T12:00:00'), 'dd/MM/yyyy') : '—'),
+                  },
+                  {
+                    key: 'appointmentAmount',
+                    header: 'Agend.',
+                    priority: 'secondary',
+                    className: 'text-right tabular-nums',
+                    headClassName: 'text-right',
+                    cell: (r) => money(r.appointmentAmount),
+                  },
+                  {
+                    key: 'financialAmount',
+                    header: 'Financeiro',
+                    priority: 'secondary',
+                    className: 'text-right tabular-nums',
+                    headClassName: 'text-right',
+                    cell: (r) => money(r.financialAmount),
+                  },
+                  {
+                    key: 'cashAmount',
+                    header: 'Caixa',
+                    priority: 'secondary',
+                    className: 'text-right tabular-nums',
+                    headClassName: 'text-right',
+                    cell: (r) => money(r.cashAmount),
+                  },
+                  {
+                    key: 'actions',
+                    header: '',
+                    priority: 'actions',
+                    cell: (r) =>
+                      r.clientId ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2"
+                          onClick={() => navigate(`/clientes/${r.clientId}`)}
+                        >
+                          <User className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null,
+                  },
+                ]}
+              />
             </ScrollArea>
           </CardContent>
         </Card>

@@ -610,6 +610,22 @@ export default function Produtos() {
                         <strong className="text-foreground">{formatCurrency(purchaseForm.total_price)}</strong>
                       </div>
                     )}
+                    {purchaseForm.product_id && purchaseForm.quantity > 0 && (() => {
+                      const prod = products.find(p => p.id === purchaseForm.product_id);
+                      if (!prod) return null;
+                      const novo = resolveStockAfterPurchase({
+                        currentStock: prod.current_stock,
+                        purchaseQuantity: purchaseForm.quantity,
+                      });
+                      return (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-[10px] text-muted-foreground">
+                          Estoque: <strong className="text-foreground">{prod.current_stock.toLocaleString('pt-BR')} {getUnitLabel(prod.unit)}</strong>
+                          {' → '}
+                          <strong className="text-foreground">{novo.toLocaleString('pt-BR')} {getUnitLabel(prod.unit)}</strong>
+                          {' '}(atualizado ao registrar a compra)
+                        </div>
+                      );
+                    })()}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Fornecedor</Label>

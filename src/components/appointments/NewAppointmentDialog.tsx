@@ -180,6 +180,8 @@ export function NewAppointmentDialog({
   const kitGroupIdRef = useRef<string | null>(null);
   // Identificador da tentativa de agendar o pacote: repetir o envio não duplica.
   const packageBatchKeyRef = useRef<string | null>(null);
+  // Salvando: evita clique duplo enquanto a gravação única roda no banco.
+  const [isSavingAppointment, setIsSavingAppointment] = useState(false);
   // Agendamento automático do kit (mesma ideia dos pacotes)
   const [kitAutoScheduleEnabled, setKitAutoScheduleEnabled] = useState(true);
   const [kitPreferredDayOfWeek, setKitPreferredDayOfWeek] = useState<number | null>(null);

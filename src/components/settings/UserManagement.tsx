@@ -3,7 +3,7 @@ import { Users, Shield, Plus, Trash2, UserX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -95,119 +95,133 @@ export default function UserManagement() {
               Nenhum usuário encontrado
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Permissões</TableHead>
-                  <TableHead>Cadastro</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {user.roles.length === 0 ? (
-                          <span className="text-muted-foreground text-sm">Sem permissões</span>
-                        ) : (
-                          user.roles.map((role) => (
-                            <div key={role} className="flex items-center gap-1">
-                              <Badge variant={roleLabels[role]?.variant || 'default'}>
-                                {roleLabels[role]?.label || role}
-                              </Badge>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Remover permissão?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Deseja remover a permissão de {roleLabels[role]?.label} de {user.full_name}?
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleRemoveRole(user.id, role)}>
-                                      Remover
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <Dialog open={dialogOpen && selectedUser === user.id} onOpenChange={(open) => {
+            <ResponsiveTable
+              data={users}
+              getRowKey={(user) => user.id}
+              minWidthClassName="min-w-[720px]"
+              columns={[
+                {
+                  key: 'name',
+                  header: 'Usuário',
+                  priority: 'primary',
+                  className: 'font-medium',
+                  cell: (user) => user.full_name,
+                },
+                {
+                  key: 'email',
+                  header: 'Email',
+                  priority: 'primary',
+                  cell: (user) => user.email,
+                },
+                {
+                  key: 'roles',
+                  header: 'Permissões',
+                  priority: 'secondary',
+                  cell: (user) => (
+                    <div className="flex flex-wrap gap-1">
+                      {user.roles.length === 0 ? (
+                        <span className="text-muted-foreground text-sm">Sem permissões</span>
+                      ) : (
+                        user.roles.map((role) => (
+                          <div key={role} className="flex items-center gap-1">
+                            <Badge variant={roleLabels[role]?.variant || 'default'}>
+                              {roleLabels[role]?.label || role}
+                            </Badge>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remover permissão?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Deseja remover a permissão de {roleLabels[role]?.label} de {user.full_name}?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleRemoveRole(user.id, role)}>
+                                    Remover
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'created_at',
+                  header: 'Cadastro',
+                  priority: 'secondary',
+                  className: 'whitespace-nowrap',
+                  cell: (user) => format(new Date(user.created_at), 'dd/MM/yyyy', { locale: ptBR }),
+                },
+                {
+                  key: 'actions',
+                  header: 'Ações',
+                  priority: 'actions',
+                  cell: (user) => (
+                    <Dialog
+                      open={dialogOpen && selectedUser === user.id}
+                      onOpenChange={(open) => {
                         setDialogOpen(open);
                         if (!open) {
                           setSelectedUser(null);
                           setSelectedRole('');
                         }
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedUser(user.id)}
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedUser(user.id)}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Adicionar
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Adicionar Permissão</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <p className="text-sm text-muted-foreground">
+                            Selecione a permissão para {user.full_name}
+                          </p>
+                          <Select
+                            value={selectedRole}
+                            onValueChange={(value) => setSelectedRole(value as AppRole)}
                           >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Adicionar
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma permissão" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(roleLabels)
+                                .filter(([role]) => !user.roles.includes(role as AppRole))
+                                .map(([role, info]) => (
+                                  <SelectItem key={role} value={role}>
+                                    {info.label}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            onClick={handleAssignRole}
+                            disabled={!selectedRole || assignRole.isPending}
+                          >
+                            {assignRole.isPending ? 'Adicionando...' : 'Adicionar'}
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Adicionar Permissão</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <p className="text-sm text-muted-foreground">
-                              Selecione a permissão para {user.full_name}
-                            </p>
-                            <Select
-                              value={selectedRole}
-                              onValueChange={(value) => setSelectedRole(value as AppRole)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione uma permissão" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(roleLabels)
-                                  .filter(([role]) => !user.roles.includes(role as AppRole))
-                                  .map(([role, info]) => (
-                                    <SelectItem key={role} value={role}>
-                                      {info.label}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <DialogFooter>
-                            <Button
-                              onClick={handleAssignRole}
-                              disabled={!selectedRole || assignRole.isPending}
-                            >
-                              {assignRole.isPending ? 'Adicionando...' : 'Adicionar'}
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  ),
+                },
+              ]}
+            />
           )}
         </div>
       </CardContent>

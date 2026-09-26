@@ -17,9 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye, History, LayoutList, Clock, AlertTriangle, CheckCircle2, Info, Ban } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,

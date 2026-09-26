@@ -85,6 +85,7 @@ import {
 import { cn, normalizeBrazilianCurrency, parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
+import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';

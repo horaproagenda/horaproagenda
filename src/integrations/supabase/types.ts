@@ -6961,6 +6961,23 @@ export type Database = {
         Args: { _package_id: string }
         Returns: undefined
       }
+      register_product_purchase: {
+        Args: {
+          p_expiry_date?: string
+          p_notes?: string
+          p_payment_method?: string
+          p_payment_method_id?: string
+          p_product_id: string
+          p_purchase_date?: string
+          p_quantity: number
+          p_skip_cash_transaction?: boolean
+          p_supplier?: string
+          p_supplier_id?: string
+          p_total_price?: number
+          p_unit_price?: number
+        }
+        Returns: Json
+      }
       repair_agenda_package_integrity: { Args: never; Returns: Json }
       repair_all_sequential_packages: { Args: never; Returns: Json }
       repair_client_package_schedule_and_history: {

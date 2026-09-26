@@ -1759,6 +1759,8 @@ Até breve! ✨`;
       toast.error(error instanceof Error && error.message
         ? error.message
         : 'Não foi possível salvar o agendamento agora. Tente novamente.');
+    } finally {
+      setIsSavingAppointment(false);
     }
 
   };

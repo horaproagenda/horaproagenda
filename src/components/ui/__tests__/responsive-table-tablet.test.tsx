@@ -7,6 +7,13 @@ function setWidth(width: number) {
 }
 
 beforeAll(() => {
+  if (!(globalThis as { ResizeObserver?: unknown }).ResizeObserver) {
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
   if (!window.matchMedia) {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,

@@ -791,21 +791,50 @@ export function FormasPagamento() {
           <TabsContent value="banks" className="space-y-4">
             <div className="flex justify-end"><ManageBanksDialog /></div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead>Banco</TableHead><TableHead>Código</TableHead><TableHead>Agência</TableHead><TableHead>Conta</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {banks.map(bank => (
-                    <TableRow key={bank.id}>
-                      <TableCell className="font-medium">{bank.name}</TableCell>
-                      <TableCell>{bank.bank_code || '-'}</TableCell>
-                      <TableCell>{bank.agency || '-'}</TableCell>
-                      <TableCell>{bank.account_number || '-'}</TableCell>
-                      <TableCell><Badge variant={bank.is_active ? 'default' : 'secondary'}>{bank.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                    </TableRow>
-                  ))}
-                  {banks.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum banco cadastrado.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={banks}
+                getRowKey={(bank) => bank.id}
+                minWidthClassName="min-w-[620px]"
+                emptyMessage="Nenhum banco cadastrado."
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Banco',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (bank) => bank.name,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: (bank) => (
+                      <Badge variant={bank.is_active ? 'default' : 'secondary'}>
+                        {bank.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'bank_code',
+                    header: 'Código',
+                    priority: 'secondary',
+                    cell: (bank) => bank.bank_code || '-',
+                  },
+                  {
+                    key: 'agency',
+                    header: 'Agência',
+                    priority: 'secondary',
+                    cell: (bank) => bank.agency || '-',
+                  },
+                  {
+                    key: 'account_number',
+                    header: 'Conta',
+                    priority: 'secondary',
+                    cell: (bank) => bank.account_number || '-',
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
 
@@ -864,27 +893,85 @@ export function FormasPagamento() {
               </Dialog>
             </div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead className="text-[11px]">Bandeira</TableHead><TableHead className="text-[11px]">Tipo</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Quem paga taxa</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Parcelas</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Status</TableHead><TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {cardBrands.map(brand => (
-                    <TableRow key={brand.id}>
-                      <TableCell className="font-medium text-xs">{brand.name}</TableCell>
-                      <TableCell className="text-xs"><Badge variant="outline" className="text-[10px]">{brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}</Badge></TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell">{brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'}</TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell">{brand.fees?.length || 0} configuradas</TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell"><Badge variant={brand.is_active ? 'default' : 'secondary'} className="text-[10px]">{brand.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                      <TableCell className="text-right sticky right-0 bg-background">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openBrandEdit(brand)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCardBrand.mutate(brand.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {cardBrands.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-xs">Nenhuma bandeira cadastrada</TableCell></TableRow>}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={cardBrands}
+                getRowKey={(brand) => brand.id}
+                minWidthClassName="min-w-[760px]"
+                emptyMessage="Nenhuma bandeira cadastrada"
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Bandeira',
+                    priority: 'primary',
+                    className: 'font-medium text-xs',
+                    headClassName: 'text-[11px]',
+                    cell: (brand) => brand.name,
+                  },
+                  {
+                    key: 'type',
+                    header: 'Tipo',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    className: 'text-xs',
+                    headClassName: 'text-[11px]',
+                    cell: (brand) => (
+                      <Badge variant="outline" className="text-[10px]">
+                        {brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'fee_behavior',
+                    header: 'Quem paga taxa',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => (brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'),
+                  },
+                  {
+                    key: 'fees',
+                    header: 'Parcelas',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => `${brand.fees?.length || 0} configuradas`,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => (
+                      <Badge variant={brand.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                        {brand.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Ações',
+                    priority: 'actions',
+                    className: 'text-right sticky right-0 bg-background',
+                    headClassName: 'text-[11px] text-right sticky right-0 bg-background',
+                    cell: (brand) => (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openBrandEdit(brand)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => deleteCardBrand.mutate(brand.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
         </Tabs>

@@ -178,6 +178,8 @@ export function NewAppointmentDialog({
   // Kits de serviços: cada etapa tem data e horário próprios, escolhidos aqui.
   const [kitSchedule, setKitSchedule] = useState<Array<{ date: Date | undefined; time: string }>>([]);
   const kitGroupIdRef = useRef<string | null>(null);
+  // Identificador da tentativa de agendar o pacote: repetir o envio não duplica.
+  const packageBatchKeyRef = useRef<string | null>(null);
   // Agendamento automático do kit (mesma ideia dos pacotes)
   const [kitAutoScheduleEnabled, setKitAutoScheduleEnabled] = useState(true);
   const [kitPreferredDayOfWeek, setKitPreferredDayOfWeek] = useState<number | null>(null);

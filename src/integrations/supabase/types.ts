@@ -6314,6 +6314,10 @@ export type Database = {
         Args: { p_cpf: string; p_token: string }
         Returns: Json
       }
+      autoheal_package_schedule: {
+        Args: { p_package_id: string }
+        Returns: Json
+      }
       backfill_reset_unbacked_paid_appointments: {
         Args: never
         Returns: number
@@ -7092,6 +7096,15 @@ export type Database = {
         Returns: string
       }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
+      schedule_package_sessions_batch: {
+        Args: {
+          p_batch_key?: string
+          p_client_id: string
+          p_items: Json
+          p_package_id: string
+        }
+        Returns: Json
+      }
       security_check_temp_password_protected: { Args: never; Returns: boolean }
       seed_default_document_templates: {
         Args: { p_account_owner_id: string }
@@ -7218,6 +7231,10 @@ export type Database = {
       sync_recurring_session_notes: {
         Args: { p_recurring_group_id: string }
         Returns: number
+      }
+      verify_package_schedule_batch: {
+        Args: { p_expected: Json; p_package_id: string }
+        Returns: Json
       }
     }
     Enums: {

@@ -1313,54 +1313,61 @@ export function NewAppointmentDialog({
       }
 
       const datesToCheck = repeatServiceEnabled ? editableServiceDates : editablePreviewDates;
-      const freshAppointments = (queryClient.getQueryData<any[]>(['appointments']) || appointments) as any[];
 
-      const conflictingSessions: number[] = [];
-      const seen: { start: Date; end: Date }[] = [];
-      for (let i = 0; i < datesToCheck.length; i++) {
-        const start = datesToCheck[i];
-        const duration = repeatServiceEnabled
+      // VERIFICAÇÃO ÚNICA: a mesma regra do banco usada na gravação
+      // (`appointment_conflict_reason`). A tela nunca recalcula conflito de
+      // profissional, sala, equipamento ou ausência por conta própria.
+      const rangesToCheck = datesToCheck.map((start, i) => {
+        const stepDuration = repeatServiceEnabled
           ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, 60)
           : serviceType === 'package'
             ? getPackageStepDuration(i)
             : currentAppointmentDuration;
-        const end = new Date(start.getTime() + duration * 60_000);
-        // Sibling collision within this series
-        const siblingCollision = seen.some((s) => start < s.end && end > s.start);
-        // External collision (professional/room busy or professional absent)
-        const externalCollision = freshAppointments.some((apt) => {
-          if (['cancelled', 'rescheduled', 'missed'].includes(apt.status)) return false;
-          const aptStart = new Date(apt.start_time);
-          const aptEnd = new Date(apt.end_time);
-          const overlaps = start < aptEnd && end > aptStart;
-          if (!overlaps) return false;
-          const aptProfId = apt.professional_id || apt.service?.professional_id;
-          const aptRoomId = apt.room_id || apt.service?.room_id;
-          if (selectedProfessional && aptProfId === selectedProfessional) return true;
-          if (selectedRoom && aptRoomId === selectedRoom) return true;
-          return false;
-        });
-        const absenceCollision = selectedProfessional && absences.some((abs) => {
-          if (!abs?.professional_id || abs.professional_id !== selectedProfessional) return false;
-          const aStart = new Date(abs.start_time);
-          const aEnd = new Date(abs.end_time);
-          if (isNaN(aStart.getTime()) || isNaN(aEnd.getTime()) || aEnd <= aStart) return false;
-          return start < aEnd && end > aStart;
-        });
-        // Fora do expediente ou dia fechado devem bloquear o salvar também —
-        // caso contrário o backend rejeita depois com "conflito de horário".
-        const businessHoursIssue = checkBusinessHoursForRange(start, end);
-        const closedDayIssue = !isWorkDay(start);
-        if (siblingCollision || externalCollision || absenceCollision || businessHoursIssue || closedDayIssue) {
-          conflictingSessions.push(i + 1);
-        }
-        seen.push({ start, end });
+        return { start, end: new Date(start.getTime() + stepDuration * 60_000) };
+      });
+
+      const conflictingSessions: number[] = [];
+      const conflictMessages: string[] = [];
+      const seen: { start: Date; end: Date }[] = [];
+
+      let dbReasons: (string | null)[] = rangesToCheck.map(() => null);
+      try {
+        dbReasons = await checkAvailabilitySlots(
+          rangesToCheck.map((range) => ({
+            professionalId: selectedProfessional || null,
+            roomId: selectedRoom || null,
+            equipmentId: selectedEquipment.find((id) => id && id !== '_none') || null,
+            start: range.start,
+            end: range.end,
+          })),
+        );
+      } catch (err) {
+        console.warn('Falha ao verificar disponibilidade antes de salvar:', err);
       }
+
+      rangesToCheck.forEach((range, i) => {
+        const problems: string[] = [];
+        if (seen.some((s) => range.start < s.end && range.end > s.start)) {
+          problems.push('choca com outra sessão desta série');
+        }
+        if (!isWorkDay(range.start)) {
+          problems.push('o estabelecimento não atende neste dia');
+        }
+        const businessHoursIssue = checkBusinessHoursForRange(range.start, range.end);
+        if (businessHoursIssue) problems.push(businessHoursIssue);
+        if (dbReasons[i]) problems.push(String(dbReasons[i]));
+
+        if (problems.length > 0) {
+          conflictingSessions.push(i + 1);
+          conflictMessages.push(`Sessão ${i + 1}: ${problems[0]}`);
+        }
+        seen.push(range);
+      });
 
       if (conflictingSessions.length > 0) {
         toast.error(
-          `Sessões ${conflictingSessions.join(', ')} estão fora do expediente ou em conflito. Ajuste as datas na pré-visualização antes de salvar.`,
-          { duration: 8000 },
+          `${conflictMessages.join('. ')}. Ajuste as datas na pré-visualização antes de salvar.`,
+          { duration: 9000 },
         );
         return;
       }

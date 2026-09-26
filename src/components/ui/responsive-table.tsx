@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsTabletOrSmaller } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -69,8 +69,8 @@ export function ResponsiveTable<T>({
   className,
   forceCards,
 }: ResponsiveTableProps<T>) {
-  const isMobile = useIsMobile();
-  const asCards = forceCards ?? isMobile;
+  const isTabletOrSmaller = useIsTabletOrSmaller();
+  const asCards = forceCards ?? isTabletOrSmaller;
 
   if (data.length === 0) {
     return (

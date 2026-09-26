@@ -1382,6 +1382,8 @@ export function NewAppointmentDialog({
       return;
     }
 
+    setIsSavingAppointment(true);
+
     const duration = currentAppointmentDuration || serviceOrPackage.duration || 60;
     const startTime = appointmentTimes?.startTime ?? createDateTimeInTimeZone(date, time, settings?.timezone);
 

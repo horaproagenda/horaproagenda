@@ -9,6 +9,11 @@ import { supabase } from '@/integrations/supabase/client';
  * (`package_appointments.id`). Se qualquer sessão falhar, nada é salvo — nunca
  * sobra pacote agendado pela metade nem etapa com serviço trocado.
  */
+type RpcFn = (
+  fn: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message?: string } | null }>;
+
 export interface PackageBatchItem {
   /** ID único e imutável da etapa do pacote. */
   packageAppointmentId: string;

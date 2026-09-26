@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useBanks, Bank } from '@/hooks/useBanks';
@@ -171,45 +171,55 @@ export function ManageBanksDialog() {
                   Nenhum banco cadastrado
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Agência</TableHead>
-                      <TableHead>Conta</TableHead>
-                      <TableHead className="w-full min-w-0 sm:w-[100px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {banks.map((bank) => (
-                      <TableRow key={bank.id}>
-                        <TableCell className="font-medium">{bank.name}</TableCell>
-                        <TableCell>{bank.bank_code || '-'}</TableCell>
-                        <TableCell>{bank.agency || '-'}</TableCell>
-                        <TableCell>{bank.account_number || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(bank)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteConfirm(bank.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ResponsiveTable
+                  data={banks}
+                  getRowKey={(bank) => bank.id}
+                  minWidthClassName="min-w-[620px]"
+                  emptyMessage="Nenhum banco cadastrado"
+                  columns={[
+                    {
+                      key: 'name',
+                      header: 'Nome',
+                      priority: 'primary',
+                      className: 'font-medium',
+                      cell: (bank) => bank.name,
+                    },
+                    {
+                      key: 'bank_code',
+                      header: 'Código',
+                      priority: 'secondary',
+                      cell: (bank) => bank.bank_code || '-',
+                    },
+                    {
+                      key: 'agency',
+                      header: 'Agência',
+                      priority: 'secondary',
+                      cell: (bank) => bank.agency || '-',
+                    },
+                    {
+                      key: 'account_number',
+                      header: 'Conta',
+                      priority: 'secondary',
+                      cell: (bank) => bank.account_number || '-',
+                    },
+                    {
+                      key: 'actions',
+                      header: 'Ações',
+                      priority: 'actions',
+                      headClassName: 'w-full min-w-0 sm:w-[100px]',
+                      cell: (bank) => (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(bank)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(bank.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
               )}
             </>
           )}

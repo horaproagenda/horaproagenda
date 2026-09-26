@@ -278,6 +278,14 @@ export default function Produtos() {
   const lowStockProducts = useMemo(() => products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active), [products]);
   const expiredProducts = useMemo(() => products.filter(p => isProductExpired(p)), [products]);
 
+  // "Crédito ao cliente" é saldo do cliente: não serve para pagar compras de fornecedor.
+  const purchasePaymentMethods = useMemo(
+    () => activePaymentMethods.filter(m => !isClientCreditPaymentMethod(m.name)),
+    [activePaymentMethods],
+  );
+
+
+
   // Calculate appointments for a product
   const getProductAppointments = (productId: string) => {
     const linkedServices = serviceProducts.filter(sp => sp.product_id === productId);

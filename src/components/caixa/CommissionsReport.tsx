@@ -461,43 +461,60 @@ export function CommissionsReport({
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="pt-2 pb-4">
-                        <Table>
-                          <TableHeader>
-                            <TableRow style={{ borderBottomColor: `${profColor}40` }}>
-                              <TableHead className="w-full min-w-0 sm:w-[110px] text-[11px]">Data</TableHead>
-                              <TableHead className="text-[11px]">Cliente</TableHead>
-                              <TableHead className="text-[11px]">Serviço</TableHead>
-                              <TableHead className="text-right text-[11px]">Valor</TableHead>
-                              <TableHead className="text-right text-[11px]">Comissão</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {data.appointments.map(apt => {
-                              const aptCommission = data.professional.is_commission_based
-                                ? ((apt.amount_paid || 0) * data.commissionPercentage) / 100
-                                : 0;
-                              return (
-                                <TableRow key={apt.id} className="hover:bg-muted/40 transition-colors">
-                                  <TableCell className="text-xs py-2 text-muted-foreground tabular-nums">
-                                    {format(parseISO(apt.start_time), 'dd/MM/yy HH:mm', { locale: ptBR })}
-                                  </TableCell>
-                                  <TableCell className="text-xs py-2 font-medium">
-                                    {apt.client?.name || '-'}
-                                  </TableCell>
-                                  <TableCell className="text-xs py-2">
-                                    {apt.service?.name || '-'}
-                                  </TableCell>
-                                  <TableCell className="text-right text-xs py-2 font-medium tabular-nums">
-                                    R$ {(apt.amount_paid || 0).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="text-right text-xs py-2 font-semibold text-amber-600 tabular-nums">
-                                    R$ {aptCommission.toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
+                        <ResponsiveTable
+                          data={data.appointments}
+                          getRowKey={(apt) => apt.id}
+                          minWidthClassName="min-w-[620px]"
+                          emptyMessage="Nenhum atendimento no período"
+                          rowClassName={() => 'hover:bg-muted/40 transition-colors'}
+                          columns={[
+                            {
+                              key: 'client',
+                              header: 'Cliente',
+                              priority: 'primary',
+                              className: 'text-xs py-2 font-medium',
+                              headClassName: 'text-[11px]',
+                              cell: (apt) => apt.client?.name || '-',
+                            },
+                            {
+                              key: 'commission',
+                              header: 'Comissão',
+                              priority: 'primary',
+                              className: 'text-right text-xs py-2 font-semibold text-amber-600 tabular-nums',
+                              headClassName: 'text-right text-[11px]',
+                              cell: (apt) => {
+                                const aptCommission = data.professional.is_commission_based
+                                  ? ((apt.amount_paid || 0) * data.commissionPercentage) / 100
+                                  : 0;
+                                return `R$ ${aptCommission.toFixed(2)}`;
+                              },
+                            },
+                            {
+                              key: 'date',
+                              header: 'Data',
+                              priority: 'secondary',
+                              className: 'text-xs py-2 text-muted-foreground tabular-nums',
+                              headClassName: 'w-full min-w-0 sm:w-[110px] text-[11px]',
+                              cell: (apt) => format(parseISO(apt.start_time), 'dd/MM/yy HH:mm', { locale: ptBR }),
+                            },
+                            {
+                              key: 'service',
+                              header: 'Serviço',
+                              priority: 'secondary',
+                              className: 'text-xs py-2',
+                              headClassName: 'text-[11px]',
+                              cell: (apt) => apt.service?.name || '-',
+                            },
+                            {
+                              key: 'amount',
+                              header: 'Valor',
+                              priority: 'secondary',
+                              className: 'text-right text-xs py-2 font-medium tabular-nums',
+                              headClassName: 'text-right text-[11px]',
+                              cell: (apt) => `R$ ${(apt.amount_paid || 0).toFixed(2)}`,
+                            },
+                          ]}
+                        />
                         
                         {/* Payment button for commission-based professionals */}
                         {data.professional.is_commission_based && data.commissionValue > 0 && (

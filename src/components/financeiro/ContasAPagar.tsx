@@ -289,6 +289,7 @@ export function ContasAPagar() {
     setPaymentBankId(entry.bank_id || '');
     setPaymentInstallments(entry.installments?.toString() || '1');
     setPaidAmount(Number(entry.amount).toFixed(2));
+    setPaymentDate(editMode && entry.paid_date ? String(entry.paid_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'));
     setCreateBoletoReminder(false);
     setConfirmationStep(false);
     setPayDialogOpen(true);
@@ -952,6 +953,15 @@ export function ContasAPagar() {
               <div className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs font-medium">{selectedEntries.length} parcela(s) selecionada(s)</p>
                 <p className="text-base font-bold text-primary tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Data do pagamento</Label>
+                <Input
+                  type="date"
+                  value={batchPaymentDate}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => setBatchPaymentDate(e.target.value)}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Forma de Pagamento</Label>

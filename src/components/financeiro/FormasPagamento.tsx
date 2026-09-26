@@ -549,137 +549,228 @@ export function FormasPagamento() {
             <Separator />
 
             <div className="max-h-[350px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-[11px]">Cliente</TableHead>
-                    {boletoFilter === 'paid' ? (
-                      <>
-                        <TableHead className="text-[11px] text-center">Qtd. Pagos</TableHead>
-                        <TableHead className="text-[11px]">Próx. Venc.</TableHead>
-                        <TableHead className="text-[11px]">Total Pago</TableHead>
-                      </>
-                    ) : boletoFilter === 'overdue' ? (
-                      <>
-                        <TableHead className="text-[11px]">Boleto</TableHead>
-                        <TableHead className="text-[11px] text-center">Dias atraso</TableHead>
-                        <TableHead className="text-[11px]">Total c/ juros</TableHead>
-                      </>
-                    ) : (
-                      <>
-                        <TableHead className="text-[11px] text-center hidden sm:table-cell">Boletos</TableHead>
-                        <TableHead className="text-[11px] text-center">Pend.</TableHead>
-                        <TableHead className="text-[11px] text-center hidden xs:table-cell">Atras.</TableHead>
-                        <TableHead className="text-[11px] hidden sm:table-cell">Próx. Venc.</TableHead>
-                        <TableHead className="text-[11px]">Total</TableHead>
-                      </>
-                    )}
-                    <TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClientGroups.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={boletoFilter === 'paid' || boletoFilter === 'overdue' ? 5 : 7} className="text-center py-8 text-muted-foreground text-xs">
-                        {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClientGroups.map((group) => {
-                      const all = group.installments;
-                      const pending = all.filter((b: any) => b.status === 'pending' || b.status === 'overdue');
-                      const overdue = all.filter((b: any) =>
-                        b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date())
+              {(() => {
+                type BoletoGroup = (typeof filteredClientGroups)[number];
+                const metrics = (group: BoletoGroup) => {
+                  const all = group.installments as any[];
+                  const pending = all.filter((b: any) => b.status === 'pending' || b.status === 'overdue');
+                  const overdue = all.filter(
+                    (b: any) =>
+                      b.status === 'overdue' ||
+                      (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date()),
+                  );
+                  const paid = all.filter((b: any) => b.status === 'paid');
+                  const totalPending = pending.reduce((s: number, b: any) => s + Number(b.amount), 0);
+                  const totalPaid = paid.reduce((s: number, b: any) => s + Number(b.amount), 0);
+                  const nextDue = pending.map((b: any) => b.due_date).sort()[0];
+                  const nextPaidDue = paid.map((b: any) => b.due_date).sort().reverse()[0];
+                  const today = new Date();
+                  const overdueWithInterest = overdue.map((b: any) => {
+                    const due = new Date(b.due_date + 'T12:00:00');
+                    const days = Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
+                    const fine = Number(b.amount) * (Number(b.fine_percent || 0) / 100);
+                    const interest =
+                      Number(b.amount) * (Number(b.interest_percent_per_day || 0) / 100) * days;
+                    return { b, days, total: Number(b.amount) + fine + interest };
+                  });
+                  const overdueTotal = overdueWithInterest.reduce((s, x) => s + x.total, 0);
+                  const oldestOverdue = [...overdueWithInterest].sort((a, b) => b.days - a.days)[0];
+                  return {
+                    all,
+                    pending,
+                    overdue,
+                    paid,
+                    totalPending,
+                    totalPaid,
+                    nextDue,
+                    nextPaidDue,
+                    overdueTotal,
+                    oldestOverdue,
+                  };
+                };
+
+                const clientColumn = {
+                  key: 'client',
+                  header: 'Cliente',
+                  priority: 'primary' as const,
+                  className: 'text-xs font-medium py-2',
+                  headClassName: 'text-[11px]',
+                  cell: (group: BoletoGroup) => (
+                    <>
+                      <div className="truncate max-w-[140px]">{group.clientName}</div>
+                      {group.clientPhone && (
+                        <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>
+                      )}
+                    </>
+                  ),
+                };
+
+                const actionsColumn = {
+                  key: 'actions',
+                  header: 'Ações',
+                  priority: 'actions' as const,
+                  className: 'text-right sticky right-0 bg-background',
+                  headClassName: 'text-[11px] text-right sticky right-0 bg-background',
+                  cell: (group: BoletoGroup) => (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 h-7 text-[11px] px-2"
+                      onClick={() => setDetailClientKey(group.key)}
+                    >
+                      <Eye className="h-3 w-3" />
+                      Ver
+                    </Button>
+                  ),
+                };
+
+                const paidColumns = [
+                  {
+                    key: 'paidCount',
+                    header: 'Qtd. Pagos',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-primary font-medium tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => metrics(g).paid.length,
+                  },
+                  {
+                    key: 'nextDuePaid',
+                    header: 'Próx. Venc.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs tabular-nums',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => {
+                      const m = metrics(g);
+                      return m.nextDue
+                        ? format(new Date(m.nextDue + 'T12:00:00'), 'dd/MM/yyyy')
+                        : m.nextPaidDue
+                          ? format(new Date(m.nextPaidDue + 'T12:00:00'), 'dd/MM/yyyy')
+                          : '-';
+                    },
+                  },
+                  {
+                    key: 'totalPaid',
+                    header: 'Total Pago',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-medium text-primary tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).totalPaid.toFixed(2)}`,
+                  },
+                ];
+
+                const overdueColumns = [
+                  {
+                    key: 'boleto',
+                    header: 'Boleto',
+                    priority: 'secondary' as const,
+                    className: 'text-xs py-2',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => {
+                      const o = metrics(g).oldestOverdue;
+                      return o ? (
+                        <div className="space-y-0.5">
+                          <div className="font-medium truncate max-w-[180px]">
+                            {o.b.service_description ||
+                              `Parcela ${o.b.installment_number}/${o.b.total_installments}`}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground tabular-nums">
+                            {String(o.b.installment_number).padStart(2, '0')}/
+                            {String(o.b.total_installments).padStart(2, '0')} · venc.{' '}
+                            {format(new Date(o.b.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        '-'
                       );
-                      const paid = all.filter((b: any) => b.status === 'paid');
-                      const totalPending = pending.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                      const totalPaid = paid.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                      const nextDue = pending.map((b: any) => b.due_date).sort()[0];
-                      const nextPaidDue = paid.map((b: any) => b.due_date).sort().reverse()[0];
+                    },
+                  },
+                  {
+                    key: 'daysOverdue',
+                    header: 'Dias atraso',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-red-600 font-semibold tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => {
+                      const o = metrics(g).oldestOverdue;
+                      return o ? `${o.days}d` : '-';
+                    },
+                  },
+                  {
+                    key: 'overdueTotal',
+                    header: 'Total c/ juros',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-semibold text-red-700 tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).overdueTotal.toFixed(2)}`,
+                  },
+                ];
 
-                      // Overdue with interest: amount + fine + (interest_per_day * daysOverdue)
-                      const today = new Date();
-                      const overdueWithInterest = overdue.map((b: any) => {
-                        const due = new Date(b.due_date + 'T12:00:00');
-                        const days = Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
-                        const fine = Number(b.amount) * (Number(b.fine_percent || 0) / 100);
-                        const interest = Number(b.amount) * (Number(b.interest_percent_per_day || 0) / 100) * days;
-                        return { b, days, total: Number(b.amount) + fine + interest };
-                      });
-                      const overdueTotal = overdueWithInterest.reduce((s, x) => s + x.total, 0);
-                      const oldestOverdue = overdueWithInterest.sort((a, b) => b.days - a.days)[0];
+                const defaultColumns = [
+                  {
+                    key: 'count',
+                    header: 'Boletos',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center hidden sm:table-cell tabular-nums',
+                    headClassName: 'text-[11px] text-center hidden sm:table-cell',
+                    cell: (g: BoletoGroup) => metrics(g).all.length,
+                  },
+                  {
+                    key: 'pending',
+                    header: 'Pend.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-orange-600 font-medium tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => metrics(g).pending.length,
+                  },
+                  {
+                    key: 'overdueCount',
+                    header: 'Atras.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center hidden xs:table-cell tabular-nums',
+                    headClassName: 'text-[11px] text-center hidden xs:table-cell',
+                    cell: (g: BoletoGroup) => {
+                      const n = metrics(g).overdue.length;
+                      return n > 0 ? <span className="text-red-600 font-semibold">{n}</span> : '-';
+                    },
+                  },
+                  {
+                    key: 'nextDue',
+                    header: 'Próx. Venc.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs hidden sm:table-cell tabular-nums',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (g: BoletoGroup) => {
+                      const m = metrics(g);
+                      return m.nextDue ? format(new Date(m.nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-';
+                    },
+                  },
+                  {
+                    key: 'totalPending',
+                    header: 'Total',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).totalPending.toFixed(2)}`,
+                  },
+                ];
 
-                      return (
-                        <TableRow key={group.key}>
-                          <TableCell className="text-xs font-medium py-2">
-                            <div className="truncate max-w-[140px]">{group.clientName}</div>
-                            {group.clientPhone && <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>}
-                          </TableCell>
+                const middle =
+                  boletoFilter === 'paid'
+                    ? paidColumns
+                    : boletoFilter === 'overdue'
+                      ? overdueColumns
+                      : defaultColumns;
 
-                          {boletoFilter === 'paid' ? (
-                            <>
-                              <TableCell className="text-xs text-center text-primary font-medium tabular-nums">{paid.length}</TableCell>
-                              <TableCell className="text-xs tabular-nums">
-                                {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : (nextPaidDue ? format(new Date(nextPaidDue + 'T12:00:00'), 'dd/MM/yyyy') : '-')}
-                              </TableCell>
-                              <TableCell className="text-xs font-medium text-primary tabular-nums whitespace-nowrap">
-                                R$ {totalPaid.toFixed(2)}
-                              </TableCell>
-                            </>
-                          ) : boletoFilter === 'overdue' ? (
-                            <>
-                              <TableCell className="text-xs py-2">
-                                {oldestOverdue ? (
-                                  <div className="space-y-0.5">
-                                    <div className="font-medium truncate max-w-[180px]">
-                                      {oldestOverdue.b.service_description || `Parcela ${oldestOverdue.b.installment_number}/${oldestOverdue.b.total_installments}`}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground tabular-nums">
-                                      {String(oldestOverdue.b.installment_number).padStart(2, '0')}/{String(oldestOverdue.b.total_installments).padStart(2, '0')} · venc. {format(new Date(oldestOverdue.b.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
-                                    </div>
-                                  </div>
-                                ) : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs text-center text-red-600 font-semibold tabular-nums">
-                                {oldestOverdue ? `${oldestOverdue.days}d` : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs font-semibold text-red-700 tabular-nums whitespace-nowrap">
-                                R$ {overdueTotal.toFixed(2)}
-                              </TableCell>
-                            </>
-                          ) : (
-                            <>
-                              <TableCell className="text-xs text-center hidden sm:table-cell tabular-nums">{all.length}</TableCell>
-                              <TableCell className="text-xs text-center text-orange-600 font-medium tabular-nums">{pending.length}</TableCell>
-                              <TableCell className="text-xs text-center hidden xs:table-cell tabular-nums">
-                                {overdue.length > 0 ? <span className="text-red-600 font-semibold">{overdue.length}</span> : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs hidden sm:table-cell tabular-nums">
-                                {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap">
-                                R$ {totalPending.toFixed(2)}
-                              </TableCell>
-                            </>
-                          )}
-
-                          <TableCell className="text-right sticky right-0 bg-background">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 h-7 text-[11px] px-2"
-                              onClick={() => setDetailClientKey(group.key)}
-                            >
-                              <Eye className="h-3 w-3" />
-                              Ver
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                return (
+                  <ResponsiveTable
+                    data={filteredClientGroups}
+                    getRowKey={(group) => group.key}
+                    minWidthClassName="min-w-[760px]"
+                    emptyMessage={loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
+                    columns={[clientColumn, ...middle, actionsColumn]}
+                  />
+                );
+              })()}
             </div>
 
 

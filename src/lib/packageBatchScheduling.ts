@@ -58,7 +58,7 @@ export async function schedulePackageSessionsBatch(params: {
   items: PackageBatchItem[];
   batchKey?: string | null;
 }): Promise<PackageBatchResult> {
-  const { data, error } = await (supabase as any).rpc('schedule_package_sessions_batch', {
+  const { data, error } = await (supabase.rpc as unknown as RpcFn)(('schedule_package_sessions_batch', {
     p_client_id: params.clientId,
     p_package_id: params.packageId,
     p_items: params.items.map(toRpcItem),
@@ -67,7 +67,7 @@ export async function schedulePackageSessionsBatch(params: {
 
   if (error) throw error;
 
-  const payload = (data ?? {}) as any;
+  const payload = (data ?? {}) as Record<string, unknown>;
   return {
     createdCount: Number(payload.created_count ?? 0),
     requestedCount: Number(payload.requested_count ?? params.items.length),
@@ -84,14 +84,14 @@ export async function verifyPackageSchedule(
   packageId: string,
   items: PackageBatchItem[],
 ): Promise<{ ok: boolean; checked: number; issues: PackageScheduleIssue[] }> {
-  const { data, error } = await (supabase as any).rpc('verify_package_schedule_batch', {
+  const { data, error } = await (supabase.rpc as unknown as RpcFn)(('verify_package_schedule_batch', {
     p_package_id: packageId,
     p_expected: items.map(toRpcItem),
   });
 
   if (error) throw error;
 
-  const payload = (data ?? {}) as any;
+  const payload = (data ?? {}) as Record<string, unknown>;
   return {
     ok: !!payload.ok,
     checked: Number(payload.checked ?? 0),
@@ -102,11 +102,11 @@ export async function verifyPackageSchedule(
 /** Correção automática, sem intervenção manual. Nunca lança erro. */
 export async function autohealPackageSchedule(packageId: string) {
   try {
-    const { data, error } = await (supabase as any).rpc('autoheal_package_schedule', {
+    const { data, error } = await (supabase.rpc as unknown as RpcFn)(('autoheal_package_schedule', {
       p_package_id: packageId,
     });
     if (error) throw error;
-    const payload = (data ?? {}) as any;
+    const payload = (data ?? {}) as Record<string, unknown>;
     return {
       cleared: Number(payload.cleared ?? 0),
       relinked: Number(payload.relinked ?? 0),

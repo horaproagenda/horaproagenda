@@ -549,21 +549,31 @@ export function FormasPagamento() {
             <div className="max-h-[350px] overflow-y-auto overflow-x-visible">
               {(() => {
                 type BoletoGroup = (typeof filteredClientGroups)[number];
+                type BoletoInstallment = {
+                  status?: string;
+                  due_date: string;
+                  amount: number | string;
+                  fine_percent?: number | string | null;
+                  interest_percent_per_day?: number | string | null;
+                  installment_number?: number;
+                  total_installments?: number;
+                  service_description?: string | null;
+                };
                 const metrics = (group: BoletoGroup) => {
-                  const all = group.installments as any[];
-                  const pending = all.filter((b: any) => b.status === 'pending' || b.status === 'overdue');
+                  const all = group.installments as unknown as BoletoInstallment[];
+                  const pending = all.filter((b) => b.status === 'pending' || b.status === 'overdue');
                   const overdue = all.filter(
-                    (b: any) =>
+                    (b) =>
                       b.status === 'overdue' ||
                       (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date()),
                   );
-                  const paid = all.filter((b: any) => b.status === 'paid');
-                  const totalPending = pending.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                  const totalPaid = paid.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                  const nextDue = pending.map((b: any) => b.due_date).sort()[0];
-                  const nextPaidDue = paid.map((b: any) => b.due_date).sort().reverse()[0];
+                  const paid = all.filter((b) => b.status === 'paid');
+                  const totalPending = pending.reduce((s, b) => s + Number(b.amount), 0);
+                  const totalPaid = paid.reduce((s, b) => s + Number(b.amount), 0);
+                  const nextDue = pending.map((b) => b.due_date).sort()[0];
+                  const nextPaidDue = paid.map((b) => b.due_date).sort().reverse()[0];
                   const today = new Date();
-                  const overdueWithInterest = overdue.map((b: any) => {
+                  const overdueWithInterest = overdue.map((b) => {
                     const due = new Date(b.due_date + 'T12:00:00');
                     const days = Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
                     const fine = Number(b.amount) * (Number(b.fine_percent || 0) / 100);

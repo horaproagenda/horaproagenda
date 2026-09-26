@@ -77,7 +77,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
 import { createDateTimeInTimeZone } from '@/lib/timezone';
 import { calculateAppointmentTimesInTimeZone } from '@/lib/appointmentScheduling';
-import { useAvailabilityCheck, type AvailabilitySlot } from '@/lib/availabilityCheck';
+import { useAvailabilityCheck, checkAvailabilitySlots, type AvailabilitySlot } from '@/lib/availabilityCheck';
 import {
   schedulePackageSessionsBatch,
   verifyAndHealPackageSchedule,

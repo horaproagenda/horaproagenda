@@ -330,133 +330,199 @@ export function BoletoDetailModal({
             )}
 
             {/* Installments Table */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead>Venda / Descrição</TableHead>
-                  <TableHead>Parcela</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Pagto</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map(inst => {
-                  const isEditing = editingId === inst.id;
-                  const isPending = inst.status === 'pending' || inst.status === 'overdue';
-
-                  return (
-                    <TableRow key={inst.id} className={selectedIds.includes(inst.id) ? 'bg-primary/5' : ''}>
-                      <TableCell>
-                        {isPending && (
-                          <Checkbox
-                            checked={selectedIds.includes(inst.id)}
-                            onCheckedChange={() => toggleSelect(inst.id)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[180px]">
-                        <div className="font-medium truncate">{inst.sale?.description || inst.service_description || '—'}</div>
-                        {inst.document_number && (
-                          <div className="text-[10px] text-muted-foreground truncate">Doc: {inst.document_number}</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        {inst.installment_number}/{inst.total_installments}
-                      </TableCell>
-                      <TableCell className="text-sm">
+            <ResponsiveTable
+              data={sorted}
+              getRowKey={(inst) => inst.id}
+              minWidthClassName="min-w-[900px]"
+              emptyMessage="Nenhuma parcela encontrada"
+              rowClassName={(inst) => (selectedIds.includes(inst.id) ? 'bg-primary/5' : undefined)}
+              columns={[
+                {
+                  key: 'select',
+                  header: '',
+                  priority: 'primary',
+                  hideLabelOnCard: true,
+                  headClassName: 'w-8',
+                  cell: (inst) => {
+                    const isPending = inst.status === 'pending' || inst.status === 'overdue';
+                    return isPending ? (
+                      <Checkbox
+                        checked={selectedIds.includes(inst.id)}
+                        onCheckedChange={() => toggleSelect(inst.id)}
+                      />
+                    ) : null;
+                  },
+                },
+                {
+                  key: 'description',
+                  header: 'Venda / Descrição',
+                  priority: 'primary',
+                  className: 'text-xs max-w-[180px]',
+                  cell: (inst) => (
+                    <>
+                      <div className="font-medium truncate">
+                        {inst.sale?.description || inst.service_description || '—'}
+                      </div>
+                      {inst.document_number && (
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          Doc: {inst.document_number}
+                        </div>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  priority: 'primary',
+                  hideLabelOnCard: true,
+                  cell: (inst) => getStatusBadge(inst),
+                },
+                {
+                  key: 'installment',
+                  header: 'Parcela',
+                  priority: 'secondary',
+                  className: 'text-sm font-medium',
+                  cell: (inst) => `${inst.installment_number}/${inst.total_installments}`,
+                },
+                {
+                  key: 'due_date',
+                  header: 'Vencimento',
+                  priority: 'secondary',
+                  className: 'text-sm',
+                  cell: (inst) =>
+                    editingId === inst.id ? (
+                      <Input
+                        type="date"
+                        value={editForm.due_date}
+                        onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                        className="h-7 text-xs w-32"
+                      />
+                    ) : (
+                      format(new Date(inst.due_date + 'T12:00:00'), 'dd/MM/yyyy')
+                    ),
+                },
+                {
+                  key: 'amount',
+                  header: 'Valor',
+                  priority: 'secondary',
+                  className: 'text-sm',
+                  cell: (inst) =>
+                    editingId === inst.id ? (
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editForm.amount}
+                        onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                        className="h-7 text-xs w-24"
+                      />
+                    ) : (
+                      `R$ ${Number(inst.amount).toFixed(2)}`
+                    ),
+                },
+                {
+                  key: 'paid_date',
+                  header: 'Pagto',
+                  priority: 'secondary',
+                  className: 'text-xs text-muted-foreground',
+                  cell: (inst) =>
+                    inst.paid_date ? format(new Date(inst.paid_date + 'T12:00:00'), 'dd/MM/yyyy') : '-',
+                },
+                {
+                  key: 'actions',
+                  header: 'Ações',
+                  priority: 'actions',
+                  cell: (inst) => {
+                    const isEditing = editingId === inst.id;
+                    const isPending = inst.status === 'pending' || inst.status === 'overdue';
+                    return (
+                      <div className="flex justify-end gap-1">
                         {isEditing ? (
-                          <Input
-                            type="date"
-                            value={editForm.due_date}
-                            onChange={e => setEditForm({ ...editForm, due_date: e.target.value })}
-                            className="h-7 text-xs w-32"
-                          />
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={requestSaveEdit}>
+                              <Check className="h-3.5 w-3.5 text-primary" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setEditingId(null)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
                         ) : (
-                          format(new Date(inst.due_date + 'T12:00:00'), 'dd/MM/yyyy')
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {isEditing ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={editForm.amount}
-                            onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
-                            className="h-7 text-xs w-24"
-                          />
-                        ) : (
-                          `R$ ${Number(inst.amount).toFixed(2)}`
-                        )}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(inst)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {inst.paid_date
-                          ? format(new Date(inst.paid_date + 'T12:00:00'), 'dd/MM/yyyy')
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {isEditing ? (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={requestSaveEdit}>
-                                <Check className="h-3.5 w-3.5 text-primary" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              {isPending && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(inst)} title="Editar">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    title="Dar baixa"
-                                    onClick={() => setConfirmAction({ kind: 'pay', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})` })}
-                                  >
-                                    <Check className="h-3.5 w-3.5 text-primary" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    title="Cancelar (mantém histórico)"
-                                    onClick={() => setConfirmAction({ kind: 'cancel', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
-                                  >
-                                    <X className="h-3.5 w-3.5 text-destructive" />
-                                  </Button>
-                                </>
-                              )}
-                              {onDelete && (
+                          <>
+                            {isPending && (
+                              <>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  title="Excluir parcela permanentemente"
-                                  onClick={() => packageSaleId ? requestPackageCancel() : setConfirmAction({ kind: 'delete', id: inst.id, label: `parcela ${inst.installment_number}/${inst.total_installments}` })}
+                                  onClick={() => startEdit(inst)}
+                                  title="Editar"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                              )}
-                            </>
-                          )}
-
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Dar baixa"
+                                  onClick={() =>
+                                    setConfirmAction({
+                                      kind: 'pay',
+                                      id: inst.id,
+                                      label: `parcela ${inst.installment_number}/${inst.total_installments} (R$ ${Number(inst.amount).toFixed(2)})`,
+                                    })
+                                  }
+                                >
+                                  <Check className="h-3.5 w-3.5 text-primary" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Cancelar (mantém histórico)"
+                                  onClick={() =>
+                                    setConfirmAction({
+                                      kind: 'cancel',
+                                      id: inst.id,
+                                      label: `parcela ${inst.installment_number}/${inst.total_installments}`,
+                                    })
+                                  }
+                                >
+                                  <X className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                            {onDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Excluir parcela permanentemente"
+                                onClick={() =>
+                                  packageSaleId
+                                    ? requestPackageCancel()
+                                    : setConfirmAction({
+                                        kind: 'delete',
+                                        id: inst.id,
+                                        label: `parcela ${inst.installment_number}/${inst.total_installments}`,
+                                      })
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  },
+                },
+              ]}
+            />
 
             {/* Payment History */}
             {paidInstallments.length > 0 && (

@@ -17,14 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Separator } from '@/components/ui/separator';
 import { User, Package, ShoppingCart, Plus, Trash2, Check, CreditCard, Calendar, AlertTriangle, Wallet, FileText } from 'lucide-react';
 import { useClients } from '@/hooks/useClients';
@@ -1134,43 +1127,67 @@ export function SaleForm() {
                 </div>
 
                 <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead className="text-center">Qtd</TableHead>
-                        <TableHead className="text-right">Unitário</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {saleInfo.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {item.type === 'product' ? 'Produto' : 
-                               item.type === 'service' ? 'Serviço' : 'Pacote'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
-                          <TableCell>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleRemoveItem(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <ResponsiveTable
+                    data={saleInfo.items}
+                    getRowKey={(item) => item.id}
+                    minWidthClassName="min-w-[680px]"
+                    emptyMessage="Nenhum item na venda"
+                    columns={[
+                      {
+                        key: 'name',
+                        header: 'Item',
+                        priority: 'primary',
+                        className: 'font-medium',
+                        cell: (item) => item.name,
+                      },
+                      {
+                        key: 'type',
+                        header: 'Tipo',
+                        priority: 'primary',
+                        hideLabelOnCard: true,
+                        cell: (item) => (
+                          <Badge variant="outline">
+                            {item.type === 'product' ? 'Produto' : item.type === 'service' ? 'Serviço' : 'Pacote'}
+                          </Badge>
+                        ),
+                      },
+                      {
+                        key: 'quantity',
+                        header: 'Qtd',
+                        priority: 'secondary',
+                        className: 'text-center',
+                        headClassName: 'text-center',
+                        cell: (item) => item.quantity,
+                      },
+                      {
+                        key: 'unitPrice',
+                        header: 'Unitário',
+                        priority: 'secondary',
+                        className: 'text-right',
+                        headClassName: 'text-right',
+                        cell: (item) => formatCurrency(item.unitPrice),
+                      },
+                      {
+                        key: 'total',
+                        header: 'Total',
+                        priority: 'secondary',
+                        className: 'text-right font-medium',
+                        headClassName: 'text-right',
+                        cell: (item) => formatCurrency(item.total),
+                      },
+                      {
+                        key: 'actions',
+                        header: '',
+                        priority: 'actions',
+                        headClassName: 'w-12',
+                        cell: (item) => (
+                          <Button size="icon" variant="ghost" onClick={() => handleRemoveItem(item.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        ),
+                      },
+                    ]}
+                  />
                 </div>
 
                 <div className="flex justify-between items-center pt-2">

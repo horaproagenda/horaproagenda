@@ -17,9 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Plus, Pencil, Trash2, CreditCard, Landmark, Banknote, FileText, Bell, AlertCircle, Check, RefreshCw, Eye, History, LayoutList, Clock, AlertTriangle, CheckCircle2, Info, Ban } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -383,24 +381,57 @@ export function FormasPagamento() {
               </Dialog>
             </div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Parcelas</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {paymentMethods.map(pm => (
-                    <TableRow key={pm.id}>
-                      <TableCell className="font-medium">{pm.name}</TableCell>
-                      <TableCell>{pm.max_installments || 1}x</TableCell>
-                      <TableCell><Badge variant={pm.is_active ? 'default' : 'secondary'}>{pm.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openPmEdit(pm)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deletePaymentMethod.mutate(pm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={paymentMethods}
+                getRowKey={(pm) => pm.id}
+                minWidthClassName="min-w-[520px]"
+                emptyMessage="Nenhuma forma de pagamento cadastrada"
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Nome',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (pm) => pm.name,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: (pm) => (
+                      <Badge variant={pm.is_active ? 'default' : 'secondary'}>
+                        {pm.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'installments',
+                    header: 'Parcelas',
+                    priority: 'secondary',
+                    cell: (pm) => `${pm.max_installments || 1}x`,
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Ações',
+                    priority: 'actions',
+                    cell: (pm) => (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openPmEdit(pm)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deletePaymentMethod.mutate(pm.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
 
@@ -516,137 +547,238 @@ export function FormasPagamento() {
             <Separator />
 
             <div className="max-h-[350px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-[11px]">Cliente</TableHead>
-                    {boletoFilter === 'paid' ? (
-                      <>
-                        <TableHead className="text-[11px] text-center">Qtd. Pagos</TableHead>
-                        <TableHead className="text-[11px]">Próx. Venc.</TableHead>
-                        <TableHead className="text-[11px]">Total Pago</TableHead>
-                      </>
-                    ) : boletoFilter === 'overdue' ? (
-                      <>
-                        <TableHead className="text-[11px]">Boleto</TableHead>
-                        <TableHead className="text-[11px] text-center">Dias atraso</TableHead>
-                        <TableHead className="text-[11px]">Total c/ juros</TableHead>
-                      </>
-                    ) : (
-                      <>
-                        <TableHead className="text-[11px] text-center hidden sm:table-cell">Boletos</TableHead>
-                        <TableHead className="text-[11px] text-center">Pend.</TableHead>
-                        <TableHead className="text-[11px] text-center hidden xs:table-cell">Atras.</TableHead>
-                        <TableHead className="text-[11px] hidden sm:table-cell">Próx. Venc.</TableHead>
-                        <TableHead className="text-[11px]">Total</TableHead>
-                      </>
-                    )}
-                    <TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClientGroups.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={boletoFilter === 'paid' || boletoFilter === 'overdue' ? 5 : 7} className="text-center py-8 text-muted-foreground text-xs">
-                        {loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClientGroups.map((group) => {
-                      const all = group.installments;
-                      const pending = all.filter((b: any) => b.status === 'pending' || b.status === 'overdue');
-                      const overdue = all.filter((b: any) =>
-                        b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date())
+              {(() => {
+                type BoletoGroup = (typeof filteredClientGroups)[number];
+                type BoletoInstallment = {
+                  status?: string;
+                  due_date: string;
+                  amount: number | string;
+                  fine_percent?: number | string | null;
+                  interest_percent_per_day?: number | string | null;
+                  installment_number?: number;
+                  total_installments?: number;
+                  service_description?: string | null;
+                };
+                const metrics = (group: BoletoGroup) => {
+                  const all = group.installments as unknown as BoletoInstallment[];
+                  const pending = all.filter((b) => b.status === 'pending' || b.status === 'overdue');
+                  const overdue = all.filter(
+                    (b) =>
+                      b.status === 'overdue' ||
+                      (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date()),
+                  );
+                  const paid = all.filter((b) => b.status === 'paid');
+                  const totalPending = pending.reduce((s, b) => s + Number(b.amount), 0);
+                  const totalPaid = paid.reduce((s, b) => s + Number(b.amount), 0);
+                  const nextDue = pending.map((b) => b.due_date).sort()[0];
+                  const nextPaidDue = paid.map((b) => b.due_date).sort().reverse()[0];
+                  const today = new Date();
+                  const overdueWithInterest = overdue.map((b) => {
+                    const due = new Date(b.due_date + 'T12:00:00');
+                    const days = Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
+                    const fine = Number(b.amount) * (Number(b.fine_percent || 0) / 100);
+                    const interest =
+                      Number(b.amount) * (Number(b.interest_percent_per_day || 0) / 100) * days;
+                    return { b, days, total: Number(b.amount) + fine + interest };
+                  });
+                  const overdueTotal = overdueWithInterest.reduce((s, x) => s + x.total, 0);
+                  const oldestOverdue = [...overdueWithInterest].sort((a, b) => b.days - a.days)[0];
+                  return {
+                    all,
+                    pending,
+                    overdue,
+                    paid,
+                    totalPending,
+                    totalPaid,
+                    nextDue,
+                    nextPaidDue,
+                    overdueTotal,
+                    oldestOverdue,
+                  };
+                };
+
+                const clientColumn = {
+                  key: 'client',
+                  header: 'Cliente',
+                  priority: 'primary' as const,
+                  className: 'text-xs font-medium py-2',
+                  headClassName: 'text-[11px]',
+                  cell: (group: BoletoGroup) => (
+                    <>
+                      <div className="truncate max-w-[140px]">{group.clientName}</div>
+                      {group.clientPhone && (
+                        <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>
+                      )}
+                    </>
+                  ),
+                };
+
+                const actionsColumn = {
+                  key: 'actions',
+                  header: 'Ações',
+                  priority: 'actions' as const,
+                  className: 'text-right sticky right-0 bg-background',
+                  headClassName: 'text-[11px] text-right sticky right-0 bg-background',
+                  cell: (group: BoletoGroup) => (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 h-7 text-[11px] px-2"
+                      onClick={() => setDetailClientKey(group.key)}
+                    >
+                      <Eye className="h-3 w-3" />
+                      Ver
+                    </Button>
+                  ),
+                };
+
+                const paidColumns = [
+                  {
+                    key: 'paidCount',
+                    header: 'Qtd. Pagos',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-primary font-medium tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => metrics(g).paid.length,
+                  },
+                  {
+                    key: 'nextDuePaid',
+                    header: 'Próx. Venc.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs tabular-nums',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => {
+                      const m = metrics(g);
+                      return m.nextDue
+                        ? format(new Date(m.nextDue + 'T12:00:00'), 'dd/MM/yyyy')
+                        : m.nextPaidDue
+                          ? format(new Date(m.nextPaidDue + 'T12:00:00'), 'dd/MM/yyyy')
+                          : '-';
+                    },
+                  },
+                  {
+                    key: 'totalPaid',
+                    header: 'Total Pago',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-medium text-primary tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).totalPaid.toFixed(2)}`,
+                  },
+                ];
+
+                const overdueColumns = [
+                  {
+                    key: 'boleto',
+                    header: 'Boleto',
+                    priority: 'secondary' as const,
+                    className: 'text-xs py-2',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => {
+                      const o = metrics(g).oldestOverdue;
+                      return o ? (
+                        <div className="space-y-0.5">
+                          <div className="font-medium truncate max-w-[180px]">
+                            {o.b.service_description ||
+                              `Parcela ${o.b.installment_number}/${o.b.total_installments}`}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground tabular-nums">
+                            {String(o.b.installment_number).padStart(2, '0')}/
+                            {String(o.b.total_installments).padStart(2, '0')} · venc.{' '}
+                            {format(new Date(o.b.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        '-'
                       );
-                      const paid = all.filter((b: any) => b.status === 'paid');
-                      const totalPending = pending.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                      const totalPaid = paid.reduce((s: number, b: any) => s + Number(b.amount), 0);
-                      const nextDue = pending.map((b: any) => b.due_date).sort()[0];
-                      const nextPaidDue = paid.map((b: any) => b.due_date).sort().reverse()[0];
+                    },
+                  },
+                  {
+                    key: 'daysOverdue',
+                    header: 'Dias atraso',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-red-600 font-semibold tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => {
+                      const o = metrics(g).oldestOverdue;
+                      return o ? `${o.days}d` : '-';
+                    },
+                  },
+                  {
+                    key: 'overdueTotal',
+                    header: 'Total c/ juros',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-semibold text-red-700 tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).overdueTotal.toFixed(2)}`,
+                  },
+                ];
 
-                      // Overdue with interest: amount + fine + (interest_per_day * daysOverdue)
-                      const today = new Date();
-                      const overdueWithInterest = overdue.map((b: any) => {
-                        const due = new Date(b.due_date + 'T12:00:00');
-                        const days = Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86400000));
-                        const fine = Number(b.amount) * (Number(b.fine_percent || 0) / 100);
-                        const interest = Number(b.amount) * (Number(b.interest_percent_per_day || 0) / 100) * days;
-                        return { b, days, total: Number(b.amount) + fine + interest };
-                      });
-                      const overdueTotal = overdueWithInterest.reduce((s, x) => s + x.total, 0);
-                      const oldestOverdue = overdueWithInterest.sort((a, b) => b.days - a.days)[0];
+                const defaultColumns = [
+                  {
+                    key: 'count',
+                    header: 'Boletos',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center hidden sm:table-cell tabular-nums',
+                    headClassName: 'text-[11px] text-center hidden sm:table-cell',
+                    cell: (g: BoletoGroup) => metrics(g).all.length,
+                  },
+                  {
+                    key: 'pending',
+                    header: 'Pend.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center text-orange-600 font-medium tabular-nums',
+                    headClassName: 'text-[11px] text-center',
+                    cell: (g: BoletoGroup) => metrics(g).pending.length,
+                  },
+                  {
+                    key: 'overdueCount',
+                    header: 'Atras.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs text-center hidden xs:table-cell tabular-nums',
+                    headClassName: 'text-[11px] text-center hidden xs:table-cell',
+                    cell: (g: BoletoGroup) => {
+                      const n = metrics(g).overdue.length;
+                      return n > 0 ? <span className="text-red-600 font-semibold">{n}</span> : '-';
+                    },
+                  },
+                  {
+                    key: 'nextDue',
+                    header: 'Próx. Venc.',
+                    priority: 'secondary' as const,
+                    className: 'text-xs hidden sm:table-cell tabular-nums',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (g: BoletoGroup) => {
+                      const m = metrics(g);
+                      return m.nextDue ? format(new Date(m.nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-';
+                    },
+                  },
+                  {
+                    key: 'totalPending',
+                    header: 'Total',
+                    priority: 'primary' as const,
+                    className: 'text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap',
+                    headClassName: 'text-[11px]',
+                    cell: (g: BoletoGroup) => `R$ ${metrics(g).totalPending.toFixed(2)}`,
+                  },
+                ];
 
-                      return (
-                        <TableRow key={group.key}>
-                          <TableCell className="text-xs font-medium py-2">
-                            <div className="truncate max-w-[140px]">{group.clientName}</div>
-                            {group.clientPhone && <div className="text-[10px] text-muted-foreground">{group.clientPhone}</div>}
-                          </TableCell>
+                const middle =
+                  boletoFilter === 'paid'
+                    ? paidColumns
+                    : boletoFilter === 'overdue'
+                      ? overdueColumns
+                      : defaultColumns;
 
-                          {boletoFilter === 'paid' ? (
-                            <>
-                              <TableCell className="text-xs text-center text-primary font-medium tabular-nums">{paid.length}</TableCell>
-                              <TableCell className="text-xs tabular-nums">
-                                {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : (nextPaidDue ? format(new Date(nextPaidDue + 'T12:00:00'), 'dd/MM/yyyy') : '-')}
-                              </TableCell>
-                              <TableCell className="text-xs font-medium text-primary tabular-nums whitespace-nowrap">
-                                R$ {totalPaid.toFixed(2)}
-                              </TableCell>
-                            </>
-                          ) : boletoFilter === 'overdue' ? (
-                            <>
-                              <TableCell className="text-xs py-2">
-                                {oldestOverdue ? (
-                                  <div className="space-y-0.5">
-                                    <div className="font-medium truncate max-w-[180px]">
-                                      {oldestOverdue.b.service_description || `Parcela ${oldestOverdue.b.installment_number}/${oldestOverdue.b.total_installments}`}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground tabular-nums">
-                                      {String(oldestOverdue.b.installment_number).padStart(2, '0')}/{String(oldestOverdue.b.total_installments).padStart(2, '0')} · venc. {format(new Date(oldestOverdue.b.due_date + 'T12:00:00'), 'dd/MM/yyyy')}
-                                    </div>
-                                  </div>
-                                ) : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs text-center text-red-600 font-semibold tabular-nums">
-                                {oldestOverdue ? `${oldestOverdue.days}d` : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs font-semibold text-red-700 tabular-nums whitespace-nowrap">
-                                R$ {overdueTotal.toFixed(2)}
-                              </TableCell>
-                            </>
-                          ) : (
-                            <>
-                              <TableCell className="text-xs text-center hidden sm:table-cell tabular-nums">{all.length}</TableCell>
-                              <TableCell className="text-xs text-center text-orange-600 font-medium tabular-nums">{pending.length}</TableCell>
-                              <TableCell className="text-xs text-center hidden xs:table-cell tabular-nums">
-                                {overdue.length > 0 ? <span className="text-red-600 font-semibold">{overdue.length}</span> : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs hidden sm:table-cell tabular-nums">
-                                {nextDue ? format(new Date(nextDue + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
-                              </TableCell>
-                              <TableCell className="text-xs font-medium text-orange-700 tabular-nums whitespace-nowrap">
-                                R$ {totalPending.toFixed(2)}
-                              </TableCell>
-                            </>
-                          )}
-
-                          <TableCell className="text-right sticky right-0 bg-background">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 h-7 text-[11px] px-2"
-                              onClick={() => setDetailClientKey(group.key)}
-                            >
-                              <Eye className="h-3 w-3" />
-                              Ver
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                return (
+                  <ResponsiveTable
+                    data={filteredClientGroups}
+                    getRowKey={(group) => group.key}
+                    minWidthClassName="min-w-[760px]"
+                    emptyMessage={loadingBoletos ? 'Carregando...' : 'Nenhum boleto encontrado'}
+                    columns={[clientColumn, ...middle, actionsColumn]}
+                  />
+                );
+              })()}
             </div>
 
 
@@ -667,21 +799,50 @@ export function FormasPagamento() {
           <TabsContent value="banks" className="space-y-4">
             <div className="flex justify-end"><ManageBanksDialog /></div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead>Banco</TableHead><TableHead>Código</TableHead><TableHead>Agência</TableHead><TableHead>Conta</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {banks.map(bank => (
-                    <TableRow key={bank.id}>
-                      <TableCell className="font-medium">{bank.name}</TableCell>
-                      <TableCell>{bank.bank_code || '-'}</TableCell>
-                      <TableCell>{bank.agency || '-'}</TableCell>
-                      <TableCell>{bank.account_number || '-'}</TableCell>
-                      <TableCell><Badge variant={bank.is_active ? 'default' : 'secondary'}>{bank.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                    </TableRow>
-                  ))}
-                  {banks.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum banco cadastrado.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={banks}
+                getRowKey={(bank) => bank.id}
+                minWidthClassName="min-w-[620px]"
+                emptyMessage="Nenhum banco cadastrado."
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Banco',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (bank) => bank.name,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: (bank) => (
+                      <Badge variant={bank.is_active ? 'default' : 'secondary'}>
+                        {bank.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'bank_code',
+                    header: 'Código',
+                    priority: 'secondary',
+                    cell: (bank) => bank.bank_code || '-',
+                  },
+                  {
+                    key: 'agency',
+                    header: 'Agência',
+                    priority: 'secondary',
+                    cell: (bank) => bank.agency || '-',
+                  },
+                  {
+                    key: 'account_number',
+                    header: 'Conta',
+                    priority: 'secondary',
+                    cell: (bank) => bank.account_number || '-',
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
 
@@ -740,27 +901,85 @@ export function FormasPagamento() {
               </Dialog>
             </div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead className="text-[11px]">Bandeira</TableHead><TableHead className="text-[11px]">Tipo</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Quem paga taxa</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Parcelas</TableHead><TableHead className="text-[11px] hidden sm:table-cell">Status</TableHead><TableHead className="text-[11px] text-right sticky right-0 bg-background">Ações</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {cardBrands.map(brand => (
-                    <TableRow key={brand.id}>
-                      <TableCell className="font-medium text-xs">{brand.name}</TableCell>
-                      <TableCell className="text-xs"><Badge variant="outline" className="text-[10px]">{brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}</Badge></TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell">{brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'}</TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell">{brand.fees?.length || 0} configuradas</TableCell>
-                      <TableCell className="text-xs hidden sm:table-cell"><Badge variant={brand.is_active ? 'default' : 'secondary'} className="text-[10px]">{brand.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                      <TableCell className="text-right sticky right-0 bg-background">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openBrandEdit(brand)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCardBrand.mutate(brand.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {cardBrands.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8 text-xs">Nenhuma bandeira cadastrada</TableCell></TableRow>}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={cardBrands}
+                getRowKey={(brand) => brand.id}
+                minWidthClassName="min-w-[760px]"
+                emptyMessage="Nenhuma bandeira cadastrada"
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Bandeira',
+                    priority: 'primary',
+                    className: 'font-medium text-xs',
+                    headClassName: 'text-[11px]',
+                    cell: (brand) => brand.name,
+                  },
+                  {
+                    key: 'type',
+                    header: 'Tipo',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    className: 'text-xs',
+                    headClassName: 'text-[11px]',
+                    cell: (brand) => (
+                      <Badge variant="outline" className="text-[10px]">
+                        {brand.type === 'credit' ? 'Crédito' : brand.type === 'debit' ? 'Débito' : 'Ambos'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'fee_behavior',
+                    header: 'Quem paga taxa',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => (brand.fee_behavior === 'add_to_client' ? 'Cliente' : 'Dono'),
+                  },
+                  {
+                    key: 'fees',
+                    header: 'Parcelas',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => `${brand.fees?.length || 0} configuradas`,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'secondary',
+                    className: 'text-xs hidden sm:table-cell',
+                    headClassName: 'text-[11px] hidden sm:table-cell',
+                    cell: (brand) => (
+                      <Badge variant={brand.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                        {brand.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Ações',
+                    priority: 'actions',
+                    className: 'text-right sticky right-0 bg-background',
+                    headClassName: 'text-[11px] text-right sticky right-0 bg-background',
+                    cell: (brand) => (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openBrandEdit(brand)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => deleteCardBrand.mutate(brand.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
         </Tabs>

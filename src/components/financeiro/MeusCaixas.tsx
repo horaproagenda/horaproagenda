@@ -9,14 +9,7 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Dialog,
   DialogContent,
@@ -277,67 +270,85 @@ export function MeusCaixas() {
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nº Caixa</TableHead>
-                  <TableHead>Abertura</TableHead>
-                  <TableHead>Fechamento</TableHead>
-                  <TableHead>Profissional</TableHead>
-                  <TableHead>Saldo Inicial</TableHead>
-                  <TableHead>Saldo Final</TableHead>
-                  <TableHead>Banco Destino</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cashRegisters.map((register, index) => (
-                  <TableRow key={register.id}>
-                    <TableCell className="font-medium">#{cashRegisters.length - index}</TableCell>
-                    <TableCell>
-                      {format(parseISO(register.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      {register.closed_at 
-                        ? format(parseISO(register.closed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                        : '-'
-                      }
-                    </TableCell>
-                    <TableCell>{getProfessionalName(register.opened_by)}</TableCell>
-                    <TableCell>R$ {Number(register.opening_balance).toFixed(2)}</TableCell>
-                    <TableCell>
-                      {register.closing_balance !== null 
-                        ? `R$ ${Number(register.closing_balance).toFixed(2)}`
-                        : '-'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      {register.bank_deposits && register.bank_deposits.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {register.bank_deposits.map((dep, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {dep.bank_name}: R$ {Number(dep.amount).toFixed(2)}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={register.status === 'open' ? 'default' : 'secondary'}>
-                        {register.status === 'open' ? 'Aberto' : 'Fechado'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {cashRegisters.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      Nenhum caixa encontrado
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <ResponsiveTable
+              data={cashRegisters}
+              getRowKey={(register) => register.id}
+              minWidthClassName="min-w-[980px]"
+              emptyMessage="Nenhum caixa encontrado"
+              columns={[
+                {
+                  key: 'number',
+                  header: 'Nº Caixa',
+                  priority: 'primary',
+                  className: 'font-medium',
+                  cell: (_register, index) => `#${cashRegisters.length - index}`,
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  priority: 'primary',
+                  hideLabelOnCard: true,
+                  cell: (register) => (
+                    <Badge variant={register.status === 'open' ? 'default' : 'secondary'}>
+                      {register.status === 'open' ? 'Aberto' : 'Fechado'}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'opened_at',
+                  header: 'Abertura',
+                  priority: 'secondary',
+                  cell: (register) => format(parseISO(register.opened_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }),
+                },
+                {
+                  key: 'closed_at',
+                  header: 'Fechamento',
+                  priority: 'secondary',
+                  cell: (register) =>
+                    register.closed_at
+                      ? format(parseISO(register.closed_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })
+                      : '-',
+                },
+                {
+                  key: 'professional',
+                  header: 'Profissional',
+                  priority: 'secondary',
+                  cell: (register) => getProfessionalName(register.opened_by),
+                },
+                {
+                  key: 'opening_balance',
+                  header: 'Saldo Inicial',
+                  priority: 'secondary',
+                  cell: (register) => `R$ ${Number(register.opening_balance).toFixed(2)}`,
+                },
+                {
+                  key: 'closing_balance',
+                  header: 'Saldo Final',
+                  priority: 'secondary',
+                  cell: (register) =>
+                    register.closing_balance !== null
+                      ? `R$ ${Number(register.closing_balance).toFixed(2)}`
+                      : '-',
+                },
+                {
+                  key: 'bank_deposits',
+                  header: 'Banco Destino',
+                  priority: 'secondary',
+                  cell: (register) =>
+                    register.bank_deposits && register.bank_deposits.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {register.bank_deposits.map((dep, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {dep.bank_name}: R$ {Number(dep.amount).toFixed(2)}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      '-'
+                    ),
+                },
+              ]}
+            />
           </ScrollArea>
         </CardContent>
       </Card>

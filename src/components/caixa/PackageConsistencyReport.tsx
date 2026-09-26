@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -312,37 +312,54 @@ export function PackageConsistencyReport() {
           {/* Inconsistencies Table */}
           {hasInconsistencies && (
             <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Pacote</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report?.inconsistencies.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell>
-                        {format(new Date(sale.sale_date), "dd/MM/yyyy", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="font-medium">{sale.client_name}</TableCell>
-                      <TableCell>{sale.package_name}</TableCell>
-                      <TableCell className="text-right">
-                        R$ {Number(sale.final_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Pacote não criado
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={report?.inconsistencies ?? []}
+                getRowKey={(sale) => sale.id}
+                minWidthClassName="min-w-[680px]"
+                emptyMessage="Nenhuma inconsistência encontrada"
+                columns={[
+                  {
+                    key: 'client',
+                    header: 'Cliente',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (sale) => sale.client_name,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: () => (
+                      <Badge variant="destructive" className="gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Pacote não criado
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'date',
+                    header: 'Data',
+                    priority: 'secondary',
+                    cell: (sale) => format(new Date(sale.sale_date), 'dd/MM/yyyy', { locale: ptBR }),
+                  },
+                  {
+                    key: 'package',
+                    header: 'Pacote',
+                    priority: 'secondary',
+                    cell: (sale) => sale.package_name,
+                  },
+                  {
+                    key: 'amount',
+                    header: 'Valor',
+                    priority: 'secondary',
+                    className: 'text-right',
+                    headClassName: 'text-right',
+                    cell: (sale) =>
+                      `R$ ${Number(sale.final_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                  },
+                ]}
+              />
             </div>
           )}
         </CardContent>

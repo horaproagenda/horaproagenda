@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -679,75 +677,131 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
             <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pacote vendido encontrado.</p>
           ) : (
             <DoubleScroll>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-[10px] whitespace-nowrap">Pacote</TableHead>
-                    <TableHead className="text-[10px] whitespace-nowrap">Cliente</TableHead>
-                    <TableHead className="text-[10px] whitespace-nowrap">Data</TableHead>
-                    <TableHead className="text-[10px] text-right whitespace-nowrap">Valor</TableHead>
-                    <TableHead className="text-[10px] text-right whitespace-nowrap">Pago</TableHead>
-                    <TableHead className="text-[10px] whitespace-nowrap">Pagamento</TableHead>
-                    <TableHead className="text-[10px] text-center whitespace-nowrap">Aplicações</TableHead>
-                    <TableHead className="text-[10px] whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-[10px] w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((r) => (
-                    <TableRow key={r.saleId}>
-                      <TableCell className="text-xs font-medium">{r.packageName}</TableCell>
-                      <TableCell className="text-xs">{r.clientName}</TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {r.saleDate ? format(new Date(`${r.saleDate}T12:00:00`), 'dd/MM/yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-xs text-right">R$ {r.totalAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs text-right text-primary font-semibold">R$ {r.paidAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{r.paymentMethodName}</TableCell>
-                      <TableCell className="text-xs text-center">
-                        <Badge variant="outline" className="text-[10px]">
-                          {r.usedSessions} / {r.totalSessions}
+              <ResponsiveTable
+                data={filtered}
+                getRowKey={(r) => r.saleId}
+                minWidthClassName="min-w-[1000px]"
+                emptyMessage="Nenhum pacote vendido encontrado."
+                columns={[
+                  {
+                    key: 'packageName',
+                    header: 'Pacote',
+                    priority: 'primary',
+                    className: 'text-xs font-medium',
+                    headClassName: 'text-[10px] whitespace-nowrap',
+                    cell: (r) => r.packageName,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    className: 'text-xs',
+                    headClassName: 'text-[10px] whitespace-nowrap',
+                    cell: (r) =>
+                      r.isCancelled ? (
+                        <Badge variant="destructive" className="text-[10px]">
+                          Cancelado
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {r.isCancelled ? (
-                          <Badge variant="destructive" className="text-[10px]">Cancelado</Badge>
-                        ) : r.isCompleted ? (
-                          <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">Finalizado</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">Ativo</Badge>
+                      ) : r.isCompleted ? (
+                        <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">
+                          Finalizado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">
+                          Ativo
+                        </Badge>
+                      ),
+                  },
+                  {
+                    key: 'clientName',
+                    header: 'Cliente',
+                    priority: 'secondary',
+                    className: 'text-xs',
+                    headClassName: 'text-[10px] whitespace-nowrap',
+                    cell: (r) => r.clientName,
+                  },
+                  {
+                    key: 'saleDate',
+                    header: 'Data',
+                    priority: 'secondary',
+                    className: 'text-xs whitespace-nowrap',
+                    headClassName: 'text-[10px] whitespace-nowrap',
+                    cell: (r) => (r.saleDate ? format(new Date(`${r.saleDate}T12:00:00`), 'dd/MM/yyyy') : '-'),
+                  },
+                  {
+                    key: 'totalAmount',
+                    header: 'Valor',
+                    priority: 'secondary',
+                    className: 'text-xs text-right',
+                    headClassName: 'text-[10px] text-right whitespace-nowrap',
+                    cell: (r) => `R$ ${r.totalAmount.toFixed(2)}`,
+                  },
+                  {
+                    key: 'paidAmount',
+                    header: 'Pago',
+                    priority: 'secondary',
+                    className: 'text-xs text-right text-primary font-semibold',
+                    headClassName: 'text-[10px] text-right whitespace-nowrap',
+                    cell: (r) => `R$ ${r.paidAmount.toFixed(2)}`,
+                  },
+                  {
+                    key: 'paymentMethodName',
+                    header: 'Pagamento',
+                    priority: 'secondary',
+                    className: 'text-xs',
+                    headClassName: 'text-[10px] whitespace-nowrap',
+                    cell: (r) => r.paymentMethodName,
+                  },
+                  {
+                    key: 'sessions',
+                    header: 'Aplicações',
+                    priority: 'secondary',
+                    className: 'text-xs text-center',
+                    headClassName: 'text-[10px] text-center whitespace-nowrap',
+                    cell: (r) => (
+                      <Badge variant="outline" className="text-[10px]">
+                        {r.usedSessions} / {r.totalSessions}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    header: '',
+                    priority: 'actions',
+                    headClassName: 'text-[10px] w-12',
+                    cell: (r) => (
+                      <div className="flex items-center gap-1 justify-end">
+                        {!r.isCancelled && !r.isCompleted && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => openCancel(r)}
+                            title="Cancelar pacote / devolver dinheiro"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 justify-end">
-                          {!r.isCancelled && !r.isCompleted && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => openCancel(r)}
-                              title="Cancelar pacote / devolver dinheiro"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {(r.isCancelled || r.isCompleted) && r.packageId && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => { setDeleteTarget(r); setDeleteOpen(true); }}
-                              title="Apagar pacote definitivamente"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        {(r.isCancelled || r.isCompleted) && r.packageId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setDeleteTarget(r);
+                              setDeleteOpen(true);
+                            }}
+                            title="Apagar pacote definitivamente"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </DoubleScroll>
           )}
         </CardContent>

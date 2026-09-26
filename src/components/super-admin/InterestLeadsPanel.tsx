@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { toast } from 'sonner';
 import { CheckCircle2, Trash2, Mail, Phone, RefreshCw, Inbox } from 'lucide-react';
 
@@ -100,74 +100,111 @@ export function InterestLeadsPanel() {
         Os leads são removidos automaticamente desta lista quando a pessoa cria a conta no aplicativo com o mesmo e-mail.
       </p>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-[11px]">Nome</TableHead>
-              <TableHead className="text-[11px]">Contato</TableHead>
-              <TableHead className="text-[11px]">Mensagem</TableHead>
-              <TableHead className="text-[11px]">Recebido</TableHead>
-              <TableHead className="text-[11px]">Status</TableHead>
-              <TableHead className="text-[11px] text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading && (
-              <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Carregando...</TableCell></TableRow>
-            )}
-            {!isLoading && rows.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-xs py-6 text-center text-muted-foreground">Nenhum lead recebido ainda</TableCell></TableRow>
-            )}
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="text-xs font-medium">{r.name ?? '—'}</TableCell>
-                <TableCell className="text-xs">
-                  <div className="flex flex-col gap-0.5">
-                    {r.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{r.email}</span>}
-                    {r.whatsapp && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.whatsapp}</span>}
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs max-w-[260px]">
-                  <span className="line-clamp-2 text-muted-foreground">{r.message || '—'}</span>
-                </TableCell>
-                <TableCell className="text-xs">{fmt(r.created_at)}</TableCell>
-                <TableCell className="text-xs">
-                  {r.contacted_at
-                    ? <Badge className="bg-primary/10 text-primary">Contatado em {fmt(r.contacted_at)}</Badge>
-                    : <Badge variant="secondary">Pendente</Badge>}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    {!r.contacted_at && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-6 w-6"
-                        title="Já entrei em contato"
-                        aria-label="Já entrei em contato"
-                        onClick={() => markContacted(r)}
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                      </Button>
-                    )}
+      {isLoading ? (
+        <div className="text-xs py-6 text-center text-muted-foreground">Carregando...</div>
+      ) : (
+        <ResponsiveTable
+          data={rows}
+          getRowKey={(r) => r.id}
+          minWidthClassName="min-w-[840px]"
+          emptyMessage="Nenhum lead recebido ainda"
+          columns={[
+            {
+              key: 'name',
+              header: 'Nome',
+              priority: 'primary',
+              className: 'text-xs font-medium',
+              headClassName: 'text-[11px]',
+              cell: (r) => r.name ?? '—',
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              priority: 'primary',
+              hideLabelOnCard: true,
+              className: 'text-xs',
+              headClassName: 'text-[11px]',
+              cell: (r) =>
+                r.contacted_at ? (
+                  <Badge className="bg-primary/10 text-primary">Contatado em {fmt(r.contacted_at)}</Badge>
+                ) : (
+                  <Badge variant="secondary">Pendente</Badge>
+                ),
+            },
+            {
+              key: 'contact',
+              header: 'Contato',
+              priority: 'secondary',
+              className: 'text-xs',
+              headClassName: 'text-[11px]',
+              cell: (r) => (
+                <div className="flex flex-col gap-0.5">
+                  {r.email && (
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {r.email}
+                    </span>
+                  )}
+                  {r.whatsapp && (
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {r.whatsapp}
+                    </span>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: 'message',
+              header: 'Mensagem',
+              priority: 'secondary',
+              className: 'text-xs max-w-[260px]',
+              headClassName: 'text-[11px]',
+              cell: (r) => <span className="line-clamp-2 text-muted-foreground">{r.message || '—'}</span>,
+            },
+            {
+              key: 'created_at',
+              header: 'Recebido',
+              priority: 'secondary',
+              className: 'text-xs',
+              headClassName: 'text-[11px]',
+              cell: (r) => fmt(r.created_at),
+            },
+            {
+              key: 'actions',
+              header: 'Ações',
+              priority: 'actions',
+              headClassName: 'text-[11px] text-right',
+              cell: (r) => (
+                <div className="flex justify-end gap-1">
+                  {!r.contacted_at && (
                     <Button
                       size="icon"
-                      variant="destructive"
+                      variant="outline"
                       className="h-6 w-6"
-                      title="Excluir"
-                      aria-label="Excluir"
-                      onClick={() => removeLead(r)}
+                      title="Já entrei em contato"
+                      aria-label="Já entrei em contato"
+                      onClick={() => markContacted(r)}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <CheckCircle2 className="h-3 w-3" />
                     </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="h-6 w-6"
+                    title="Excluir"
+                    aria-label="Excluir"
+                    onClick={() => removeLead(r)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ),
+            },
+          ]}
+        />
+      )}
     </Card>
   );
 }

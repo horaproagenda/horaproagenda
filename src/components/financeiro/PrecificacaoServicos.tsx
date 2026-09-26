@@ -16,14 +16,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Tooltip,
   TooltipContent,
@@ -878,67 +871,93 @@ export function PrecificacaoServicos() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[400px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Serviço</TableHead>
-                      <TableHead className="text-xs text-right">Preço</TableHead>
-                      <TableHead className="text-xs text-right">Custo</TableHead>
-                      <TableHead className="text-xs text-right">Lucro</TableHead>
-                      <TableHead className="text-xs text-right">Margem</TableHead>
-                      <TableHead className="text-xs text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allServicesAnalysis.map(({ service, totalCost, profit, margin, isProfitable }) => (
-                      <TableRow key={service.id}>
-                        <TableCell className="text-xs font-medium">
-                          <div>
-                            {service.name}
-                            <span className="block text-[10px] text-muted-foreground">
-                              {service.duration} min • {service.category}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-right">
-                          R$ {service.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-xs text-right">
-                          R$ {totalCost.toFixed(2)}
-                        </TableCell>
-                        <TableCell className={cn(
-                          "text-xs text-right font-medium",
-                          profit >= 0 ? "text-primary" : "text-red-600"
-                        )}>
-                          {profit >= 0 ? '+' : ''} R$ {profit.toFixed(2)}
-                        </TableCell>
-                        <TableCell className={cn(
-                          "text-xs text-right font-medium",
-                          margin >= 30 ? "text-primary" : margin >= 0 ? "text-yellow-600" : "text-red-600"
-                        )}>
-                          {margin.toFixed(1)}%
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {isProfitable ? (
-                            margin >= 30 ? (
-                              <Badge className="bg-primary/10 text-primary text-[10px]">
-                                Saudável
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">
-                                Margem Baixa
-                              </Badge>
-                            )
+                <ResponsiveTable
+                  data={allServicesAnalysis}
+                  getRowKey={({ service }) => service.id}
+                  minWidthClassName="min-w-[760px]"
+                  emptyMessage="Nenhum serviço cadastrado"
+                  columns={[
+                    {
+                      key: 'service',
+                      header: 'Serviço',
+                      priority: 'primary',
+                      className: 'text-xs font-medium',
+                      headClassName: 'text-xs',
+                      cell: ({ service }) => (
+                        <div>
+                          {service.name}
+                          <span className="block text-[10px] text-muted-foreground">
+                            {service.duration} min • {service.category}
+                          </span>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      priority: 'primary',
+                      hideLabelOnCard: true,
+                      className: 'text-center',
+                      headClassName: 'text-xs text-center',
+                      cell: ({ margin, isProfitable }) =>
+                        isProfitable ? (
+                          margin >= 30 ? (
+                            <Badge className="bg-primary/10 text-primary text-[10px]">Saudável</Badge>
                           ) : (
-                            <Badge variant="destructive" className="text-[10px]">
-                              Prejuízo
-                            </Badge>
+                            <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">Margem Baixa</Badge>
+                          )
+                        ) : (
+                          <Badge variant="destructive" className="text-[10px]">
+                            Prejuízo
+                          </Badge>
+                        ),
+                    },
+                    {
+                      key: 'price',
+                      header: 'Preço',
+                      priority: 'secondary',
+                      className: 'text-xs text-right',
+                      headClassName: 'text-xs text-right',
+                      cell: ({ service }) => `R$ ${service.price.toFixed(2)}`,
+                    },
+                    {
+                      key: 'cost',
+                      header: 'Custo',
+                      priority: 'secondary',
+                      className: 'text-xs text-right',
+                      headClassName: 'text-xs text-right',
+                      cell: ({ totalCost }) => `R$ ${totalCost.toFixed(2)}`,
+                    },
+                    {
+                      key: 'profit',
+                      header: 'Lucro',
+                      priority: 'secondary',
+                      className: 'text-xs text-right font-medium',
+                      headClassName: 'text-xs text-right',
+                      cell: ({ profit }) => (
+                        <span className={cn(profit >= 0 ? 'text-primary' : 'text-red-600')}>
+                          {profit >= 0 ? '+' : ''} R$ {profit.toFixed(2)}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'margin',
+                      header: 'Margem',
+                      priority: 'secondary',
+                      className: 'text-xs text-right font-medium',
+                      headClassName: 'text-xs text-right',
+                      cell: ({ margin }) => (
+                        <span
+                          className={cn(
+                            margin >= 30 ? 'text-primary' : margin >= 0 ? 'text-yellow-600' : 'text-red-600',
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        >
+                          {margin.toFixed(1)}%
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
               </ScrollArea>
             </CardContent>
           </Card>

@@ -5,14 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Trash2, Check, Calendar, DollarSign } from 'lucide-react';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -316,97 +309,127 @@ export function ContasAReceber() {
       </CardHeader>
       <CardContent className="px-4 pb-3 pt-0">
         <ScrollArea className="h-[320px]">
-          <div className="min-w-[600px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Data</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Descrição</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Cliente</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Tipo</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Valor</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Parcela</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 whitespace-nowrap">Status</TableHead>
-                  <TableHead className="text-[10px] py-1.5 px-2 text-right whitespace-nowrap">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allReceivables.map((item) => {
-                  const rowKey = `${item.type}-${item.id}`;
-                  const isHighlighted = highlightedIds.has(rowKey);
-                  return (
-                    <TableRow
-                      key={rowKey}
-                      className={cn(
-                        'transition-colors duration-700',
-                        isHighlighted && 'bg-yellow-100/80 dark:bg-yellow-900/30 animate-pulse'
-                      )}
-                    >
-                      <TableCell className="text-[11px] py-1.5 px-2 whitespace-nowrap">{format(parseISO(item.date), 'dd/MM/yy')}</TableCell>
-                      <TableCell className="text-[11px] py-1.5 px-2 max-w-[120px] truncate">{item.description}</TableCell>
-                      <TableCell className="text-[11px] py-1.5 px-2 max-w-[100px] truncate">{item.clientName}</TableCell>
-                      <TableCell className="py-1.5 px-2">{getTypeBadge(item.type)}</TableCell>
-                      <TableCell className="text-primary font-medium text-[11px] py-1.5 px-2 whitespace-nowrap">
-                        R$ {item.amount.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-[11px] py-1.5 px-2">{item.installments}x</TableCell>
-                      <TableCell className="py-1.5 px-2">{getStatusBadge(item)}</TableCell>
-                      <TableCell className="text-right py-1.5 px-2">
-                        <div className="flex justify-end gap-0.5">
-                          {item.type === 'financial_entry' && item.status === 'pending' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6"
-                              onClick={() => handleMarkAsReceived(item)} 
-                              title="Marcar como recebido"
-                            >
-                              <Check className="h-3 w-3 text-primary" />
-                            </Button>
-                          )}
-                          {item.type === 'appointment' && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-6 text-[10px] px-1.5 gap-0.5"
-                              onClick={() => navigate(`/agenda?appointment=${item.id}`)}
-                              title="Abrir agendamento para dar baixa"
-                            >
-                              <DollarSign className="h-3 w-3" />
-                              Pagar
-                            </Button>
-                          )}
-                          {item.type === 'boleto' && (item as any).boletoId && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => markBoletoPaid.mutate({ id: (item as any).boletoId })}
-                              title="Dar baixa no boleto"
-                            >
-                              <Check className="h-3 w-3 text-primary" />
-                            </Button>
-                          )}
-                          {item.type === 'financial_entry' && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(item)}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {allReceivables.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-6 text-xs">
-                      Nenhum valor a receber pendente
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <ResponsiveTable
+            data={allReceivables}
+            getRowKey={(item) => `${item.type}-${item.id}`}
+            minWidthClassName="min-w-[600px]"
+            emptyMessage="Nenhum valor a receber pendente"
+            rowClassName={(item) =>
+              cn(
+                'transition-colors duration-700',
+                highlightedIds.has(`${item.type}-${item.id}`) &&
+                  'bg-yellow-100/80 dark:bg-yellow-900/30 animate-pulse',
+              )
+            }
+            columns={[
+              {
+                key: 'description',
+                header: 'Descrição',
+                priority: 'primary',
+                className: 'text-[11px] py-1.5 px-2 max-w-[120px] truncate',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => item.description,
+              },
+              {
+                key: 'amount',
+                header: 'Valor',
+                priority: 'primary',
+                className: 'text-primary font-medium text-[11px] py-1.5 px-2 whitespace-nowrap',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => `R$ ${item.amount.toFixed(2)}`,
+              },
+              {
+                key: 'date',
+                header: 'Data',
+                priority: 'secondary',
+                className: 'text-[11px] py-1.5 px-2 whitespace-nowrap',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => format(parseISO(item.date), 'dd/MM/yy'),
+              },
+              {
+                key: 'client',
+                header: 'Cliente',
+                priority: 'secondary',
+                className: 'text-[11px] py-1.5 px-2 max-w-[100px] truncate',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => item.clientName,
+              },
+              {
+                key: 'type',
+                header: 'Tipo',
+                priority: 'secondary',
+                className: 'py-1.5 px-2',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => getTypeBadge(item.type),
+              },
+              {
+                key: 'installments',
+                header: 'Parcela',
+                priority: 'secondary',
+                className: 'text-[11px] py-1.5 px-2',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => `${item.installments}x`,
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                priority: 'secondary',
+                className: 'py-1.5 px-2',
+                headClassName: 'text-[10px] py-1.5 px-2 whitespace-nowrap',
+                cell: (item) => getStatusBadge(item),
+              },
+              {
+                key: 'actions',
+                header: 'Ações',
+                priority: 'actions',
+                className: 'text-right py-1.5 px-2',
+                headClassName: 'text-[10px] py-1.5 px-2 text-right whitespace-nowrap',
+                cell: (item) => (
+                  <div className="flex justify-end gap-0.5">
+                    {item.type === 'financial_entry' && item.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleMarkAsReceived(item)}
+                        title="Marcar como recebido"
+                      >
+                        <Check className="h-3 w-3 text-primary" />
+                      </Button>
+                    )}
+                    {item.type === 'appointment' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] px-1.5 gap-0.5"
+                        onClick={() => navigate(`/agenda?appointment=${item.id}`)}
+                        title="Abrir agendamento para dar baixa"
+                      >
+                        <DollarSign className="h-3 w-3" />
+                        Pagar
+                      </Button>
+                    )}
+                    {item.type === 'boleto' && (item as any).boletoId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => markBoletoPaid.mutate({ id: (item as any).boletoId })}
+                        title="Dar baixa no boleto"
+                      >
+                        <Check className="h-3 w-3 text-primary" />
+                      </Button>
+                    )}
+                    {item.type === 'financial_entry' && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(item)}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </CardContent>

@@ -3,9 +3,7 @@ import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -71,58 +69,80 @@ export function BoletoAuditLogDialog({ open, onOpenChange }: Props) {
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Evento</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Detalhes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
-                </TableRow>
-              ) : logs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell>
-                </TableRow>
-              ) : (
-                logs.map((log: any) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="text-xs whitespace-nowrap">
-                      {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm')}
-                    </TableCell>
-                    <TableCell>{getEventBadge(log.event_type)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px]">
-                        {EVENT_SOURCE_LABELS[log.event_source] || log.event_source}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {log.previous_status && log.new_status ? (
-                        <span>{log.previous_status} → {log.new_status}</span>
-                      ) : log.new_status || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {log.previous_amount != null && log.new_amount != null && log.previous_amount !== log.new_amount ? (
-                        <span>R$ {Number(log.previous_amount).toFixed(2)} → R$ {Number(log.new_amount).toFixed(2)}</span>
-                      ) : log.new_amount != null ? (
-                        `R$ ${Number(log.new_amount).toFixed(2)}`
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                      {log.notes || '-'}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+          ) : (
+            <ResponsiveTable
+              data={logs as any[]}
+              getRowKey={(log) => log.id}
+              emptyMessage="Nenhum registro encontrado"
+              columns={[
+                {
+                  key: 'event',
+                  header: 'Evento',
+                  priority: 'primary',
+                  hideLabelOnCard: true,
+                  cell: (log) => getEventBadge(log.event_type),
+                },
+                {
+                  key: 'created_at',
+                  header: 'Data',
+                  priority: 'primary',
+                  className: 'text-xs whitespace-nowrap',
+                  cell: (log) => format(new Date(log.created_at), 'dd/MM/yyyy HH:mm'),
+                },
+                {
+                  key: 'source',
+                  header: 'Origem',
+                  priority: 'secondary',
+                  cell: (log) => (
+                    <Badge variant="outline" className="text-[10px]">
+                      {EVENT_SOURCE_LABELS[log.event_source] || log.event_source}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  priority: 'secondary',
+                  className: 'text-xs',
+                  cell: (log) =>
+                    log.previous_status && log.new_status ? (
+                      <span>
+                        {log.previous_status} → {log.new_status}
+                      </span>
+                    ) : (
+                      log.new_status || '-'
+                    ),
+                },
+                {
+                  key: 'amount',
+                  header: 'Valor',
+                  priority: 'secondary',
+                  className: 'text-xs',
+                  cell: (log) =>
+                    log.previous_amount != null &&
+                    log.new_amount != null &&
+                    log.previous_amount !== log.new_amount ? (
+                      <span>
+                        R$ {Number(log.previous_amount).toFixed(2)} → R$ {Number(log.new_amount).toFixed(2)}
+                      </span>
+                    ) : log.new_amount != null ? (
+                      `R$ ${Number(log.new_amount).toFixed(2)}`
+                    ) : (
+                      '-'
+                    ),
+                },
+                {
+                  key: 'notes',
+                  header: 'Detalhes',
+                  priority: 'secondary',
+                  className: 'text-xs text-muted-foreground max-w-[200px] truncate',
+                  cell: (log) => log.notes || '-',
+                },
+              ]}
+            />
+          )}
         </ScrollArea>
       </DialogContent>
     </Dialog>

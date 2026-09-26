@@ -383,24 +383,57 @@ export function FormasPagamento() {
               </Dialog>
             </div>
             <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
-              <Table>
-                <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Parcelas</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {paymentMethods.map(pm => (
-                    <TableRow key={pm.id}>
-                      <TableCell className="font-medium">{pm.name}</TableCell>
-                      <TableCell>{pm.max_installments || 1}x</TableCell>
-                      <TableCell><Badge variant={pm.is_active ? 'default' : 'secondary'}>{pm.is_active ? 'Ativo' : 'Inativo'}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openPmEdit(pm)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => deletePaymentMethod.mutate(pm.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <ResponsiveTable
+                data={paymentMethods}
+                getRowKey={(pm) => pm.id}
+                minWidthClassName="min-w-[520px]"
+                emptyMessage="Nenhuma forma de pagamento cadastrada"
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Nome',
+                    priority: 'primary',
+                    className: 'font-medium',
+                    cell: (pm) => pm.name,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    cell: (pm) => (
+                      <Badge variant={pm.is_active ? 'default' : 'secondary'}>
+                        {pm.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    key: 'installments',
+                    header: 'Parcelas',
+                    priority: 'secondary',
+                    cell: (pm) => `${pm.max_installments || 1}x`,
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Ações',
+                    priority: 'actions',
+                    cell: (pm) => (
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openPmEdit(pm)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deletePaymentMethod.mutate(pm.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           </TabsContent>
 

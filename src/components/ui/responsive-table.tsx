@@ -13,10 +13,10 @@ import {
 /**
  * Tabela responsiva compartilhada.
  *
- * Desktop/tablet largo: renderiza a `Table` normal (rolagem horizontal fica
+ * Desktop (>=1024px): renderiza a `Table` normal (rolagem horizontal fica
  * confinada ao próprio componente, via [data-table-wrapper]).
  *
- * Celular (<768px): cada linha vira um cartão vertical com rótulo + valor.
+ * Celular e tablet (<1024px): cada linha vira um cartão vertical com rótulo + valor.
  * Nenhuma coluna é descartada — colunas marcadas como `secondary` aparecem
  * abaixo das principais, e `actions` vai para o rodapé do cartão.
  *

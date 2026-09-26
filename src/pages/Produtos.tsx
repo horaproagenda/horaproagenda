@@ -333,45 +333,24 @@ export default function Produtos() {
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
-      const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
-      const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
-      const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
-      // A compra não mexe no uso do produto: início e término de uso são
-      // registrados no ciclo de uso, dentro dos detalhes do produto.
+      // Uma única operação: registra a compra, soma ao estoque e lança no caixa.
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
         unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
-        total_price: normalizedTotalPrice,
+        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
         supplier: purchaseForm.supplier || null,
+        supplier_id: purchaseForm.supplier_id || null,
         purchase_date: purchaseForm.purchase_date,
+        expiry_date: purchaseForm.expiry_date || null,
         payment_method_id: purchaseForm.payment_method_id || null,
-        payment_method: activePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
-
+        payment_method: purchasePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
         started_using_at: null,
         finished_at: null,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
-
-      // A compra SEMPRE soma ao estoque total (o saldo remanescente não pode ser perdido).
-      await updateProduct.mutateAsync({
-        id: product.id,
-        current_stock: resolveStockAfterPurchase({
-          currentStock: product.current_stock,
-          purchaseQuantity: purchaseForm.quantity,
-        }),
-
-        quantity_purchased: newQuantityPurchased,
-        total_price: newTotalPrice,
-        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
-        supplier: purchaseForm.supplier || product.supplier,
-        purchase_date: purchaseForm.purchase_date,
-        // "Venda ou uso da clínica" vem do cadastro do produto, não da compra.
-        expiry_date: purchaseForm.expiry_date || product.expiry_date,
-      });
-
 
       setPurchaseDialogOpen(false);
       setPurchaseForm(createEmptyPurchaseForm());

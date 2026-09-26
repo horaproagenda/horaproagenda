@@ -718,69 +718,107 @@ export function CashRegisterPanel() {
           {receivablesSummary.entries.length > 0 ? (
             <ScrollArea className="h-[220px]">
               <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="h-7">
-                      <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2">Cliente</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2">Vencimento</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2 text-right">Valor</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2">Status</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2 text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {receivablesSummary.entries.map((entry) => (
-                      <TableRow key={entry.id} className="h-7">
-                        <TableCell className="text-[11px] font-medium py-1 px-2">{entry.description}</TableCell>
-                        <TableCell className="text-[11px] py-1 px-2">{entry.client?.name || '-'}</TableCell>
-                        <TableCell className="text-[11px] py-1 px-2">{format(parseISO(entry.due_date), 'dd/MM/yy')}</TableCell>
-                        <TableCell className="text-[11px] text-right font-medium py-1 px-2">R$ {Number(entry.amount).toFixed(2)}</TableCell>
-                        <TableCell className="py-1 px-2">
-                          <Badge variant={entry.status === 'overdue' ? 'destructive' : 'secondary'} className="text-[9px] h-4 px-1">
-                            {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right py-1 px-2">
-                          {(() => {
-                            const e: any = entry;
-                            const aptId = e.appointment_id || (e.type === 'appointment' ? e.id : null);
-                            const boletoId = e.boleto_id || (e.type === 'boleto' ? e.id : null);
-                            if (boletoId) {
-                              return (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
-                                  onClick={() => navigate(`/financeiro?tab=formas-pagamento&boleto=${e.boleto_id || boletoId.replace('boleto-', '')}`)}
-                                  title="Abrir boleto no financeiro"
-                                >
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  Pagar
-                                </Button>
-                              );
-                            }
-                            if (aptId) {
-                              return (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
-                                  onClick={() => navigate(`/agenda?appointment=${aptId}`)}
-                                  title="Abrir agendamento para dar baixa"
-                                >
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  Pagar
-                                </Button>
-                              );
-                            }
-                            return <span className="text-[10px] text-muted-foreground">-</span>;
-                          })()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ResponsiveTable
+                  data={receivablesSummary.entries}
+                  getRowKey={(entry) => entry.id}
+                  minWidthClassName="min-w-[760px]"
+                  emptyMessage="Nenhum valor a receber para o período selecionado"
+                  columns={[
+                    {
+                      key: 'description',
+                      header: 'Descrição',
+                      priority: 'primary',
+                      className: 'text-[11px] font-medium py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (entry) => entry.description,
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      priority: 'primary',
+                      hideLabelOnCard: true,
+                      className: 'py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (entry) => (
+                        <Badge
+                          variant={entry.status === 'overdue' ? 'destructive' : 'secondary'}
+                          className="text-[9px] h-4 px-1"
+                        >
+                          {entry.status === 'overdue' ? 'Vencido' : 'Pendente'}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      key: 'client',
+                      header: 'Cliente',
+                      priority: 'secondary',
+                      className: 'text-[11px] py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (entry) => entry.client?.name || '-',
+                    },
+                    {
+                      key: 'due_date',
+                      header: 'Vencimento',
+                      priority: 'secondary',
+                      className: 'text-[11px] py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (entry) => format(parseISO(entry.due_date), 'dd/MM/yy'),
+                    },
+                    {
+                      key: 'amount',
+                      header: 'Valor',
+                      priority: 'secondary',
+                      className: 'text-[11px] text-right font-medium py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2 text-right',
+                      cell: (entry) => `R$ ${Number(entry.amount).toFixed(2)}`,
+                    },
+                    {
+                      key: 'action',
+                      header: 'Ação',
+                      priority: 'actions',
+                      className: 'text-right py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2 text-right',
+                      cell: (entry) => {
+                        const e: any = entry;
+                        const aptId = e.appointment_id || (e.type === 'appointment' ? e.id : null);
+                        const boletoId = e.boleto_id || (e.type === 'boleto' ? e.id : null);
+                        if (boletoId) {
+                          return (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                              onClick={() =>
+                                navigate(
+                                  `/financeiro?tab=formas-pagamento&boleto=${e.boleto_id || boletoId.replace('boleto-', '')}`,
+                                )
+                              }
+                              title="Abrir boleto no financeiro"
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Pagar
+                            </Button>
+                          );
+                        }
+                        if (aptId) {
+                          return (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[10px] px-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950"
+                              onClick={() => navigate(`/agenda?appointment=${aptId}`)}
+                              title="Abrir agendamento para dar baixa"
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Pagar
+                            </Button>
+                          );
+                        }
+                        return <span className="text-[10px] text-muted-foreground">-</span>;
+                      },
+                    },
+                  ]}
+                />
               </div>
             </ScrollArea>
           ) : (
@@ -845,56 +883,87 @@ export function CashRegisterPanel() {
           {salesSummary.transactions.length > 0 ? (
             <ScrollArea className="h-[220px]">
               <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="h-7">
-                      <TableHead className="text-[10px] py-1 px-2">Descrição</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2">Pagamento</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2">Data/Hora</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2 text-right">Bruto</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2 text-right">Taxa</TableHead>
-                      <TableHead className="text-[10px] py-1 px-2 text-right">Líquido</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {salesSummary.transactions.map((transaction) => {
-                      const hasFee = transaction.card_fee_amount && transaction.card_fee_amount > 0;
-                      const netAmount = hasFee 
-                        ? Number(transaction.amount) - transaction.card_fee_amount!
-                        : Number(transaction.amount);
-                      
-                      return (
-                        <TableRow key={transaction.id} className="h-7">
-                          <TableCell className="text-[11px] font-medium py-1 px-2">
-                            {transaction.description || '-'}
-                            {transaction.installments && transaction.installments > 1 && (
-                              <Badge variant="outline" className="ml-1 text-[9px] h-4 px-1">
-                                {transaction.installments}x
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-[11px] py-1 px-2">{transaction.payment_method_name || transaction.payment_method || '-'}</TableCell>
-                          <TableCell className="text-[11px] py-1 px-2">{format(parseISO(transaction.created_at), 'dd/MM/yy HH:mm')}</TableCell>
-                          <TableCell className="text-[11px] text-right font-medium text-primary py-1 px-2">
-                            R$ {Number(transaction.amount).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-[11px] text-right py-1 px-2">
-                            {hasFee ? (
-                              <span className="text-destructive font-medium">
-                                -R$ {transaction.card_fee_amount!.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-[11px] text-right font-bold text-primary py-1 px-2">
-                            R$ {netAmount.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <ResponsiveTable
+                  data={salesSummary.transactions}
+                  getRowKey={(transaction) => transaction.id}
+                  minWidthClassName="min-w-[760px]"
+                  emptyMessage="Nenhuma venda recebida"
+                  columns={[
+                    {
+                      key: 'description',
+                      header: 'Descrição',
+                      priority: 'primary',
+                      className: 'text-[11px] font-medium py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (transaction) => (
+                        <>
+                          {transaction.description || '-'}
+                          {transaction.installments && transaction.installments > 1 && (
+                            <Badge variant="outline" className="ml-1 text-[9px] h-4 px-1">
+                              {transaction.installments}x
+                            </Badge>
+                          )}
+                        </>
+                      ),
+                    },
+                    {
+                      key: 'net',
+                      header: 'Líquido',
+                      priority: 'primary',
+                      className: 'text-[11px] text-right font-bold text-primary py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2 text-right',
+                      cell: (transaction) => {
+                        const hasFee = transaction.card_fee_amount && transaction.card_fee_amount > 0;
+                        const netAmount = hasFee
+                          ? Number(transaction.amount) - transaction.card_fee_amount!
+                          : Number(transaction.amount);
+                        return `R$ ${netAmount.toFixed(2)}`;
+                      },
+                    },
+                    {
+                      key: 'payment',
+                      header: 'Pagamento',
+                      priority: 'secondary',
+                      className: 'text-[11px] py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (transaction) =>
+                        transaction.payment_method_name || transaction.payment_method || '-',
+                    },
+                    {
+                      key: 'created_at',
+                      header: 'Data/Hora',
+                      priority: 'secondary',
+                      className: 'text-[11px] py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2',
+                      cell: (transaction) => format(parseISO(transaction.created_at), 'dd/MM/yy HH:mm'),
+                    },
+                    {
+                      key: 'gross',
+                      header: 'Bruto',
+                      priority: 'secondary',
+                      className: 'text-[11px] text-right font-medium text-primary py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2 text-right',
+                      cell: (transaction) => `R$ ${Number(transaction.amount).toFixed(2)}`,
+                    },
+                    {
+                      key: 'fee',
+                      header: 'Taxa',
+                      priority: 'secondary',
+                      className: 'text-[11px] text-right py-1 px-2',
+                      headClassName: 'text-[10px] py-1 px-2 text-right',
+                      cell: (transaction) => {
+                        const hasFee = transaction.card_fee_amount && transaction.card_fee_amount > 0;
+                        return hasFee ? (
+                          <span className="text-destructive font-medium">
+                            -R$ {transaction.card_fee_amount!.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        );
+                      },
+                    },
+                  ]}
+                />
               </div>
             </ScrollArea>
           ) : (

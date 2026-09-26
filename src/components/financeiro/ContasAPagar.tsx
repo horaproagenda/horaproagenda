@@ -86,6 +86,9 @@ export function ContasAPagar() {
   const [paymentBankId, setPaymentBankId] = useState<string>('');
   const [paymentInstallments, setPaymentInstallments] = useState<string>('1');
   const [paidAmount, setPaidAmount] = useState<string>('');
+  const todayStr = () => format(new Date(), 'yyyy-MM-dd');
+  const [paymentDate, setPaymentDate] = useState<string>(todayStr());
+  const [batchPaymentDate, setBatchPaymentDate] = useState<string>(todayStr());
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   
@@ -286,6 +289,7 @@ export function ContasAPagar() {
     setPaymentBankId(entry.bank_id || '');
     setPaymentInstallments(entry.installments?.toString() || '1');
     setPaidAmount(Number(entry.amount).toFixed(2));
+    setPaymentDate(editMode && entry.paid_date ? String(entry.paid_date).slice(0, 10) : format(new Date(), 'yyyy-MM-dd'));
     setCreateBoletoReminder(false);
     setConfirmationStep(false);
     setPayDialogOpen(true);
@@ -368,7 +372,7 @@ export function ContasAPagar() {
         amount: paid,
         original_amount: entryAmount,
         status: 'paid' as const,
-        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_date: paymentDate || format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
         installments: parseInt(paymentInstallments) || 1,
@@ -528,6 +532,7 @@ export function ContasAPagar() {
       return;
     }
     setBatchPaymentMethodId('');
+    setBatchPaymentDate(format(new Date(), 'yyyy-MM-dd'));
     setBatchPaymentBankId('');
     setBatchConfirmStep(false);
     setBatchPayDialogOpen(true);
@@ -543,7 +548,7 @@ export function ContasAPagar() {
       await updateEntry.mutateAsync({
         id: entry.id,
         status: 'paid' as const,
-        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_date: batchPaymentDate || format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: batchPaymentMethodId || null,
         bank_id: batchPaymentBankId || null,
         original_amount: Number(entry.amount),
@@ -950,6 +955,15 @@ export function ContasAPagar() {
                 <p className="text-base font-bold text-primary tabular-nums">Total: R$ {batchTotal.toFixed(2)}</p>
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">Data do pagamento</Label>
+                <Input
+                  type="date"
+                  value={batchPaymentDate}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => setBatchPaymentDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">Forma de Pagamento</Label>
                 <Select value={batchPaymentMethodId} onValueChange={setBatchPaymentMethodId}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -1104,7 +1118,17 @@ export function ContasAPagar() {
                   </p>
                 )}
               </div>
-              
+
+              <div>
+                <Label>Data do pagamento</Label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
+
               <div>
                 <Label>Forma de Pagamento</Label>
                 <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>

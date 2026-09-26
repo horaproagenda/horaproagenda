@@ -632,6 +632,16 @@ serve(async (req) => {
       }
     }
 
+    // Unified: package payment must also mark the original sale (single_sales) as paid,
+    // so Financeiro > Pacotes reflects the received value. Idempotent + self-healing.
+    if (packageId) {
+      const { error: syncErr } = await supabase.rpc('sync_package_sale_from_appointments', { _package_id: packageId });
+      if (syncErr) console.error('sync_package_sale_from_appointments failed:', syncErr);
+      await supabase.rpc('heal_package_sales_payment').then(({ error }) => {
+        if (error) console.error('heal_package_sales_payment failed:', error);
+      });
+    }
+
     // 7a. Add SALDO (client_credit) - excess payment stored as credit - REGISTERED in cash/financial
     // This is real money that becomes a credit for the client
     if (body.client_credit && body.client_credit > 0 && appointment.client?.id) {

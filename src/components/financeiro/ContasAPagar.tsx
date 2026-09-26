@@ -86,6 +86,9 @@ export function ContasAPagar() {
   const [paymentBankId, setPaymentBankId] = useState<string>('');
   const [paymentInstallments, setPaymentInstallments] = useState<string>('1');
   const [paidAmount, setPaidAmount] = useState<string>('');
+  const todayStr = () => format(new Date(), 'yyyy-MM-dd');
+  const [paymentDate, setPaymentDate] = useState<string>(todayStr());
+  const [batchPaymentDate, setBatchPaymentDate] = useState<string>(todayStr());
   const [createBoletoReminder, setCreateBoletoReminder] = useState(false);
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   
@@ -368,7 +371,7 @@ export function ContasAPagar() {
         amount: paid,
         original_amount: entryAmount,
         status: 'paid' as const,
-        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_date: paymentDate || format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: paymentMethodId || null,
         bank_id: paymentBankId || null,
         installments: parseInt(paymentInstallments) || 1,
@@ -528,6 +531,7 @@ export function ContasAPagar() {
       return;
     }
     setBatchPaymentMethodId('');
+    setBatchPaymentDate(format(new Date(), 'yyyy-MM-dd'));
     setBatchPaymentBankId('');
     setBatchConfirmStep(false);
     setBatchPayDialogOpen(true);
@@ -543,7 +547,7 @@ export function ContasAPagar() {
       await updateEntry.mutateAsync({
         id: entry.id,
         status: 'paid' as const,
-        paid_date: format(new Date(), 'yyyy-MM-dd'),
+        paid_date: batchPaymentDate || format(new Date(), 'yyyy-MM-dd'),
         payment_method_id: batchPaymentMethodId || null,
         bank_id: batchPaymentBankId || null,
         original_amount: Number(entry.amount),
@@ -1104,7 +1108,17 @@ export function ContasAPagar() {
                   </p>
                 )}
               </div>
-              
+
+              <div>
+                <Label>Data do pagamento</Label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
+
               <div>
                 <Label>Forma de Pagamento</Label>
                 <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>

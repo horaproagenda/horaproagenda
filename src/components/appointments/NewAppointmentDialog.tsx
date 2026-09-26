@@ -1484,14 +1484,16 @@ export function NewAppointmentDialog({
           .slice(0, pendingSteps.length)
           .map((stepStart, i) => {
             const targetStep = pendingSteps[i];
+            // Índice da etapa real (ID único), nunca a posição na lista de pendentes.
+            const stepIndex = targetStep.step > 0 ? targetStep.step - 1 : nextPackageStepIndex + i;
             const stepServiceId = targetStep.service_id
-              || packageSequenceSteps[nextPackageStepIndex + i]?.service_id
+              || packageSequenceSteps[stepIndex]?.service_id
               || selectedPackageData?.service_id
               || null;
             const stepService = services.find((s) => s.id === stepServiceId);
             const stepDuration = getPackageStepDuration(i) || stepService?.duration || duration;
             const stepLabel = stepService?.name || resolveSessionServiceLabel({
-              index: nextPackageStepIndex + i,
+              index: stepIndex,
               steps: packageSequenceSteps,
               services,
               pkg: packageData || selectedPackageData || null,

@@ -19,7 +19,7 @@ const item = (overrides: Record<string, unknown> = {}) => ({
   end: new Date('2026-10-01T14:00:00.000Z'),
   step: 6,
   ...overrides,
-}) as any;
+});
 
 describe('agendamento de pacotes em transação única', () => {
   beforeEach(() => {
@@ -38,11 +38,12 @@ describe('agendamento de pacotes em transação única', () => {
     });
 
     expect(rpc).toHaveBeenCalledTimes(1);
-    const [fn, args] = rpc.mock.calls[0] as [string, any];
+    const [fn, args] = rpc.mock.calls[0] as [string, Record<string, unknown>];
+    const items = args.p_items as Array<Record<string, unknown>>;
     expect(fn).toBe('schedule_package_sessions_batch');
-    expect(args.p_items).toHaveLength(2);
-    expect(args.p_items[0].package_appointment_id).toBe('step-6');
-    expect(args.p_items[1].package_appointment_id).toBe('step-7');
+    expect(items).toHaveLength(2);
+    expect(items[0].package_appointment_id).toBe('step-6');
+    expect(items[1].package_appointment_id).toBe('step-7');
     expect(args.p_batch_key).toBe('batch-1');
   });
 

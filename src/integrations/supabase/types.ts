@@ -6790,6 +6790,7 @@ export type Database = {
       }
       heal_legacy_data: { Args: never; Returns: Json }
       heal_orphan_service_packages: { Args: never; Returns: Json }
+      heal_package_sales_payment: { Args: never; Returns: number }
       heal_package_service_links: {
         Args: { _package_id: string }
         Returns: Json
@@ -7222,6 +7223,10 @@ export type Database = {
       suspend_overdue_subscriptions: { Args: never; Returns: number }
       sync_appointments_with_paid_sale: {
         Args: { _sale_id: string }
+        Returns: number
+      }
+      sync_package_sale_from_appointments: {
+        Args: { _package_id: string }
         Returns: number
       }
       sync_product_purchase_finance: {

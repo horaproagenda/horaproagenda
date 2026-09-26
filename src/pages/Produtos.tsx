@@ -85,6 +85,7 @@ import {
 import { cn, normalizeBrazilianCurrency, parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { useProducts, useProductPurchases, type Product, type ProductType, type ProductUnit } from '@/hooks/useProducts';
 import { resolveStockAfterPurchase } from '@/lib/productStockFlow';
+import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -278,6 +279,14 @@ export default function Produtos() {
   const lowStockProducts = useMemo(() => products.filter(p => p.current_stock <= (p.min_stock_alert || 0) && p.is_active), [products]);
   const expiredProducts = useMemo(() => products.filter(p => isProductExpired(p)), [products]);
 
+  // "Crédito ao cliente" é saldo do cliente: não serve para pagar compras de fornecedor.
+  const purchasePaymentMethods = useMemo(
+    () => activePaymentMethods.filter(m => !isClientCreditPaymentMethod(m.name)),
+    [activePaymentMethods],
+  );
+
+
+
   // Calculate appointments for a product
   const getProductAppointments = (productId: string) => {
     const linkedServices = serviceProducts.filter(sp => sp.product_id === productId);
@@ -333,45 +342,24 @@ export default function Produtos() {
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;
-      const normalizedTotalPrice = normalizeBrazilianCurrency(purchaseForm.total_price);
-      const newQuantityPurchased = (product.quantity_purchased || 0) + purchaseForm.quantity;
-      const newTotalPrice = (product.total_price || 0) + normalizedTotalPrice;
 
-      // A compra não mexe no uso do produto: início e término de uso são
-      // registrados no ciclo de uso, dentro dos detalhes do produto.
+      // Uma única operação: registra a compra, soma ao estoque e lança no caixa.
       await createPurchase.mutateAsync({
         product_id: purchaseForm.product_id,
         quantity: purchaseForm.quantity,
         unit_price: normalizeBrazilianCurrency(purchaseForm.unit_price),
-        total_price: normalizedTotalPrice,
+        total_price: normalizeBrazilianCurrency(purchaseForm.total_price),
         supplier: purchaseForm.supplier || null,
+        supplier_id: purchaseForm.supplier_id || null,
         purchase_date: purchaseForm.purchase_date,
+        expiry_date: purchaseForm.expiry_date || null,
         payment_method_id: purchaseForm.payment_method_id || null,
-        payment_method: activePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
-
+        payment_method: purchasePaymentMethods.find(m => m.id === purchaseForm.payment_method_id)?.name || null,
         started_using_at: null,
         finished_at: null,
         notes: purchaseForm.expiry_date ? `Validade: ${purchaseForm.expiry_date}` : null,
         skip_cash_transaction: purchaseForm.skip_cash_transaction,
       });
-
-      // A compra SEMPRE soma ao estoque total (o saldo remanescente não pode ser perdido).
-      await updateProduct.mutateAsync({
-        id: product.id,
-        current_stock: resolveStockAfterPurchase({
-          currentStock: product.current_stock,
-          purchaseQuantity: purchaseForm.quantity,
-        }),
-
-        quantity_purchased: newQuantityPurchased,
-        total_price: newTotalPrice,
-        unit_price: newQuantityPurchased > 0 ? newTotalPrice / newQuantityPurchased : product.unit_price,
-        supplier: purchaseForm.supplier || product.supplier,
-        purchase_date: purchaseForm.purchase_date,
-        // "Venda ou uso da clínica" vem do cadastro do produto, não da compra.
-        expiry_date: purchaseForm.expiry_date || product.expiry_date,
-      });
-
 
       setPurchaseDialogOpen(false);
       setPurchaseForm(createEmptyPurchaseForm());
@@ -622,6 +610,22 @@ export default function Produtos() {
                         <strong className="text-foreground">{formatCurrency(purchaseForm.total_price)}</strong>
                       </div>
                     )}
+                    {purchaseForm.product_id && purchaseForm.quantity > 0 && (() => {
+                      const prod = products.find(p => p.id === purchaseForm.product_id);
+                      if (!prod) return null;
+                      const novo = resolveStockAfterPurchase({
+                        currentStock: prod.current_stock,
+                        purchaseQuantity: purchaseForm.quantity,
+                      });
+                      return (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-[10px] text-muted-foreground">
+                          Estoque: <strong className="text-foreground">{prod.current_stock.toLocaleString('pt-BR')} {getUnitLabel(prod.unit)}</strong>
+                          {' → '}
+                          <strong className="text-foreground">{novo.toLocaleString('pt-BR')} {getUnitLabel(prod.unit)}</strong>
+                          {' '}(atualizado ao registrar a compra)
+                        </div>
+                      );
+                    })()}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Fornecedor</Label>
@@ -654,7 +658,7 @@ export default function Produtos() {
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none" className="text-sm">Não informada</SelectItem>
-                            {activePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
+                            {purchasePaymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

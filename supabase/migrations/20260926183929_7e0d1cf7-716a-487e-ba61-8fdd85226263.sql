@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.register_product_purchase(uuid, numeric, numeric, numeric, text, uuid, date, date, uuid, text, text, boolean) FROM anon;

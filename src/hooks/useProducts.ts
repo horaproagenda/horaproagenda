@@ -269,60 +269,43 @@ export function useProductPurchases(productId?: string) {
     },
   });
 
+  // Compra de produto: uma única operação no banco grava a compra,
+  // atualiza o estoque na hora e lança a saída no caixa correto.
   const createPurchase = useMutation({
-    mutationFn: async (purchase: Omit<ProductPurchase, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'duration_days' | 'product'> & { skip_cash_transaction?: boolean }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { skip_cash_transaction, ...purchaseData } = purchase;
-      
-      // Create the purchase
-      const { data, error } = await supabase
-        .from('product_purchases')
-        .insert({
-          ...purchaseData,
-          created_by: user?.id,
-        })
-        .select('*, product:products(*)')
-        .single();
+    mutationFn: async (purchase: Omit<ProductPurchase, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by' | 'duration_days' | 'product'> & {
+      skip_cash_transaction?: boolean;
+      expiry_date?: string | null;
+      supplier_id?: string | null;
+    }) => {
+      const { data, error } = await supabase.rpc('register_product_purchase', {
+        p_product_id: purchase.product_id,
+        p_quantity: purchase.quantity,
+        p_unit_price: purchase.unit_price ?? 0,
+        p_total_price: purchase.total_price ?? 0,
+        p_supplier: purchase.supplier ?? null,
+        p_supplier_id: purchase.supplier_id ?? null,
+        p_purchase_date: purchase.purchase_date,
+        p_expiry_date: purchase.expiry_date ?? null,
+        p_payment_method_id: purchase.payment_method_id ?? null,
+        p_payment_method: purchase.payment_method ?? null,
+        p_notes: purchase.notes ?? null,
+        p_skip_cash_transaction: purchase.skip_cash_transaction ?? false,
+      });
 
       if (error) throw error;
-
-      // Only create cash transaction if not skipped (for products already paid before using the system)
-      if (!skip_cash_transaction) {
-        // Caixa correto: produto próprio do profissional sai do caixa dele;
-        // produto da clínica sai do caixa da clínica.
-        const ownerProfessionalId = (data as { owner_professional_id?: string | null }).owner_professional_id
-          ?? data.product?.owner_professional_id
-          ?? null;
-
-        const dest = await resolveFinancialDestination(ownerProfessionalId);
-        const openRegister = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
-
-        // If there's an open register, create a cash transaction (expense)
-        if (openRegister) {
-          await supabase
-            .from('cash_transactions')
-            .insert({
-              cash_register_id: openRegister.id,
-              type: 'expense',
-              category: 'product_purchase',
-              description: `Compra: ${data.product?.name || 'Produto'}`,
-              amount: purchaseData.total_price,
-              reference_id: data.id,
-              reference_type: 'product_purchase',
-              created_by: user?.id,
-            });
-        }
-      }
-
-      return data;
+      return (data as { purchase?: unknown })?.purchase ?? data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
+      queryClient.invalidateQueries({ queryKey: ['product-cycle-history'] });
+      queryClient.invalidateQueries({ queryKey: ['product-active-cycles'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      toast.success('Compra registrada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      toast.success('Compra registrada e estoque atualizado!');
     },
     onError: (error: unknown) => {
-      toast.error('Erro ao registrar compra: ' + (error instanceof Error ? error.message : ''));
+      toast.error(error instanceof Error ? error.message : 'Não foi possível registrar a compra.');
     },
   });
 

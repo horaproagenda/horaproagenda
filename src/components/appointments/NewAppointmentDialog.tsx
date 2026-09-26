@@ -3212,7 +3212,7 @@ Até breve! ✨`;
                 className="flex-1"
                 disabled={!selectedClient || !selectedService || !date || !time || !selectedProfessional || (activeRooms.length > 1 && !selectedRoom) || hasPreviewConflicts || hasServicePreviewConflicts || (!isKitService && !!businessHoursError) || (isKitService && kitStepIssues.length > 0) || isSavingAppointment || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending}
               >
-                {(createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
+                {(isSavingAppointment || createAppointment.isPending || createRecurringAppointments.isPending || createKit.isPending) ? 'Salvando...' : (hasPreviewConflicts || hasServicePreviewConflicts) ? 'Resolva os conflitos' : (isKitService && kitStepIssues.length > 0) ? 'Ajuste os serviços do kit' : isKitService ? `Criar ${kitComponents.length} Agendamentos do Kit` : repeatServiceEnabled ? `Criar ${editableServiceDates.length} Agendamentos` : 'Criar Agendamento'}
 
 
               </Button>

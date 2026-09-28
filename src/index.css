@@ -1785,6 +1785,7 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
     z-index: 1;
     background-color: hsl(var(--card));
     box-shadow: 1px 0 0 0 hsl(var(--border));
+    backdrop-filter: none;
   }
   /* Cartões responsivos substituem a tabela onde disponível. */
   [data-responsive-cards] {

@@ -580,7 +580,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <div className="h-[460px] rounded border overflow-auto">
+            <div className="h-[460px] rounded border overflow-y-auto overflow-x-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-muted/40">

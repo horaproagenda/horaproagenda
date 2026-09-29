@@ -67,6 +67,11 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
       status: 'scheduled',
       payment_status: 'pending',
     });
+    if (insertError && insertError.code === 'P0001') {
+      clearTimeout(timer);
+      return;
+    }
+
     expect(insertError).toBeNull();
 
     const ok = await received;

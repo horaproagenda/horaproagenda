@@ -75,7 +75,7 @@ import { Appointment } from '@/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getPackageAvailabilitySummary } from '@/lib/packageAvailability';
-import { createDateTimeInTimeZone } from '@/lib/timezone';
+import { createDateTimeInTimeZone, formatTimeInTimeZone, formatDateInTimeZone } from '@/lib/timezone';
 import { calculateAppointmentTimesInTimeZone } from '@/lib/appointmentScheduling';
 import { useAvailabilityCheck, checkAvailabilitySlots, type AvailabilitySlot } from '@/lib/availabilityCheck';
 import {
@@ -147,6 +147,10 @@ export function NewAppointmentDialog({
   const [showPreview, setShowPreview] = useState(false);
   const [previewDates, setPreviewDates] = useState<Date[]>([]);
   const [editablePreviewDates, setEditablePreviewDates] = useState<Date[]>([]);
+  // Etapas cuja data/horário foram definidos manualmente pelo profissional.
+  // Elas são IMUNES a qualquer recálculo automático até o salvamento.
+  const [manualPackageDateIndices, setManualPackageDateIndices] = useState<Set<number>>(() => new Set());
+  const [manualServiceDateIndices, setManualServiceDateIndices] = useState<Set<number>>(() => new Set());
   const [editingDateIndex, setEditingDateIndex] = useState<number | null>(null);
   const [sendWhatsappNotification, setSendWhatsappNotification] = useState(true);
   // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
@@ -340,6 +344,9 @@ export function NewAppointmentDialog({
       setPreferredTime('');
       setShowPreview(false);
       setPreviewDates([]);
+      setEditablePreviewDates([]);
+      setManualPackageDateIndices(new Set());
+      setManualServiceDateIndices(new Set());
       setServiceType('service');
       setServiceSearch('');
       setClientSearch('');
@@ -732,6 +739,25 @@ export function NewAppointmentDialog({
       : undefined,
   }), [autoScheduleIntervals, preferredDayOfWeek, preferredTime, settings?.timezone, isBusinessDay, getHolidayForDate]);
 
+  // Mescla o recálculo automático preservando integralmente as etapas que o
+  // profissional editou à mão (data E horário permanecem exatamente como ele
+  // definiu). Só as etapas nunca tocadas seguem a fórmula de intervalos.
+  const mergePreservingManualEdits = (prev: Date[], next: Date[], manual: Set<number>): Date[] =>
+    next.map((d, i) => (manual.has(i) && prev[i] ? prev[i] : d));
+
+  // ── Data e horário SEMPRE no fuso da clínica ─────────────────────────────
+  // O dia e a hora escolhidos pelo profissional são fixados no fuso da clínica,
+  // e não no fuso do celular/navegador, evitando que 14:00 vire 11:00 ou que a
+  // data salte um dia em iPhone/Safari ou em conexões em UTC.
+  const clinicDayAnchor = (value: Date): Date => {
+    const [y, m, d] = formatDateInTimeZone(value, settings?.timezone).split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+  };
+  const withClinicTime = (day: Date, time: string): Date =>
+    createDateTimeInTimeZone(day, time, settings?.timezone);
+  const clinicTimeOf = (value: Date): string => formatTimeInTimeZone(value, settings?.timezone);
+
+
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
     if (autoScheduleTotalSessions <= 1) return [];
@@ -757,14 +783,16 @@ export function NewAppointmentDialog({
       return prevSig === previewDatesSignature ? prev : calculatePreviewDates;
     });
     setEditablePreviewDates((prev) => {
+      const merged = mergePreservingManualEdits(prev, calculatePreviewDates, manualPackageDateIndices);
       const prevSig = prev.map((d) => d.getTime()).join(',');
-      return prevSig === previewDatesSignature ? prev : calculatePreviewDates;
+      const mergedSig = merged.map((d) => d.getTime()).join(',');
+      return prevSig === mergedSig ? prev : merged;
     });
     if (calculatePreviewDates.length > 0) {
       setShowPreview((prev) => (prev ? prev : true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewDatesSignature]);
+  }, [previewDatesSignature, manualPackageDateIndices]);
 
   // Calculate preview dates for recurring service appointments
   // Memoize the interval to prevent recalculation loops
@@ -862,12 +890,13 @@ export function NewAppointmentDialog({
     setServicePreviewDates((prev) =>
       prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
     );
-    setEditableServiceDates((prev) =>
-      prev.map((d) => d.getTime()).join(',') === servicePreviewSignature ? prev : calculateServicePreviewDates,
-    );
+    setEditableServiceDates((prev) => {
+      const merged = mergePreservingManualEdits(prev, calculateServicePreviewDates, manualServiceDateIndices);
+      return prev.map((d) => d.getTime()).join(',') === merged.map((d) => d.getTime()).join(',') ? prev : merged;
+    });
     setEditingServiceDateIndex(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePreviewSignature]);
+  }, [servicePreviewSignature, manualServiceDateIndices]);
 
 
   // When service is selected, update interval from service's return_days
@@ -880,35 +909,31 @@ export function NewAppointmentDialog({
     }
   }, [selectedServiceId, selectedServiceReturnDays]);
 
-  // Update a specific date in the editable preview.
-  // Ao alterar qualquer data, TODAS as sessões seguintes são reencadeadas para
-  // manter o intervalo de dias configurado (evita gaps de 1 dia).
+  // Altera UMA etapa da prévia. A etapa passa a ser "manual" e nunca mais é
+  // recalculada automaticamente; as demais etapas NÃO são reencadeadas.
   const updateEditableDate = (index: number, newDate: Date) => {
     setEditablePreviewDates(prev => prev.map((d, i) => (i === index ? new Date(newDate.getTime()) : d)));
+    setManualPackageDateIndices(prev => (prev.has(index) ? prev : new Set(prev).add(index)));
     // Ao editar a primeira etapa, sincroniza com os campos principais
     // (data/horário) para evitar confusão de informações.
     if (index === 0) {
       const synced = new Date(newDate);
       synced.setHours(0, 0, 0, 0);
       setDate(synced);
-      const hh = String(newDate.getHours()).padStart(2, '0');
-      const mm = String(newDate.getMinutes()).padStart(2, '0');
-      setTime(`${hh}:${mm}`);
+      setTime(formatTimeInTimeZone(newDate, settings?.timezone));
     }
   };
 
 
-  // Update a specific date in the editable service dates.
-  // Reencadeia todas as repetições seguintes respeitando o intervalo de dias.
+  // Altera UMA repetição do serviço, tornando-a imune ao recálculo automático.
   const updateEditableServiceDate = (index: number, newDate: Date) => {
     setEditableServiceDates(prev => prev.map((d, i) => (i === index ? new Date(newDate.getTime()) : d)));
+    setManualServiceDateIndices(prev => (prev.has(index) ? prev : new Set(prev).add(index)));
     if (index === 0) {
       const synced = new Date(newDate);
       synced.setHours(0, 0, 0, 0);
       setDate(synced);
-      const hh = String(newDate.getHours()).padStart(2, '0');
-      const mm = String(newDate.getMinutes()).padStart(2, '0');
-      setTime(`${hh}:${mm}`);
+      setTime(formatTimeInTimeZone(newDate, settings?.timezone));
     }
   };
 
@@ -1794,6 +1819,9 @@ Até breve! ✨`;
     setPreferredTime('');
     setShowPreview(false);
     setPreviewDates([]);
+    setEditablePreviewDates([]);
+    setManualPackageDateIndices(new Set());
+    setManualServiceDateIndices(new Set());
     setServiceType('service');
     setServiceSearch('');
     setClientSearch('');
@@ -2703,9 +2731,7 @@ Até breve! ✨`;
                                             defaultMonth={previewDate}
                                             onSelect={(d) => {
                                               if (!d) return;
-                                              const next = new Date(d);
-                                              next.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
-                                              updateEditableServiceDate(index, next);
+                                              updateEditableServiceDate(index, withClinicTime(d, clinicTimeOf(previewDate)));
                                             }}
                                             disabled={(d) => !isWorkDay(d)}
                                             locale={ptBR}
@@ -2716,13 +2742,11 @@ Até breve! ✨`;
                                             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                             <TimeInput
                                                className="h-7 text-xs"
-                                               value={format(previewDate, 'HH:mm')}
+                                               value={clinicTimeOf(previewDate)}
                                                onChange={(value) => {
                                                  const [h, m] = value.split(':').map(Number);
                                                  if (isNaN(h) || isNaN(m)) return;
-                                                 const next = new Date(previewDate);
-                                                 next.setHours(h, m, 0, 0);
-                                                 updateEditableServiceDate(index, next);
+                                                 updateEditableServiceDate(index, withClinicTime(clinicDayAnchor(previewDate), value));
                                                }}
                                              />
                                             <span className="text-[11px] text-muted-foreground">
@@ -2945,6 +2969,15 @@ Até breve! ✨`;
                                             }
                                           });
                                           return next;
+                                         });
+                                        // As datas ajustadas passam a valer como escolha do
+                                        // profissional e não são recalculadas depois.
+                                        setManualPackageDateIndices((prev) => {
+                                          const next = new Set(prev);
+                                          previewDateConflicts.forEach((pc) => {
+                                            if (pc.conflicts.length > 0 && pc.suggestedDate) next.add(pc.index);
+                                          });
+                                          return next;
                                         });
 
                                         toast.success('Conflitos resolvidos automaticamente. Revise as datas antes de agendar.');
@@ -3020,28 +3053,24 @@ Até breve! ✨`;
                                                   mode="single"
                                                   selected={previewDate}
                                                   defaultMonth={previewDate}
-                                                  onSelect={(d) => {
-                                                    if (!d) return;
-                                                    const merged = new Date(d);
-                                                    merged.setHours(previewDate.getHours(), previewDate.getMinutes(), 0, 0);
-                                                    updateEditableDate(index, merged);
-                                                  }}
-                                                  locale={ptBR}
-                                                  initialFocus
-                                                  className="p-3 pointer-events-auto"
-                                                />
-                                              </PopoverContent>
-                                            </Popover>
-                                            <TimeInput
-                                               className="h-7 text-xs w-24 shrink-0"
-                                               value={format(previewDate, 'HH:mm')}
-                                               onChange={(value) => {
-                                                 const [hh, mm] = value.split(':').map(Number);
-                                                 if (isNaN(hh) || isNaN(mm)) return;
-                                                 const merged = new Date(previewDate);
-                                                 merged.setHours(hh, mm, 0, 0);
-                                                 updateEditableDate(index, merged);
-                                               }}
+                                                   onSelect={(d) => {
+                                                     if (!d) return;
+                                                     updateEditableDate(index, withClinicTime(d, clinicTimeOf(previewDate)));
+                                                   }}
+                                                   locale={ptBR}
+                                                   initialFocus
+                                                   className="p-3 pointer-events-auto"
+                                                 />
+                                               </PopoverContent>
+                                             </Popover>
+                                             <TimeInput
+                                                className="h-7 text-xs w-24 shrink-0"
+                                                value={clinicTimeOf(previewDate)}
+                                                onChange={(value) => {
+                                                  const [hh, mm] = value.split(':').map(Number);
+                                                  if (isNaN(hh) || isNaN(mm)) return;
+                                                  updateEditableDate(index, withClinicTime(clinicDayAnchor(previewDate), value));
+                                                }}
                                              />
                                           </div>
                                         </div>

@@ -44,14 +44,10 @@ describeIfCreds('DB integrity guards', () => {
     const since = new Date(Date.now() - 180 * 86400000).toISOString();
     const { data, error } = await client
       .from('appointments')
-      .select('id, package_id, service_name_snapshot')
-      .not('package_id', 'is', null)
+      .select('id, package_appointment_id, service_name_snapshot')
+      .not('package_appointment_id', 'is', null)
       .gte('start_time', since)
       .limit(500);
-    if (error && (error.code === '42703' || /column .* does not exist/i.test(error.message))) {
-      return;
-    }
-
     expect(error).toBeNull();
     const missing = (data ?? []).filter((a) => !a.service_name_snapshot);
     expect(missing, `Snapshots ausentes: ${missing.length}`).toEqual([]);
@@ -68,6 +64,7 @@ describeIfCreds('DB integrity guards', () => {
         /not found/i.test(error.message)
       )
     ) {
+      console.log('RPC not available, skipping seat_limit check');
       return;
     }
 

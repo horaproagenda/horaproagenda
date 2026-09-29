@@ -29,7 +29,7 @@ describe('escopo da lista de produtos', () => {
     expect(source).toMatch(/productScope === 'clinic'[\s\S]{0,160}owner_professional_id: null/);
   });
 
-  it('usa o caixa do dono do produto na compra', () => {
-    expect(source).toContain('resolveFinancialDestination(ownerProfessionalId)');
+  it('registra a compra pela transação única do banco (caixa do dono resolvido lá)', () => {
+    expect(source).toContain("supabase.rpc('register_product_purchase'");
   });
 });

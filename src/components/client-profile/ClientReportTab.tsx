@@ -4,7 +4,6 @@ import { Appointment } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 
 import {
@@ -580,21 +579,33 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
               <p className="text-xs">Nenhum agendamento neste período</p>
             </div>
           ) : (
-            <div className="h-[460px] rounded border overflow-y-auto overflow-x-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent bg-muted/40">
-                    <TableHead className="text-[11px] py-2 h-auto min-w-[180px]">Serviço/Pacote</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Data</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Início</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto min-w-[120px]">Profissional</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Aplicação</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-[11px] py-2 h-auto text-right min-w-[80px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAppointments.map(appointment => {
+            <div
+              className="h-[460px] rounded border overflow-y-auto overflow-x-hidden"
+              data-testid="detailed-history-scroll"
+            >
+              <ResponsiveTable
+                data={filteredAppointments}
+                getRowKey={(appointment) => appointment.id}
+                minWidthClassName="min-w-[760px]"
+                emptyMessage="Nenhum agendamento neste período"
+                rowClassName={(appointment) => {
+                  const statusTextClass =
+                    appointment.status === 'completed' ? 'text-success' :
+                    appointment.status === 'cancelled' ? 'text-destructive' :
+                    appointment.status === 'missed' ? 'text-warning' :
+                    appointment.status === 'rescheduled' ? 'text-primary' :
+                    'text-info';
+                  return `hover:bg-muted/30 ${statusTextClass}`;
+                }}
+                columns={[
+                  {
+                    key: 'service',
+                    header: 'Serviço/Pacote',
+                    priority: 'primary',
+                    hideLabelOnCard: true,
+                    className: 'text-xs py-2 min-w-[180px] align-top',
+                    headClassName: 'text-[11px] py-2 h-auto min-w-[180px]',
+                    cell: (appointment) => {
                     const status = getAppointmentStatusConfig(appointment.status);
                     const packageData = appointment.package_appointment?.package;
                     const packageSession = appointment.package_appointment;
@@ -623,65 +634,117 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                     const secondaryLabel = isPackage && packageName && packageName !== primaryLabel
                       ? `Pacote: ${packageName}`
                       : null;
-                    const professionalName = appointment.professional?.name || packageData?.professional?.name || appointment.service?.professional?.name || '-';
-                    const applicationLabel = getPackageApplicationLabel(packageSession, packageData?.total_sessions, packageSequenceMap.get(appointment.id));
-                    const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
-
-                    // Row text color by status
-                    const statusTextClass =
-                      appointment.status === 'completed' ? 'text-success' :
-                      appointment.status === 'cancelled' ? 'text-destructive' :
-                      appointment.status === 'missed' ? 'text-warning' :
-                      appointment.status === 'rescheduled' ? 'text-primary' :
-                      'text-info';
-
                     return (
-                      <TableRow key={appointment.id} className={`hover:bg-muted/30 align-top ${statusTextClass}`}>
-                        <TableCell className="text-xs py-2">
-                          <div className="font-medium leading-tight">{primaryLabel}</div>
-                          {secondaryLabel && <div className="text-[10px] leading-tight mt-0.5 opacity-80">{secondaryLabel}</div>}
-                        </TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell className="text-xs py-2 whitespace-nowrap tabular-nums">{format(new Date(appointment.start_time), 'HH:mm')}</TableCell>
-                        <TableCell className="text-xs py-2">{professionalName}</TableCell>
-                        <TableCell className="py-2">
-                          {packageSession || recurringLabel ? (
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap border-current ${statusTextClass}`}>
-                              {packageSession ? applicationLabel : recurringLabel}
-                            </Badge>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex justify-end items-center gap-1 whitespace-nowrap">
-                            {onEditAppointment && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditAppointment(appointment)} title="Editar">
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              title="Excluir"
-                              onClick={() => {
-                                if (window.confirm('Deseja apagar este agendamento? Esta ação não pode ser desfeita.')) {
-                                  deleteAppointment.mutate(appointment.id);
-                                }
-                              }}
-                              disabled={deleteAppointment.isPending || updateAppointment.isPending}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      <div className="min-w-0">
+                        <div className="font-medium leading-tight break-words">{primaryLabel}</div>
+                        {secondaryLabel && <div className="text-[10px] leading-tight mt-0.5 opacity-80 break-words">{secondaryLabel}</div>}
+                      </div>
                     );
-                  })}
-                </TableBody>
-              </Table>
+                    },
+                  },
+                  {
+                    key: 'date',
+                    header: 'Data',
+                    priority: 'secondary',
+                    className: 'text-xs py-2 whitespace-nowrap tabular-nums align-top',
+                    headClassName: 'text-[11px] py-2 h-auto whitespace-nowrap',
+                    cell: (appointment) => format(new Date(appointment.start_time), 'dd/MM/yyyy'),
+                  },
+                  {
+                    key: 'time',
+                    header: 'Início',
+                    priority: 'secondary',
+                    className: 'text-xs py-2 whitespace-nowrap tabular-nums align-top',
+                    headClassName: 'text-[11px] py-2 h-auto whitespace-nowrap',
+                    cell: (appointment) => format(new Date(appointment.start_time), 'HH:mm'),
+                  },
+                  {
+                    key: 'professional',
+                    header: 'Profissional',
+                    priority: 'secondary',
+                    className: 'text-xs py-2 min-w-[120px] align-top',
+                    headClassName: 'text-[11px] py-2 h-auto min-w-[120px]',
+                    cell: (appointment) => appointment.professional?.name || appointment.package_appointment?.package?.professional?.name || appointment.service?.professional?.name || '-',
+                  },
+                  {
+                    key: 'application',
+                    header: 'Aplicação',
+                    priority: 'secondary',
+                    className: 'py-2 align-top',
+                    headClassName: 'text-[11px] py-2 h-auto whitespace-nowrap',
+                    cell: (appointment) => {
+                      const packageSession = appointment.package_appointment;
+                      const recurringLabel = getAppointmentRecurringSessionLabel(recurringSequenceMap.get(appointment.id));
+                      const applicationLabel = getPackageApplicationLabel(
+                        packageSession,
+                        packageSession?.package?.total_sessions,
+                        packageSequenceMap.get(appointment.id),
+                      );
+                      const statusTextClass =
+                        appointment.status === 'completed' ? 'text-success' :
+                        appointment.status === 'cancelled' ? 'text-destructive' :
+                        appointment.status === 'missed' ? 'text-warning' :
+                        appointment.status === 'rescheduled' ? 'text-primary' :
+                        'text-info';
+                      return packageSession || recurringLabel ? (
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap border-current ${statusTextClass}`}>
+                          {packageSession ? applicationLabel : recurringLabel}
+                        </Badge>
+                      ) : '-';
+                    },
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    priority: 'secondary',
+                    className: 'py-2 align-top',
+                    headClassName: 'text-[11px] py-2 h-auto whitespace-nowrap',
+                    cell: (appointment) => {
+                      const status = getAppointmentStatusConfig(appointment.status);
+                      return <Badge variant="outline" className={`text-[10px] px-1.5 py-0 whitespace-nowrap ${status.className}`}>{status.label}</Badge>;
+                    },
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Ações',
+                    priority: 'actions',
+                    className: 'py-2 min-w-[80px] align-top',
+                    headClassName: 'text-[11px] py-2 h-auto text-right min-w-[80px]',
+                    cell: (appointment) => (
+                      <div className="flex justify-end items-center gap-1 whitespace-nowrap">
+                        {onEditAppointment && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={(event) => {
+                              event.currentTarget.blur();
+                              onEditAppointment(appointment);
+                            }}
+                            title="Editar"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          title="Excluir"
+                          onClick={() => {
+                            if (window.confirm('Deseja apagar este agendamento? Esta ação não pode ser desfeita.')) {
+                              deleteAppointment.mutate(appointment.id);
+                            }
+                          }}
+                          disabled={deleteAppointment.isPending || updateAppointment.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
           )}
         </CardContent>

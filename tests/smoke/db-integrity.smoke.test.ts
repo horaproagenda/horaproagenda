@@ -48,10 +48,6 @@ describeIfCreds('DB integrity guards', () => {
       .not('package_appointment_id', 'is', null)
       .gte('start_time', since)
       .limit(500);
-    if (error && (error.code === '42703' || /column .* does not exist/i.test(error.message))) {
-      return;
-    }
-
     expect(error).toBeNull();
     const missing = (data ?? []).filter((a) => !a.service_name_snapshot);
     expect(missing, `Snapshots ausentes: ${missing.length}`).toEqual([]);
@@ -68,6 +64,7 @@ describeIfCreds('DB integrity guards', () => {
         /not found/i.test(error.message)
       )
     ) {
+      console.log('RPC not available, skipping seat_limit check');
       return;
     }
 

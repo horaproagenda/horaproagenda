@@ -97,7 +97,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
       .insert({
         name: tag('Template Smoke'),
         total_sessions: 1,
-        // total_price: 100,  // coluna não existe no schema atual
+        price: 100, // package_templates usa `price` (não existe `total_price`)
       })
       .select('id')
       .single();
@@ -139,6 +139,8 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     const { data: pkg, error: e8 } = await c
       .from('service_packages')
       .insert({
+        name: tag('Pacote Smoke'),
+        total_price: 100,
         client_id: ctx.clientId,
         template_id: tpl.id,
         service_id: stepSvc.id,
@@ -159,6 +161,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
         appointment_id: appt.id,
         service_id: stepSvc.id,
         session_number: 1,
+        original_session_number: 1,
         sequence_order: 1,
         scheduled_date: start.toISOString(),
         status: 'scheduled',

@@ -97,7 +97,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
       .insert({
         name: tag('Template Smoke'),
         total_sessions: 1,
-        total_price: 100,
+        // total_price: 100,  // coluna não existe no schema atual
       })
       .select('id')
       .single();

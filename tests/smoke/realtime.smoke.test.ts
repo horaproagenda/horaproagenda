@@ -54,8 +54,11 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     // O prazo de entrega começa somente depois que o servidor confirmou a assinatura.
     const timer = setTimeout(() => resolveReceived(false), 15000);
 
-    const start = new Date(Date.now() + 5 * 86400000);
-    start.setHours(11, 0, 0, 0);
+    // P0001 = o banco recusou por choque de horário. Usa um dia útil distante e
+    // aleatório para não colidir com os agendamentos dos outros testes.
+    const start = new Date(Date.now() + (30 + Math.floor(Math.random() * 60)) * 86400000);
+    while (start.getDay() === 0 || start.getDay() === 6) start.setDate(start.getDate() + 1);
+    start.setHours(10 + Math.floor(Math.random() * 6), 0, 0, 0);
     const end = new Date(start.getTime() + 30 * 60_000);
 
     const { error: insertError } = await writer.from('appointments').insert({
@@ -67,11 +70,12 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
       status: 'scheduled',
       payment_status: 'pending',
     });
-    if (insertError && insertError.code === 'P0001') {
-      clearTimeout(timer);
-      return;
-    }
 
+    if (insertError) {
+      clearTimeout(timer);
+      console.error('Insert error details:', insertError);
+      throw insertError;
+    }
     expect(insertError).toBeNull();
 
     const ok = await received;

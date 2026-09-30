@@ -539,13 +539,8 @@ export function useClientProfile(clientId: string) {
       }
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
-      toast.success('Foto adicionada com sucesso!');
-    },
-    onError: (error) => {
-      toast.error('Erro ao adicionar foto: ' + error.message);
-    },
+    // Sem toast/recarga por foto: a tela de fotos envia em lote, avisa uma vez
+    // e atualiza a galeria só no fim (recargas no meio derrubavam os envios seguintes).
   });
 
   // Add quote

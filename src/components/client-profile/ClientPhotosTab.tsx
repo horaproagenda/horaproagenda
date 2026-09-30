@@ -196,6 +196,26 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
 
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+
+  const clearSelection = () => {
+    previews.forEach((p) => p?.startsWith('blob:') && URL.revokeObjectURL(p));
+    setFile(null);
+    setFiles([]);
+    setPreview(null);
+    setPreviews([]);
+  };
+
+  const removeSelected = (idx: number) => {
+    const p = previews[idx];
+    if (p?.startsWith('blob:')) URL.revokeObjectURL(p);
+    const nextFiles = files.filter((_, i) => i !== idx);
+    const nextPreviews = previews.filter((_, i) => i !== idx);
+    setFiles(nextFiles);
+    setPreviews(nextPreviews);
+    setFile(nextFiles[0] ?? null);
+    setPreview(nextPreviews[0] ?? null);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -214,50 +234,33 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
         toast.error(`"${f.name}" passa de 25 MB e foi ignorada.`);
         return false;
       }
+      // Evita duplicar a mesma foto ao selecionar de novo
+      if (files.some((x) => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) {
+        return false;
+      }
       return true;
     });
 
     if (validFiles.length === 0) return;
 
-    setFiles(validFiles);
-    setFile(validFiles[0]);
-
-    const newPreviews: string[] = [];
-    validFiles.forEach((f, index) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newPreviews[index] = reader.result as string;
-        if (newPreviews.filter(Boolean).length === validFiles.length) {
-          setPreviews([...newPreviews]);
-        }
-      };
-      reader.onerror = () => {
-        toast.error(`Não foi possível ler "${f.name}".`);
-      };
-      reader.readAsDataURL(f);
-    });
-
-    const firstReader = new FileReader();
-    firstReader.onloadend = () => setPreview(firstReader.result as string);
-    firstReader.readAsDataURL(validFiles[0]);
+    // Soma à seleção anterior (antes substituía e perdia as primeiras fotos)
+    const nextFiles = [...files, ...validFiles];
+    // Pré-visualização leve: não carrega a foto inteira na memória do celular
+    const nextPreviews = [...previews, ...validFiles.map((f) => URL.createObjectURL(f))];
+    setFiles(nextFiles);
+    setPreviews(nextPreviews);
+    setFile(nextFiles[0]);
+    setPreview(nextPreviews[0]);
   };
 
-  const handleSubmit = async () => {
-    if (files.length === 0 && !file) {
-      toast.error('Selecione pelo menos uma foto');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const filesToUpload = files.length > 0 ? files : (file ? [file] : []);
-      let uploadedCount = 0;
-
-      for (const fileToUpload of filesToUpload) {
+  const uploadWithRetry = async (fileToUpload: File, attempts = 3) => {
+    let lastError: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        // Caminho novo a cada tentativa: nunca colide com um envio parcial anterior
         const path = buildClientStoragePath(clientId, fileToUpload.name, 'photos');
         assertClientStoragePath(clientId, path);
         const result = await uploadFile(fileToUpload, path);
-
         await onAddPhoto({
           client_id: clientId,
           appointment_id: null,
@@ -267,24 +270,63 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
           notes: notes.trim() || null,
           taken_at: new Date().toISOString(),
         });
-        uploadedCount += 1;
+        return;
+      } catch (err) {
+        lastError = err;
+        if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
       }
+    }
+    throw lastError;
+  };
 
-      toast.success(`${uploadedCount} foto(s) adicionada(s) com sucesso!`);
+  const handleSubmit = async () => {
+    const filesToUpload = files.length > 0 ? files : (file ? [file] : []);
+    if (filesToUpload.length === 0) {
+      toast.error('Selecione pelo menos uma foto');
+      return;
+    }
+
+    setLoading(true);
+    const failedIdx: number[] = [];
+    try {
+      // Uma foto por vez, cada uma isolada: falha em uma não cancela as outras
+      for (let i = 0; i < filesToUpload.length; i++) {
+        setProgress({ current: i + 1, total: filesToUpload.length });
+        try {
+          await uploadWithRetry(filesToUpload[i]);
+        } catch (err) {
+          console.error('Falha ao enviar foto', filesToUpload[i].name, err);
+          failedIdx.push(i);
+        }
+      }
+    } finally {
+      setProgress(null);
+      setLoading(false);
+      // Atualiza a galeria uma única vez, depois do lote inteiro
+      queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
+    }
+
+    const saved = filesToUpload.length - failedIdx.length;
+    if (failedIdx.length === 0) {
+      toast.success(saved === 1 ? 'Foto salva com sucesso!' : `Todas as ${saved} fotos foram salvas!`);
+      clearSelection();
       setOpen(false);
       setNotes('');
-      setFile(null);
-      setFiles([]);
-      setPreview(null);
-      setPreviews([]);
       setStage('before');
-    } catch (error) {
-      console.error('Error adding photo:', error);
-      const message = error instanceof Error ? error.message : 'Tente novamente em alguns segundos.';
-      toast.error(`Erro ao adicionar foto(s). ${message}`);
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    // Mantém na tela só as que falharam, prontas para reenviar
+    const keepFiles = failedIdx.map((i) => files[i] ?? filesToUpload[i]);
+    const keepPreviews = failedIdx.map((i) => previews[i]).filter(Boolean);
+    previews.forEach((p, i) => !failedIdx.includes(i) && p?.startsWith('blob:') && URL.revokeObjectURL(p));
+    setFiles(keepFiles);
+    setPreviews(keepPreviews);
+    setFile(keepFiles[0] ?? null);
+    setPreview(keepPreviews[0] ?? null);
+    toast.error(
+      `${saved} de ${filesToUpload.length} fotos salvas. ${failedIdx.length} não foram enviadas (conexão instável). Elas continuam selecionadas — toque em Salvar para reenviar.`,
+    );
   };
 
 
@@ -308,7 +350,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
           </Select>
           <span className="text-xs text-muted-foreground">{filteredPhotos.length} foto(s)</span>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { if (!loading) setOpen(v); }}>
           <DialogTrigger asChild>
             <Button type="button" size="sm" className="h-7 text-xs">
               <Plus className="h-3.5 w-3.5 mr-1" />
@@ -316,7 +358,11 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
+          <DialogContent
+            className="max-w-sm max-h-[85vh] flex flex-col"
+            onInteractOutside={(e) => loading && e.preventDefault()}
+            onEscapeKeyDown={(e) => loading && e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle className="text-base">Adicionar Foto</DialogTitle>
             </DialogHeader>
@@ -346,29 +392,33 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                     accept="image/*" 
                     multiple 
                   />
-                  {previews.length > 0 || preview ? (
+                  {previews.length > 0 ? (
                     <div className="space-y-2">
                       <div className="grid grid-cols-3 gap-2">
-                        {(previews.length > 0 ? previews : [preview]).filter(Boolean).map((p, idx) => (
-                          <div key={idx} className="relative">
-                            <img src={p!} alt={`Preview ${idx + 1}`} className="w-full h-16 object-cover rounded-lg" />
+                        {previews.map((p, idx) => (
+                          <div key={p} className="relative">
+                            <img src={p} alt={`Foto ${idx + 1}`} className="w-full h-16 object-cover rounded-lg bg-muted" />
+                            {!loading && (
+                              <button
+                                type="button"
+                                aria-label={`Remover foto ${idx + 1}`}
+                                onClick={() => removeSelected(idx)}
+                                className="absolute top-0.5 right-0.5 h-6 w-6 rounded-full bg-background/90 text-foreground text-xs border"
+                              >
+                                ×
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full h-6 text-xs" 
-                        onClick={() => { 
-                          setFile(null); 
-                          setFiles([]); 
-                          setPreview(null); 
-                          setPreviews([]); 
-                        }}
-                      >
-                        Remover todas
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={loading} onClick={() => fileInputRef.current?.click()}>
+                          <Plus className="h-3 w-3 mr-1" /> Mais fotos
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={loading} onClick={clearSelection}>
+                          Remover todas
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <Button type="button" variant="outline" className="w-full h-24 text-xs" onClick={() => fileInputRef.current?.click()}>
@@ -386,9 +436,19 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                 </div>
               </div>
             </ScrollArea>
-            <div className="pt-3 border-t">
-              <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading || (files.length === 0 && !file)}>
-                {loading ? 'Salvando...' : `Salvar ${files.length > 1 ? `(${files.length} fotos)` : ''}`}
+            <div className="pt-3 border-t space-y-2">
+              {progress && (
+                <div className="space-y-1">
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground text-center">Não feche esta janela até terminar.</p>
+                </div>
+              )}
+              <Button onClick={handleSubmit} className="w-full h-8 text-xs" disabled={loading || files.length === 0}>
+                {progress
+                  ? `Enviando foto ${progress.current} de ${progress.total}...`
+                  : `Salvar ${files.length > 1 ? `(${files.length} fotos)` : ''}`}
               </Button>
             </div>
           </DialogContent>

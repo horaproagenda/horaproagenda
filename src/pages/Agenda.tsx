@@ -45,6 +45,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { FirstStepsCard } from '@/components/onboarding/FirstStepsCard';
 import { InstallAppButton } from '@/components/pwa/InstallAppButton';
 import { LiveCashTotalsBar } from '@/components/shared/LiveCashTotalsBar';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
@@ -1848,6 +1849,7 @@ const Agenda = () => {
         subtitle=""
       >
         {/* Barra financeira removida da agenda mobile — informações financeiras pertencem às páginas Caixa/Financeiro. */}
+        <FirstStepsCard />
         {!hasProfessionalLink && (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
@@ -1993,6 +1995,7 @@ const Agenda = () => {
     <div className="flex h-full overflow-y-auto">
       {/* Main Agenda Content */}
       <div className="flex-1 min-w-0 overflow-y-auto">
+      <FirstStepsCard />
       {!hasProfessionalLink && (
         <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs sm:text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />

@@ -14,6 +14,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { format, parseISO } from 'date-fns';
+import { clinicDateTime, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
 import { toast } from 'sonner';
 import { Trash2, Eye, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
@@ -51,6 +52,7 @@ interface PreviewConflict {
 export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditAppointmentDialogProps) {
   const { rooms } = useRooms();
   const { settings } = useBusinessSettings();
+  const tz = settings?.timezone || 'America/Sao_Paulo';
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { updateAppointment, deleteAppointment } = useAppointments();
@@ -84,9 +86,9 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       const end = parseISO(appointment.end_time);
       const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
       setOriginalDuration(durationMinutes);
-      setDate(format(start, 'yyyy-MM-dd'));
-      setStartTime(format(start, 'HH:mm'));
-      setEndTime(format(end, 'HH:mm'));
+      setDate(formatDateInTimeZone(appointment.start_time, tz));
+      setStartTime(formatTimeInTimeZone(appointment.start_time, tz));
+      setEndTime(formatTimeInTimeZone(appointment.end_time, tz));
       setProfessionalId(appointment.professional_id || 'none');
       setRoomId(appointment.room_id || 'none');
       const room = rooms.find(r => r.id === appointment.room_id);
@@ -95,13 +97,13 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       setPreviewSessions(null);
       setPreviewConflicts([]);
     }
-  }, [appointment, rooms]);
+  }, [appointment, rooms, tz]);
 
   const handleStartTimeChange = (newStartTime: string) => {
     setStartTime(newStartTime);
     if (originalDuration > 0 && date && newStartTime) {
       try {
-        const newStart = new Date(`${date}T${newStartTime}`);
+        const newStart = clinicDateTime(date, newStartTime, tz);
         const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
         setEndTime(format(newEnd, 'HH:mm'));
       } catch (e) {}
@@ -116,7 +118,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     }
     setPreviewLoading(true);
     try {
-      const newStartIso = new Date(`${date}T${startTime}`).toISOString();
+      const newStartIso = clinicDateTime(date, startTime, tz).toISOString();
       const { data, error } = await supabase.rpc('preview_package_appointment_cascade', {
         _appointment_id: appointment.id,
         _new_start: newStartIso,
@@ -205,8 +207,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     }
     setLoading(true);
     try {
-      const start_time = new Date(`${date}T${startTime}`).toISOString();
-      const end_time = new Date(`${date}T${endTime}`).toISOString();
+      const start_time = clinicDateTime(date, startTime, tz).toISOString();
+      const end_time = clinicDateTime(date, endTime, tz).toISOString();
 
 
       // Only the time of day changed? Then following sessions must keep their
@@ -225,8 +227,8 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       });
 
       if (propagate && isRecurringOrPackage) {
-        const newStartTime = new Date(`${date}T${startTime}`);
-        const newEndTime = new Date(`${date}T${endTime}`);
+        const newStartTime = clinicDateTime(date, startTime, tz);
+        const newEndTime = clinicDateTime(date, endTime, tz);
 
         if (appointment.recurring_group_id) {
           await propagateSeriesDates.mutateAsync({

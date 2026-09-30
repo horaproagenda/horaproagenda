@@ -18,7 +18,9 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
 import { useAppointmentLocks } from '@/hooks/useAppointmentLocks';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { format, parseISO } from 'date-fns';
+import { clinicDateTime, formatDateInTimeZone, formatTimeInTimeZone } from '@/lib/timezone';
 import { addMinutesToClock } from '@/lib/duration';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -39,6 +41,8 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const { updateAppointment, deleteAppointment } = useAppointments();
   const { rescheduleAppointmentSeries, deleteAppointmentSeries, getSeriesAppointments, propagateSeriesDates } = useRecurringAppointments();
   const { activeLock, isLockedByOther, acquireLock, releaseLock } = useAppointmentLocks(appointment?.id);
+  const { settings: bizSettings } = useBusinessSettings();
+  const tz = bizSettings?.timezone || 'America/Sao_Paulo';
 
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -131,9 +135,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     const end = parseISO(appointment.end_time);
     const durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
     setOriginalDuration(durationMinutes);
-    setDate(format(start, 'yyyy-MM-dd'));
-    setStartTime(format(start, 'HH:mm'));
-    setEndTime(format(end, 'HH:mm'));
+    setDate(formatDateInTimeZone(appointment.start_time, tz));
+    setStartTime(formatTimeInTimeZone(appointment.start_time, tz));
+    setEndTime(formatTimeInTimeZone(appointment.end_time, tz));
     setProfessionalId(appointment.professional_id || 'none');
     setRoomId(appointment.room_id || 'none');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,8 +175,8 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
 
     setLoading(true);
     try {
-      const start_time = new Date(`${date}T${startTime}`).toISOString();
-      const end_time = new Date(`${date}T${endTime}`).toISOString();
+      const start_time = clinicDateTime(date, startTime, tz).toISOString();
+      const end_time = clinicDateTime(date, endTime, tz).toISOString();
 
       await updateAppointment.mutateAsync({
         id: appointment.id,
@@ -234,8 +238,8 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
 
     setLoading(true);
     try {
-      const newStartTime = new Date(`${date}T${startTime}`);
-      const newEndTime = new Date(`${date}T${endTime}`);
+      const newStartTime = clinicDateTime(date, startTime, tz);
+      const newEndTime = clinicDateTime(date, endTime, tz);
 
       if (isRecurringSeries && appointment.recurring_group_id) {
         await rescheduleAppointmentSeries.mutateAsync({

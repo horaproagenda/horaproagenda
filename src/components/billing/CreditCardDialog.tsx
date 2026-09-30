@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -81,6 +83,34 @@ export function CreditCardDialog({
   const [postalCode, setPostalCode] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
   const [phone, setPhone] = useState("");
+  const { profile, user } = useAuth();
+
+  // Preenche automaticamente com os dados já informados no cadastro
+  // (CEP, número do endereço, telefone, nome e CPF/CNPJ). Só preenche campos vazios.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data: bs } = await supabase
+        .from("business_settings")
+        .select("clinic_cep, clinic_number, clinic_phone")
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      const meta = (user?.user_metadata ?? {}) as Record<string, string | undefined>;
+      const p = profile as unknown as Record<string, string | null | undefined> | null;
+      let phoneDigits = (p?.phone || bs?.clinic_phone || meta.phone || "").replace(/\D+/g, "");
+      if (phoneDigits.length > 11 && phoneDigits.startsWith("55")) phoneDigits = phoneDigits.slice(2);
+      const doc = (p?.cpf || meta.cpf || p?.cnpj || meta.cnpj || "") as string;
+      const cep = (bs?.clinic_cep || meta.clinicCep || "") as string;
+      const num = (bs?.clinic_number || meta.clinicNumber || "") as string;
+      setPhone((v) => v || (phoneDigits ? formatPhone(phoneDigits) : ""));
+      setPostalCode((v) => v || (cep ? formatPostalCode(cep) : ""));
+      setAddressNumber((v) => v || num);
+      setCpfCnpj((v) => v || (doc ? formatDocument(doc) : ""));
+    })();
+    return () => { cancelled = true; };
+  }, [open, profile, user]);
 
   const [expMonth, expYearRaw] = expiry.split("/");
   const expYear = expYearRaw ? (expYearRaw.length === 2 ? `20${expYearRaw}` : expYearRaw) : "";

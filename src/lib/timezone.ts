@@ -52,3 +52,7 @@ export function formatDateInTimeZone(value: string | Date, timeZone = 'America/S
     day: '2-digit',
   }).format(new Date(value));
 }
+/** Monta data (yyyy-MM-dd) + hora (HH:mm) sempre no fuso da clínica. */
+export function clinicDateTime(date: string, time: string, timeZone = 'America/Sao_Paulo'): Date {
+  return createDateTimeInTimeZone(new Date(`${date}T12:00:00`), time, timeZone || 'America/Sao_Paulo');
+}

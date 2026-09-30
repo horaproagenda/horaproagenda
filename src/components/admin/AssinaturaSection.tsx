@@ -111,14 +111,25 @@ export function AssinaturaSection() {
       } else {
         toast.success("Assinatura criada! A cobrança está sendo processada no cartão cadastrado.");
       }
-      // Libera o aplicativo e abre a agenda. A assinatura já foi criada no
-      // gateway: esperamos um instante pela confirmação e seguimos de todo
-      // jeito — o usuário nunca fica preso na tela de cobrança.
+      // Libera o aplicativo e abre a agenda. Causa do bug anterior: a agenda
+      // era aberta enquanto a memória do app ainda guardava a assinatura antiga
+      // ("pendente") e a trava de acesso devolvia o usuário para esta tela.
+      // Agora gravamos a assinatura nova na memória ANTES de navegar.
       notifySubscriptionUpdated();
-      revalidate();
-      await waitForSubscriptionAccess({ timeoutMs: 8_000 });
+      const fresh = await waitForSubscriptionAccess({ timeoutMs: 8_000 });
+      const key = ["account-subscription", user.id];
+      if (fresh) {
+        qc.setQueryData(key, fresh);
+      } else if (result.trialing && result.trialEndsAt) {
+        // Servidor já confirmou o teste: aplica localmente e confirma depois.
+        qc.setQueryData(key, (old: Record<string, unknown> | null | undefined) =>
+          old ? { ...old, status: "trial", trial_ends_at: result.trialEndsAt, grace_ends_at: null, suspended_at: null } : old,
+        );
+      } else {
+        await qc.refetchQueries({ queryKey: key });
+      }
+      qc.invalidateQueries({ queryKey: ["seat-usage", user.id] });
       notifySubscriptionUpdated();
-      revalidate();
       setIsLoading(false);
       navigate("/agenda", { replace: true });
       return;

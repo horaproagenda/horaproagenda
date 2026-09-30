@@ -105,7 +105,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
       try {
         const newStart = clinicDateTime(date, newStartTime, tz);
         const newEnd = new Date(newStart.getTime() + originalDuration * 60000);
-        setEndTime(format(newEnd, 'HH:mm'));
+        setEndTime(formatTimeInTimeZone(newEnd, tz));
       } catch (e) {}
     }
     setPreviewSessions(null);

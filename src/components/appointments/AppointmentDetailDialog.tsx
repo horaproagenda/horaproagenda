@@ -1,3 +1,5 @@
+import { ConsultationSummarySheet } from '@/components/client-profile/ConsultationSummarySheet';
+import { NotebookPen } from 'lucide-react';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useState, useEffect, useMemo } from 'react';
@@ -184,6 +186,7 @@ export function AppointmentDetailDialog({
   onPayment,
 }: AppointmentDetailDialogProps) {
   const est = useEstablishment();
+  const [consultationOpen, setConsultationOpen] = useState(false);
   const navigate = useNavigate();
   const { hasRole, roles } = useAuth();
   const { professionalId: currentProfessionalId } = useCurrentProfessional();

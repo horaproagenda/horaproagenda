@@ -68,3 +68,23 @@ export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
     documents: i.documents.some((r) => isUserDocument(r, i.accountCreatedAt)),
   };
 }
+
+/**
+ * Listas que alimentam o guia. Qualquer atualização em uma delas (salvar,
+ * editar, excluir — nesta tela, em outra aba ou em outro aparelho) faz o guia
+ * conferir de novo. Ponto único: não é preciso lembrar disso em cada tela.
+ */
+export const FIRST_STEPS_SOURCE_KEYS = [
+  'business-settings', 'business_settings', 'professional-preferences', 'effective-business-settings',
+  'rooms', 'equipment',
+  'services', 'package_templates', 'package_template_steps',
+  'payment_methods',
+  'document_templates',
+  'clients',
+] as const;
+
+export const FIRST_STEPS_QUERY_KEY = 'first-steps-progress';
+
+export function isFirstStepsSource(key: unknown): boolean {
+  return typeof key === 'string' && (FIRST_STEPS_SOURCE_KEYS as readonly string[]).includes(key);
+}

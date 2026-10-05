@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { toast } from 'sonner';
 import { recordRefetch } from '@/lib/perfMetrics';
+import { isFirstStepsSource, FIRST_STEPS_QUERY_KEY } from '@/lib/firstStepsProgress';
 
 /**
  * Hook para sincronização em tempo real entre todas as tabelas.
@@ -49,7 +50,10 @@ export function useRealtimeSync() {
       });
     };
     const invalidateKeys = (keys: readonly string[]) => {
-      for (const k of keys) pending.add(k);
+      for (const k of keys) {
+        pending.add(k);
+        if (isFirstStepsSource(k)) pending.add(FIRST_STEPS_QUERY_KEY);
+      }
       scheduleFlush();
     };
 
@@ -263,7 +267,7 @@ export function useRealtimeSync() {
       })
 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'document_templates' }, () => {
-        invalidateKeys(['document_templates']);
+        invalidateKeys(['document_templates', FIRST_STEPS_QUERY_KEY]);
       })
 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_templates' }, () => {

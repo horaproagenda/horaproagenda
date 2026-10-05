@@ -91,3 +91,41 @@ describe('Primeiros passos: ordem e páginas certas', () => {
     }
   });
 });
+
+describe('Primeiros passos: cada cadastro marca seu passo e o guia some no fim', () => {
+  const base = { accountCreatedAt: created, settings: null, prefs: [], services: 0, resources: 0, clients: 0, paymentMethods: [], documents: [] };
+  const later = { created_at: '2026-10-02T10:00:00Z', updated_at: '2026-10-02T10:00:00Z' };
+  const steps: [string, Record<string, unknown>][] = [
+    ['hours', { prefs: [{ opening_time: '09:00:00', closing_time: '18:00:00' }] }],
+    ['resources', { resources: 1 }],
+    ['services', { services: 1 }],
+    ['payments', { paymentMethods: [later] }],
+    ['documents', { documents: [{ ...later, title: 'Minha ficha' }] }],
+    ['clients', { clients: 1 }],
+  ];
+  it('cada passo marca sozinho e só ele', () => {
+    for (const [key, patch] of steps) {
+      const r = computeFirstSteps({ ...base, ...patch } as never);
+      expect(Object.entries(r).filter(([, v]) => v).map(([k]) => k)).toEqual([key]);
+    }
+  });
+  it('com os 6 feitos, todos marcados e o guia se esconde', () => {
+    const all = Object.assign({}, base, ...steps.map(([, p]) => p));
+    const r = computeFirstSteps(all as never);
+    expect(Object.keys(r)).toHaveLength(6);
+    expect(Object.values(r).every(Boolean)).toBe(true);
+    const src = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    expect(src).toContain('if (total === STEPS.length) return null;');
+  });
+  it('todas as telas dos 6 passos avisam o guia (ponto único)', async () => {
+    const { FIRST_STEPS_SOURCE_KEYS } = await import('@/lib/firstStepsProgress');
+    for (const k of ['business-settings', 'professional-preferences', 'rooms', 'equipment', 'services', 'package_templates', 'payment_methods', 'document_templates', 'clients']) {
+      expect(FIRST_STEPS_SOURCE_KEYS as readonly string[]).toContain(k);
+    }
+    const card = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    expect(card).toContain('getQueryCache().subscribe');
+    expect(card).toContain('getMutationCache().subscribe');
+    const rt = readFileSync('src/hooks/useRealtimeSync.ts', 'utf8');
+    expect(rt).toContain('if (isFirstStepsSource(k)) pending.add(FIRST_STEPS_QUERY_KEY)');
+  });
+});

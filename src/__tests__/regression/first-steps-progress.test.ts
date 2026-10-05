@@ -37,3 +37,34 @@ describe('Primeiros passos: conta nova começa com 0 de 5', () => {
     expect(src).not.toContain('onboarding_completed_at');
   });
 });
+
+describe('Primeiros passos: sem vazamento de outras contas', () => {
+  it('modelos padrão do cadastro não marcam documentos, mesmo criados depois', () => {
+    const late = { created_at: '2026-10-01T13:00:00Z', updated_at: '2026-10-01T13:00:00Z' };
+    const r = computeFirstSteps({
+      accountCreatedAt: created,
+      settings: null, prefs: [], services: 0, clients: 0, paymentMethods: [],
+      documents: [
+        { ...late, title: 'Anamnese básica' },
+        { ...late, title: 'Termo de consentimento' },
+        { ...late, title: 'Contrato de prestação de serviços' },
+      ],
+    });
+    expect(r.documents).toBe(false);
+  });
+
+  it('modelo padrão editado conta', () => {
+    const r = computeFirstSteps({
+      accountCreatedAt: created, settings: null, prefs: [], services: 0, clients: 0, paymentMethods: [],
+      documents: [{ title: 'Anamnese básica', created_at: created, updated_at: '2026-10-02T10:00:00Z' }],
+    });
+    expect(r.documents).toBe(true);
+  });
+
+  it('o guia sempre filtra pela conta e não usa a chamada que falha', () => {
+    const src = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    expect(src).not.toContain("rpc('current_account_owner_id')");
+    expect(src).not.toMatch(/owner \? q\.eq/);
+    expect(src).toContain("q.eq('account_owner_id', ownerId)");
+  });
+});

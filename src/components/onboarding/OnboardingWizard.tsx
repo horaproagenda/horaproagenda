@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { toast } from 'sonner';
 import { Loader2, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
 
@@ -48,6 +49,7 @@ export function OnboardingWizard({ open }: Props) {
   const { user, profile } = useAuth();
   const { markCompleted } = useOnboardingStatus();
   const navigate = useNavigate();
+  const est = useEstablishment();
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,7 @@ export function OnboardingWizard({ open }: Props) {
     setSaving(true);
     try {
       await markCompleted();
-      toast.success('Sem problemas! Você pode ajustar as configurações da clínica a qualquer momento.');
+      toast.success(`Sem problemas! Você pode ajustar as configurações ${est.of} a qualquer momento.`);
     } finally {
       setSaving(false);
     }
@@ -128,7 +130,7 @@ export function OnboardingWizard({ open }: Props) {
 
   const handleFinish = async () => {
     if (!clinicName.trim()) {
-      toast.error('Informe o nome da clínica.');
+      toast.error(`Informe o nome ${est.of}.`);
       return;
     }
     setSaving(true);
@@ -149,13 +151,13 @@ export function OnboardingWizard({ open }: Props) {
       if (settingsId) {
         const { error } = await supabase.from('business_settings').update(payload).eq('id', settingsId);
         if (error) {
-          toast.error('Não foi possível salvar as configurações da clínica.');
+          toast.error(`Não foi possível salvar as configurações ${est.of}.`);
           return;
         }
       } else {
         const { error } = await supabase.from('business_settings').insert(payload);
         if (error) {
-          toast.error('Não foi possível salvar as configurações da clínica.');
+          toast.error(`Não foi possível salvar as configurações ${est.of}.`);
           return;
         }
       }
@@ -180,10 +182,10 @@ export function OnboardingWizard({ open }: Props) {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <DialogTitle className="text-center">Clínica configurada!</DialogTitle>
+            <DialogTitle className="text-center">{est.Noun} configurad{est.suffix}!</DialogTitle>
             <DialogDescription className="text-center space-y-3 pt-2">
               <span className="block">
-                Sua clínica está configurada e sua conta já é a do{' '}
+                {est.your} está configurad{est.suffix} e sua conta já é a do{' '}
                 <strong>Administrador principal</strong>, com acesso total.
               </span>
               <span className="block">
@@ -215,9 +217,9 @@ export function OnboardingWizard({ open }: Props) {
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </div>
-          <DialogTitle className="text-center">Configuração inicial da clínica</DialogTitle>
+          <DialogTitle className="text-center">Configuração inicial {est.of}</DialogTitle>
           <DialogDescription className="text-center">
-            Só precisamos dos dados da clínica. Seus dados pessoais já foram herdados do seu
+            Só precisamos dos dados {est.of}. Seus dados pessoais já foram herdados do seu
             cadastro.
           </DialogDescription>
         </DialogHeader>
@@ -231,7 +233,7 @@ export function OnboardingWizard({ open }: Props) {
             <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3">
               <ShieldCheck className="mt-0.5 h-4 w-4 text-primary shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Você está configurando sua clínica com a conta do{' '}
+                Você está configurando {est.yourLower} com a conta do{' '}
                 {isPrimaryAdmin ? 'Administrador principal' : 'usuário administrador'}:{' '}
                 <strong className="text-foreground">{adminName}</strong> ({adminEmail}). Nome, e-mail
                 e senha não são solicitados novamente.
@@ -239,7 +241,7 @@ export function OnboardingWizard({ open }: Props) {
             </div>
 
             <div>
-              <Label htmlFor="ob-clinic">Nome da clínica *</Label>
+              <Label htmlFor="ob-clinic">Nome {est.of} *</Label>
               <Input
                 id="ob-clinic"
                 value={clinicName}
@@ -249,7 +251,7 @@ export function OnboardingWizard({ open }: Props) {
             </div>
 
             <div>
-              <Label htmlFor="ob-logo">Logo da clínica (URL, opcional)</Label>
+              <Label htmlFor="ob-logo">Logo {est.of} (URL, opcional)</Label>
               <Input
                 id="ob-logo"
                 value={logoUrl}

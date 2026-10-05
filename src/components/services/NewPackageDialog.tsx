@@ -46,6 +46,8 @@ import { NewCategoryDialog } from './NewCategoryDialog';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 import { withoutKitServices } from '@/lib/serviceKind';
+import { useEstablishment } from '@/hooks/useEstablishment';
+import { suggestedServiceCategories } from '@/lib/segmentTemplates';
 
 const packageSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
@@ -87,7 +89,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const { rooms } = useRooms();
   const { equipment } = useEquipment();
   const [customCategories, setCustomCategories] = useState<string[]>([]);
-  const categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...customCategories]));
+  const est = useEstablishment();
+  const categories = Array.from(new Set([...(suggestedServiceCategories(est.type) ?? DEFAULT_CATEGORIES), ...customCategories]));
   const { activeServices } = useServices();
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);

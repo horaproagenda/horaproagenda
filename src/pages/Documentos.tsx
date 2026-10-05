@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { 
   FileText, 
   Plus, 
@@ -74,6 +75,7 @@ const templateTypeConfig = {
 };
 
 const Documentos = () => {
+  const est = useEstablishment();
   const { hasRole } = useAuth();
   const { professionalId } = useProfessionalScopeFlags();
   const [searchTerm, setSearchTerm] = useState('');
@@ -160,7 +162,7 @@ const Documentos = () => {
     || template?.owner_professional_id === professionalId;
 
   return (
-    <AppLayout title="Anamnese e Contratos" subtitle="Modelos de documentos editáveis para clínica estética">
+    <AppLayout title="Anamnese e Contratos" subtitle={`Modelos de documentos editáveis para ${est.yourLower}`}>
       <PageTransition>
         <ScrollArea className="h-[calc(100dvh-140px)]">
           <div className="space-y-4 pr-4">

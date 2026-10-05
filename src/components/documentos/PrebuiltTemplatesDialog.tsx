@@ -21,6 +21,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { TemplateFormData } from '@/hooks/useDocumentTemplatesManagement';
+import { useEstablishment } from '@/hooks/useEstablishment';
+import { segmentTemplates, AESTHETIC_TYPES } from '@/lib/segmentTemplates';
 
 interface PrebuiltTemplatesDialogProps {
   open: boolean;
@@ -560,6 +562,15 @@ export function PrebuiltTemplatesDialog({
 }: PrebuiltTemplatesDialogProps) {
   const [selectedPreview, setSelectedPreview] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const est = useEstablishment();
+  const isAesthetic = AESTHETIC_TYPES.includes(est.type);
+  const seg = segmentTemplates(est.type);
+  const groups = isAesthetic
+    ? prebuiltTemplates
+    : {
+        anamnese: [...seg.filter((t) => t.category === 'anamnese')],
+        contracts: [...seg.filter((t) => t.category !== 'anamnese')],
+      };
 
   const resolveCategory = (template: any): 'anamnese' | 'contract' | 'consent' => {
     // Inside the "anamnese" group every prebuilt is an anamnese template;
@@ -592,7 +603,7 @@ export function PrebuiltTemplatesDialog({
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-base">Modelos Prontos</DialogTitle>
           <DialogDescription className="text-sm">
-            Selecione um modelo pré-configurado para sua clínica de estética
+            Selecione um modelo pré-configurado para {est.yourLower}
           </DialogDescription>
         </DialogHeader>
 
@@ -614,7 +625,7 @@ export function PrebuiltTemplatesDialog({
             <div className="px-6 py-4">
               {['anamnese', 'contracts'].map(tab => (
                 <TabsContent key={tab} value={tab} className="mt-0 space-y-3">
-                  {prebuiltTemplates[tab as keyof typeof prebuiltTemplates].map((template, index) => (
+                  {(groups as any)[tab].map((template: any, index: number) => (
                     <Card key={index} className="hover:shadow-md transition-shadow">
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between">
@@ -646,7 +657,7 @@ export function PrebuiltTemplatesDialog({
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {template.variables.slice(0, 4).map((v, i) => (
+                          {template.variables.slice(0, 4).map((v: string, i: number) => (
                             <Badge key={i} variant="outline" className="text-[10px]">
                               {'{' + v + '}'}
                             </Badge>

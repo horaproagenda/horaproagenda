@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { Building2, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';
@@ -17,6 +18,7 @@ import { useContactChangeVerification, type ContactChangeType } from '@/hooks/us
 import { AddressFieldsCep, emptyAddress, type AddressFields } from '@/components/forms/AddressFieldsCep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ESTABLISHMENT_TYPES } from '@/lib/establishmentType';
+import { establishmentLabels } from '@/hooks/useEstablishment';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -49,6 +51,7 @@ const Configuracoes = () => {
   const [address, setAddress] = useState<AddressFields>(emptyAddress);
   const [businessType, setBusinessType] = useState<string>('clinica');
   const [businessTypeLabel, setBusinessTypeLabel] = useState('');
+  const est = establishmentLabels(businessType, businessTypeLabel);
 
   // E-mail / celular de login (com verificação)
   const [accountEmail, setAccountEmail] = useState('');
@@ -209,11 +212,11 @@ const Configuracoes = () => {
                       <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="text-sm font-medium">Informações da Clínica</CardTitle>
+                      <CardTitle className="text-sm font-medium">Informações {est.of}</CardTitle>
                       <CardDescription className="text-xs">
                         {isEditingClinic
                           ? 'Atualize os dados e clique em "Salvar informações".'
-                          : 'Clique em "Editar" para atualizar os dados da clínica.'}
+                          : `Clique em "Editar" para atualizar os dados ${est.of}.`}
                       </CardDescription>
                     </div>
                   </div>
@@ -233,7 +236,7 @@ const Configuracoes = () => {
               <CardContent className="space-y-3">
                 {(settings as unknown as { clinic_code?: string })?.clinic_code && (
                   <div className="rounded-lg border bg-muted/30 p-3">
-                    <p className="text-xs text-muted-foreground">Código da clínica</p>
+                    <p className="text-xs text-muted-foreground">Código {est.of}</p>
                     <p className="text-sm font-semibold tracking-wide">
                       {(settings as unknown as { clinic_code?: string }).clinic_code}
                     </p>
@@ -254,7 +257,7 @@ const Configuracoes = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Nome da clínica</Label>
+                  <Label className="text-xs">Nome {est.of}</Label>
                   <Input
                     className="h-8 text-sm"
                     value={clinicName}
@@ -292,7 +295,7 @@ const Configuracoes = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Telefone da clínica</Label>
+                    <Label className="text-xs">Telefone {est.of}</Label>
                     <Input
                       className="h-8 text-sm"
                       value={clinicPhone}
@@ -303,7 +306,7 @@ const Configuracoes = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">E-mail da clínica</Label>
+                    <Label className="text-xs">E-mail {est.of}</Label>
                     <Input
                       className="h-8 text-sm"
                       type="email"

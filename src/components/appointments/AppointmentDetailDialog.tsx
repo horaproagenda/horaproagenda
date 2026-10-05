@@ -2182,6 +2182,20 @@ export function AppointmentDetailDialog({
                 </div>
               )}
 
+              {appointment.client_id && (
+                <>
+                  <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setConsultationOpen(true)}>
+                    <NotebookPen className="h-4 w-4" /> Registrar consulta
+                  </Button>
+                  <ConsultationSummarySheet
+                    open={consultationOpen}
+                    onOpenChange={setConsultationOpen}
+                    clientId={appointment.client_id}
+                    appointmentId={appointment.id}
+                  />
+                </>
+              )}
+
               {/* Payment Form */}
               {showPaymentForm ? (
                 <div className="space-y-3 p-3 rounded-lg border border-border">

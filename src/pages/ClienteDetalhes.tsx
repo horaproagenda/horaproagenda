@@ -4,7 +4,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History, NotebookPen } from 'lucide-react';
+import { ClientConsultationsTab } from '@/components/client-profile/ClientConsultationsTab';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
 import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
@@ -114,7 +115,7 @@ export default function ClienteDetalhes() {
 
         {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto bg-muted/50 p-1 lg:grid lg:grid-cols-7">
+          <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto bg-muted/50 p-1 lg:grid lg:grid-cols-8">
             <TabsTrigger value="report" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
               <BarChart3 className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Relatório</span>
@@ -134,6 +135,10 @@ export default function ClienteDetalhes() {
             <TabsTrigger value="quotes" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40">
               <Receipt className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span className="leading-tight">Orçam.</span>
+            </TabsTrigger>
+            <TabsTrigger value="consultations" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+              <NotebookPen className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="leading-tight">Consultas</span>
             </TabsTrigger>
             <TabsTrigger value="photos" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
               <Image className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -172,6 +177,10 @@ export default function ClienteDetalhes() {
           </TabsContent>
           <TabsContent value="quotes" className="mt-3">
             <ClientQuotesTab quotes={quotes} clientId={client.id} clientPhone={client.phone} onAddQuote={addQuote.mutateAsync} onUpdateQuote={updateQuote.mutateAsync} />
+          </TabsContent>
+          <TabsContent value="consultations" className="mt-3">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <ClientConsultationsTab clientId={client.id} appointments={appointments as any} />
           </TabsContent>
           <TabsContent value="photos" className="mt-3">
             <ClientPhotosTab photos={photos} clientId={client.id} onAddPhoto={addPhoto.mutateAsync} />

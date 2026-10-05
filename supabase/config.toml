@@ -99,6 +99,3 @@ project_id = "nsgcllrbswodjoadybsj"
   # Avisos no celular: chamada automática da agenda (trigger) e cron de lembretes.
   [functions.push-dispatch]
     verify_jwt = false
-
-[functions.summarize-consultation]
-  verify_jwt = false

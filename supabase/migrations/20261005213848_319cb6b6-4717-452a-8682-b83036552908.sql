@@ -1,1 +1,0 @@
-REVOKE ALL ON public.client_consultation_notes FROM anon;

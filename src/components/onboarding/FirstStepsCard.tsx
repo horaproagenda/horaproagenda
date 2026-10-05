@@ -17,14 +17,15 @@ const SUPPORT_MSG = 'Olá! Sou novo no Hora Pro e gostaria de solicitar o cadast
 interface Step { key: string; title: string; desc: string; path: string; action: string }
 
 const STEPS: Step[] = [
-  { key: 'hours', title: 'Horários de atendimento', desc: 'Defina o horário de início e término dos atendimentos.', path: '/configuracoes', action: 'Configurar' },
-  { key: 'services', title: 'Serviços, kits e pacotes', desc: 'Cadastre serviços, kits, pacotes comuns ou sequenciais.', path: '/servicos', action: 'Cadastrar' },
-  { key: 'clients', title: 'Clientes', desc: 'Adicione seus clientes para começar a agendar.', path: '/clientes', action: 'Adicionar' },
-  { key: 'payments', title: 'Formas de pagamento', desc: 'Defina como você recebe no Financeiro.', path: '/financeiro?tab=formas', action: 'Definir' },
-  { key: 'documents', title: 'Documentos e anamnese', desc: 'Crie fichas de anamnese e documentos.', path: '/documentos', action: 'Criar' },
+  { key: 'hours', title: 'Definir horários de atendimento', desc: 'Defina o horário de início e término dos atendimentos.', path: '/configuracoes', action: 'Definir' },
+  { key: 'resources', title: 'Cadastro de equipamentos e salas', desc: 'Cadastre as salas de atendimento e os equipamentos.', path: '/cadastros', action: 'Cadastrar' },
+  { key: 'services', title: 'Cadastro de serviços, kits e pacotes', desc: 'Cadastre serviços, kits, pacotes comuns ou sequenciais.', path: '/servicos', action: 'Cadastrar' },
+  { key: 'payments', title: 'Definir formas de pagamento', desc: 'Defina como você recebe no Financeiro.', path: '/financeiro?tab=formas', action: 'Definir' },
+  { key: 'documents', title: 'Criar documentos e anamnese', desc: 'Crie fichas de anamnese e documentos.', path: '/documentos', action: 'Criar' },
+  { key: 'clients', title: 'Cadastrar clientes', desc: 'Adicione seus clientes para começar a agendar.', path: '/clientes', action: 'Cadastrar' },
 ];
 
-const EMPTY_INPUT = { services: 0, clients: 0, paymentMethods: [], documents: [] };
+const EMPTY_INPUT = { services: 0, resources: 0, clients: 0, paymentMethods: [], documents: [] };
 
 export function FirstStepsCard() {
   const { user, profile, hasRole } = useAuth();
@@ -58,11 +59,12 @@ export function FirstStepsCard() {
         const { data: r } = await own(sb.from(table).select(cols).limit(200));
         return r ?? [];
       };
-      const [services, packages, clients, payments, docs, settingsRes, prefsRes] = await Promise.all([
+      const [services, packages, clients, payments, docs, settingsRes, prefsRes, rooms, equipment] = await Promise.all([
         cnt('services'), cnt('package_templates'), cnt('clients'), rows('payment_methods'),
         rows('document_templates', 'title, created_at, updated_at'),
         own(sb.from('business_settings').select('opening_time, closing_time, created_at, updated_at')).limit(1).maybeSingle(),
         sb.from('professional_preferences').select('opening_time, closing_time').eq('user_id', user!.id),
+        cnt('rooms'), cnt('equipment'),
       ]);
       const settings = settingsRes?.data ?? null;
       const candidates = [settings?.created_at, (profile as any)?.created_at, user?.created_at]
@@ -75,6 +77,7 @@ export function FirstStepsCard() {
         settings,
         prefs: prefsRes?.data ?? [],
         services: services + packages,
+        resources: rooms + equipment,
         clients,
         paymentMethods: payments,
         documents: docs,

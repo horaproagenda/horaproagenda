@@ -26,6 +26,7 @@ describe('Primeiros passos: conta nova começa com 0 de 5', () => {
       prefs: [{ opening_time: '09:00:00', closing_time: '19:00:00' }],
       services: 1,
       clients: 2,
+      resources: 1,
       paymentMethods: [{ created_at: seeded.created_at, updated_at: '2026-10-02T10:00:00Z' }],
       documents: [{ created_at: '2026-10-03T10:00:00Z', updated_at: '2026-10-03T10:00:00Z' }],
     });

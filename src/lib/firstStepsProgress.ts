@@ -44,6 +44,8 @@ export interface ProgressInput {
   /** Horário próprio salvo em "Minhas preferências". */
   prefs?: { opening_time?: string | null; closing_time?: string | null }[];
   services: number;
+  /** Salas + equipamentos cadastrados. */
+  resources?: number;
   clients: number;
   paymentMethods: Row[];
   documents: (Row & { title?: string | null })[];
@@ -59,6 +61,7 @@ export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
     (s.opening_time?.slice(0, 5) !== '08:00' || s.closing_time?.slice(0, 5) !== '20:00');
   return {
     hours: ownHours || settingsHours,
+    resources: (i.resources ?? 0) > 0,
     services: i.services > 0,
     clients: i.clients > 0,
     payments: i.paymentMethods.some((r) => isUserTouched(r, i.accountCreatedAt)),

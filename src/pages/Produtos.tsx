@@ -453,10 +453,10 @@ export default function Produtos() {
               <strong className="text-foreground">ID do usuário:</strong> {user?.id ?? '—'}
             </span>
             <span>
-              <strong className="text-foreground">ID da clínica:</strong> {accountOwnerId ?? '—'}
+              <strong className="text-foreground">ID {est.of}:</strong> {accountOwnerId ?? '—'}
             </span>
             <Badge variant={productScope === 'own' ? 'outline' : 'secondary'} className="h-5 text-[10px]">
-              {productScope === 'own' ? 'Produtos próprios' : 'Produtos da clínica'}
+              {productScope === 'own' ? 'Produtos próprios' : `Produtos ${est.of}`}
             </Badge>
           </div>
         </div>

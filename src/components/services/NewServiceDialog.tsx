@@ -48,6 +48,8 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useServices } from '@/hooks/useServices';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEstablishment } from '@/hooks/useEstablishment';
+import { suggestedServiceCategories } from '@/lib/segmentTemplates';
 import { Badge } from '@/components/ui/badge';
 import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
@@ -84,7 +86,7 @@ const serviceSchema = z.object({
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
 
-const categories = [
+const DEFAULT_SERVICE_CATEGORIES = [
   'Cabelo', 'Unhas', 'Estética', 'Massagem', 'Maquiagem', 'Depilação', 'Tratamentos', 'Outros',
 ];
 
@@ -96,6 +98,8 @@ interface NewServiceDialogProps {
 }
 
 export function NewServiceDialog({ onServiceCreated, children, lockType }: NewServiceDialogProps) {
+  const est = useEstablishment();
+  const categories = suggestedServiceCategories(est.type) ?? DEFAULT_SERVICE_CATEGORIES;
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const recordVis = useRecordVisibility('servicos');

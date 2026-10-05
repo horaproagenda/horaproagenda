@@ -430,8 +430,8 @@ export function CashRegisterPanel() {
           <h3 className="text-2xl font-semibold mb-2">Caixa Fechado</h3>
           <p className="text-muted-foreground mb-6">
             {canOpenRegister
-              ? 'Abra o caixa da clínica para começar a registrar vendas'
-              : 'O caixa da clínica está fechado. Assim que o administrador abrir o caixa, seus pagamentos serão registrados nele.'}
+              ? `Abra o caixa ${est.of} para começar a registrar vendas`
+              : `O caixa ${est.of} está fechado. Assim que o administrador abrir o caixa, seus pagamentos serão registrados nele.`}
           </p>
 
           {canOpenRegister && (
@@ -483,7 +483,7 @@ export function CashRegisterPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl flex items-center gap-2">
               <Receipt className="h-6 w-6" />
-              Caixa da clínica #{currentOpenRegister.register_number}
+              Caixa {est.of} #{currentOpenRegister.register_number}
             </CardTitle>
             <Badge variant="secondary" className="bg-primary/10 text-primary px-3 py-1">
               <Clock className="h-4 w-4 mr-1" />
@@ -502,7 +502,7 @@ export function CashRegisterPanel() {
                 <p className="text-lg font-semibold">R$ {balance.toFixed(2)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Caixa da clínica (saldo)</p>
+                <p className="text-xs text-muted-foreground">Caixa {est.of} (saldo)</p>
                 <p className="text-lg font-semibold">R$ {clinicBalance.toFixed(2)}</p>
               </div>
               <div>

@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { computeFirstSteps } from '@/lib/firstStepsProgress';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { computeFirstSteps, isFirstStepsSource, FIRST_STEPS_QUERY_KEY } from '@/lib/firstStepsProgress';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, MessageCircle, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +36,20 @@ export function FirstStepsCard() {
   const [dismissed, setDismissed] = useLocalStorage<boolean>(`first-steps-dismissed-${uid}`, false);
   const [manual, setManual] = useLocalStorage<string[]>(`first-steps-manual-${uid}`, []);
   const isAdmin = hasRole('admin');
+  const qc = useQueryClient();
+
+  // Ponto único: qualquer cadastro/configuração salvo em qualquer tela
+  // (lista recarregada ou gravação concluída) faz o guia conferir de novo.
+  useEffect(() => {
+    const refresh = () => qc.invalidateQueries({ queryKey: [FIRST_STEPS_QUERY_KEY] });
+    const unQ = qc.getQueryCache().subscribe((ev) => {
+      if (ev.type === 'updated' && ev.action.type === 'invalidate' && isFirstStepsSource(ev.query.queryKey[0])) refresh();
+    });
+    const unM = qc.getMutationCache().subscribe((ev) => {
+      if (ev.type === 'updated' && ev.action.type === 'success') refresh();
+    });
+    return () => { unQ(); unM(); };
+  }, [qc]);
 
   const { data } = useQuery({
     queryKey: ['first-steps-progress', user?.id, (profile as any)?.account_owner_id ?? null],

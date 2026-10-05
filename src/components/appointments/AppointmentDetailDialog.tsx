@@ -183,6 +183,7 @@ export function AppointmentDetailDialog({
   onOpenChange,
   onPayment,
 }: AppointmentDetailDialogProps) {
+  const est = useEstablishment();
   const navigate = useNavigate();
   const { hasRole, roles } = useAuth();
   const { professionalId: currentProfessionalId } = useCurrentProfessional();

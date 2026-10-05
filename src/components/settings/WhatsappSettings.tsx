@@ -301,7 +301,7 @@ export function WhatsappSettings() {
     const { data: ownProf } = await supabase
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
     if (!ownProf?.id) {
-      const msg = ct('Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.';
+      const msg = ct('Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.');
       setPermissionError(msg);
       toast.error('Login sem profissional vinculado.');
       return;

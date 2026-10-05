@@ -19,6 +19,25 @@ export function isUserTouched(row: Row, accountCreatedAt?: string | null): boole
   return false;
 }
 
+/** Modelos que toda conta nova recebe automaticamente no cadastro. */
+export const DEFAULT_DOCUMENT_TITLES = [
+  'anamnese básica',
+  'termo de consentimento',
+  'contrato de prestação de serviços',
+];
+
+const norm = (s?: string | null) => (s || '').trim().toLowerCase();
+
+/** Documento conta só se for próprio, ou se for um modelo padrão que a pessoa editou. */
+export function isUserDocument(row: Row & { title?: string | null }, accountCreatedAt?: string | null): boolean {
+  if (DEFAULT_DOCUMENT_TITLES.includes(norm(row.title))) {
+    const c = t(row.created_at);
+    const u = t(row.updated_at);
+    return !Number.isNaN(c) && !Number.isNaN(u) && u - c > 60_000;
+  }
+  return isUserTouched(row, accountCreatedAt);
+}
+
 export interface ProgressInput {
   accountCreatedAt?: string | null;
   settings?: (Row & { opening_time?: string | null; closing_time?: string | null }) | null;
@@ -27,7 +46,7 @@ export interface ProgressInput {
   services: number;
   clients: number;
   paymentMethods: Row[];
-  documents: Row[];
+  documents: (Row & { title?: string | null })[];
 }
 
 export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
@@ -43,6 +62,6 @@ export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
     services: i.services > 0,
     clients: i.clients > 0,
     payments: i.paymentMethods.some((r) => isUserTouched(r, i.accountCreatedAt)),
-    documents: i.documents.some((r) => isUserTouched(r, i.accountCreatedAt)),
+    documents: i.documents.some((r) => isUserDocument(r, i.accountCreatedAt)),
   };
 }

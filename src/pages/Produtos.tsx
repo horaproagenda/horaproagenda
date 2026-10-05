@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -181,6 +182,7 @@ const createEmptyPurchaseForm = () => ({
 
 
 export default function Produtos() {
+  const est = useEstablishment();
   const [searchParams, setSearchParams] = useSearchParams();
   const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
   const { purchases, createPurchase, updatePurchase, deletePurchase } = useProductPurchases();

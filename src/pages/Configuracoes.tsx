@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { Building2, Check, Trash2, Mail, Phone, ShieldCheck, Loader2, Pencil, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageTransition } from '@/components/layout/PageTransition';

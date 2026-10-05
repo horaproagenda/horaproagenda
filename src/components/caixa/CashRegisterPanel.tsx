@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
@@ -60,6 +61,7 @@ import { resolveAppointmentStepServiceName } from '@/lib/packageStepLabel';
 type PeriodFilter = 'today' | 'yesterday' | 'week' | 'month';
 
 export function CashRegisterPanel() {
+  const est = useEstablishment();
   const navigate = useNavigate();
   const { canOpenCloseRegister } = useProfessionalScopeFlags();
   const queryClient = useQueryClient();

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEstablishment } from '@/hooks/useEstablishment';
 import { 
   FileText, 
   Plus, 
@@ -74,6 +75,7 @@ const templateTypeConfig = {
 };
 
 const Documentos = () => {
+  const est = useEstablishment();
   const { hasRole } = useAuth();
   const { professionalId } = useProfessionalScopeFlags();
   const [searchTerm, setSearchTerm] = useState('');

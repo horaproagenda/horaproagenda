@@ -154,6 +154,7 @@ export function useProfessionalPreferences() {
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['first-steps-progress'] });
       qc.invalidateQueries({ queryKey: ['professional-preferences', user?.id] });
       qc.invalidateQueries({ queryKey: ['effective-business-settings', user?.id] });
       qc.invalidateQueries({ queryKey: ['business-settings'] });

@@ -31,21 +31,26 @@ export function MinhasPreferenciasSettings() {
   // após salvar, a UI já reflete os novos valores; após "Voltar ao padrão",
   // re-sincroniza explicitamente.
   useEffect(() => {
-    if (prefs && !initialized) {
-      setOpening(prefs.opening_time?.substring(0, 5) ?? '');
-      setClosing(prefs.closing_time?.substring(0, 5) ?? '');
+    // Campos de horário não mostram dica cinza: sem horário próprio, já vem
+    // preenchido com o horário geral do negócio para não parecer vazio.
+    if (prefs !== undefined && global && !initialized) {
+      setOpening(prefs?.opening_time?.substring(0, 5) ?? global.opening_time?.substring(0, 5) ?? '');
+      setClosing(prefs?.closing_time?.substring(0, 5) ?? global.closing_time?.substring(0, 5) ?? '');
+      if (!prefs) { setInitialized(true); return; }
       setSlot(prefs.slot_interval ?? '');
       setWorkSat(prefs.work_saturdays);
       setWorkSun(prefs.work_sundays);
       setInitialized(true);
     }
-  }, [prefs, initialized]);
+  }, [prefs, global, initialized]);
 
   // Detecta alterações pendentes (campos editados que ainda não foram salvos)
   const isDirty = (() => {
-    if (!prefs) return !!(opening || closing || slot !== '' || workSat !== null || workSun !== null);
-    const o = prefs.opening_time?.substring(0, 5) ?? '';
-    const c = prefs.closing_time?.substring(0, 5) ?? '';
+    const go = global?.opening_time?.substring(0, 5) ?? '';
+    const gc = global?.closing_time?.substring(0, 5) ?? '';
+    if (!prefs) return (opening !== go && opening !== '') || (closing !== gc && closing !== '') || slot !== '' || workSat !== null || workSun !== null;
+    const o = prefs.opening_time?.substring(0, 5) ?? go;
+    const c = prefs.closing_time?.substring(0, 5) ?? gc;
     const s = prefs.slot_interval ?? '';
     return (
       opening !== o ||
@@ -104,6 +109,9 @@ export function MinhasPreferenciasSettings() {
             <h3 className="text-xs font-semibold">Meu horário de funcionamento</h3>
             {inheritedBadge(prefs?.opening_time ?? prefs?.closing_time)}
           </div>
+          {!prefs?.opening_time && !prefs?.closing_time && (
+            <p className="text-[11px] text-muted-foreground">Horário padrão — ajuste se necessário e toque em salvar.</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-[11px]">Abertura</Label>

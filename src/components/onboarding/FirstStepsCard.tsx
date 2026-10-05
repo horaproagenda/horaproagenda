@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { computeFirstSteps } from '@/lib/firstStepsProgress';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, MessageCircle, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,20 +41,38 @@ export function FirstStepsCard() {
   const { data } = useQuery({
     queryKey: ['first-steps-progress', user?.id],
     enabled: !!user && isAdmin && !dismissed,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
+    refetchInterval: 20_000,
     queryFn: async () => {
-      const [services, packages, clients, payments, docs] = await Promise.all([
-        count('services'), count('package_templates'), count('clients'), count('payment_methods'), count('document_templates'),
-      ]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: s } = await (supabase as any).from('business_settings').select('opening_time, closing_time, onboarding_completed_at').limit(1).maybeSingle();
-      return {
-        hours: !!s?.onboarding_completed_at || (!!s && (s.opening_time?.slice(0, 5) !== '08:00' || s.closing_time?.slice(0, 5) !== '18:00')),
-        services: services + packages > 0,
-        clients: clients > 0,
-        payments: payments > 0,
-        documents: docs > 0,
-      } as Record<string, boolean>;
+      const sb = supabase as any;
+      const { data: owner } = await sb.rpc('current_account_owner_id');
+      const own = (q: any) => (owner ? q.eq('account_owner_id', owner) : q);
+      const cnt = async (table: string) => {
+        const { count: c } = await own(sb.from(table).select('id', { count: 'exact', head: true }));
+        return c ?? 0;
+      };
+      const rows = async (table: string) => {
+        const { data: r } = await own(sb.from(table).select('created_at, updated_at').limit(200));
+        return r ?? [];
+      };
+      const [services, packages, clients, payments, docs, settingsRes, prefsRes] = await Promise.all([
+        cnt('services'), cnt('package_templates'), cnt('clients'), rows('payment_methods'), rows('document_templates'),
+        own(sb.from('business_settings').select('opening_time, closing_time, created_at, updated_at')).limit(1).maybeSingle(),
+        sb.from('professional_preferences').select('opening_time, closing_time').eq('user_id', user!.id),
+      ]);
+      const settings = settingsRes?.data ?? null;
+      return computeFirstSteps({
+        accountCreatedAt: settings?.created_at ?? user?.created_at,
+        settings,
+        prefs: prefsRes?.data ?? [],
+        services: services + packages,
+        clients,
+        paymentMethods: payments,
+        documents: docs,
+      });
     },
   });
 

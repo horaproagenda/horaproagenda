@@ -36,7 +36,7 @@ export function FirstStepsCard() {
   const isAdmin = hasRole('admin');
 
   const { data } = useQuery({
-    queryKey: ['first-steps-progress', user?.id],
+    queryKey: ['first-steps-progress', user?.id, (profile as any)?.account_owner_id ?? null],
     enabled: !!user && isAdmin && !dismissed,
     staleTime: 0,
     refetchOnWindowFocus: true,

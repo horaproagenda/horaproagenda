@@ -18,9 +18,9 @@ interface Step { key: string; title: string; desc: string; path: string; action:
 
 const STEPS: Step[] = [
   { key: 'hours', title: 'Horários de atendimento', desc: 'Defina o horário de início e término dos atendimentos.', path: '/configuracoes', action: 'Configurar' },
-  { key: 'services', title: 'Serviços, kits e pacotes', desc: 'Cadastre serviços, kits, pacotes comuns ou sequenciais.', path: '/cadastros', action: 'Cadastrar' },
+  { key: 'services', title: 'Serviços, kits e pacotes', desc: 'Cadastre serviços, kits, pacotes comuns ou sequenciais.', path: '/servicos', action: 'Cadastrar' },
   { key: 'clients', title: 'Clientes', desc: 'Adicione seus clientes para começar a agendar.', path: '/clientes', action: 'Adicionar' },
-  { key: 'payments', title: 'Formas de pagamento', desc: 'Defina como você recebe no Financeiro.', path: '/financeiro', action: 'Definir' },
+  { key: 'payments', title: 'Formas de pagamento', desc: 'Defina como você recebe no Financeiro.', path: '/financeiro?tab=formas', action: 'Definir' },
   { key: 'documents', title: 'Documentos e anamnese', desc: 'Crie fichas de anamnese e documentos.', path: '/documentos', action: 'Criar' },
 ];
 

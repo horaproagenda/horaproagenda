@@ -51,6 +51,7 @@ const Configuracoes = () => {
   const [address, setAddress] = useState<AddressFields>(emptyAddress);
   const [businessType, setBusinessType] = useState<string>('clinica');
   const [businessTypeLabel, setBusinessTypeLabel] = useState('');
+  const est = establishmentLabels(businessType, businessTypeLabel);
 
   // E-mail / celular de login (com verificação)
   const [accountEmail, setAccountEmail] = useState('');

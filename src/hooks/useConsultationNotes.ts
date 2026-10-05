@@ -57,7 +57,7 @@ export function useConsultationNotes(clientId: string) {
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: key }); toast.success('Consulta salva na ficha do cliente.'); },
-    onError: (e) => toast.error(e),
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const remove = useMutation({
@@ -66,7 +66,7 @@ export function useConsultationNotes(clientId: string) {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: key }); toast.success('Consulta excluída.'); },
-    onError: (e) => toast.error(e),
+    onError: (e) => toast.error((e as Error).message),
   });
 
   return { notes, isLoading, save, remove };

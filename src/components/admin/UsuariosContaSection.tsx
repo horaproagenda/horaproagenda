@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -184,6 +185,8 @@ const ACCOUNT_ROLES = [
 type AccountRole = typeof ACCOUNT_ROLES[number]['value'];
 
 export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (b: boolean) => void; onCreated: () => void }) {
+  const est = useEstablishment();
+  const ct = (t: string) => adaptClinicText(t, est);
   const navigate = useNavigate();
   const usage = useSeatUsage();
   const [email, setEmail] = useState('');
@@ -307,7 +310,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">{selectedRole.hint}</p>
+            <p className="text-xs text-muted-foreground mt-1">{ct(selectedRole.hint)}</p>
           </div>
         </div>
 

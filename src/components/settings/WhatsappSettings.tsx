@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +43,8 @@ type ConnectionSnapshot = {
  * disponível em /super-admin.
  */
 export function WhatsappSettings() {
+  const est = useEstablishment();
+  const ct = (t: string) => adaptClinicText(t, est);
   const {
     checkConnection, getQRCode, clearQRCode, qrCode, qrText, pairingCode, isLoading, isLoadingQR, setQRCodeDirect,
   } = useWhatsapp();
@@ -298,7 +301,7 @@ export function WhatsappSettings() {
     const { data: ownProf } = await supabase
       .from('professionals').select('id').eq('user_id', user.id).maybeSingle();
     if (!ownProf?.id) {
-      const msg = 'Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.';
+      const msg = ct('Seu login não está vinculado a um cadastro de profissional desta clínica. Peça ao administrador para criar/vincular seu profissional em Cadastros → Profissionais usando o mesmo e-mail do seu login.');
       setPermissionError(msg);
       toast.error('Login sem profissional vinculado.');
       return;
@@ -409,7 +412,7 @@ export function WhatsappSettings() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Login sem profissional vinculado</AlertTitle>
             <AlertDescription className="text-xs">
-              Para garantir isolamento entre clínicas, o QR Code só é liberado para o profissional vinculado ao usuário logado.
+              Para garantir isolamento entre contas, o QR Code só é liberado para o profissional vinculado ao usuário logado.
             </AlertDescription>
           </Alert>
         )}
@@ -441,7 +444,7 @@ export function WhatsappSettings() {
             <Info className="h-4 w-4" />
             <AlertTitle>Como conectar seu WhatsApp com segurança</AlertTitle>
             <AlertDescription className="text-xs space-y-1.5">
-              <p>Cada profissional tem o próprio QR Code — você só consegue conectar o WhatsApp vinculado ao seu login, nunca o de outra clínica ou colega.</p>
+              <p>Cada profissional tem o próprio QR Code — você só consegue conectar o WhatsApp vinculado ao seu login, nunca o de outr{est.suffix} {est.noun} ou colega.</p>
               <ol className="list-decimal pl-4 space-y-1">
                 <li>Confirme que o profissional acima é você (criado com o mesmo e-mail do seu login).</li>
                 <li>Abra o WhatsApp no celular → <strong>Dispositivos conectados</strong> → <strong>Conectar dispositivo</strong>.</li>

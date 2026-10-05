@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, subDays, parseISO } from 'date-fns';
@@ -112,6 +113,8 @@ const PERIOD_OPTIONS = [
 ];
 
 export default function ProfissionalDetalhes() {
+  const est = useEstablishment();
+  const ct = (t: string) => adaptClinicText(t, est);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
@@ -276,7 +279,7 @@ export default function ProfissionalDetalhes() {
       ? '<p style="color: green; font-weight: bold;">✓ Acesso total (Administrador)</p>'
       : PERMISSIONS_CONFIG.map(perm => `
           <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee;">
-            <span>${perm.label}</span>
+            <span>${ct(perm.label)}</span>
             <span style="color: ${(professional?.permissions as any)?.[perm.key] ? 'green' : '#999'}">
               ${(professional?.permissions as any)?.[perm.key] ? '✓ Sim' : '✗ Não'}
             </span>
@@ -994,7 +997,7 @@ export default function ProfissionalDetalhes() {
                                         : 'bg-muted/30 border border-transparent'
                                     }`}
                                   >
-                                    <span className="text-xs">{perm.label}</span>
+                                    <span className="text-xs">{ct(perm.label)}</span>
                                     <span className={`text-xs font-medium ${
                                       (permissions as any)[perm.key] ? 'text-primary' : 'text-muted-foreground'
                                     }`}>

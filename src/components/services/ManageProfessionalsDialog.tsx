@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -187,6 +188,8 @@ interface ManageProfessionalsDialogProps {
 }
 
 export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialogProps) {
+  const est = useEstablishment();
+  const ct = (t: string) => adaptClinicText(t, est);
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
@@ -895,7 +898,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   name="employment_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Tipo de vínculo com a clínica</FormLabel>
+                      <FormLabel className="text-xs">Tipo de vínculo com {ct('a clínica')}</FormLabel>
                       <Select
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -1184,8 +1187,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                   className={`flex items-center justify-between p-2 rounded transition-colors ${categoryLocked ? 'opacity-50' : 'hover:bg-muted/30'}`}
                                 >
                                   <div className="flex-1 min-w-0 pr-3">
-                                    <p className="text-xs font-medium truncate">{perm.label}</p>
-                                    <p className="text-[10px] text-muted-foreground truncate">{perm.description}</p>
+                                    <p className="text-xs font-medium truncate">{ct(perm.label)}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{ct(perm.description)}</p>
                                   </div>
                                   <Switch
                                     disabled={categoryLocked}
@@ -1244,7 +1247,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     <div className="p-3 space-y-2">
                       <p className="text-[10px] text-muted-foreground">
                         A recepção dá baixa apenas nos profissionais marcados aqui. Se nenhum for marcado,
-                        ela movimenta somente a conta da clínica.
+                        ela movimenta somente a conta {est.of}.
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {professionals

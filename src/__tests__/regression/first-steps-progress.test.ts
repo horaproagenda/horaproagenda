@@ -26,6 +26,7 @@ describe('Primeiros passos: conta nova começa com 0 de 5', () => {
       prefs: [{ opening_time: '09:00:00', closing_time: '19:00:00' }],
       services: 1,
       clients: 2,
+      resources: 1,
       paymentMethods: [{ created_at: seeded.created_at, updated_at: '2026-10-02T10:00:00Z' }],
       documents: [{ created_at: '2026-10-03T10:00:00Z', updated_at: '2026-10-03T10:00:00Z' }],
     });
@@ -66,5 +67,27 @@ describe('Primeiros passos: sem vazamento de outras contas', () => {
     expect(src).not.toContain("rpc('current_account_owner_id')");
     expect(src).not.toMatch(/owner \? q\.eq/);
     expect(src).toContain("q.eq('account_owner_id', ownerId)");
+  });
+});
+
+describe('Primeiros passos: ordem e páginas certas', () => {
+  it('6 passos na ordem pedida, cada um abrindo a página correta', () => {
+    const src = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    const order = [
+      ["'hours'", "'/configuracoes'"],
+      ["'resources'", "'/cadastros'"],
+      ["'services'", "'/servicos'"],
+      ["'payments'", "'/financeiro?tab=formas'"],
+      ["'documents'", "'/documentos'"],
+      ["'clients'", "'/clientes'"],
+    ];
+    let last = -1;
+    for (const [key, path] of order) {
+      const line = src.split('\n').find((l) => l.includes(`key: ${key}`))!;
+      expect(line).toContain(`path: ${path}`);
+      const idx = src.indexOf(`key: ${key}`);
+      expect(idx).toBeGreaterThan(last);
+      last = idx;
+    }
   });
 });

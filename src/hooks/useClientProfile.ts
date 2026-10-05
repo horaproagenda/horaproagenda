@@ -541,6 +541,10 @@ export function useClientProfile(clientId: string) {
     },
     // Sem toast/recarga por foto: a tela de fotos envia em lote, avisa uma vez
     // e atualiza a galeria só no fim (recargas no meio derrubavam os envios seguintes).
+    // A falha é informada pela tela de fotos ("N de M fotos salvas").
+    onError: (error) => {
+      console.warn('Falha ao salvar foto:', error);
+    },
   });
 
   // Add quote

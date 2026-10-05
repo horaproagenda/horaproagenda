@@ -69,3 +69,25 @@ describe('Primeiros passos: sem vazamento de outras contas', () => {
     expect(src).toContain("q.eq('account_owner_id', ownerId)");
   });
 });
+
+describe('Primeiros passos: ordem e páginas certas', () => {
+  it('6 passos na ordem pedida, cada um abrindo a página correta', () => {
+    const src = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    const order = [
+      ["'hours'", "'/configuracoes'"],
+      ["'resources'", "'/cadastros'"],
+      ["'services'", "'/servicos'"],
+      ["'payments'", "'/financeiro?tab=formas'"],
+      ["'documents'", "'/documentos'"],
+      ["'clients'", "'/clientes'"],
+    ];
+    let last = -1;
+    for (const [key, path] of order) {
+      const line = src.split('\n').find((l) => l.includes(`key: ${key}`))!;
+      expect(line).toContain(`path: ${path}`);
+      const idx = src.indexOf(`key: ${key}`);
+      expect(idx).toBeGreaterThan(last);
+      last = idx;
+    }
+  });
+});

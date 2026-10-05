@@ -1,4 +1,5 @@
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
+import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -1287,7 +1288,7 @@ export function AppointmentDetailDialog({
   const buildReceiptPdf = () => {
     const doc = new jsPDF();
     const clinicSettings = settings as (typeof settings & { clinic_name?: string; clinic_cnpj?: string; clinic_phone?: string; clinic_address?: string }) | null;
-    const clinicName = clinicSettings?.clinic_name || 'Clínica de Estética';
+    const clinicName = clinicSettings?.clinic_name || est.label;
     const receiptNumber = appointment.id.slice(0, 8).toUpperCase();
     const paymentMethods = (appointment.payment_methods || [])
       .map((method) => activePaymentMethods.find((item) => item.id === method)?.name || method)
@@ -1312,7 +1313,7 @@ export function AppointmentDetailDialog({
       doc.text(normalizePdfText(`Endereço: ${clinicSettings.clinic_address}`), 14, infoY);
       infoY += 7;
     }
-    doc.text(normalizePdfText(`Horário da clínica: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, infoY);
+    doc.text(normalizePdfText(`Horário ${est.of}: ${settings?.opening_time || '08:00'} às ${settings?.closing_time || '20:00'}`), 14, infoY);
     infoY += 7;
     doc.text(normalizePdfText(`Emitido em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), 14, infoY);
 

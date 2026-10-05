@@ -11,7 +11,7 @@ export default function TermosDeServico() {
     <div className="min-h-screen bg-background">
       <Helmet>
         <title>Termos de Serviço — Hora Pro</title>
-        <meta name="description" content="Termos de Serviço da Hora Pro: condições de uso da plataforma de gestão para clínicas de estética." />
+        <meta name="description" content="Termos de Serviço da Hora Pro: condições de uso da plataforma de gestão para clínicas, salões, barbearias, consultórios e profissionais da saúde e beleza." />
         <link rel="canonical" href="https://horaproagenda.app/termos-de-servico" />
         <meta property="og:title" content="Termos de Serviço — Hora Pro" />
         <meta property="og:description" content="Condições de uso da plataforma Hora Pro." />
@@ -59,7 +59,7 @@ export default function TermosDeServico() {
                 2. Descrição do Serviço
               </h2>
               <p>
-                O Hora Pro é um sistema de gestão e agendamento voltado para clínicas de estética, spas e profissionais de beleza. Nossos serviços incluem, mas não se limitam a:
+                O Hora Pro é um sistema de gestão e agendamento voltado para clínicas, consultórios, salões, barbearias, spas e profissionais da saúde e beleza. Nossos serviços incluem, mas não se limitam a:
               </p>
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li>Gerenciamento de agenda e horários de atendimento;</li>

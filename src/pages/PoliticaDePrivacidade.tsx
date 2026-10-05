@@ -96,7 +96,7 @@ export default function PoliticaDePrivacidade() {
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>Provedores de serviço:</strong> infraestrutura de nuvem (Supabase), gateway de pagamento (Asaas), e serviços de comunicação (WhatsApp) — todos contratualmente obrigados à confidencialidade;</li>
                 <li><strong>Autoridades legais:</strong> quando exigido por lei, ordem judicial ou requisição de autoridade competente;</li>
-                <li><strong>Outros usuários da mesma clínica:</strong> dados de clientes e agendamentos são visíveis dentro da mesma conta/organização, conforme as permissões definidas pelo administrador.</li>
+                <li><strong>Outros usuários do mesmo estabelecimento:</strong> dados de clientes e agendamentos são visíveis dentro da mesma conta/organização, conforme as permissões definidas pelo administrador.</li>
               </ul>
             </section>
 

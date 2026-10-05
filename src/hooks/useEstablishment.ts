@@ -33,3 +33,17 @@ export function establishmentLabels(type?: string | null, customLabel?: string |
     suffix: article === 'a' ? 'a' : 'o',
   };
 }
+
+/** Troca menções fixas a "clínica" pelo nome do negócio (ex.: "da clínica" → "da barbearia"). */
+export function adaptClinicText(text: string, est: ReturnType<typeof establishmentLabels>): string {
+  if (!text || est.type === 'clinica') return text;
+  const fem = est.suffix === 'a';
+  return text
+    .replace(/desta clínica/g, `${fem ? 'desta' : 'deste'} ${est.noun}`)
+    .replace(/da clínica/g, est.of)
+    .replace(/na clínica/g, est.in)
+    .replace(/à clínica/g, `${fem ? 'à' : 'ao'} ${est.noun}`)
+    .replace(/a clínica/g, `${fem ? 'a' : 'o'} ${est.noun}`)
+    .replace(/Clínica/g, est.Noun)
+    .replace(/clínica/g, est.noun);
+}

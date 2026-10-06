@@ -138,6 +138,10 @@ export function useAppointments() {
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ['appointments'],
     queryFn: async () => {
+      // Pagina em blocos de 1000 para nunca cortar agendamentos (limite do servidor).
+      const PAGE = 1000;
+      const all: unknown[] = [];
+      for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabase
         .from('appointments')
         .select(`
@@ -159,15 +163,19 @@ export function useAppointments() {
             product:products(id, name)
           )
         `)
-        .order('start_time', { ascending: true });
+        .order('start_time', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1);
 
       if (error) throw error;
-      
-      // Return directly without additional profile fetches for performance
-      return (data || []) as unknown as Appointment[];
+      all.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+      }
+      return all as unknown as Appointment[];
     },
     staleTime: 60_000, // Cache por 1 min — realtime invalida imediatamente
-    refetchOnWindowFocus: false, // Realtime cobre; evita refetch pesado a cada troca de aba
+    refetchOnWindowFocus: true, // celulares perdem o WebSocket em segundo plano
+    refetchOnReconnect: true,
     // Sem refetchInterval — useRealtimeSync já invalida em tempo real via WebSocket
   });
 

@@ -34,7 +34,7 @@ import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
-import { isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { isRichDocument, sanitizeRichDocumentHtml, toPrintableDocumentHtml } from '@/lib/documentRichContent';
 import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
 

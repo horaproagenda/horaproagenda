@@ -502,6 +502,10 @@ serve(async (req) => {
       notes: body.notes || null,
       package_appointment_id: body.package_appointment_id || null,
       status: body.status || 'scheduled',
+      discount_amount: Math.min(
+        Math.max(0, Number(body.discount_amount || 0)),
+        servicePrice > 0 ? servicePrice : Math.max(0, Number(body.discount_amount || 0)),
+      ),
       created_by: userId,
       updated_by: userId,
       account_owner_id: callerOwner,
@@ -509,7 +513,7 @@ serve(async (req) => {
 
     if (hasPaymentFields) {
       const amount = Number(body.amount_paid || 0);
-      const discount = Number(body.discount_amount || 0);
+      const discount = Number(insertPayload.discount_amount || 0);
       // Valor devido = preço do serviço menos o desconto aplicado.
       const amountDue = Math.max(0, servicePrice - discount);
       // Nunca inferir "paid" apenas porque houve algum valor: só é pago
@@ -523,7 +527,6 @@ serve(async (req) => {
             : 'paid';
       insertPayload.amount_paid = amount;
       insertPayload.payment_status = body.payment_status || derivedStatus;
-      if (discount > 0) insertPayload.discount_amount = discount;
       if (body.payment_date) insertPayload.payment_date = body.payment_date;
       insertPayload.payment_methods = Array.isArray(body.payment_methods)
         ? body.payment_methods

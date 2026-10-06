@@ -75,15 +75,37 @@ const exec = (command: string, value?: string) => {
   document.execCommand(command, false, value);
 };
 
-const applyFontSize = (px: number, editor: HTMLDivElement) => {
+/**
+ * Applies an inline style only to the selected text (never to the whole
+ * document). Uses a temporary <font size=7> marker and swaps it for a
+ * <span style="..."> so the formatting is saved inside the HTML.
+ */
+export const applyInlineStyle = (
+  editor: HTMLDivElement,
+  prop: 'fontSize' | 'fontFamily',
+  value: string,
+) => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+  if (!editor.contains(sel.getRangeAt(0).commonAncestorContainer)) return false;
+  try { document.execCommand('styleWithCSS', false, 'false'); } catch { /* noop */ }
   exec('fontSize', '7');
   editor.querySelectorAll('font[size="7"]').forEach((node) => {
     const span = document.createElement('span');
-    span.style.fontSize = `${px}px`;
+    span.style[prop] = value;
+    // Drop nested values of the same property so the new one wins.
+    (node as HTMLElement).querySelectorAll<HTMLElement>('span,font').forEach((child) => {
+      if (prop === 'fontSize') { child.style.fontSize = ''; child.removeAttribute('size'); }
+      else { child.style.fontFamily = ''; child.removeAttribute('face'); }
+    });
     span.innerHTML = (node as HTMLElement).innerHTML;
     node.replaceWith(span);
   });
+  return true;
 };
+
+const applyFontSize = (px: number, editor: HTMLDivElement) =>
+  applyInlineStyle(editor, 'fontSize', `${px}px`);
 
 // ============ Table / formula helpers ============
 const colIndexToLetter = (i: number): string => {
@@ -298,8 +320,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const handleFontChange = (newFont: string) => {
       setFont(newFont);
       restoreSelection();
-      exec('fontName', newFont);
-      emitChange();
+      if (editorRef.current && applyInlineStyle(editorRef.current, 'fontFamily', newFont)) {
+        emitChange();
+        saveSelection();
+      } else {
+        toast.info('Selecione o trecho do texto que deseja alterar.');
+      }
     };
 
     const handleSizeChange = (delta: number | string) => {
@@ -307,14 +333,21 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       if (!Number.isFinite(next) || next < 6 || next > 96) return;
       setSize(next);
       restoreSelection();
-      if (editorRef.current) applyFontSize(next, editorRef.current);
-      emitChange();
+      if (editorRef.current && applyFontSize(next, editorRef.current)) {
+        emitChange();
+        saveSelection();
+      } else {
+        toast.info('Selecione o trecho do texto que deseja alterar.');
+      }
     };
 
     const handleColor = (color: string) => {
       restoreSelection();
+      try { document.execCommand('styleWithCSS', false, 'true'); } catch { /* noop */ }
       exec('foreColor', color);
+      try { document.execCommand('styleWithCSS', false, 'false'); } catch { /* noop */ }
       emitChange();
+      saveSelection();
     };
 
     // ============ Image insertion ============
@@ -816,7 +849,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               onDragOver={handleDragOver}
               onPaste={handlePaste}
               spellCheck
-              style={{ fontFamily: font, fontSize: `${size}px` }}
+              style={{ fontFamily: FONTS[0].value, fontSize: '14px' }}
               className={cn(
                 'prose prose-sm max-w-none px-6 py-6 outline-none text-zinc-900 caret-primary leading-relaxed',
                 minHeightClassName,

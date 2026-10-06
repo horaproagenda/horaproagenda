@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DateInputWithCalendar } from '@/components/ui/date-input-with-calendar';
-import { Appointment } from '@/types';
+import { Appointment, AppointmentStatus } from '@/types';
 import { useRooms } from '@/hooks/useRooms';
 import { useProfessionals } from '@/hooks/useProfessionals';
 import { useEquipment } from '@/hooks/useEquipment';
@@ -26,6 +26,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
+import { appointmentStatusConfig } from '@/lib/appointmentStatus';
 
 
 interface EditRecurringAppointmentDialogProps {
@@ -50,12 +51,15 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   const [originalDuration, setOriginalDuration] = useState<number>(0);
   const [professionalId, setProfessionalId] = useState<string>('none');
   const [roomId, setRoomId] = useState<string>('none');
+  const [status, setStatus] = useState<AppointmentStatus>('scheduled');
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Dialog states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showPackageOutcomeDialog, setShowPackageOutcomeDialog] = useState(false);
+  const [pendingSave, setPendingSave] = useState<'single' | 'series' | null>(null);
   
   // Series action states
   const [deleteType, setDeleteType] = useState<'single' | 'following' | 'all'>('single');
@@ -140,6 +144,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     setEndTime(formatTimeInTimeZone(appointment.end_time, tz));
     setProfessionalId(appointment.professional_id || 'none');
     setRoomId(appointment.room_id || 'none');
+    setStatus(appointment.status);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, appointment?.id]);
 
@@ -166,7 +171,19 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
     };
   }, [acquireLock, appointment, open, releaseLock]);
 
-  const handleSingleSubmit = async () => {
+  const savePackageOutcome = async (mode: 'release' | 'consume') => {
+    if (!appointment || !isPackageAppointment || (status !== 'missed' && status !== 'cancelled')) return;
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { error } = await (supabase as any).rpc('set_appointment_status_with_package_mode', {
+      p_appointment_id: appointment.id,
+      p_status: status,
+      p_mode: mode,
+      p_expected_version: null,
+    });
+    if (error) throw error;
+  };
+
+  const handleSingleSubmit = async (packageOutcomeMode?: 'release' | 'consume') => {
     if (!appointment) return;
     if (isLockedByOther) {
       toast.warning(`Este agendamento está sendo editado por ${activeLock?.holder_name || activeLock?.user_email || 'outro usuário'}.`);
@@ -185,9 +202,12 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
           end_time,
           professional_id: professionalId === 'none' ? null : professionalId,
           room_id: roomId === 'none' ? null : roomId,
+          status: packageOutcomeMode ? undefined : status,
         },
         expectedVersion: appointment.version,
       });
+
+      if (packageOutcomeMode) await savePackageOutcome(packageOutcomeMode);
 
       await releaseLock();
       onOpenChange(false);
@@ -233,7 +253,7 @@ Informamos que ${scope} foi(foram) cancelado(s).
 Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
   };
 
-  const handleSeriesSubmit = async () => {
+  const handleSeriesSubmit = async (packageOutcomeMode?: 'release' | 'consume') => {
     if (!appointment) return;
 
     setLoading(true);
@@ -253,6 +273,12 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           client_phone: appointment.client?.phone,
           client_name: appointment.client?.name,
         });
+        if (status !== appointment.status) {
+          await updateAppointment.mutateAsync({
+            id: appointment.id,
+            updates: { status },
+          });
+        }
       } else if (isPackageAppointment && packageId) {
         // First, update the current appointment date/time
         await updateAppointment.mutateAsync({
@@ -262,6 +288,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
             end_time: newEndTime.toISOString(),
             professional_id: professionalId === 'none' ? null : professionalId,
             room_id: roomId === 'none' ? null : roomId,
+            status: packageOutcomeMode ? undefined : status,
           },
           expectedVersion: appointment.version,
         });
@@ -281,6 +308,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           });
           toast.success('Datas dos próximos agendamentos do pacote ajustadas!');
         }
+        if (packageOutcomeMode) await savePackageOutcome(packageOutcomeMode);
       }
 
       setShowRescheduleDialog(false);
@@ -365,6 +393,24 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
 
   const activeEquipment = equipment.filter(e => e.is_active);
 
+  const requestSave = (mode: 'single' | 'series') => {
+    if (isPackageAppointment && status !== appointment?.status && (status === 'missed' || status === 'cancelled')) {
+      setPendingSave(mode);
+      setShowPackageOutcomeDialog(true);
+      return;
+    }
+    if (mode === 'series') setShowRescheduleDialog(true);
+    else void handleSingleSubmit();
+  };
+
+  const confirmPackageOutcome = (mode: 'release' | 'consume') => {
+    const saveMode = pendingSave;
+    setShowPackageOutcomeDialog(false);
+    setPendingSave(null);
+    if (saveMode === 'series') void handleSeriesSubmit(mode);
+    else void handleSingleSubmit(mode);
+  };
+
   const originalStart = appointment ? parseISO(appointment.start_time) : new Date();
   const originalProfessional = appointment?.professional_id || 'none';
   const originalRoom = appointment?.room_id || 'none';
@@ -425,6 +471,20 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                 <Calendar className="h-4 w-4" />
                 <span>{appointment?.service?.name || appointment?.notes}</span>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={status} onValueChange={(value) => setStatus(value as AppointmentStatus)} disabled={isLockedByOther}>
+                <SelectTrigger data-testid="edit-appointment-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(appointmentStatusConfig) as [AppointmentStatus, (typeof appointmentStatusConfig)[AppointmentStatus]][]).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -532,11 +592,11 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                 Cancelar
               </Button>
               {isSeriesLike && hasDateChanged ? (
-                <Button onClick={() => setShowRescheduleDialog(true)} disabled={loading || isLockedByOther}>
+                <Button onClick={() => requestSave('series')} disabled={loading || isLockedByOther}>
                   Salvar
                 </Button>
               ) : (
-                <Button onClick={handleSingleSubmit} disabled={loading || isLockedByOther}>
+                <Button onClick={() => requestSave('single')} disabled={loading || isLockedByOther}>
                   {loading ? 'Salvando...' : 'Salvar'}
                 </Button>
               )}
@@ -604,9 +664,31 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSeriesSubmit} disabled={loading}>
+            <AlertDialogAction onClick={() => void handleSeriesSubmit()} disabled={loading}>
               {loading ? 'Salvando...' : 'Confirmar'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showPackageOutcomeDialog} onOpenChange={setShowPackageOutcomeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atualizar aplicação do pacote</AlertDialogTitle>
+            <AlertDialogDescription>
+              O que deseja fazer com esta aplicação ao marcar o atendimento como {status === 'missed' ? 'Faltou' : 'Cancelado'}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 text-sm">
+            <Button variant="outline" className="h-auto w-full justify-start whitespace-normal py-3 text-left" onClick={() => confirmPackageOutcome('release')}>
+              Liberar novamente no pacote
+            </Button>
+            <Button variant="outline" className="h-auto w-full justify-start whitespace-normal py-3 text-left" onClick={() => confirmPackageOutcome('consume')}>
+              Baixar como aplicação realizada
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingSave(null)}>Voltar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

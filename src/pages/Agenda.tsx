@@ -159,22 +159,33 @@ const Agenda = () => {
   });
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  // Ao voltar do segundo plano num novo dia, alinha a data para hoje.
+  useEffect(() => {
+    let lastDay = new Date().toDateString();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const today = new Date().toDateString();
+      if (today !== lastDay) { lastDay = today; setSelectedDate(new Date()); }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
   const [professionalFilter, setProfessionalFilter] = useState<string>(() => {
-    return localStorage.getItem('agenda-filter-professional') || 'all';
+    return sessionStorage.getItem('agenda-filter-professional') || 'all';
   });
   const [roomFilter, setRoomFilter] = useState<string>(() => {
-    return localStorage.getItem('agenda-filter-room') || 'all';
+    return sessionStorage.getItem('agenda-filter-room') || 'all';
   });
   const [equipmentFilter, setEquipmentFilter] = useState<string>(() => {
-    return localStorage.getItem('agenda-filter-equipment') || 'all';
+    return sessionStorage.getItem('agenda-filter-equipment') || 'all';
   });
   const [statusFilter, setStatusFilter] = useState<string>(() => {
-    return localStorage.getItem('agenda-filter-status') || 'all';
+    return sessionStorage.getItem('agenda-filter-status') || 'all';
   });
   const [paymentFilter, setPaymentFilter] = useState<string>(() => {
-    return localStorage.getItem('agenda-filter-payment') || 'all';
+    return sessionStorage.getItem('agenda-filter-payment') || 'all';
   });
   const [viewType, setViewType] = useState<ViewType>(() => {
     return (localStorage.getItem('agenda-view-type') as ViewType) || 'week';
@@ -679,11 +690,11 @@ const Agenda = () => {
 
   // Persist filters to localStorage
   useEffect(() => {
-    localStorage.setItem('agenda-filter-professional', professionalFilter);
-    localStorage.setItem('agenda-filter-room', roomFilter);
-    localStorage.setItem('agenda-filter-equipment', equipmentFilter);
-    localStorage.setItem('agenda-filter-status', statusFilter);
-    localStorage.setItem('agenda-filter-payment', paymentFilter);
+    sessionStorage.setItem('agenda-filter-professional', professionalFilter);
+    sessionStorage.setItem('agenda-filter-room', roomFilter);
+    sessionStorage.setItem('agenda-filter-equipment', equipmentFilter);
+    sessionStorage.setItem('agenda-filter-status', statusFilter);
+    sessionStorage.setItem('agenda-filter-payment', paymentFilter);
     localStorage.setItem('agenda-view-type', viewType);
   }, [professionalFilter, roomFilter, equipmentFilter, statusFilter, paymentFilter, viewType]);
 

@@ -218,6 +218,8 @@ export function useSingleSales() {
           description: `Venda: ${itemName}`,
           amount: sale.final_amount,
           payment_method: paymentMethodName || sale.payment_method_id,
+          card_fee_amount: Number(sale.card_fee_amount) || 0,
+          installments: Number(sale.installments) || 1,
           reference_id: saleData.id,
           reference_type: 'single_sale',
           created_by: user?.id,

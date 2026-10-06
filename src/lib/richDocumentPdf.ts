@@ -114,3 +114,63 @@ export async function downloadRichDocumentPdf(opts: RichPdfOptions): Promise<voi
     container.remove();
   }
 }
+
+/**
+ * Gera UM único PDF com vários documentos (cada um começando em folha nova).
+ * Navegadores bloqueiam downloads múltiplos automáticos, então "baixar todos"
+ * precisa entregar um só arquivo.
+ */
+export async function downloadCombinedRichDocumentsPdf(opts: {
+  documents: Array<{ title: string; bodyHtml: string }>;
+  headerLines?: string[];
+  fileName: string;
+}): Promise<void> {
+  const { documents, headerLines = [] } = opts;
+  if (documents.length === 0) return;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let firstPage = true;
+
+  for (const d of documents) {
+    const container = window.document.createElement('div');
+    container.setAttribute('aria-hidden', 'true');
+    Object.assign(container.style, {
+      position: 'fixed', left: '-10000px', top: '0', width: '794px', padding: '48px 56px',
+      background: '#ffffff', color: '#1f2937', fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontSize: '13px', lineHeight: '1.6',
+    });
+    const header = headerLines.filter(Boolean)
+      .map(l => `<p style="margin:2px 0;font-size:11px;color:#4b5563;">${l}</p>`).join('');
+    container.innerHTML = `
+      <h1 style="font-size:19px;text-align:center;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid #374151;">${d.title}</h1>
+      ${header}
+      <div style="margin-top:16px;">${sanitizeRichDocumentHtml(d.bodyHtml)}</div>`;
+    container.querySelectorAll('img').forEach(img => { img.style.maxWidth = '100%'; img.style.height = 'auto'; });
+    window.document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const pxPerMm = canvas.width / pageWidth;
+      const pageHeightPx = Math.floor(pageHeight * pxPerMm);
+      let renderedPx = 0;
+      while (renderedPx < canvas.height) {
+        const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
+        const slice = window.document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceHeight;
+        const ctx = slice.getContext('2d');
+        if (!ctx) break;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageWidth, sliceHeight / pxPerMm, undefined, 'FAST');
+        renderedPx += sliceHeight;
+      }
+    } finally {
+      container.remove();
+    }
+  }
+  pdf.save(`${sanitizeFileName(opts.fileName)}.pdf`);
+}

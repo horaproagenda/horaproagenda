@@ -53,3 +53,18 @@ describe('downloadRichDocumentPdf', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('downloadCombinedRichDocumentsPdf', () => {
+  it('junta todos os documentos em um único download', async () => {
+    addImage.mockClear(); addPage.mockClear(); save.mockClear();
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ fillRect: vi.fn(), drawImage: vi.fn(), fillStyle: '' })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,AAAA');
+    const { downloadCombinedRichDocumentsPdf } = await import('../richDocumentPdf');
+    await downloadCombinedRichDocumentsPdf({
+      documents: [{ title: 'A', bodyHtml: '<p>a</p>' }, { title: 'B', bodyHtml: 'b' }, { title: 'C', bodyHtml: 'c' }],
+      fileName: 'Docs',
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(addImage).toHaveBeenCalledTimes(9);
+  });
+});

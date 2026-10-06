@@ -3817,6 +3817,7 @@ export type Database = {
           product_id: string
           purchase_date: string
           quantity: number
+          skip_cash_transaction: boolean
           started_using_at: string | null
           supplier: string | null
           supplier_id: string | null
@@ -3843,6 +3844,7 @@ export type Database = {
           product_id: string
           purchase_date?: string
           quantity?: number
+          skip_cash_transaction?: boolean
           started_using_at?: string | null
           supplier?: string | null
           supplier_id?: string | null
@@ -3869,6 +3871,7 @@ export type Database = {
           product_id?: string
           purchase_date?: string
           quantity?: number
+          skip_cash_transaction?: boolean
           started_using_at?: string | null
           supplier?: string | null
           supplier_id?: string | null

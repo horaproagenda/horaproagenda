@@ -45,6 +45,7 @@ import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } 
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import {
+  alignToWeekdayDiff,
   calendarDayDiff,
   enforceChainMinimums,
   findChainViolations,

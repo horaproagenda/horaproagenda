@@ -135,6 +135,7 @@ export function useProfessionalPreferences() {
         .select()
         .maybeSingle();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await Promise.race([upsertPromise, timeoutPromise]) as any;
       if (error) {
         const msg = error.message || 'Erro desconhecido';

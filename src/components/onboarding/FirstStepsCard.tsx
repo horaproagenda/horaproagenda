@@ -52,7 +52,7 @@ export function FirstStepsCard() {
   }, [qc]);
 
   const { data } = useQuery({
-    queryKey: ['first-steps-progress', user?.id, (profile as any)?.account_owner_id ?? null],
+    queryKey: ['first-steps-progress', user?.id, (profile as unknown as { account_owner_id?: string | null } | null)?.account_owner_id ?? null],
     enabled: !!user && isAdmin && !dismissed,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -65,6 +65,7 @@ export function FirstStepsCard() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ownerId: string | null = (profile as any)?.account_owner_id || user?.id || null;
       if (!ownerId) return computeFirstSteps(EMPTY_INPUT);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const own = (q: any) => q.eq('account_owner_id', ownerId);
       const cnt = async (table: string) => {
         const { count: c } = await own(sb.from(table).select('id', { count: 'exact', head: true }));
@@ -82,7 +83,7 @@ export function FirstStepsCard() {
         cnt('rooms'), cnt('equipment'),
       ]);
       const settings = settingsRes?.data ?? null;
-      const candidates = [settings?.created_at, (profile as any)?.created_at, user?.created_at]
+      const candidates = [settings?.created_at, (profile as unknown as { created_at?: string | null } | null)?.created_at, user?.created_at]
         .filter(Boolean)
         .map((v) => new Date(v as string).getTime())
         .filter((n) => !Number.isNaN(n));

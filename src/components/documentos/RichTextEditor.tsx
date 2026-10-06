@@ -485,7 +485,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       if (imageFile) {
         e.preventDefault();
         // Place caret at drop point
-        const range = (document as any).caretRangeFromPoint?.(e.clientX, e.clientY);
+        const range = (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null }).caretRangeFromPoint?.(e.clientX, e.clientY);
         if (range) {
           const sel = window.getSelection();
           sel?.removeAllRanges();

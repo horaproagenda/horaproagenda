@@ -29,7 +29,8 @@ import {
 import { generateClientDocumentPdf, generateCombinedClientDocumentsPdf } from '@/lib/clientDocumentPdf';
 import { buildDocumentDateTimeValues } from '@/lib/documentTemplateFields';
 import { isRichDocument } from '@/lib/documentRichContent';
-import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
+import { downloadRichDocumentPdf, downloadCombinedRichDocumentsPdf } from '@/lib/richDocumentPdf';
+import { sanitizeDocumentContent } from '@/lib/htmlSanitizer';
 
 const REFERRAL_SOURCES = ['Instagram', 'Facebook', 'Google', 'Indicação de amigo', 'Indicação de cliente', 'Passou na frente', 'WhatsApp', 'TikTok', 'Outros'];
 const UF_LIST = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -357,30 +358,18 @@ export default function CadastroCliente() {
     if (downloadingAll) return;
     setDownloadingAll(true);
     try {
-      // Documentos com formatação (HTML) precisam de um PDF cada; os downloads
-      // são feitos em sequência para que o navegador salve todos, não só o
-      // primeiro. Documentos simples viram um único PDF combinado.
-      const richDocs = generatedDocs.filter((d) => isRichDocument(d.content));
-      const plainDocs = generatedDocs.filter((d) => !isRichDocument(d.content));
-
-      for (const doc of richDocs) {
-        await downloadDocPdf(doc);
-        await new Promise((resolve) => setTimeout(resolve, 700));
-      }
-
-      if (plainDocs.length === 1) {
-        await downloadDocPdf(plainDocs[0]);
-      } else if (plainDocs.length > 1) {
-        generateCombinedClientDocumentsPdf({
-          documents: plainDocs.map((d) => ({ title: d.title, filledContent: d.content })),
-          header: {
-            name: signedBy || form.name,
-            cpf: form.cpf || null,
-            birthdate: form.birthdate
-              ? new Date(form.birthdate + 'T12:00:00').toLocaleDateString('pt-BR')
-              : null,
-            professionalName: linkData?.professional?.name || null,
-          },
+      // Um único PDF com todos os documentos: navegadores bloqueiam vários
+      // downloads automáticos seguidos, o que fazia só o primeiro ser salvo.
+      if (generatedDocs.length === 1) {
+        await downloadDocPdf(generatedDocs[0]);
+      } else if (generatedDocs.length > 1) {
+        await downloadCombinedRichDocumentsPdf({
+          documents: generatedDocs.map((d) => ({
+            title: d.title,
+            bodyHtml: isRichDocument(d.content) ? d.content : sanitizeDocumentContent(d.content),
+          })),
+          headerLines: buildPdfHeaderLines(),
+          fileName: `Documentos - ${signedBy || form.name || 'Cliente'}`,
         });
       }
       toast.success('Todos os documentos foram baixados.');

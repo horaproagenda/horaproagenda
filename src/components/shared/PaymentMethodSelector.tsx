@@ -1,3 +1,4 @@
+import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { useState, useEffect, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -110,12 +111,8 @@ export function PaymentMethodSelector({
     let feePercentage = 0;
 
     // Find exact match or closest lower installment
-    const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
-    const matchingFee = sortedFees.find(f => f.installment_number <= installments);
-    
-    if (matchingFee) {
-      feePercentage = matchingFee.fee_percentage;
-    }
+    void fees;
+    feePercentage = cardFeePercentage(selectedCardBrand, installments);
 
     const feeAmount = (amount * feePercentage) / 100;
     const netAmount = selectedCardBrand.fee_behavior === 'deduct_from_provider'

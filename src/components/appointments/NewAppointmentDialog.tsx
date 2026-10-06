@@ -1651,7 +1651,8 @@ Até breve! ✨`;
             custom_dates: editableServiceDates,
             duration_minutes: duration,
             // Aplicar desconto na série apenas se "aplicar em todos" estiver marcado
-            discount_amount: discountValue > 0 && discountApplyToAll ? discountValue : 0,
+            discount_amount: discountValue > 0 ? discountValue : 0,
+            discount_scope: discountApplyToAll ? 'all' : 'first',
           });
 
           // Compose WhatsApp preview from the dates the user configured
@@ -1673,29 +1674,6 @@ Até breve! ✨`;
             setWhatsappPreviewOpen(true);
           }
 
-          // If discount applies to only the first appointment (not "all"), update it after
-          // creation. Since recurring runs in background, we defer with a small delay.
-          if (discountValue > 0 && !discountApplyToAll) {
-            setTimeout(async () => {
-              const firstStart = editableServiceDates[0].toISOString();
-              const { data: firstApt } = await supabase
-                .from('appointments')
-                .select('id')
-                .eq('client_id', selectedClient)
-                .eq('service_id', selectedService)
-                .eq('start_time', firstStart)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (firstApt?.id) {
-                await (supabase as any)
-                  .from('appointments')
-                  .update({ discount_amount: discountValue })
-                  .eq('id', firstApt.id);
-                queryClient.invalidateQueries({ queryKey: ['appointments'] });
-              }
-            }, 1500);
-          }
         } else if (isKitService) {
           // === Kit de serviços: um atendimento por etapa, criados de uma só vez ===
           // A operação é atômica no banco: se qualquer etapa tiver conflito,
@@ -1742,15 +1720,8 @@ Até breve! ✨`;
             professional_id: selectedProfessional || undefined,
             room_id: selectedRoom || undefined,
             payment_status: usingPaidServiceId ? 'paid' : 'pending',
+            discount_amount: !usingPaidServiceId && discountValue > 0 ? discountValue : 0,
           });
-
-          // Apply discount (if any) on the freshly created appointment
-          if (discountValue > 0 && appointmentResult?.id) {
-            await (supabase as any)
-              .from('appointments')
-              .update({ discount_amount: discountValue })
-              .eq('id', appointmentResult.id);
-          }
 
           // If using a paid service, mark it as used
           if (usingPaidServiceId) {
@@ -2424,8 +2395,8 @@ Até breve! ✨`;
                           <div className="flex items-center justify-between gap-2">
                             <Label htmlFor="discount-apply-toggle" className="text-[11px] text-muted-foreground cursor-pointer">
                               {discountApplyToAll
-                                ? `Aplicar em todos os ${editableServiceDates.length} agendamentos`
-                                : 'Aplicar somente neste agendamento'}
+                                ? `Em todas as ${editableServiceDates.length} sessões`
+                                : 'Só na 1ª sessão'}
                             </Label>
                             <Switch
                               id="discount-apply-toggle"

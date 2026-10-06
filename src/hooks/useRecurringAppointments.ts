@@ -28,6 +28,8 @@ interface CreateRecurringAppointmentsParams {
   duration_minutes?: number;
   // Discount: aplica em todos os agendamentos da série
   discount_amount?: number;
+  /** 'all' = todas as sessões; 'first' = somente a 1ª sessão. Padrão: 'all'. */
+  discount_scope?: 'all' | 'first';
   // When true, do not auto-send WhatsApp; return the composed message so the
   // caller can show a preview dialog before sending.
   defer_whatsapp_preview?: boolean;
@@ -102,6 +104,7 @@ export function useRecurringAppointments() {
     const createdAppointments: any[] = [];
     const failedAppointments: number[] = [];
     const failureReasons: string[] = [];
+    const discountWarnings: string[] = [];
     const totalSessions = appointments.length;
 
     const extractReason = (result: any, response?: Response): string => {
@@ -113,6 +116,13 @@ export function useRecurringAppointments() {
       return '';
     };
     
+    // Desconto gravado na própria criação de cada sessão.
+    const sessionDiscount = (i: number) => {
+      const d = Number(params.discount_amount || 0);
+      if (d <= 0) return 0;
+      return (params.discount_scope ?? 'all') === 'first' && i > 0 ? 0 : d;
+    };
+
     // Create appointments sequentially to avoid conflicts
     for (let i = 0; i < appointments.length; i++) {
       const apt = appointments[i];
@@ -132,6 +142,7 @@ export function useRecurringAppointments() {
             end_time: apt.end.toISOString(),
             notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
             status: 'scheduled',
+            discount_amount: sessionDiscount(i),
           }),
         });
 
@@ -140,9 +151,6 @@ export function useRecurringAppointments() {
         if (result.success && result.data) {
           // Update the appointment with the recurring group ID and discount (if any)
           const updatePayload: any = { recurring_group_id: recurringGroupId };
-          if (params.discount_amount && params.discount_amount > 0) {
-            updatePayload.discount_amount = params.discount_amount;
-          }
           const { data: updatedApt, error: updateError } = await supabase
             .from('appointments')
             .update(updatePayload)
@@ -155,7 +163,12 @@ export function useRecurringAppointments() {
           }
 
 
-          createdAppointments.push(updatedApt || result.data);
+          const saved = updatedApt || result.data;
+          if (Math.abs(Number(saved?.discount_amount || 0) - sessionDiscount(i)) > 0.009) {
+            const msg = `O desconto da sessão ${i + 1} não foi registrado. Confira essa sessão e aplique o desconto ao editar.`;
+            if (!discountWarnings.includes(msg)) discountWarnings.push(msg);
+          }
+          createdAppointments.push(saved);
           
           // Invalidate queries after each creation for real-time updates
           queryClient.invalidateQueries({ queryKey: ['appointments'] });
@@ -211,6 +224,7 @@ Até breve! ✨`;
     queryClient.invalidateQueries({ queryKey: ['appointments'] });
     queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
 
+    if (discountWarnings.length > 0) toast.warning(discountWarnings.join(' '));
     // Show final result toast
     if (failedAppointments.length > 0) {
       const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';

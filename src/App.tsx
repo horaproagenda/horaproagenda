@@ -10,7 +10,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RequireRole } from "@/components/RequireRole";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useCrossDeviceSync } from "@/hooks/useCrossDeviceSync";
-import { useWheelScrollFix } from "@/hooks/useWheelScrollFix";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { useVersionWatcher } from "@/hooks/useVersionWatcher";
 import { usePostUpdateDataHeal } from "@/hooks/usePostUpdateDataHeal";
@@ -179,7 +178,6 @@ const App = () => {
   // Usar useState para garantir que o queryClient seja estável entre re-renders
   const [queryClient] = useState(createQueryClient);
   useState(() => attachQueryPerfLogging(queryClient));
-  useWheelScrollFix();
   useAppUpdater();
   useVersionWatcher();
   useLayoutWatchdog();

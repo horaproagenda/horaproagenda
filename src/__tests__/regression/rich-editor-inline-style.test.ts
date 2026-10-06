@@ -21,3 +21,12 @@ describe('editor de documentos: formatação só no trecho selecionado', () => {
     expect(out).toContain('<img');
   });
 });
+
+describe('editor: seleção e rolagem', () => {
+  it('não usa execCommand fontSize (que espalhava a fonte pelo documento) e não intercepta a rodinha do mouse', () => {
+    const src = readFileSync('src/components/documentos/RichTextEditor.tsx', 'utf8');
+    expect(src).not.toContain("exec('fontSize'");
+    expect(src).toContain('onCloseAutoFocus');
+    expect(readFileSync('src/App.tsx', 'utf8')).not.toContain('useWheelScrollFix');
+  });
+});

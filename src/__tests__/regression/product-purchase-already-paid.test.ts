@@ -15,6 +15,10 @@ describe('compra de produto já pago', () => {
     const sql = latest('FUNCTION public.sync_product_purchase_finance');
     expect(sql).toContain('IF COALESCE(v_purchase.skip_cash_transaction, false) THEN RETURN; END IF;');
     expect(sql).toContain('IF v_register IS NULL THEN RETURN; END IF;');
+    // "Já pago" sai antes de gravar no Financeiro: nenhuma saída no Financeiro nem no Caixa.
+    const fn = sql.slice(sql.indexOf('FUNCTION public.sync_product_purchase_finance'));
+    expect(fn.indexOf('skip_cash_transaction, false) THEN RETURN'))
+      .toBeLessThan(fn.indexOf('INSERT INTO public.financial_entries'));
     const rpc = sql.slice(sql.indexOf('FUNCTION public.register_product_purchase'));
     expect(rpc).not.toContain('INSERT INTO public.cash_transactions');
   });

@@ -37,6 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { baseBrandName, planCardBrandVariants, variantName } from '@/lib/cardBrandVariants';
+import { HelpTip } from '@/components/shared/HelpTip';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro',
@@ -64,6 +65,7 @@ export function FormasPagamento() {
   } = useAllBoletoInstallments();
   const queryClient = useQueryClient();
 
+  const [pmTab, setPmTab] = useState('methods');
   const [defaultsInitialized, setDefaultsInitialized] = useState(false);
   const [brandDefaultsInitialized, setBrandDefaultsInitialized] = useState(false);
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
@@ -370,7 +372,7 @@ export function FormasPagamento() {
         <CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4 text-primary" />Formas de Pagamento</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="methods" className="space-y-4">
+        <Tabs value={pmTab} onValueChange={setPmTab} className="space-y-4">
           <TabsList className="w-full grid grid-cols-4 h-auto">
             <TabsTrigger value="methods" className="text-[11px] sm:text-xs gap-1 px-1 h-9"><Banknote className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Métodos</span></TabsTrigger>
             <TabsTrigger value="boleto" className="text-[11px] sm:text-xs gap-1 px-1 h-9">
@@ -383,6 +385,10 @@ export function FormasPagamento() {
 
           {/* Payment Methods Tab */}
           <TabsContent value="methods" className="space-y-4">
+            <HelpTip storageKey="formas-taxas-cartao" title="Importante: configure as taxas dos cartões">
+              <p>Para que os pagamentos no cartão sejam registrados e calculados corretamente (valor líquido no caixa e no financeiro), informe as taxas da sua maquininha na aba Cartões.</p>
+              <Button variant="link" size="sm" className="h-auto p-0 mt-1 text-xs" onClick={() => setPmTab('cards')}>Ir para Cartões →</Button>
+            </HelpTip>
             <div className="flex justify-end">
               <Dialog open={pmDialogOpen} onOpenChange={(open) => { setPmDialogOpen(open); if (!open) resetPmForm(); }}>
                 <DialogTrigger asChild>
@@ -872,6 +878,9 @@ export function FormasPagamento() {
 
           {/* Card Brands Tab */}
           <TabsContent value="cards" className="space-y-4">
+            <HelpTip storageKey="cartoes-taxas" title="Como as taxas de cartão funcionam">
+              Cada bandeira tem duas versões: <b>Débito</b> (uma taxa à vista) e <b>Crédito</b> (uma taxa para cada número de parcelas). Toque no lápis para informar as taxas da sua maquininha; elas são descontadas automaticamente nos pagamentos da agenda, do caixa e das vendas.
+            </HelpTip>
             <div className="flex justify-end">
               <Dialog open={brandDialogOpen} onOpenChange={(open) => { setBrandDialogOpen(open); if (!open) resetBrandForm(); }}>
                 <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Nova Bandeira</Button></DialogTrigger>

@@ -343,7 +343,7 @@ const Clientes = () => {
             </div>
             <div className="space-y-1">
               <p className="flex items-center gap-1.5 font-medium text-foreground"><Link2 className="h-3.5 w-3.5 text-primary" />Cadastro via link <Badge variant="secondary" className="text-[9px] px-1 py-0">Recomendado</Badge></p>
-              <p>Envie o link pelo WhatsApp e o próprio cliente preenche tudo no celular (CPF, endereço, nascimento). Menos erros de digitação e mais tempo livre para você.</p>
+              <p>Envie o link pelo WhatsApp e o próprio cliente preenche tudo no celular (CPF, endereço, nascimento). Nessa opção, o cliente também preenche e assina, com validação jurídica, os documentos que você escolher.</p>
             </div>
             <div className="space-y-1">
               <p className="flex items-center gap-1.5 font-medium text-foreground"><Upload className="h-3.5 w-3.5 text-primary" />Importar em massa</p>

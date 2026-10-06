@@ -567,7 +567,10 @@ export default function Produtos() {
                       <Select value={purchaseForm.product_id} onValueChange={handlePurchaseProductSelect}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecione um produto" /></SelectTrigger>
                         <SelectContent>
-                          {products.map(p => <SelectItem key={p.id} value={p.id} className="text-sm">{p.name} {p.brand && `(${p.brand})`}</SelectItem>)}
+                          {products.map(p => {
+                            const same = products.filter(o => o.name.trim().toLowerCase() === p.name.trim().toLowerCase()).length > 1;
+                            return <SelectItem key={p.id} value={p.id} className="text-sm">{p.name} {p.brand && `(${p.brand})`}{same ? ` · ${getUnitLabel(p.unit)} · estoque ${p.current_stock} · #${p.id.slice(0, 4)}` : ''}</SelectItem>;
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -992,6 +995,7 @@ export default function Produtos() {
 
         {/* Product Detail Dialog */}
         <ProductDetailDialog
+          key={selectedProduct?.id ?? 'none'}
           product={selectedProduct}
           purchases={purchases}
           open={detailDialogOpen}

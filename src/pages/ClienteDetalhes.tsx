@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Image, Receipt, Info, BarChart3, CreditCard, RefreshCw, History } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CircleDollarSign, RefreshCw, History } from 'lucide-react';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
 import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
@@ -120,7 +120,7 @@ export default function ClienteDetalhes() {
               <span className="leading-tight">Relatório</span>
             </TabsTrigger>
             <TabsTrigger value="credits" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
-              <CreditCard className="h-3.5 w-3.5 text-primary shrink-0" />
+              <CircleDollarSign aria-hidden="true" size={16} className="size-4 min-h-4 min-w-4 flex-none text-primary" />
               <span className="leading-tight">Créditos</span>
             </TabsTrigger>
             <TabsTrigger value="appointments" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">

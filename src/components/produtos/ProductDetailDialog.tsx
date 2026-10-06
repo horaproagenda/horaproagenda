@@ -1599,11 +1599,12 @@ export function ProductDetailDialog({
                                 type="number"
                                 value={purchaseEditForm.quantity}
                                 onChange={(e) => {
+                                  // Corrigir a quantidade mantém o TOTAL pago e recalcula o preço unitário.
                                   const qty = parseFloat(e.target.value) || 0;
-                                  setPurchaseEditForm({ 
-                                    ...purchaseEditForm, 
+                                  setPurchaseEditForm({
+                                    ...purchaseEditForm,
                                     quantity: qty,
-                                    total_price: qty * purchaseEditForm.unit_price
+                                    unit_price: qty > 0 ? purchaseEditForm.total_price / qty : purchaseEditForm.unit_price,
                                   });
                                 }}
                                 className="h-8 text-xs w-20"
@@ -1694,18 +1695,23 @@ export function ProductDetailDialog({
                                   className="h-7 w-7"
                                   onClick={async () => {
                                     if (onUpdatePurchase) {
-                                      await onUpdatePurchase({
-                                        id: purchase.id,
-                                        quantity: purchaseEditForm.quantity,
-                                        unit_price: purchaseEditForm.unit_price,
-                                        total_price: purchaseEditForm.total_price,
-                                        purchase_date: purchaseEditForm.purchase_date,
-                                        supplier: purchaseEditForm.supplier || null,
-                                        started_using_at: purchaseEditForm.started_using_at || null,
-                                        finished_at: purchaseEditForm.finished_at || null,
-                                        payment_method_id: purchaseEditForm.payment_method_id || null,
-                                        payment_method: purchaseEditForm.payment_method || null,
-                                      });
+                                      try {
+                                        await onUpdatePurchase({
+                                          id: purchase.id,
+                                          quantity: purchaseEditForm.quantity,
+                                          unit_price: purchaseEditForm.unit_price,
+                                          total_price: purchaseEditForm.total_price,
+                                          purchase_date: purchaseEditForm.purchase_date,
+                                          supplier: purchaseEditForm.supplier || null,
+                                          started_using_at: purchaseEditForm.started_using_at || null,
+                                          finished_at: purchaseEditForm.finished_at || null,
+                                          payment_method_id: purchaseEditForm.payment_method_id || null,
+                                          payment_method: purchaseEditForm.payment_method || null,
+                                        });
+                                      } catch {
+                                        // A mensagem com o motivo já foi exibida; mantém a edição aberta.
+                                        return;
+                                      }
                                     }
                                     // Mantém product.started_using_at / finished_at em sincronia
                                     // com a compra ativa, evitando que o cache do produto fique

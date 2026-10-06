@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const h = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -39,9 +40,11 @@ import { CreateUserDialog } from '../UsuariosContaSection';
 
 const renderDialog = () =>
   render(
-    <MemoryRouter>
-      <CreateUserDialog open onOpenChange={() => {}} onCreated={() => {}} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <CreateUserDialog open onOpenChange={() => {}} onCreated={() => {}} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 describe('CreateUserDialog — upgrade CTA', () => {

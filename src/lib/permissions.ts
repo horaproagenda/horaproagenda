@@ -242,12 +242,7 @@ export function canSeeRecord(params: {
 
   const scope = rows.find(r => r.module === module)?.data_scope ?? 'shared';
   const viewOthers = evaluate(rows, module, 'view_others');
-  switch (visibility ?? 'clinic') {
-    case 'private':
-      return false;
-    default:
-      return scope !== 'own' || viewOthers;
-  }
+  return scope !== 'own' || viewOthers;
 }
 
 /** Pode editar/excluir conforme dono (espelha `can_write_record`). */

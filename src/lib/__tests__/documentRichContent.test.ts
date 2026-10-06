@@ -43,3 +43,14 @@ describe('documentRichContent', () => {
     expect(formatDocumentDateExtended(new Date('2026-01-05T15:00:00Z'))).toBe('5 de janeiro de 2026');
   });
 });
+
+import { toPrintableDocumentHtml } from '../documentRichContent';
+describe('toPrintableDocumentHtml', () => {
+  it('não deixa códigos como <h2> aparecerem no PDF', () => {
+    const out = toPrintableDocumentHtml('&lt;h2&gt;Termo&lt;/h2&gt;&lt;p&gt;Texto &lt;strong&gt;x&lt;/strong&gt;&lt;/p&gt;');
+    expect(out).toContain('<h2>');
+    expect(out).not.toContain('&lt;');
+    expect(toPrintableDocumentHtml('&amp;lt;p&amp;gt;Oi&amp;lt;/p&amp;gt;')).toBe('<p>Oi</p>');
+    expect(toPrintableDocumentHtml('Linha 1\nLinha 2')).toBe('Linha 1<br>Linha 2');
+  });
+});

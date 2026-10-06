@@ -203,7 +203,7 @@ export function FormasPagamento() {
   });
 
   const boletoStats = useMemo(() => {
-    const all = allBoletoInstallments as any[];
+    const all = allBoletoInstallments as BoletoRow[];
     const pending = all.filter(b => b.status === 'pending' || b.status === 'overdue');
     const overdue = all.filter(b => b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date()));
     const paid = all.filter(b => b.status === 'paid');
@@ -268,6 +268,7 @@ export function FormasPagamento() {
 
       // 2) Apaga as vendas standalone (single_sales) e registros vinculados
       if (saleIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sb: any = supabase;
         await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
         await sb.from('client_services').delete().in('sale_id', saleIds);
@@ -895,14 +896,14 @@ export function FormasPagamento() {
                       <div><Label>Nome da Bandeira</Label><Input value={brandForm.name} onChange={e => setBrandForm({ ...brandForm, name: e.target.value })} placeholder="Ex: Visa, Mastercard, Elo..." /></div>
                       <div>
                         <Label>Tipo</Label>
-                        <Select value={brandForm.type} onValueChange={(v: any) => setBrandForm({ ...brandForm, type: v })}>
+                        <Select value={brandForm.type} onValueChange={(v: 'credit' | 'debit') => setBrandForm({ ...brandForm, type: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="credit">Crédito</SelectItem><SelectItem value="debit">Débito</SelectItem></SelectContent>
                         </Select>
                       </div>
                       <div>
                         <Label>Quem paga a taxa?</Label>
-                        <Select value={brandForm.fee_behavior} onValueChange={(v: any) => setBrandForm({ ...brandForm, fee_behavior: v })}>
+                        <Select value={brandForm.fee_behavior} onValueChange={(v: 'add_to_client' | 'deduct_from_provider') => setBrandForm({ ...brandForm, fee_behavior: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="deduct_from_provider">Dono da Agenda</SelectItem><SelectItem value="add_to_client">Cliente</SelectItem></SelectContent>
                         </Select>
@@ -1061,7 +1062,7 @@ export function FormasPagamento() {
               <div className="space-y-3 text-sm">
                 <p>Esta ação apaga <strong>permanentemente</strong>:</p>
                 <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
-                  <li>{(allBoletoInstallments as any[]).length} parcela(s) de boleto</li>
+                  <li>{allBoletoInstallments.length} parcela(s) de boleto</li>
                   <li>Todas as vendas (single_sales) vinculadas aos boletos</li>
                   <li>Lançamentos de caixa e serviços vendidos correspondentes</li>
                 </ul>

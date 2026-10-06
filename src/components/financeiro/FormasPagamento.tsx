@@ -56,6 +56,14 @@ const DEFAULT_CARD_BRANDS: { name: string; type: 'credit' | 'debit' | 'both' }[]
   { name: 'Cabal', type: 'both' },
 ];
 
+type BoletoRow = BoletoInstallment & {
+  sale?: {
+    id: string | null;
+    package_id: string | null;
+    client?: { id: string | null; name: string | null; phone: string | null } | null;
+  } | null;
+};
+
 export function FormasPagamento() {
   const { paymentMethods, isLoading, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
   const { banks, activeBanks, createBank, updateBank, deleteBank } = useBanks();

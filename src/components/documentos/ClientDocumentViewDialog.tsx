@@ -34,7 +34,7 @@ import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
-import { isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { isRichDocument, sanitizeRichDocumentHtml, toPrintableDocumentHtml } from '@/lib/documentRichContent';
 import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
 
@@ -172,7 +172,7 @@ export function ClientDocumentViewDialog({
       try {
         await downloadRichDocumentPdf({
           title: document.title || 'Documento',
-          bodyHtml: document.content,
+          bodyHtml: toPrintableDocumentHtml(document.content),
           headerLines: [
             `Cliente: ${client?.name || 'Não informado'}`,
             `Gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,

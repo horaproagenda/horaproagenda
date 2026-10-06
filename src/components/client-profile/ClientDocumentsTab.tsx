@@ -1,3 +1,5 @@
+import { isRichDocument, toPrintableDocumentHtml } from '@/lib/documentRichContent';
+import { renderRichDocumentPdfBytes } from '@/lib/richDocumentPdf';
 import { useState, useRef, useEffect } from 'react';
 import { ClientDocument, DocumentType, Client, DocumentTemplate } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,6 +70,8 @@ const documentTypeColors: Record<DocumentType, string> = {
 const getSafeDownloadName = (doc: ClientDocument) => {
   return getFileNameWithExtension(doc.title || 'documento', doc.file_path || doc.file_url);
 };
+
+const escapeHeader = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const removeAccents = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
@@ -276,6 +280,22 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
           addTextDocument(docItem, 'Nao foi possivel carregar o arquivo original para este documento.');
           continue;
         }
+      }
+
+      if (isRichDocument(docItem.content)) {
+        const bytes = await renderRichDocumentPdfBytes({
+          title: docItem.title || 'Documento',
+          bodyHtml: toPrintableDocumentHtml(docItem.content),
+          headerLines: [
+            `Tipo: ${documentTypeLabels[docItem.type] || 'Documento'} | Criado em: ${format(new Date(docItem.created_at), 'dd/MM/yyyy', { locale: ptBR })}`,
+            docItem.signed_at ? `Assinado em: ${format(new Date(docItem.signed_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}${docItem.signed_by ? ` por ${docItem.signed_by}` : ''}` : '',
+            docItem.description ? `Descrição: ${docItem.description}` : '',
+          ].map(escapeHeader),
+        });
+        const richPdf = await PDFDocument.load(bytes);
+        const pages = await pdf.copyPages(richPdf, richPdf.getPageIndices());
+        pages.forEach((page) => pdf.addPage(page));
+        continue;
       }
 
       addTextDocument(docItem);

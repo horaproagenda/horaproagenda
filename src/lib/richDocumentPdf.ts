@@ -19,6 +19,17 @@ const sanitizeFileName = (name: string) =>
  * alignment, tables and embedded images.
  */
 export async function downloadRichDocumentPdf(opts: RichPdfOptions): Promise<void> {
+  const pdf = await buildRichDocumentPdf(opts);
+  pdf.save(`${sanitizeFileName(opts.fileName || opts.title)}.pdf`);
+}
+
+/** Mesmo render visual, devolvendo os bytes do PDF (para juntar a outros PDFs). */
+export async function renderRichDocumentPdfBytes(opts: RichPdfOptions): Promise<ArrayBuffer> {
+  const pdf = await buildRichDocumentPdf(opts);
+  return pdf.output('arraybuffer');
+}
+
+async function buildRichDocumentPdf(opts: RichPdfOptions): Promise<jsPDF> {
   const { title, bodyHtml, headerLines = [], signatureImage, signatureLabel } = opts;
 
   const container = window.document.createElement('div');
@@ -108,8 +119,7 @@ export async function downloadRichDocumentPdf(opts: RichPdfOptions): Promise<voi
       renderedPx += sliceHeight;
     }
 
-
-    pdf.save(`${sanitizeFileName(opts.fileName || title)}.pdf`);
+    return pdf;
   } finally {
     container.remove();
   }

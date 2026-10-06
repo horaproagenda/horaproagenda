@@ -43,7 +43,20 @@ export function useKitAppointments() {
         p_items: items,
         p_group_id: groupId ?? null,
       });
-      if (error) throw error;
+      if (error) {
+        // A resposta pode falhar mesmo com o kit salvo (rede/tempo esgotado).
+        // Confere no banco pelo identificador do kit antes de acusar erro.
+        if (groupId) {
+          const { data: existing } = await (supabase as any)
+            .from('appointments')
+            .select('id')
+            .eq('composite_group_id', groupId);
+          if (Array.isArray(existing) && existing.length >= items.length) {
+            return { composite_group_id: groupId, appointment_ids: existing.map((r: any) => r.id), count: existing.length, already_created: true };
+          }
+        }
+        throw error;
+      }
       return data as { composite_group_id: string; appointment_ids: string[]; count: number; already_created: boolean };
     },
     onSuccess: (data) => {

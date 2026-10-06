@@ -38,7 +38,9 @@ export function getSchedulingDurationMinutes(
   const AGGREGATE_THRESHOLD = 8 * 60; // 8h — beyond a realistic single-session duration
   const looksLikeAggregateDuration = Number.isFinite(ownDuration) && ownDuration > AGGREGATE_THRESHOLD;
 
-  if (looksLikeAggregateDuration && components.length > 0) {
+  // Kits: a duração gravada no serviço pai é a SOMA das etapas. Sempre usar a
+  // duração da etapa real, independentemente do tamanho total.
+  if (components.length > 0) {
     const indexedComponentId = Number.isInteger(componentIndex) && componentIndex! >= 0
       ? components[componentIndex!]?.service_id
       : null;

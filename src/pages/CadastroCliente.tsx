@@ -28,7 +28,7 @@ import {
 } from '@/components/clients/InteractiveDocumentFiller';
 import { generateClientDocumentPdf, generateCombinedClientDocumentsPdf } from '@/lib/clientDocumentPdf';
 import { buildDocumentDateTimeValues } from '@/lib/documentTemplateFields';
-import { isRichDocument } from '@/lib/documentRichContent';
+import { isRichDocument, toPrintableDocumentHtml } from '@/lib/documentRichContent';
 import { downloadRichDocumentPdf, downloadCombinedRichDocumentsPdf } from '@/lib/richDocumentPdf';
 import { sanitizeDocumentContent } from '@/lib/htmlSanitizer';
 
@@ -331,10 +331,10 @@ export default function CadastroCliente() {
   ];
 
   const downloadDocPdf = async (doc: { id: string; title: string; content: string }) => {
-    if (isRichDocument(doc.content)) {
+    {
       await downloadRichDocumentPdf({
         title: doc.title,
-        bodyHtml: doc.content,
+        bodyHtml: toPrintableDocumentHtml(doc.content),
         headerLines: buildPdfHeaderLines(),
         fileName: `${doc.title} - ${signedBy || form.name || 'Documento'}`,
       });
@@ -366,7 +366,7 @@ export default function CadastroCliente() {
         await downloadCombinedRichDocumentsPdf({
           documents: generatedDocs.map((d) => ({
             title: d.title,
-            bodyHtml: isRichDocument(d.content) ? d.content : sanitizeDocumentContent(d.content),
+            bodyHtml: toPrintableDocumentHtml(d.content),
           })),
           headerLines: buildPdfHeaderLines(),
           fileName: `Documentos - ${signedBy || form.name || 'Cliente'}`,

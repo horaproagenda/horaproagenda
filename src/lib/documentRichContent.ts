@@ -247,3 +247,31 @@ export function buildPrintableDocumentHtml(opts: {
   ${footerHtml ? `<div class="doc-footer">${footerHtml}</div>` : ''}
 </body></html>`;
 }
+
+const ESCAPED_TAG_RE = /&(?:amp;)*lt;\/?(p|div|span|br|b|strong|i|em|u|h[1-6]|ul|ol|li|table|tr|td|th|img|font)\b/i;
+
+const decodeEntities = (s: string): string =>
+  s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&nbsp;/g, '\u00a0')
+    .replace(/&amp;/g, '&');
+
+/**
+ * Sempre devolve HTML seguro para o PDF. Conteúdo com marcação escapada
+ * (ex.: "&lt;h2&gt;") é decodificado em vez de virar texto com símbolos;
+ * texto simples vira parágrafos com quebras de linha.
+ */
+export function toPrintableDocumentHtml(content: string | null | undefined): string {
+  if (!content) return '';
+  let html = content;
+  // Pode ter sido escapado mais de uma vez.
+  for (let i = 0; i < 3 && !isRichDocument(html) && ESCAPED_TAG_RE.test(html); i++) {
+    html = decodeEntities(html);
+  }
+  if (isRichDocument(html)) return sanitizeRichDocumentHtml(html);
+  const escaped = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.replace(/\n/g, '<br>');
+}

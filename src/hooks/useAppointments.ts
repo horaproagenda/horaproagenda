@@ -21,6 +21,8 @@ export interface AppointmentInsert {
   equipment_id?: string | null;
 
   payment_status?: PaymentStatus;
+  /** Desconto gravado junto com a criação (nunca em etapa posterior). */
+  discount_amount?: number;
 }
 
 export interface PaymentUpdate {
@@ -194,6 +196,7 @@ export function useAppointments() {
           end_time: appointment.end_time,
           notes: appointment.notes,
           status: 'scheduled',
+          discount_amount: appointment.discount_amount ?? 0,
         }),
       });
 

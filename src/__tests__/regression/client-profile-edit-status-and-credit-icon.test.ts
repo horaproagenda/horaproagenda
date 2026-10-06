@@ -11,7 +11,8 @@ describe('edição de agendamento pelo perfil do cliente', () => {
     expect(editDialog).toContain("setStatus(appointment.status)");
     expect(editDialog).toContain('data-testid="edit-appointment-status"');
     expect(editDialog).toContain('updates: { status }');
-    expect(editDialog).toMatch(/room_id: roomId === 'none' \? null : roomId,\s+status,/);
+    expect(editDialog).toMatch(/room_id: roomId === 'none' \? null : roomId,\s+status: packageOutcomeMode \? undefined : status,/);
+    expect(editDialog).toContain("rpc('set_appointment_status_with_package_mode'");
   });
 
   it('mantém Histórico Detalhado e Agenda ligados ao mesmo formulário', () => {

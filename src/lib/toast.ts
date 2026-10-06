@@ -8,7 +8,7 @@
  * apenas a explicação do que aconteceu e o que fazer.
  */
 import { toast as baseToast } from 'sonner-original';
-import { humanizeToastMessage } from '@/lib/humanError';
+import { humanizeToastMessage, stripTechnicalNoise } from '@/lib/humanError';
 
 export * from 'sonner-original';
 
@@ -48,7 +48,12 @@ Object.assign(humanizedToast, baseToast);
 
 humanizedToast.error = wrap(baseToast.error.bind(baseToast)) as ToastFn['error'];
 humanizedToast.warning = wrap(baseToast.warning.bind(baseToast)) as ToastFn['warning'];
-humanizedToast.success = wrap(baseToast.success.bind(baseToast)) as ToastFn['success'];
+// Sucesso nunca passa pelo tradutor de erros: aparece como foi escrito.
+humanizedToast.success = ((message: ToastMessage, options?: ToastOptions) =>
+  baseToast.success(
+    (typeof message === 'string' ? stripTechnicalNoise(message) || message : message) as ToastMessage,
+    options as ToastArgs[1],
+  )) as ToastFn['success'];
 humanizedToast.info = wrap(baseToast.info.bind(baseToast)) as ToastFn['info'];
 humanizedToast.message = wrap(baseToast.message.bind(baseToast)) as ToastFn['message'];
 

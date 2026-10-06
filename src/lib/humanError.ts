@@ -48,7 +48,7 @@ function entityFromText(text: string): string | null {
 }
 
 /** Remove ruído técnico de uma mensagem que já é legível. */
-function stripTechnicalNoise(message: string): string {
+export function stripTechnicalNoise(message: string): string {
   return message
     // "PGRST116: ...", "23505: ...", "Error 500: ..."
     .replace(/^\s*(erro|error)?\s*[:\-]?\s*(pgrst\d+|[0-9A-Z]{5}|\d{3})\s*[:\-]\s*/i, '')
@@ -288,7 +288,7 @@ export function humanizeToastMessage(value: unknown, fallback?: string): unknown
   if (separator) {
     const prefix = separator[1].trim();
     const rest = separator[2].trim();
-    if (looksTechnical(rest) || !/[çãõáéíóúâêô]/i.test(rest)) {
+    if (looksTechnical(rest)) {
       const explained = humanizeError(rest, fallback);
       return `${prefix}: ${explained}`;
     }

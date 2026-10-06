@@ -805,6 +805,15 @@ export function ProductDetailDialog({
     }
   }, [product?.id, product?.unit]);
 
+  // Isolamento por ID: trocar de produto ou fechar a janela descarta qualquer
+  // edição em andamento, para que dados de um produto nunca sejam salvos em outro.
+  useEffect(() => {
+    setIsEditing(false);
+    setEditForm({});
+    setEditingPurchaseId(null);
+    setIsEditingStock(false);
+  }, [product?.id, open]);
+
   const handleAddServiceLink = async () => {
     if (!product || selectedServiceIds.length === 0) return;
 
@@ -1731,9 +1740,15 @@ export function ProductDetailDialog({
                                     // a data antiga após promover uma nova compra).
                                     const startedAt = purchaseEditForm.started_using_at || null;
                                     const finishedAt = purchaseEditForm.finished_at || null;
+                                    // Sempre o produto dono da compra (ID gravado na compra).
+                                    const ownerProductId = purchase.product_id;
+                                    if (!ownerProductId || ownerProductId !== product?.id) {
+                                      setEditingPurchaseId(null);
+                                      return;
+                                    }
                                     if (startedAt && !finishedAt) {
                                       await onUpdateProduct({
-                                        id: product!.id,
+                                        id: ownerProductId,
                                         started_using_at: startedAt,
                                         finished_at: null,
                                       });
@@ -1742,7 +1757,7 @@ export function ProductDetailDialog({
                                       product?.started_using_at === purchase.started_using_at
                                     ) {
                                       await onUpdateProduct({
-                                        id: product!.id,
+                                        id: ownerProductId,
                                         finished_at: finishedAt,
                                       });
                                     }

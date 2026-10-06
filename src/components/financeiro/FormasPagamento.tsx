@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { baseBrandName, planCardBrandVariants, variantName } from '@/lib/cardBrandVariants';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro',
@@ -106,20 +107,40 @@ export function FormasPagamento() {
     });
   }, [isLoading, defaultsInitialized]);
 
-  // Seed automático das bandeiras de cartão mais usadas (executa só se a lista estiver vazia).
+  // Seed + separação automática: toda bandeira existe como "X - Crédito" e "X - Débito".
   useEffect(() => {
     if (isLoading || brandDefaultsInitialized) return;
     setBrandDefaultsInitialized(true);
-    const existing = new Set(cardBrands.map(b => normalize(b.name)));
-    const missing = DEFAULT_CARD_BRANDS.filter(b => !existing.has(normalize(b.name)));
-    missing.forEach(b => {
-      createCardBrand.mutate({
-        name: b.name,
-        type: b.type,
-        is_active: true,
-        fee_behavior: 'deduct_from_provider',
-      });
-    });
+    (async () => {
+      const existing = new Set(cardBrands.map(b => normalize(baseBrandName(b.name))));
+      const seeds = DEFAULT_CARD_BRANDS
+        .filter(b => !existing.has(normalize(b.name)))
+        .map(b => ({ id: `seed-${b.name}`, name: b.name, type: 'credit', is_active: true, fees: [] as any[] }));
+      const plan = planCardBrandVariants([...(cardBrands as any[]), ...seeds]);
+      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        for (const r of plan.renames) {
+          if (r.id.startsWith('seed-')) {
+            await supabase.from('card_brands').insert({
+              name: r.name, type: r.type, is_active: true, fee_behavior: 'deduct_from_provider', created_by: user?.id,
+            } as any);
+          } else {
+            await supabase.from('card_brands').update({ name: r.name, type: r.type, updated_by: user?.id } as any).eq('id', r.id);
+          }
+        }
+        for (const c of plan.creates) {
+          const { fees, ...row } = c;
+          const { data } = await supabase.from('card_brands')
+            .insert({ ...row, created_by: user?.id } as any).select('id').maybeSingle();
+          if (data?.id && fees.length) {
+            await supabase.from('card_brand_fees').insert(fees.map(f => ({ ...f, card_brand_id: data.id, created_by: user?.id ?? null })) as any);
+          }
+        }
+      } catch (e) {
+        console.info('[card-brand-variants] separação ignorada:', e);
+      }
+      if (plan.renames.length || plan.creates.length) queryClient.invalidateQueries({ queryKey: ['card_brands'] });
+    })();
   }, [isLoading, brandDefaultsInitialized]);
 
 

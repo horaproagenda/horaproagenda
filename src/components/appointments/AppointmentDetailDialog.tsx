@@ -1,3 +1,4 @@
+import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useState, useEffect, useMemo } from 'react';
@@ -555,10 +556,8 @@ export function AppointmentDetailDialog({
     const fees = cardBrand.fees || [];
     const installments = payment.installments || 1;
     
-    const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
-    const matchingFee = sortedFees.find(f => f.installment_number <= installments);
-    
-    const feePercentage = matchingFee?.fee_percentage || 0;
+    void fees;
+    const feePercentage = cardFeePercentage(cardBrand, installments);
     const feeAmount = (amount * feePercentage) / 100;
     const netAmount = cardBrand.fee_behavior === 'deduct_from_provider'
       ? amount - feeAmount

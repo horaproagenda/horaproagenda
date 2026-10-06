@@ -1,3 +1,4 @@
+import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -177,12 +178,7 @@ export function SingleSaleDialog() {
     const brand = cardBrands.find(b => b.id === selectedCardBrand);
     if (!brand || !brand.fees) return 0;
     
-    const fee = isCreditCard 
-      ? brand.fees.find(f => f.installment_number === installments)
-      : brand.fees.find(f => f.installment_number === 1) || brand.fees[0];
-    
-    if (!fee) return 0;
-    return original * (fee.fee_percentage / 100);
+    return original * (cardFeePercentage(brand, isCreditCard ? installments : 1) / 100);
   }, [isCardPayment, selectedCardBrand, cardBrands, isCreditCard, installments, original]);
 
   const finalAmount = Math.max(0, original - discount);

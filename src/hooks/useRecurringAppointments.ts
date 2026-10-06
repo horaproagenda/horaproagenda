@@ -104,6 +104,7 @@ export function useRecurringAppointments() {
     const createdAppointments: any[] = [];
     const failedAppointments: number[] = [];
     const failureReasons: string[] = [];
+    const discountWarnings: string[] = [];
     const totalSessions = appointments.length;
 
     const extractReason = (result: any, response?: Response): string => {
@@ -165,7 +166,7 @@ export function useRecurringAppointments() {
           const saved = updatedApt || result.data;
           if (Math.abs(Number(saved?.discount_amount || 0) - sessionDiscount(i)) > 0.009) {
             const msg = `O desconto da sessão ${i + 1} não foi registrado. Confira essa sessão e aplique o desconto ao editar.`;
-            if (!failureReasons.includes(msg)) failureReasons.push(msg);
+            if (!discountWarnings.includes(msg)) discountWarnings.push(msg);
           }
           createdAppointments.push(saved);
           
@@ -223,6 +224,7 @@ Até breve! ✨`;
     queryClient.invalidateQueries({ queryKey: ['appointments'] });
     queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
 
+    if (discountWarnings.length > 0) toast.warning(discountWarnings.join(' '));
     // Show final result toast
     if (failedAppointments.length > 0) {
       const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';

@@ -233,17 +233,18 @@ export function canSeeRecord(params: {
   isAdmin?: boolean;
 }): boolean {
   const { rows, module, ownerProfessionalId, visibility, myProfessionalId, isAdmin } = params;
-  if (isAdmin) return true;
   if (!ownerProfessionalId) return true;
   if (myProfessionalId && myProfessionalId === ownerProfessionalId) return true;
+  // "Privado (somente eu)": nem administração vê (espelha can_see_record).
+  if (visibility === 'private') return false;
+  if ((visibility ?? 'clinic') === 'clinic') return true;
+  if (isAdmin) return true;
 
   const scope = rows.find(r => r.module === module)?.data_scope ?? 'shared';
   const viewOthers = evaluate(rows, module, 'view_others');
   switch (visibility ?? 'clinic') {
     case 'private':
       return false;
-    case 'shared':
-      return scope !== 'own' || viewOthers;
     default:
       return scope !== 'own' || viewOthers;
   }

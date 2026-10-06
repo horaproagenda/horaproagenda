@@ -114,7 +114,7 @@ describe('regressão: clientes privados x compartilhados', () => {
     ).toBe(true);
   });
 
-  it('Administrador vê o cliente privado', () => {
+  it('Administrador não vê o cliente privado (somente eu)', () => {
     expect(
       canSeeRecord({
         rows: ownScope,
@@ -124,7 +124,7 @@ describe('regressão: clientes privados x compartilhados', () => {
         myProfessionalId: PROF_B,
         isAdmin: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('cliente compartilhado exige escopo > own ou view_others', () => {

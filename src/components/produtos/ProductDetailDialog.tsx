@@ -298,6 +298,7 @@ export function ProductDetailDialog({
     notes: '',
     payment_method_id: '' as string | null,
     payment_method: '' as string | null,
+    skip_cash_transaction: false,
   });
 
   // Filter purchases for this product
@@ -1650,27 +1651,37 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <Select
-                                value={purchaseEditForm.payment_method_id || 'none'}
-                                onValueChange={(v) => {
-                                  const method = activePaymentMethods.find(m => m.id === v);
-                                  setPurchaseEditForm({
-                                    ...purchaseEditForm,
-                                    payment_method_id: v === 'none' ? null : v,
-                                    payment_method: v === 'none' ? null : (method?.name || null),
-                                  });
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs w-28">
-                                  <SelectValue placeholder="Forma" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Nenhuma</SelectItem>
-                                  {activePaymentMethods.map(m => (
-                                    <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <div className="flex flex-col gap-1">
+                                <Select
+                                  value={purchaseEditForm.payment_method_id || 'none'}
+                                  disabled={purchaseEditForm.skip_cash_transaction}
+                                  onValueChange={(v) => {
+                                    const method = activePaymentMethods.find(m => m.id === v);
+                                    setPurchaseEditForm({
+                                      ...purchaseEditForm,
+                                      payment_method_id: v === 'none' ? null : v,
+                                      payment_method: v === 'none' ? null : (method?.name || null),
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs w-28">
+                                    <SelectValue placeholder="Forma" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Nenhuma</SelectItem>
+                                    {activePaymentMethods.map(m => (
+                                      <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <Switch
+                                    checked={purchaseEditForm.skip_cash_transaction}
+                                    onCheckedChange={(v) => setPurchaseEditForm({ ...purchaseEditForm, skip_cash_transaction: v })}
+                                  />
+                                  Já pago
+                                </label>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
@@ -1707,7 +1718,8 @@ export function ProductDetailDialog({
                                           finished_at: purchaseEditForm.finished_at || null,
                                           payment_method_id: purchaseEditForm.payment_method_id || null,
                                           payment_method: purchaseEditForm.payment_method || null,
-                                        });
+                                          skip_cash_transaction: purchaseEditForm.skip_cash_transaction,
+                                        } as any);
                                       } catch {
                                         // A mensagem com o motivo já foi exibida; mantém a edição aberta.
                                         return;
@@ -1813,6 +1825,8 @@ export function ProductDetailDialog({
                                         notes: purchase.notes || '',
                                         payment_method_id: purchase.payment_method_id || null,
                                         payment_method: purchase.payment_method || null,
+                                        skip_cash_transaction: Boolean((purchase as any).skip_cash_transaction)
+                                          || (!purchase.payment_method_id && !purchase.payment_method),
                                       });
                                     }}
                                   >

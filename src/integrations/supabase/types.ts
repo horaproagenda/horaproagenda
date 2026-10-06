@@ -6726,6 +6726,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_product_ledger: { Args: { p_product_id: string }; Returns: Json }
       get_professional_id_by_user_or_email: {
         Args: { _user_id: string }
         Returns: string
@@ -7016,6 +7017,10 @@ export type Database = {
       }
       recalculate_product_cycles: { Args: never; Returns: undefined }
       reconcile_account_seats: { Args: { _owner?: string }; Returns: number }
+      reconcile_product_purchase_totals: {
+        Args: { p_product_id: string }
+        Returns: Json
+      }
       record_data_migration: {
         Args: { p_details?: Json; p_key: string }
         Returns: boolean
@@ -7334,6 +7339,7 @@ export type Database = {
           p_payment_method_id: string
           p_purchase_date: string
           p_quantity: number
+          p_skip_cash_transaction?: boolean
           p_started_using_at: string
           p_supplier: string
           p_total_price: number

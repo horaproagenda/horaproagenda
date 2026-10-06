@@ -25,3 +25,13 @@ describe('editar/excluir compra ajusta o estoque', () => {
     expect(hook).not.toMatch(/from\('product_purchases'\)\s*\.(update|delete)/);
   });
 });
+
+describe('edição de compra "já paga" não é bloqueada', () => {
+  it('a rotina aceita e grava skip_cash_transaction e o app envia', () => {
+    const sql = latest('FUNCTION public.update_product_purchase');
+    expect(sql).toContain('p_skip_cash_transaction boolean');
+    expect(sql).toContain('skip_cash_transaction = v_skip');
+    const hook = readFileSync(join(process.cwd(), 'src/hooks/useProducts.ts'), 'utf8');
+    expect(hook).toContain('p_skip_cash_transaction: (p as any).skip_cash_transaction');
+  });
+});

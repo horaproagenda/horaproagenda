@@ -332,6 +332,7 @@ export function useProductPurchases(productId?: string) {
         p_finished_at: (p as any).finished_at ?? null,
         p_payment_method_id: (p as any).payment_method_id ?? null,
         p_payment_method: (p as any).payment_method ?? null,
+        p_skip_cash_transaction: (p as any).skip_cash_transaction ?? null,
       });
       if (error) throw error;
       return data as { product?: { current_stock?: number; unit?: string } };

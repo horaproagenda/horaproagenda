@@ -285,6 +285,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
   ({ value, onChange, placeholder, className, minHeightClassName = 'min-h-[420px]' }, ref) => {
     const editorRef = useRef<HTMLDivElement | null>(null);
     const savedRangeRef = useRef<Range | null>(null);
+    const lastEmittedRef = useRef<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [font, setFont] = useState(FONTS[0].value);
     const [size, setSize] = useState<number>(14);
@@ -298,9 +299,11 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     useEffect(() => {
       const el = editorRef.current;
       if (!el) return;
-      if (el.innerHTML !== (value || '')) {
+      // Só regrava quando o valor veio de fora; assim a seleção ativa é preservada.
+      if (value !== lastEmittedRef.current && el.innerHTML !== (value || '')) {
         el.innerHTML = value || '';
       }
+      lastEmittedRef.current = value || '';
       setIsEmpty(!el.textContent?.trim());
       recalculateTables(el);
     }, [value]);
@@ -324,7 +327,6 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       sel?.addRange(range);
     }, []);
 
-    const lastEmittedRef = useRef<string>(value || '');
     const emitChange = () => {
       const el = editorRef.current;
       if (!el) return;
@@ -686,10 +688,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-1 border-b bg-background/70 px-2 py-1.5 sticky top-0 z-10 rounded-t-lg">
           <Select value={font} onValueChange={handleFontChange}>
-            <SelectTrigger className="h-7 w-full min-w-0 sm:w-[140px] text-xs">
+            <SelectTrigger onPointerDown={saveSelection} className="h-7 w-full min-w-0 sm:w-[140px] text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="max-h-[280px]">
+            <SelectContent className="max-h-[280px]" onCloseAutoFocus={(e) => e.preventDefault()}>
               {FONTS.map((f) => (
                 <SelectItem key={f.value} value={f.value}>
                   <span style={{ fontFamily: f.value }} className="text-sm">
@@ -701,10 +703,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           </Select>
 
           <Select value={String(size)} onValueChange={handleSizeChange}>
-            <SelectTrigger className="h-7 w-[64px] text-xs">
+            <SelectTrigger onPointerDown={saveSelection} className="h-7 w-[64px] text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
               {SIZES.map((s) => (
                 <SelectItem key={s} value={String(s)} className="text-xs">
                   {s}

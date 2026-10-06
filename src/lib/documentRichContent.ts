@@ -248,7 +248,7 @@ export function buildPrintableDocumentHtml(opts: {
 </body></html>`;
 }
 
-const ESCAPED_TAG_RE = /&lt;\/?(p|div|span|br|b|strong|i|em|u|h[1-6]|ul|ol|li|table|tr|td|th|img|font)\b/i;
+const ESCAPED_TAG_RE = /&(?:amp;)*lt;\/?(p|div|span|br|b|strong|i|em|u|h[1-6]|ul|ol|li|table|tr|td|th|img|font)\b/i;
 
 const decodeEntities = (s: string): string =>
   s

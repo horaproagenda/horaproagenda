@@ -309,47 +309,56 @@ export function useProductPurchases(productId?: string) {
     },
   });
 
-  const updatePurchase = useMutation({
-    mutationFn: async ({ id, ...purchase }: Partial<ProductPurchase> & { id: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase
-        .from('product_purchases')
-        .update({
-          ...purchase,
-          updated_by: user?.id,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+  const invalidatePurchaseCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['product-cycle-history'] });
+    queryClient.invalidateQueries({ queryKey: ['product-active-cycles'] });
+    queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+    queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+  };
 
+  // Compra + estoque mudam juntos numa única operação no banco.
+  const updatePurchase = useMutation({
+    mutationFn: async ({ id, ...p }: Partial<ProductPurchase> & { id: string }) => {
+      const { data, error } = await (supabase as any).rpc('update_product_purchase', {
+        p_id: id,
+        p_quantity: Number(p.quantity ?? 0),
+        p_unit_price: Number(p.unit_price ?? 0),
+        p_total_price: Number(p.total_price ?? 0),
+        p_purchase_date: p.purchase_date ?? null,
+        p_supplier: p.supplier ?? null,
+        p_started_using_at: (p as any).started_using_at ?? null,
+        p_finished_at: (p as any).finished_at ?? null,
+        p_payment_method_id: (p as any).payment_method_id ?? null,
+        p_payment_method: (p as any).payment_method ?? null,
+      });
       if (error) throw error;
-      return data;
+      return data as { product?: { current_stock?: number; unit?: string } };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
-      toast.success('Compra atualizada com sucesso!');
+    onSuccess: (data) => {
+      invalidatePurchaseCaches();
+      const stock = data?.product?.current_stock;
+      toast.success(stock != null
+        ? `Compra atualizada: estoque agora ${Number(stock).toLocaleString('pt-BR')} ${data?.product?.unit ?? ''}`.trim()
+        : 'Compra atualizada com sucesso!');
     },
     onError: (error: unknown) => {
-      toast.error('Erro ao atualizar compra: ' + (error instanceof Error ? error.message : ''));
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar a compra.');
     },
   });
 
   const deletePurchase = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('product_purchases')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await (supabase as any).rpc('delete_product_purchase', { p_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product_purchases'] });
-      toast.success('Compra excluída com sucesso!');
+      invalidatePurchaseCaches();
+      toast.success('Compra excluída e estoque ajustado.');
     },
     onError: (error: unknown) => {
-      toast.error('Erro ao excluir compra: ' + (error instanceof Error ? error.message : ''));
+      toast.error(error instanceof Error ? error.message : 'Não foi possível excluir a compra.');
     },
   });
 

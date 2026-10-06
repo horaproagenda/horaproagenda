@@ -766,7 +766,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               <SelectValue />
             </SelectTrigger>
             <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-              {SIZES.map((s) => (
+              {(SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)).map((s) => (
                 <SelectItem key={s} value={String(s)} className="text-xs">
                   {s}
                 </SelectItem>

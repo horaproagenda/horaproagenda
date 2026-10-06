@@ -172,7 +172,7 @@ export function ClientDocumentViewDialog({
       try {
         await downloadRichDocumentPdf({
           title: document.title || 'Documento',
-          bodyHtml: document.content,
+          bodyHtml: toPrintableDocumentHtml(document.content),
           headerLines: [
             `Cliente: ${client?.name || 'Não informado'}`,
             `Gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,

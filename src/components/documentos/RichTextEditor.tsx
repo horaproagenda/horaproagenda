@@ -715,6 +715,17 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             </SelectContent>
           </Select>
 
+          <Select value="" onValueChange={(v) => runCommand('formatBlock', `<${v}>`)}>
+            <SelectTrigger onPointerDown={saveSelection} className="h-7 w-[96px] text-xs" title="Estilo do parágrafo">
+              <SelectValue placeholder="Estilo" />
+            </SelectTrigger>
+            <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+              <SelectItem value="h1" className="text-xs">Título 1</SelectItem>
+              <SelectItem value="h2" className="text-xs">Título 2</SelectItem>
+              <SelectItem value="p" className="text-xs">Normal</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="mx-1 h-5 w-px bg-border" />
 
           <button type="button" title="Negrito" onMouseDown={(e) => e.preventDefault()} onClick={() => runCommand('bold')} className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-muted">

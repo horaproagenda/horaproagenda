@@ -1,3 +1,4 @@
+import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -970,9 +971,8 @@ const Agenda = () => {
         if (cardBrand) {
           const fees = cardBrand.fees || [];
           const installments = p.installments || 1;
-          const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
-          const matchingFee = sortedFees.find(f => f.installment_number <= installments);
-          const feePercentage = matchingFee?.fee_percentage || 0;
+          void fees;
+          const feePercentage = cardFeePercentage(cardBrand, installments);
           const feeAmount = (p.amount * feePercentage) / 100;
           
           // Only count fee if it's deducted from provider

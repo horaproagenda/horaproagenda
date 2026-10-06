@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { baseBrandName, planCardBrandVariants, variantName } from '@/lib/cardBrandVariants';
 
 const DEFAULT_PAYMENT_METHODS = [
   'Boleto Bancário', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro',
@@ -56,7 +57,7 @@ const DEFAULT_CARD_BRANDS: { name: string; type: 'credit' | 'debit' | 'both' }[]
 export function FormasPagamento() {
   const { paymentMethods, isLoading, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
   const { banks, activeBanks, createBank, updateBank, deleteBank } = useBanks();
-  const { cardBrands, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
+  const { cardBrands, isLoading: brandsLoading, createCardBrand, updateCardBrand, deleteCardBrand, saveBrandFees } = useCardBrands();
   const {
     installments: allBoletoInstallments, isLoading: loadingBoletos,
     markAsPaid, batchMarkAsPaid, updateInstallment, cancelInstallment, deleteInstallment, triggerSync,
@@ -106,21 +107,41 @@ export function FormasPagamento() {
     });
   }, [isLoading, defaultsInitialized]);
 
-  // Seed automático das bandeiras de cartão mais usadas (executa só se a lista estiver vazia).
+  // Seed + separação automática: toda bandeira existe como "X - Crédito" e "X - Débito".
   useEffect(() => {
-    if (isLoading || brandDefaultsInitialized) return;
+    if (brandsLoading || brandDefaultsInitialized) return;
     setBrandDefaultsInitialized(true);
-    const existing = new Set(cardBrands.map(b => normalize(b.name)));
-    const missing = DEFAULT_CARD_BRANDS.filter(b => !existing.has(normalize(b.name)));
-    missing.forEach(b => {
-      createCardBrand.mutate({
-        name: b.name,
-        type: b.type,
-        is_active: true,
-        fee_behavior: 'deduct_from_provider',
-      });
-    });
-  }, [isLoading, brandDefaultsInitialized]);
+    (async () => {
+      const existing = new Set(cardBrands.map(b => normalize(baseBrandName(b.name))));
+      const seeds = DEFAULT_CARD_BRANDS
+        .filter(b => !existing.has(normalize(b.name)))
+        .map(b => ({ id: `seed-${b.name}`, name: b.name, type: 'credit', is_active: true, fees: [] as any[] }));
+      const plan = planCardBrandVariants([...(cardBrands as any[]), ...seeds]);
+      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        for (const r of plan.renames) {
+          if (r.id.startsWith('seed-')) {
+            await supabase.from('card_brands').insert({
+              name: r.name, type: r.type, is_active: true, fee_behavior: 'deduct_from_provider', created_by: user?.id,
+            } as any);
+          } else {
+            await supabase.from('card_brands').update({ name: r.name, type: r.type, updated_by: user?.id } as any).eq('id', r.id);
+          }
+        }
+        for (const c of plan.creates) {
+          const { fees, ...row } = c;
+          const { data } = await supabase.from('card_brands')
+            .insert({ ...row, created_by: user?.id } as any).select('id').maybeSingle();
+          if (data?.id && fees.length) {
+            await supabase.from('card_brand_fees').insert(fees.map(f => ({ ...f, card_brand_id: data.id, created_by: user?.id ?? null })) as any);
+          }
+        }
+      } catch (e) {
+        console.info('[card-brand-variants] separação ignorada:', e);
+      }
+      if (plan.renames.length || plan.creates.length) queryClient.invalidateQueries({ queryKey: ['card_brands'] });
+    })();
+  }, [brandsLoading, brandDefaultsInitialized]);
 
 
   // PM handlers
@@ -143,17 +164,20 @@ export function FormasPagamento() {
   };
   const openBrandEdit = (brand: CardBrand) => {
     setEditingBrand(brand);
-    setBrandForm({ name: brand.name, type: brand.type as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any, split_fee: (brand as any).split_fee || false });
+    setBrandForm({ name: baseBrandName(brand.name), type: (brand.type === 'debit' ? 'debit' : 'credit') as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any, split_fee: (brand as any).split_fee || false });
     setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || [{ installment_number: 1, fee_percentage: 0 }]);
     setBrandDialogOpen(true);
   };
   const handleBrandSubmit = async () => {
+    const kind = brandForm.type === 'debit' ? 'debit' : 'credit';
+    const payload = { ...brandForm, type: kind as any, name: variantName(brandForm.name, kind) };
+    const fees = kind === 'debit' ? [{ installment_number: 1, fee_percentage: brandFees[0]?.fee_percentage || 0 }] : brandFees;
     if (editingBrand) {
-      await updateCardBrand.mutateAsync({ id: editingBrand.id, ...brandForm });
-      await saveBrandFees.mutateAsync({ brandId: editingBrand.id, fees: brandFees });
+      await updateCardBrand.mutateAsync({ id: editingBrand.id, ...payload });
+      await saveBrandFees.mutateAsync({ brandId: editingBrand.id, fees });
     } else {
-      const result = await createCardBrand.mutateAsync(brandForm);
-      if (result && brandFees.length > 0) await saveBrandFees.mutateAsync({ brandId: result.id, fees: brandFees });
+      const result = await createCardBrand.mutateAsync(payload);
+      if (result && fees.length > 0) await saveBrandFees.mutateAsync({ brandId: result.id, fees });
     }
     setBrandDialogOpen(false); resetBrandForm();
   };
@@ -860,7 +884,7 @@ export function FormasPagamento() {
                         <Label>Tipo</Label>
                         <Select value={brandForm.type} onValueChange={(v: any) => setBrandForm({ ...brandForm, type: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="credit">Crédito</SelectItem><SelectItem value="debit">Débito</SelectItem><SelectItem value="both">Ambos</SelectItem></SelectContent>
+                          <SelectContent><SelectItem value="credit">Crédito</SelectItem><SelectItem value="debit">Débito</SelectItem></SelectContent>
                         </Select>
                       </div>
                       <div>
@@ -879,16 +903,16 @@ export function FormasPagamento() {
                       </div>
                       <div>
                         <div className="flex justify-between items-center mb-2">
-                          <Label>Taxas por Parcela</Label>
-                          <Button variant="outline" size="sm" onClick={addFeeRow}><Plus className="h-3 w-3 mr-1" />Parcela</Button>
+                          <Label>{brandForm.type === 'debit' ? 'Taxa do débito' : 'Taxas por Parcela (crédito)'}</Label>
+                          {brandForm.type !== 'debit' && <Button variant="outline" size="sm" onClick={addFeeRow}><Plus className="h-3 w-3 mr-1" />Parcela</Button>}
                         </div>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {brandFees.map((fee, index) => (
+                          {(brandForm.type === 'debit' ? brandFees.slice(0, 1) : brandFees).map((fee, index) => (
                             <div key={index} className="flex items-center gap-2">
-                              <span className="w-20 text-sm">{fee.installment_number}x:</span>
+                              <span className="w-20 text-sm">{brandForm.type === 'debit' ? 'À vista:' : `${fee.installment_number}x:`}</span>
                               <Input type="number" step="0.01" min="0" value={fee.fee_percentage} onChange={e => updateFee(index, parseFloat(e.target.value) || 0)} className="flex-1" />
                               <span className="text-sm">%</span>
-                              {brandFees.length > 1 && <Button variant="ghost" size="icon" onClick={() => removeFeeRow(index)}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
+                              {brandForm.type !== 'debit' && brandFees.length > 1 && <Button variant="ghost" size="icon" onClick={() => removeFeeRow(index)}><Trash2 className="h-3 w-3 text-destructive" /></Button>}
                             </div>
                           ))}
                         </div>
@@ -942,7 +966,7 @@ export function FormasPagamento() {
                     priority: 'secondary',
                     className: 'text-xs hidden sm:table-cell',
                     headClassName: 'text-[11px] hidden sm:table-cell',
-                    cell: (brand) => `${brand.fees?.length || 0} configuradas`,
+                    cell: (brand) => brand.type === 'debit' ? `${Number(brand.fees?.[0]?.fee_percentage || 0)}% à vista` : `${brand.fees?.length || 0} configuradas`,
                   },
                   {
                     key: 'status',

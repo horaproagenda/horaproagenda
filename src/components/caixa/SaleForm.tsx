@@ -1,3 +1,4 @@
+import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { resolveFinancialDestination } from '@/lib/financialDestination';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { deductStockForSale } from '@/lib/saleStockDeduction';
@@ -200,12 +201,8 @@ export function SaleForm() {
     const fees = selectedCardBrand.fees || [];
     let feePercentage = 0;
 
-    const sortedFees = [...fees].sort((a, b) => b.installment_number - a.installment_number);
-    const matchingFee = sortedFees.find(f => f.installment_number <= installments);
-    
-    if (matchingFee) {
-      feePercentage = matchingFee.fee_percentage;
-    }
+    void fees;
+    feePercentage = cardFeePercentage(selectedCardBrand, installments);
 
     const feeAmount = (baseAmount * feePercentage) / 100;
     

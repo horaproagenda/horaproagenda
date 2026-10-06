@@ -196,23 +196,36 @@ export function MobileAgendaHeader({
       </div>
 
       {/* Row 2: Date nav */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={goToPrev} className="h-7 w-7">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        <button
-          onClick={goToToday}
-          className={cn(
-            "text-[12px] font-semibold px-3 py-0.5 rounded-md transition-colors capitalize",
-            isToday ? "bg-primary/10 text-primary" : "text-foreground"
-          )}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" onClick={goToPrev} className="h-7 w-7 flex-none">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <button
+            onClick={goToToday}
+            className={cn(
+              "text-[12px] font-semibold px-3 py-0.5 rounded-md transition-colors capitalize truncate",
+              isToday ? "bg-primary/10 text-primary" : "text-foreground"
+            )}
+          >
+            {getDateLabel()}
+          </button>
+
+          <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7 flex-none">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToday ?? goToToday}
+          disabled={isToday}
+          aria-label="Ir para hoje"
+          className="h-7 px-2 text-[11px] font-medium flex-none"
         >
-          {getDateLabel()}
-        </button>
-        
-        <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7">
-          <ChevronRight className="h-4 w-4" />
+          Hoje
         </Button>
       </div>
       

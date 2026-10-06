@@ -141,6 +141,49 @@ export const applyInlineStyle = (
 const applyFontSize = (px: number, editor: HTMLDivElement) =>
   applyInlineStyle(editor, 'fontSize', `${px}px`);
 
+const BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'TABLE', 'BLOCKQUOTE', 'PRE', 'HR']);
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Garante que cada linha do documento seja um parágrafo próprio.
+ * Sem isso, textos com quebras "\n" viram um bloco único e um título ou
+ * estilo aplicado no topo se espalha para o documento inteiro.
+ */
+export const normalizeEditorHtml = (html: string): string => {
+  if (!html) return '';
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  const out: string[] = [];
+  let inline = '';
+  const flush = () => {
+    const lines = inline.split(/\n|<br\s*\/?>/i);
+    if (inline.length > 0) {
+      lines.forEach((l) => out.push(`<p>${l.trim() ? l : '<br>'}</p>`));
+    }
+    inline = '';
+  };
+  container.childNodes.forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((node as HTMLElement).tagName)) {
+      flush();
+      out.push((node as HTMLElement).outerHTML);
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      inline += escapeHtml(node.textContent || '');
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      inline += (node as HTMLElement).outerHTML;
+    }
+  });
+  flush();
+  // Remove parágrafos vazios só nas pontas (indentação do HTML de origem).
+  while (out.length && out[0] === '<p><br></p>') out.shift();
+  while (out.length && out[out.length - 1] === '<p><br></p>') out.pop();
+  return out.join('');
+};
+
+const matchFont = (family: string) => {
+  const first = family.split(',')[0].replace(/["']/g, '').trim().toLowerCase();
+  return FONTS.find((f) => f.label.toLowerCase() === first)?.value;
+};
+
 // ============ Table / formula helpers ============
 const colIndexToLetter = (i: number): string => {
   let s = '';
@@ -301,12 +344,27 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       if (!el) return;
       // Só regrava quando o valor veio de fora; assim a seleção ativa é preservada.
       if (value !== lastEmittedRef.current && el.innerHTML !== (value || '')) {
-        el.innerHTML = value || '';
+        el.innerHTML = normalizeEditorHtml(value || '');
       }
       lastEmittedRef.current = value || '';
       setIsEmpty(!el.textContent?.trim());
       recalculateTables(el);
     }, [value]);
+
+    // A barra mostra a fonte e o tamanho reais do trecho onde está o cursor.
+    const syncToolbar = useCallback(() => {
+      const el = editorRef.current;
+      const sel = window.getSelection();
+      if (!el || !sel || sel.rangeCount === 0) return;
+      const node = sel.getRangeAt(0).startContainer;
+      const target = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+      if (!target || !el.contains(target)) return;
+      const cs = window.getComputedStyle(target);
+      const px = Math.round(parseFloat(cs.fontSize));
+      if (Number.isFinite(px)) setSize(px);
+      const f = matchFont(cs.fontFamily);
+      if (f) setFont(f);
+    }, []);
 
     const saveSelection = useCallback(() => {
       const sel = window.getSelection();
@@ -314,8 +372,9 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       const range = sel.getRangeAt(0);
       if (editorRef.current?.contains(range.commonAncestorContainer)) {
         savedRangeRef.current = range.cloneRange();
+        syncToolbar();
       }
-    }, []);
+    }, [syncToolbar]);
 
     const restoreSelection = useCallback(() => {
       const el = editorRef.current;
@@ -707,7 +766,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
               <SelectValue />
             </SelectTrigger>
             <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
-              {SIZES.map((s) => (
+              {(SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)).map((s) => (
                 <SelectItem key={s} value={String(s)} className="text-xs">
                   {s}
                 </SelectItem>

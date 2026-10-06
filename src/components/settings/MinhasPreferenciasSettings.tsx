@@ -10,6 +10,21 @@ import { useProfessionalPreferences } from '@/hooks/useProfessionalPreferences';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 
 /**
+ * Campo de horário pré-preenchido com o horário geral não deve virar horário
+ * próprio ao salvar: se não havia horário próprio e o valor é igual ao geral,
+ * grava null para continuar herdando da conta.
+ */
+export function resolveHourOverride(
+  value: string,
+  override: string | null | undefined,
+  globalValue: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  if (!override && value === (globalValue ?? '').substring(0, 5)) return null;
+  return `${value}:00`;
+}
+
+/**
  * Per-user override of business settings. Each professional can customize
  * their own working hours, agenda preferences and automation toggles.
  * Fields left untouched (null) inherit from the account's global settings.
@@ -64,8 +79,8 @@ export function MinhasPreferenciasSettings() {
   const saveHours = () => {
     update.mutate(
       {
-        opening_time: opening ? `${opening}:00` : null,
-        closing_time: closing ? `${closing}:00` : null,
+        opening_time: resolveHourOverride(opening, prefs?.opening_time, global?.opening_time),
+        closing_time: resolveHourOverride(closing, prefs?.closing_time, global?.closing_time),
         slot_interval: slot === '' ? null : Number(slot),
         work_saturdays: workSat,
         work_sundays: workSun,

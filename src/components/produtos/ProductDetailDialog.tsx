@@ -1650,27 +1650,37 @@ export function ProductDetailDialog({
                               />
                             </TableCell>
                             <TableCell>
-                              <Select
-                                value={purchaseEditForm.payment_method_id || 'none'}
-                                onValueChange={(v) => {
-                                  const method = activePaymentMethods.find(m => m.id === v);
-                                  setPurchaseEditForm({
-                                    ...purchaseEditForm,
-                                    payment_method_id: v === 'none' ? null : v,
-                                    payment_method: v === 'none' ? null : (method?.name || null),
-                                  });
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-xs w-28">
-                                  <SelectValue placeholder="Forma" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Nenhuma</SelectItem>
-                                  {activePaymentMethods.map(m => (
-                                    <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <div className="flex flex-col gap-1">
+                                <Select
+                                  value={purchaseEditForm.payment_method_id || 'none'}
+                                  disabled={purchaseEditForm.skip_cash_transaction}
+                                  onValueChange={(v) => {
+                                    const method = activePaymentMethods.find(m => m.id === v);
+                                    setPurchaseEditForm({
+                                      ...purchaseEditForm,
+                                      payment_method_id: v === 'none' ? null : v,
+                                      payment_method: v === 'none' ? null : (method?.name || null),
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs w-28">
+                                    <SelectValue placeholder="Forma" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Nenhuma</SelectItem>
+                                    {activePaymentMethods.map(m => (
+                                      <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <Switch
+                                    checked={purchaseEditForm.skip_cash_transaction}
+                                    onCheckedChange={(v) => setPurchaseEditForm({ ...purchaseEditForm, skip_cash_transaction: v })}
+                                  />
+                                  Já pago
+                                </label>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">

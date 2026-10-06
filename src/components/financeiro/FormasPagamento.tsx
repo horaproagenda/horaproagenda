@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
+import type { BoletoInstallment } from '@/hooks/useBoletoInstallments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,14 @@ const DEFAULT_CARD_BRANDS: { name: string; type: 'credit' | 'debit' | 'both' }[]
   { name: 'Cabal', type: 'both' },
 ];
 
+type BoletoRow = BoletoInstallment & {
+  sale?: {
+    id: string | null;
+    package_id: string | null;
+    client?: { id: string | null; name: string | null; phone: string | null } | null;
+  } | null;
+};
+
 export function FormasPagamento() {
   const { paymentMethods, isLoading, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } = usePaymentMethods();
   const { banks, activeBanks, createBank, updateBank, deleteBank } = useBanks();
@@ -69,7 +78,7 @@ export function FormasPagamento() {
   const [defaultsInitialized, setDefaultsInitialized] = useState(false);
   const [brandDefaultsInitialized, setBrandDefaultsInitialized] = useState(false);
   const [pmDialogOpen, setPmDialogOpen] = useState(false);
-  const [editingPm, setEditingPm] = useState<any>(null);
+  const [editingPm, setEditingPm] = useState<{ id: string } | null>(null);
   const [pmForm, setPmForm] = useState({ name: '', description: '', is_active: true, max_installments: 1 });
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<CardBrand | null>(null);
@@ -117,24 +126,28 @@ export function FormasPagamento() {
       const existing = new Set(cardBrands.map(b => normalize(baseBrandName(b.name))));
       const seeds = DEFAULT_CARD_BRANDS
         .filter(b => !existing.has(normalize(b.name)))
-        .map(b => ({ id: `seed-${b.name}`, name: b.name, type: 'credit', is_active: true, fees: [] as any[] }));
-      const plan = planCardBrandVariants([...(cardBrands as any[]), ...seeds]);
+        .map(b => ({ id: `seed-${b.name}`, name: b.name, type: 'credit', is_active: true, fees: [] as never[] }));
+      const plan = planCardBrandVariants([...cardBrands, ...seeds]);
       const { data: { user } } = await supabase.auth.getUser();
       try {
         for (const r of plan.renames) {
           if (r.id.startsWith('seed-')) {
             await supabase.from('card_brands').insert({
               name: r.name, type: r.type, is_active: true, fee_behavior: 'deduct_from_provider', created_by: user?.id,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
           } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await supabase.from('card_brands').update({ name: r.name, type: r.type, updated_by: user?.id } as any).eq('id', r.id);
           }
         }
         for (const c of plan.creates) {
           const { fees, ...row } = c;
           const { data } = await supabase.from('card_brands')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .insert({ ...row, created_by: user?.id } as any).select('id').maybeSingle();
           if (data?.id && fees.length) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await supabase.from('card_brand_fees').insert(fees.map(f => ({ ...f, card_brand_id: data.id, created_by: user?.id ?? null })) as any);
           }
         }
@@ -148,7 +161,7 @@ export function FormasPagamento() {
 
   // PM handlers
   const resetPmForm = () => { setPmForm({ name: '', description: '', is_active: true, max_installments: 1 }); setEditingPm(null); };
-  const openPmEdit = (pm: any) => {
+  const openPmEdit = (pm: { id: string; name: string; description?: string | null; is_active: boolean; max_installments?: number | null }) => {
     setEditingPm(pm);
     setPmForm({ name: pm.name, description: pm.description || '', is_active: pm.is_active, max_installments: pm.max_installments || 1 });
     setPmDialogOpen(true);
@@ -166,13 +179,13 @@ export function FormasPagamento() {
   };
   const openBrandEdit = (brand: CardBrand) => {
     setEditingBrand(brand);
-    setBrandForm({ name: baseBrandName(brand.name), type: (brand.type === 'debit' ? 'debit' : 'credit') as any, is_active: brand.is_active, fee_behavior: brand.fee_behavior as any, split_fee: (brand as any).split_fee || false });
+    setBrandForm({ name: baseBrandName(brand.name), type: (brand.type === 'debit' ? 'debit' : 'credit'), is_active: brand.is_active, fee_behavior: brand.fee_behavior, split_fee: (brand as unknown as { split_fee?: boolean }).split_fee || false });
     setBrandFees(brand.fees?.map(f => ({ installment_number: f.installment_number, fee_percentage: f.fee_percentage })) || [{ installment_number: 1, fee_percentage: 0 }]);
     setBrandDialogOpen(true);
   };
   const handleBrandSubmit = async () => {
-    const kind = brandForm.type === 'debit' ? 'debit' : 'credit';
-    const payload = { ...brandForm, type: kind as any, name: variantName(brandForm.name, kind) };
+    const kind = brandForm.type === 'debit' ? 'debit' as const : 'credit' as const;
+    const payload = { ...brandForm, type: kind, name: variantName(brandForm.name, kind) };
     const fees = kind === 'debit' ? [{ installment_number: 1, fee_percentage: brandFees[0]?.fee_percentage || 0 }] : brandFees;
     if (editingBrand) {
       await updateCardBrand.mutateAsync({ id: editingBrand.id, ...payload });
@@ -188,7 +201,7 @@ export function FormasPagamento() {
   const removeFeeRow = (i: number) => { if (brandFees.length > 1) setBrandFees(brandFees.filter((_, idx) => idx !== i)); };
 
   // Boleto data
-  const filteredBoletos = allBoletoInstallments.filter((b: any) => {
+  const filteredBoletos = allBoletoInstallments.filter((b) => {
     if (boletoFilter === 'all') return true;
     if (boletoFilter === 'pending') return b.status === 'pending';
     if (boletoFilter === 'overdue') {
@@ -199,7 +212,7 @@ export function FormasPagamento() {
   });
 
   const boletoStats = useMemo(() => {
-    const all = allBoletoInstallments as any[];
+    const all = allBoletoInstallments as BoletoRow[];
     const pending = all.filter(b => b.status === 'pending' || b.status === 'overdue');
     const overdue = all.filter(b => b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date()));
     const paid = all.filter(b => b.status === 'paid');
@@ -214,11 +227,11 @@ export function FormasPagamento() {
   }, [allBoletoInstallments]);
 
   const selectedTotal = selectedBoletoIds.reduce((s, id) => {
-    const b = allBoletoInstallments.find((x: any) => x.id === id);
-    return s + (b ? Number((b as any).amount) : 0);
+    const b = allBoletoInstallments.find((x) => x.id === id);
+    return s + (b ? Number(b.amount) : 0);
   }, 0);
 
-  const pendingFilteredIds = filteredBoletos.filter((b: any) => b.status === 'pending' || b.status === 'overdue').map((b: any) => b.id);
+  const pendingFilteredIds = filteredBoletos.filter((b) => b.status === 'pending' || b.status === 'overdue').map((b) => b.id);
 
   const toggleBoletoSelect = (id: string) => {
     setSelectedBoletoIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -246,7 +259,7 @@ export function FormasPagamento() {
     setBulkDeleting(true);
     try {
       // Split package-linked vs standalone boletos — package sales MUST be cancelled via CancelPackageDialog
-      const all = allBoletoInstallments as any[];
+      const all = allBoletoInstallments as BoletoRow[];
       const packageInstallments = all.filter(b => b.sale?.package_id);
       const standaloneInstallments = all.filter(b => !b.sale?.package_id);
       const standaloneIds = standaloneInstallments.map(b => b.id);
@@ -264,6 +277,7 @@ export function FormasPagamento() {
 
       // 2) Apaga as vendas standalone (single_sales) e registros vinculados
       if (saleIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sb: any = supabase;
         await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
         await sb.from('client_services').delete().in('sale_id', saleIds);
@@ -280,19 +294,19 @@ export function FormasPagamento() {
       setBulkDeleteOpen(false);
       setBulkDeleteConfirm('');
       setSelectedBoletoIds([]);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Erro ao excluir todos os boletos:', err);
-      toast.error('Erro ao excluir boletos: ' + (err.message || 'desconhecido'));
+      toast.error('Erro ao excluir boletos: ' + (err instanceof Error ? err.message : 'desconhecido'));
     } finally {
       setBulkDeleting(false);
     }
   };
 
-  const handleBoletoPayment = async (boleto: any) => {
+  const handleBoletoPayment = async (boleto: { id: string }) => {
     await markAsPaid.mutateAsync({ id: boleto.id });
   };
 
-  const getBoletoBadge = (boleto: any) => {
+  const getBoletoBadge = (boleto: { status: string; due_date: string }) => {
     if (boleto.status === 'paid') return <Badge className="bg-primary/10 text-primary text-[10px]">Pago</Badge>;
     if (boleto.status === 'cancelled') return <Badge variant="secondary" className="text-[10px]">Cancelado</Badge>;
     if (boleto.status === 'overdue' || (boleto.status === 'pending' && new Date(boleto.due_date + 'T12:00:00') < new Date())) {
@@ -308,9 +322,9 @@ export function FormasPagamento() {
       clientId: string | null;
       clientName: string;
       clientPhone: string | null;
-      installments: any[];
+      installments: BoletoRow[];
     }>();
-    for (const b of allBoletoInstallments as any[]) {
+    for (const b of allBoletoInstallments as BoletoRow[]) {
       const clientId = b.sale?.client?.id || null;
       const clientName = b.sale?.client?.name || 'Sem cliente';
       const key = clientId || `name:${clientName}`;
@@ -333,7 +347,7 @@ export function FormasPagamento() {
     return clientGroups
       .map(g => ({
         ...g,
-        filteredInstallments: g.installments.filter((b: any) => {
+        filteredInstallments: g.installments.filter((b) => {
           if (boletoFilter === 'all') return true;
           if (boletoFilter === 'pending') return b.status === 'pending';
           if (boletoFilter === 'overdue') return b.status === 'overdue' || (b.status === 'pending' && new Date(b.due_date + 'T12:00:00') < new Date());
@@ -347,7 +361,7 @@ export function FormasPagamento() {
   // Detail modal data — all installments for the selected client
   const detailGroup = detailClientKey ? clientGroups.find(g => g.key === detailClientKey) : null;
   const detailInstallments = detailGroup?.installments || [];
-  const detailSale = detailInstallments.length > 0 ? (detailInstallments[0] as any).sale : null;
+  const detailSale = detailInstallments[0]?.sale ?? null;
 
   // Deep-link: when redirected from the appointment detail dialog, auto-open the
   // boleto modal for the requested client and switch the filter to "pending".
@@ -356,13 +370,13 @@ export function FormasPagamento() {
     let pendingClientId: string | null = null;
     try {
       pendingClientId = sessionStorage.getItem('openBoletoClientId');
-    } catch {}
+    } catch { /* ignora */ }
     if (!pendingClientId) return;
     const match = clientGroups.find(g => g.clientId === pendingClientId);
     if (match) {
       setBoletoFilter('pending');
       setDetailClientKey(match.key);
-      try { sessionStorage.removeItem('openBoletoClientId'); } catch {}
+      try { sessionStorage.removeItem('openBoletoClientId'); } catch { /* ignora */ }
     }
   }, [clientGroups, loadingBoletos]);
 
@@ -540,7 +554,7 @@ export function FormasPagamento() {
                   size="sm"
                   className="gap-1 h-7 px-2 text-[11px] border-destructive/40 text-destructive hover:bg-destructive/10"
                   onClick={() => setBulkDeleteOpen(true)}
-                  disabled={(allBoletoInstallments as any[]).length === 0}
+                  disabled={allBoletoInstallments.length === 0}
                   title="Excluir TODOS os boletos do sistema permanentemente"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -891,14 +905,14 @@ export function FormasPagamento() {
                       <div><Label>Nome da Bandeira</Label><Input value={brandForm.name} onChange={e => setBrandForm({ ...brandForm, name: e.target.value })} placeholder="Ex: Visa, Mastercard, Elo..." /></div>
                       <div>
                         <Label>Tipo</Label>
-                        <Select value={brandForm.type} onValueChange={(v: any) => setBrandForm({ ...brandForm, type: v })}>
+                        <Select value={brandForm.type} onValueChange={(v: 'credit' | 'debit') => setBrandForm({ ...brandForm, type: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="credit">Crédito</SelectItem><SelectItem value="debit">Débito</SelectItem></SelectContent>
                         </Select>
                       </div>
                       <div>
                         <Label>Quem paga a taxa?</Label>
-                        <Select value={brandForm.fee_behavior} onValueChange={(v: any) => setBrandForm({ ...brandForm, fee_behavior: v })}>
+                        <Select value={brandForm.fee_behavior} onValueChange={(v: 'add_to_client' | 'deduct_from_provider') => setBrandForm({ ...brandForm, fee_behavior: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent><SelectItem value="deduct_from_provider">Dono da Agenda</SelectItem><SelectItem value="add_to_client">Cliente</SelectItem></SelectContent>
                         </Select>
@@ -1057,7 +1071,7 @@ export function FormasPagamento() {
               <div className="space-y-3 text-sm">
                 <p>Esta ação apaga <strong>permanentemente</strong>:</p>
                 <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
-                  <li>{(allBoletoInstallments as any[]).length} parcela(s) de boleto</li>
+                  <li>{allBoletoInstallments.length} parcela(s) de boleto</li>
                   <li>Todas as vendas (single_sales) vinculadas aos boletos</li>
                   <li>Lançamentos de caixa e serviços vendidos correspondentes</li>
                 </ul>

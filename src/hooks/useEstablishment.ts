@@ -8,7 +8,7 @@ import { getEstablishmentType, establishmentNoun } from '@/lib/establishmentType
  */
 export function useEstablishment() {
   const { settings } = useBusinessSettings();
-  const s: any = settings || {};
+  const s = (settings || {}) as { business_type?: string | null; business_type_label?: string | null };
   return establishmentLabels(s.business_type, s.business_type_label);
 }
 

@@ -276,8 +276,8 @@ const Clientes = () => {
       client.email || '',
       client.cpf || '',
       client.birthdate ? format(new Date(`${client.birthdate}T12:00:00`), 'dd/MM/yyyy') : '',
-      (client as any).last_visit_at
-        ? format(new Date((client as any).last_visit_at), 'dd/MM/yyyy')
+      (client as unknown as { last_visit_at?: string | null }).last_visit_at
+        ? format(new Date((client as unknown as { last_visit_at?: string | null }).last_visit_at as string), 'dd/MM/yyyy')
         : '-',
       client.is_active ? 'Ativo' : 'Inativo',
       client.created_at ? format(new Date(client.created_at), 'dd/MM/yyyy') : '',

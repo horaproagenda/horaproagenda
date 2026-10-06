@@ -193,7 +193,7 @@ export default function ClienteDetalhes() {
                   name: client.name,
                   phone: client.phone,
                   cpf: client.cpf,
-                } as any,
+                } as unknown as Appointment['client'],
               } as Appointment)
             : null
         }

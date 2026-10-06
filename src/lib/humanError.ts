@@ -51,7 +51,7 @@ function entityFromText(text: string): string | null {
 export function stripTechnicalNoise(message: string): string {
   return message
     // "PGRST116: ...", "23505: ...", "Error 500: ..."
-    .replace(/^\s*(erro|error)?\s*[:\-]?\s*(pgrst\d+|[0-9A-Z]{5}|\d{3})\s*[:\-]\s*/i, '')
+    .replace(/^\s*(erro|error)?\s*[:-]?\s*(pgrst\d+|[0-9A-Z]{5}|\d{3})\s*[:-]\s*/i, '')
     .replace(/\bcódigo\s+(de\s+)?erro[^.,;]*/gi, '')
     .replace(/\((sql)?state[^)]*\)/gi, '')
     .replace(/\s{2,}/g, ' ')

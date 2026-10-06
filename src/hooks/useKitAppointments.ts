@@ -38,6 +38,7 @@ export function useKitAppointments() {
 
   const createKit = useMutation({
     mutationFn: async ({ clientId, items, groupId }: { clientId: string; items: KitItemInput[]; groupId?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc('create_composite_kit_appointments', {
         p_client_id: clientId,
         p_items: items,
@@ -47,12 +48,13 @@ export function useKitAppointments() {
         // A resposta pode falhar mesmo com o kit salvo (rede/tempo esgotado).
         // Confere no banco pelo identificador do kit antes de acusar erro.
         if (groupId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: existing } = await (supabase as any)
             .from('appointments')
             .select('id')
             .eq('composite_group_id', groupId);
           if (Array.isArray(existing) && existing.length >= items.length) {
-            return { composite_group_id: groupId, appointment_ids: existing.map((r: any) => r.id), count: existing.length, already_created: true };
+            return { composite_group_id: groupId, appointment_ids: existing.map((r: { id: string }) => r.id), count: existing.length, already_created: true };
           }
         }
         throw error;
@@ -63,8 +65,8 @@ export function useKitAppointments() {
       invalidate();
       toast.success(`Kit agendado: ${data?.count ?? 0} atendimento(s) criados.`);
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Não foi possível agendar o kit agora.');
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Não foi possível agendar o kit agora.');
     },
   });
 
@@ -75,6 +77,7 @@ export function useKitAppointments() {
       newStart,
       newEnd,
     }: { appointmentId: string; scope: KitScope; newStart: Date; newEnd?: Date }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc('reschedule_kit_appointments', {
         p_appointment_id: appointmentId,
         p_scope: scope,
@@ -88,13 +91,14 @@ export function useKitAppointments() {
       invalidate();
       toast.success(`Kit atualizado: ${data?.count ?? 1} atendimento(s) reagendados.`);
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Não foi possível alterar o kit agora.');
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Não foi possível alterar o kit agora.');
     },
   });
 
   const deleteKit = useMutation({
     mutationFn: async ({ appointmentId, scope, reason }: { appointmentId: string; scope: KitScope; reason?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc('delete_kit_appointments', {
         p_appointment_id: appointmentId,
         p_scope: scope,
@@ -111,8 +115,8 @@ export function useKitAppointments() {
       if (data?.kept) parts.push(`${data.kept} mantido(s) no histórico`);
       toast.success(parts.length ? `Kit: ${parts.join(', ')}.` : 'Kit atualizado.');
     },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Não foi possível remover o kit agora.');
+    onError: (error: { message?: string }) => {
+      toast.error(error.message || 'Não foi possível remover o kit agora.');
     },
   });
 

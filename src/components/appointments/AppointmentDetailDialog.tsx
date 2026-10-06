@@ -78,6 +78,7 @@ import { Appointment, Professional, Room, AppointmentStatus } from '@/types';
 import { cn, formatCurrency, normalizeBrazilianCurrency, parseBrazilianCurrency } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } from '@/lib/duration';
+import { calculateReceiptSummaryLayout } from '@/lib/receiptPdfLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useRecurringAppointments } from '@/hooks/useRecurringAppointments';
@@ -1351,18 +1352,26 @@ export function AppointmentDetailDialog({
     });
 
     const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 120;
+    const summaryLayout = calculateReceiptSummaryLayout({
+      tableFinalY: finalY,
+      hasDiscount: persistedDiscount > 0,
+      pageHeight: doc.internal.pageSize.getHeight(),
+    });
+    if (summaryLayout.startsOnNewPage) doc.addPage();
+
     doc.setFont('helvetica', 'normal');
-    doc.text(normalizePdfText(`Valor original: ${formatCurrency(totalPrice)}`), 14, finalY + 12);
-    doc.text(normalizePdfText(`Serviços/produtos adicionados: ${formatCurrency(persistedAdditionalItemsTotal)}`), 14, finalY + 20);
-    if (persistedDiscount > 0) {
-      doc.text(normalizePdfText(`Desconto aplicado: -${formatCurrency(persistedDiscount)}`), 14, finalY + 28);
+    doc.setFontSize(11);
+    doc.text(normalizePdfText(`Valor original: ${formatCurrency(totalPrice)}`), 14, summaryLayout.originalValueY);
+    doc.text(normalizePdfText(`Serviços/produtos adicionados: ${formatCurrency(persistedAdditionalItemsTotal)}`), 14, summaryLayout.additionalItemsY);
+    if (summaryLayout.discountY !== undefined) {
+      doc.text(normalizePdfText(`Desconto aplicado: -${formatCurrency(persistedDiscount)}`), 14, summaryLayout.discountY);
     }
-    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, finalY + (persistedDiscount > 0 ? 36 : 28));
+    doc.text(normalizePdfText(`Forma(s) de pagamento: ${paymentMethods}`), 14, summaryLayout.paymentMethodsY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text(normalizePdfText(`Total final: ${formatCurrency(Math.max(0, totalPrice + persistedAdditionalItemsTotal - persistedDiscount))}`), 14, finalY + (persistedDiscount > 0 ? 48 : 40));
+    doc.text(normalizePdfText(`Total final: ${formatCurrency(Math.max(0, totalPrice + persistedAdditionalItemsTotal - persistedDiscount))}`), 14, summaryLayout.totalY);
     doc.setFontSize(11);
-    doc.text(normalizePdfText(`Valor pago: ${formatCurrency(amountPaid)}`), 14, finalY + 49);
+    doc.text(normalizePdfText(`Valor pago: ${formatCurrency(amountPaid)}`), 14, summaryLayout.paidY);
     return doc;
   };
 

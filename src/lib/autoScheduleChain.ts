@@ -118,3 +118,8 @@ export function enforceChainMinimums(dates: Date[], options: ChainOptions): Date
 
   return next;
 }
+
+/** Dias a avançar (0-6) para cair no dia da semana desejado. */
+export function alignToWeekdayDiff(currentDay: number, targetDay: number): number {
+  return ((targetDay - currentDay) % 7 + 7) % 7;
+}

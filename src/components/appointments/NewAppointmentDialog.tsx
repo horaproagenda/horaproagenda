@@ -45,6 +45,7 @@ import { formatDurationClock, addMinutesToClock, getSchedulingDurationMinutes } 
 import { resolveSessionServiceLabel } from '@/lib/packageStepLabel';
 import { findNextAvailablePackageSlot } from '@/lib/packageScheduling';
 import {
+  alignToWeekdayDiff,
   calendarDayDiff,
   enforceChainMinimums,
   findChainViolations,
@@ -757,6 +758,17 @@ export function NewAppointmentDialog({
     createDateTimeInTimeZone(day, time, settings?.timezone);
   const clinicTimeOf = (value: Date): string => formatTimeInTimeZone(value, settings?.timezone);
 
+  // Ao escolher um dia da semana fixo, a 1ª sessão também passa para esse dia
+  // (antes só as sessões seguintes mudavam, misturando dias na série).
+  const activePreferredWeekday = serviceType === 'service' && repeatServiceEnabled
+    ? servicePreferredDayOfWeek
+    : autoScheduleEnabled ? preferredDayOfWeek : null;
+  useEffect(() => {
+    if (activePreferredWeekday === null || !date) return;
+    const diff = alignToWeekdayDiff(date.getDay(), activePreferredWeekday);
+    if (diff !== 0) setDate(addDays(date, diff));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePreferredWeekday]);
 
   const calculatePreviewDates = useMemo(() => {
     if (!appointmentTimes || !autoScheduleEnabled) return [];
@@ -1064,17 +1076,22 @@ export function NewAppointmentDialog({
           const start = createDateTimeInTimeZone(range.start, timeSlots[i], settings?.timezone);
           entries.push({ group, index, start, end: new Date(start.getTime() + range.duration * 60_000), duration: range.duration });
         }
-        let tryDate = addDays(range.start, 1);
-        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        // Com dia da semana fixo, a alternativa mantém o MESMO dia da semana e
+        // o MESMO horário (próximas semanas); nunca cai em outro dia aleatório.
+        const fixedWeekday = group === 'preview' ? preferredDayOfWeek : servicePreferredDayOfWeek;
+        const step = fixedWeekday !== null ? 7 : 1;
+        const attempts = fixedWeekday !== null ? 4 : 7;
+        let tryDate = addDays(range.start, step);
+        for (let n = 0; n < attempts; n++) {
           entries.push({ group, index, start: tryDate, end: new Date(tryDate.getTime() + range.duration * 60_000), duration: range.duration });
-          tryDate = addDays(tryDate, 1);
+          tryDate = addDays(tryDate, step);
         }
       });
     };
     addCandidates('preview', previewRanges, previewBaseConflicts);
     addCandidates('service', serviceRanges, serviceBaseConflicts);
     return entries;
-  }, [previewRanges, previewBaseConflicts, serviceRanges, serviceBaseConflicts, timeSlots, settings?.timezone]);
+  }, [previewRanges, previewBaseConflicts, serviceRanges, serviceBaseConflicts, timeSlots, settings?.timezone, preferredDayOfWeek, servicePreferredDayOfWeek]);
 
   const candidateSlots = useMemo<AvailabilitySlot[]>(
     () => candidateEntries.map((entry) => ({ ...availabilityScope, start: entry.start, end: entry.end })),

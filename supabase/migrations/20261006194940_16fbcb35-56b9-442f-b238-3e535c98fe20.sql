@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public._can_manage_product_purchase(public.products) FROM authenticated;

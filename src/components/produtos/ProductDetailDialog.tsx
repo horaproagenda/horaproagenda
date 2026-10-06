@@ -298,6 +298,7 @@ export function ProductDetailDialog({
     notes: '',
     payment_method_id: '' as string | null,
     payment_method: '' as string | null,
+    skip_cash_transaction: false,
   });
 
   // Filter purchases for this product
@@ -1717,7 +1718,8 @@ export function ProductDetailDialog({
                                           finished_at: purchaseEditForm.finished_at || null,
                                           payment_method_id: purchaseEditForm.payment_method_id || null,
                                           payment_method: purchaseEditForm.payment_method || null,
-                                        });
+                                          skip_cash_transaction: purchaseEditForm.skip_cash_transaction,
+                                        } as any);
                                       } catch {
                                         // A mensagem com o motivo já foi exibida; mantém a edição aberta.
                                         return;
@@ -1823,6 +1825,8 @@ export function ProductDetailDialog({
                                         notes: purchase.notes || '',
                                         payment_method_id: purchase.payment_method_id || null,
                                         payment_method: purchase.payment_method || null,
+                                        skip_cash_transaction: Boolean((purchase as any).skip_cash_transaction)
+                                          || (!purchase.payment_method_id && !purchase.payment_method),
                                       });
                                     }}
                                   >

@@ -76,9 +76,10 @@ const exec = (command: string, value?: string) => {
 };
 
 /**
- * Applies an inline style only to the selected text (never to the whole
- * document). Uses a temporary <font size=7> marker and swaps it for a
- * <span style="..."> so the formatting is saved inside the HTML.
+ * Applies an inline style ONLY to the selected text, using the DOM Range
+ * directly (no execCommand). Each selected text fragment is wrapped in its own
+ * <span style="..."> so titles, paragraphs before/after and the rest of the
+ * document are never touched.
  */
 export const applyInlineStyle = (
   editor: HTMLDivElement,
@@ -87,20 +88,53 @@ export const applyInlineStyle = (
 ) => {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
-  if (!editor.contains(sel.getRangeAt(0).commonAncestorContainer)) return false;
-  try { document.execCommand('styleWithCSS', false, 'false'); } catch { /* noop */ }
-  exec('fontSize', '7');
-  editor.querySelectorAll('font[size="7"]').forEach((node) => {
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+
+  const root = range.commonAncestorContainer;
+  const textNodes: Text[] = [];
+  if (root.nodeType === Node.TEXT_NODE) {
+    textNodes.push(root as Text);
+  } else {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let n = walker.nextNode();
+    while (n) {
+      if (range.intersectsNode(n) && (n.textContent || '').length > 0) textNodes.push(n as Text);
+      n = walker.nextNode();
+    }
+  }
+  if (textNodes.length === 0) return false;
+
+  const spans: HTMLSpanElement[] = [];
+  textNodes.forEach((node) => {
+    let start = 0;
+    let end = node.length;
+    if (node === range.startContainer) start = range.startOffset;
+    if (node === range.endContainer) end = range.endOffset;
+    if (start >= end) return;
+    let target = node;
+    if (start > 0) target = target.splitText(start);
+    if (end - start < target.length) target.splitText(end - start);
+    const parent = target.parentElement;
+    // Reuse a span that wraps exactly this text node.
+    if (parent && parent.tagName === 'SPAN' && parent.childNodes.length === 1 && parent !== editor) {
+      parent.style[prop] = value;
+      spans.push(parent as HTMLSpanElement);
+      return;
+    }
     const span = document.createElement('span');
     span.style[prop] = value;
-    // Drop nested values of the same property so the new one wins.
-    (node as HTMLElement).querySelectorAll<HTMLElement>('span,font').forEach((child) => {
-      if (prop === 'fontSize') { child.style.fontSize = ''; child.removeAttribute('size'); }
-      else { child.style.fontFamily = ''; child.removeAttribute('face'); }
-    });
-    span.innerHTML = (node as HTMLElement).innerHTML;
-    node.replaceWith(span);
+    target.parentNode?.insertBefore(span, target);
+    span.appendChild(target);
+    spans.push(span);
   });
+  if (spans.length === 0) return false;
+
+  const newRange = document.createRange();
+  newRange.setStartBefore(spans[0]);
+  newRange.setEndAfter(spans[spans.length - 1]);
+  sel.removeAllRanges();
+  sel.addRange(newRange);
   return true;
 };
 
@@ -281,21 +315,24 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     }, []);
 
     const restoreSelection = useCallback(() => {
+      const el = editorRef.current;
       const range = savedRangeRef.current;
-      if (!range) {
-        editorRef.current?.focus();
-        return;
-      }
+      if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+      if (!range || !el?.contains(range.commonAncestorContainer)) return;
       const sel = window.getSelection();
       sel?.removeAllRanges();
       sel?.addRange(range);
     }, []);
 
+    const lastEmittedRef = useRef<string>(value || '');
     const emitChange = () => {
       const el = editorRef.current;
       if (!el) return;
       setIsEmpty(!el.textContent?.trim());
-      onChange(el.innerHTML);
+      const html = el.innerHTML;
+      if (html === lastEmittedRef.current) return;
+      lastEmittedRef.current = html;
+      onChange(html);
     };
 
     const handleInput = (e?: React.FormEvent<HTMLDivElement>) => {

@@ -132,9 +132,9 @@ export function FormasPagamento() {
       try {
         for (const r of plan.renames) {
           if (r.id.startsWith('seed-')) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await supabase.from('card_brands').insert({
               name: r.name, type: r.type, is_active: true, fee_behavior: 'deduct_from_provider', created_by: user?.id,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
           } else {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -184,7 +184,7 @@ export function FormasPagamento() {
     setBrandDialogOpen(true);
   };
   const handleBrandSubmit = async () => {
-    const kind = brandForm.type === 'debit' ? 'debit' : 'credit';
+    const kind = brandForm.type === 'debit' ? 'debit' as const : 'credit' as const;
     const payload = { ...brandForm, type: kind, name: variantName(brandForm.name, kind) };
     const fees = kind === 'debit' ? [{ installment_number: 1, fee_percentage: brandFees[0]?.fee_percentage || 0 }] : brandFees;
     if (editingBrand) {

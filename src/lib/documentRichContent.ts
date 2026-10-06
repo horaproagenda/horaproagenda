@@ -38,6 +38,8 @@ const ALLOWED_STYLE_PROPS = new Set([
   'line-height',
   'vertical-align',
   'list-style-type',
+  'float',
+  'text-indent',
 ]);
 
 const filterStyleAttribute = (value: string): string =>

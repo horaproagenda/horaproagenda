@@ -335,6 +335,23 @@ const Clientes = () => {
           onDismiss={dismiss}
         />
 
+        <HelpTip storageKey="clientes-cadastro" title="Dica: 3 formas de cadastrar seus clientes">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <p className="flex items-center gap-1.5 font-medium text-foreground"><UserPlus className="h-3.5 w-3.5 text-primary" />Cadastro manual</p>
+              <p>Você mesmo preenche os dados. Ideal no balcão ou por telefone, quando precisa só de nome e celular na hora.</p>
+            </div>
+            <div className="space-y-1">
+              <p className="flex items-center gap-1.5 font-medium text-foreground"><Link2 className="h-3.5 w-3.5 text-primary" />Cadastro via link <Badge variant="secondary" className="text-[9px] px-1 py-0">Recomendado</Badge></p>
+              <p>Envie o link pelo WhatsApp e o próprio cliente preenche tudo no celular (CPF, endereço, nascimento). Menos erros de digitação e mais tempo livre para você.</p>
+            </div>
+            <div className="space-y-1">
+              <p className="flex items-center gap-1.5 font-medium text-foreground"><Upload className="h-3.5 w-3.5 text-primary" />Importar em massa</p>
+              <p>Cadastre todos os clientes de uma vez com uma planilha, pelo botão de envio ao lado dos filtros. O suporte também pode fazer isso por você, de graça.</p>
+            </div>
+          </div>
+        </HelpTip>
+
         {/* Search - Full width on top */}
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

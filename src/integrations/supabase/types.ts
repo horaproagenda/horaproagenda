@@ -6330,6 +6330,10 @@ export type Database = {
       }
     }
     Functions: {
+      _can_manage_product_purchase: {
+        Args: { _product: Database["public"]["Tables"]["products"]["Row"] }
+        Returns: boolean
+      }
       appointment_conflict_reason: {
         Args: {
           p_end: string
@@ -6623,6 +6627,7 @@ export type Database = {
         Args: { p_appointment_id: string; p_reason?: string; p_scope: string }
         Returns: Json
       }
+      delete_product_purchase: { Args: { p_id: string }; Returns: Json }
       enforce_temp_password_column_privileges: {
         Args: never
         Returns: undefined
@@ -7320,6 +7325,21 @@ export type Database = {
       sync_recurring_session_notes: {
         Args: { p_recurring_group_id: string }
         Returns: number
+      }
+      update_product_purchase: {
+        Args: {
+          p_finished_at: string
+          p_id: string
+          p_payment_method: string
+          p_payment_method_id: string
+          p_purchase_date: string
+          p_quantity: number
+          p_started_using_at: string
+          p_supplier: string
+          p_total_price: number
+          p_unit_price: number
+        }
+        Returns: Json
       }
       verify_package_schedule_batch: {
         Args: { p_expected: Json; p_package_id: string }

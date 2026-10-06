@@ -341,6 +341,10 @@ export default function Produtos() {
 
   const handlePurchaseSubmit = async () => {
     if (!purchaseForm.product_id || purchaseForm.quantity <= 0) return;
+    if (!purchaseForm.skip_cash_transaction && !purchaseForm.payment_method_id) {
+      toast.error('Informe a forma de pagamento da compra ou marque "Produto já pago".');
+      return;
+    }
     try {
       const product = products.find(p => p.id === purchaseForm.product_id);
       if (!product) return;

@@ -1785,21 +1785,21 @@ export function ProductDetailDialog({
                           <TableCell>
                             {format(parseISO(purchase.purchase_date), 'dd/MM/yyyy')}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Quantidade">
                             {purchase.quantity} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Valor total">
                             <div>
-                              <p className="font-medium">R$ {purchase.total_price.toFixed(2)}</p>
+                              <p className="font-medium">{formatBRL(purchase.total_price)}</p>
                               <p className="text-xs text-muted-foreground">
-                                R$ {purchase.unit_price.toFixed(2)}/{PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
+                                {formatBRL(purchase.unit_price)} por {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell>{purchase.supplier || '-'}</TableCell>
-                          <TableCell>{purchase.payment_method || '-'}</TableCell>
+                          <TableCell data-label="Fornecedor">{purchase.supplier || 'Não informado'}</TableCell>
+                          <TableCell data-label="Pagamento">{purchase.payment_method || ((purchase as any).skip_cash_transaction ? 'Já pago' : 'Não informado')}</TableCell>
 
-                          <TableCell>
+                          <TableCell data-label="Período de uso">
                             {purchase.started_using_at ? (
                               <div className="text-sm">
                                 <div className="flex items-center gap-1">
@@ -1821,12 +1821,12 @@ export function ProductDetailDialog({
                           </TableCell>
                           {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                             <TableCell className="text-right">
-                              <div className="flex gap-1 justify-end">
+                              <div className="flex gap-1.5 justify-end">
                                 {onUpdatePurchase && (
                                   <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9"
                                     onClick={() => {
                                       setEditingPurchaseId(purchase.id);
                                       setPurchaseEditForm({
@@ -1845,17 +1845,18 @@ export function ProductDetailDialog({
                                       });
                                     }}
                                   >
-                                    <Edit className="h-3.5 w-3.5" />
+                                    <Edit className="h-4 w-4 mr-1" /> Editar
                                   </Button>
                                 )}
                                 {onDeletePurchase && (
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-destructive"
+                                    className="h-9 w-9 text-destructive"
+                                    aria-label="Apagar compra"
                                     onClick={() => onDeletePurchase(purchase.id)}
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
                               </div>

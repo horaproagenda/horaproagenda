@@ -2334,34 +2334,61 @@ export function ProductDetailDialog({
                       const hasEstimate = !!(tp.estimated_appointments && tp.estimated_appointments > 0);
                       const hasContainer = !!(tp.container_amount && tp.container_amount > 0);
 
+                      if (editingLinkId === tp.id) {
+                        return (
+                          <TableRow key={tp.id} className="bg-muted/30">
+                            <TableCell colSpan={canEdit ? 5 : 4}>
+                              <LinkEditForm
+                                title={template?.name || 'Pacote'}
+                                kindLabel="Pacote"
+                                isEstimated={isEstimated}
+                                unitLabel={PRODUCT_UNITS.find(u => u.value === product.unit)?.label || ''}
+                                containerLabel={hasContainer ? `${tp.container_amount} ${tp.container_unit}` : null}
+                                form={linkForm}
+                                setForm={setLinkForm}
+                                saving={updateTemplateProduct.isPending}
+                                onCancel={() => setEditingLinkId(null)}
+                                onSave={async () => {
+                                  await updateTemplateProduct.mutateAsync({
+                                    id: tp.id,
+                                    ...(isEstimated
+                                      ? { estimated_appointments: linkForm.estimated_appointments || null }
+                                      : { quantity_per_use: linkForm.quantity_per_use }),
+                                  });
+                                  setEditingLinkId(null);
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
                       return (
                         <TableRow key={tp.id} className={isOrphan ? 'opacity-70' : ''}>
                           <TableCell>
                             {isOrphan ? (
                               <Badge variant="destructive" className="text-xs">Pacote removido</Badge>
                             ) : (
-                              <Badge variant="outline">{template.name}</Badge>
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 text-foreground px-3 py-1 font-semibold">
+                                <Gift className="h-3.5 w-3.5 text-accent" />{template.name}
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {template?.total_sessions || 0} sessões
-                            </Badge>
+                          <TableCell data-label="Sessões">
+                            {template?.total_sessions || 0} sessões
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-xs">
-                              {isEstimated ? 'Estimado' : 'Exato'}
-                            </Badge>
+                          <TableCell data-label="Método">
+                            {isEstimated ? 'Estimado' : 'Exato'}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Consumo por sessão">
                             {isEstimated ? (
                               hasContainer ? (
-                                <div className="text-sm">
+                                <span>
                                   <span className="font-medium">{tp.container_amount} {tp.container_unit}</span>
                                   <span className="text-muted-foreground">
                                     {hasEstimate ? ` → ${tp.estimated_appointments} atend.` : ' → a calcular'}
                                   </span>
-                                </div>
+                                </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Vínculo incompleto — reconfigure</span>
                               )
@@ -2371,14 +2398,31 @@ export function ProductDetailDialog({
                           </TableCell>
                           {canEdit && (
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => deleteTemplateProduct.mutate(tp.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1.5 justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9"
+                                  onClick={() => {
+                                    setEditingLinkId(tp.id);
+                                    setLinkForm({
+                                      quantity_per_use: Number(tp.quantity_per_use) || 0,
+                                      estimated_appointments: tp.estimated_appointments ?? null,
+                                    });
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" /> Editar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-destructive"
+                                  aria-label="Remover vínculo"
+                                  onClick={() => deleteTemplateProduct.mutate(tp.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>

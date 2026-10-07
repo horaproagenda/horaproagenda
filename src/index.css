@@ -1797,14 +1797,14 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
    menores para caber melhor. Campos (input/select/textarea) continuam
    em 16px pelas regras anti-zoom com !important acima. */
 @media (max-width: 479px) {
-  .text-xs { font-size: 0.6875rem; line-height: 1rem; }
-  .text-sm { font-size: 0.8125rem; line-height: 1.15rem; }
-  .text-base { font-size: 0.9375rem; line-height: 1.35rem; }
-  .text-lg { font-size: 1.0625rem; line-height: 1.5rem; }
-  .text-xl { font-size: 1.1875rem; line-height: 1.6rem; }
-  .text-2xl { font-size: 1.375rem; line-height: 1.8rem; }
-  .text-3xl { font-size: 1.625rem; line-height: 2rem; }
+  .text-xs { font-size: 11px; line-height: 15px; }
+  .text-sm { font-size: 13px; line-height: 18px; }
+  .text-base { font-size: 15px; line-height: 21px; }
+  .text-lg { font-size: 17px; line-height: 24px; }
+  .text-xl { font-size: 19px; line-height: 26px; }
+  .text-2xl { font-size: 22px; line-height: 28px; }
+  .text-3xl { font-size: 26px; line-height: 32px; }
   [data-categorias-financeiras] .text-sm,
-  [data-categorias-financeiras] .font-medium { font-size: 0.75rem; }
-  [data-categorias-financeiras] [data-cat-total] { font-size: 0.75rem; white-space: nowrap; }
+  [data-categorias-financeiras] .font-medium { font-size: 12px; }
+  [data-categorias-financeiras] [data-cat-total] { font-size: 12px; white-space: nowrap; }
 }

@@ -129,3 +129,20 @@ describe('Primeiros passos: cada cadastro marca seu passo e o guia some no fim',
     expect(rt).toContain('if (isFirstStepsSource(k)) pending.add(FIRST_STEPS_QUERY_KEY)');
   });
 });
+
+describe('Primeiros passos: conta antiga em uso', () => {
+  const base = { accountCreatedAt: created, settings: null, prefs: [], services: 0, resources: 0, clients: 0, paymentMethods: [], documents: [] };
+  it('horário salvo 08:00–20:00 conta como definido', () => {
+    const r = computeFirstSteps({ ...base, settings: { opening_time: '08:00:00', closing_time: '20:00:00', created_at: created, updated_at: '2026-10-05T10:00:00Z' } });
+    expect(r.hours).toBe(true);
+  });
+  it('conta com atendimentos já tem horários definidos', () => {
+    expect(computeFirstSteps({ ...base, appointments: 5 }).hours).toBe(true);
+  });
+  it('salas, equipamentos e clientes usam também o acesso das páginas', () => {
+    const src = readFileSync('src/components/onboarding/FirstStepsCard.tsx', 'utf8');
+    expect(src).toContain('useAccountOwnerId');
+    expect(src).toContain("cnt('appointments')");
+    expect(src).not.toContain('|| user?.id ||');
+  });
+});

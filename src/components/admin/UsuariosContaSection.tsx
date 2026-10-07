@@ -292,7 +292,7 @@ export function CreateUserDialog({ open, onOpenChange, onCreated }: { open: bool
           </div>
           <div>
             <Label>Senha inicial</Label>
-            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" disabled={noSeats} />
+            <Input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" disabled={noSeats} />
           </div>
           <div className="flex items-center gap-2 mt-6">
             <Switch checked={mustChange} onCheckedChange={setMustChange} id="must-change" disabled={noSeats} />

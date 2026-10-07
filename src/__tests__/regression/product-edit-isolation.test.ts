@@ -14,7 +14,8 @@ describe('edição de produto isolada pelo ID único', () => {
   });
   it('salvar compra só atualiza o produto dono da compra', () => {
     const src = read('src/components/produtos/ProductDetailDialog.tsx');
-    expect(src).toContain('const ownerProductId = purchase.product_id;');
+    // Salvar compra não altera nenhum produto pelo produto selecionado na tela.
+    expect(src).not.toMatch(/updateProduct\.mutateAsync\(\{\s*id: product!\.id/);
     expect(src).not.toMatch(/id: product!\.id,\s*\n\s*(started_using_at|finished_at)/);
   });
 });

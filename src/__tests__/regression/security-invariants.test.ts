@@ -114,9 +114,9 @@ describe('regressão: segredos em texto puro nunca são lidos pelo app', () => {
     expect(offenders, `Selecionam temp_password: ${offenders.join(', ')}`).toEqual([]);
   });
 
-  it('a senha temporária vem da RPC com expiração', () => {
-    const code = read('src/components/services/ProfessionalCredentialView.tsx');
-    expect(code).toMatch(/get_professional_temp_password/);
+  it('nenhuma tela exibe senha ao administrador', () => {
+    const offenders = sources.filter(s => !s.file.includes('integrations/supabase') && /get_professional_temp_password|Senha visível/.test(s.code)).map(s => s.file);
+    expect(offenders).toEqual([]);
   });
 
   // Tokens do pool UltraMsg só são usados por funções SECURITY DEFINER.

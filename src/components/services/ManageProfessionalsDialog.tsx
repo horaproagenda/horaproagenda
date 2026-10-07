@@ -48,7 +48,8 @@ import { isSeatCapacityReached } from '@/lib/seatUsage';
 import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
 import { fetchProfessionalSensitiveData } from '@/lib/professionalColumns';
 import { ProfessionalServiceCommissionDialog } from './ProfessionalServiceCommissionDialog';
-import { ProfessionalCredentialView } from './ProfessionalCredentialView';
+import { recommendedPermissions, ROLE_EMPLOYMENT_HINT } from '@/lib/recommendedPermissions';
+import type { EmploymentType } from '@/lib/employmentType';
 import {
   AGENDA_COLOR_PALETTE,
   DEFAULT_AGENDA_COLOR,
@@ -76,28 +77,28 @@ const APP_ROLES = [
 ];
 
 const PERMISSIONS_CONFIG = [
-  { key: 'can_manage_clinic_financial', label: 'Gerenciar o financeiro da clínica', description: 'Ver, criar, editar e apagar lançamentos e relatórios da clínica (perfil gerente)', category: 'financial' },
-  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Iniciar e finalizar o caixa da clínica, registrando saldo esperado, contado e diferença', category: 'financial' },
-  { key: 'can_register_expenses', label: 'Registrar despesas da clínica', description: 'Lançar saídas na conta financeira da clínica', category: 'financial' },
-  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Somente dos profissionais autorizados na lista abaixo', category: 'financial' },
-  { key: 'can_view_daily_revenue', label: 'Ver receita do dia da clínica', description: 'Visualizar os totais financeiros da clínica', category: 'financial' },
-  { key: 'can_share_clients_with_admin', label: 'Compartilhar seus clientes com administrador e recepção', description: 'Se desligado, os clientes que ele cadastrar não aparecem para o administrador, a recepção e os outros profissionais', category: 'clients' },
-  { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Acesso a todos os clientes', category: 'clients' },
-  { key: 'can_view_only_own_clients', label: 'Ver somente próprios clientes', description: 'Acesso restrito aos seus clientes', category: 'clients' },
-  { key: 'can_view_other_agendas', label: 'Ver agenda de todos', description: 'Visualizar agendamentos de todos', category: 'agenda' },
-  { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'Acesso restrito à sua agenda', category: 'agenda' },
-  { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Modificar qualquer agendamento', category: 'agenda' },
+  { key: 'can_manage_clinic_financial', label: 'Gerenciar o financeiro da clínica', description: 'Acessa a página Financeiro da clínica: vê, cria, edita e apaga contas a pagar e a receber, categorias, formas de pagamento e relatórios financeiros. Indicado só para gerente ou financeiro.', category: 'financial' },
+  { key: 'can_open_close_register', label: 'Abrir e fechar caixa da clínica', description: 'Abre o caixa do dia, registra entradas e saídas em dinheiro e fecha o caixa informando o valor contado. A diferença entre o esperado e o contado fica registrada.', category: 'financial' },
+  { key: 'can_register_expenses', label: 'Registrar despesas da clínica', description: 'Lança gastos (aluguel, materiais, contas) que saem da conta da clínica. Não permite apagar lançamentos de outras pessoas.', category: 'financial' },
+  { key: 'can_manage_payments', label: 'Dar baixa em pagamentos', description: 'Confirma que o cliente pagou um atendimento, pacote ou venda. Vale apenas para os profissionais autorizados na lista abaixo.', category: 'financial' },
+  { key: 'can_view_daily_revenue', label: 'Ver receita do dia da clínica', description: 'Mostra o total recebido no dia pela clínica no Caixa e nos painéis. Sem esta opção, os totais da clínica ficam ocultos.', category: 'financial' },
+  { key: 'can_share_clients_with_admin', label: 'Compartilhar seus clientes com administrador e recepção', description: 'Ligado: os clientes que ele cadastra aparecem para o administrador e a recepção. Desligado: ficam visíveis só para ele.', category: 'clients' },
+  { key: 'can_view_other_clients', label: 'Ver clientes de todos', description: 'Vê a ficha, o histórico e os contatos de todos os clientes da clínica, inclusive os de outros profissionais.', category: 'clients' },
+  { key: 'can_view_only_own_clients', label: 'Ver somente próprios clientes', description: 'Vê apenas os clientes que ele cadastrou ou atendeu. Não pode ficar ligada junto com "Ver clientes de todos".', category: 'clients' },
+  { key: 'can_view_other_agendas', label: 'Ver agenda de todos', description: 'A Agenda mostra os horários de todos os profissionais, útil para encaixes e recepção.', category: 'agenda' },
+  { key: 'can_view_only_own_agenda', label: 'Ver somente própria agenda', description: 'A Agenda mostra apenas os atendimentos dele. Os horários ocupados dos colegas continuam bloqueados, sem mostrar cliente ou serviço.', category: 'agenda' },
+  { key: 'can_modify_agenda', label: 'Alterar agenda (criar/editar/excluir)', description: 'Cria, remarca e cancela agendamentos de qualquer profissional. Sem esta opção, ele só mexe nos próprios agendamentos.', category: 'agenda' },
   { key: 'can_manage_own_products', label: 'Produtos próprios', description: 'Estoque separado: cria, edita e vincula somente os produtos dele. Compras e valores não entram na clínica, e os produtos da clínica e de outros profissionais não aparecem para ele', category: 'products' },
   { key: 'can_manage_products', label: 'Cadastrar e editar produtos da clínica', description: 'Vê, cadastra, edita, registra entradas e saídas e vincula os produtos da clínica a serviços e pacotes', category: 'products' },
   { key: 'can_share_documents_with_admin', label: 'Compartilhar seus documentos com administrador e recepção', description: 'Se desligado, os documentos e modelos criados por ele ficam visíveis apenas para ele', category: 'documents' },
-  { key: 'can_view_all_documents', label: 'Acessar todos os documentos da clínica', description: 'Ver e usar documentos e modelos de toda a equipe', category: 'documents' },
+  { key: 'can_view_all_documents', label: 'Acessar todos os documentos da clínica', description: 'Vê e usa os documentos, contratos e fichas de anamnese compartilhados pela equipe. Documentos marcados como privados continuam visíveis só para o dono.', category: 'documents' },
   { key: 'can_manage_own_documents', label: 'Documentos próprios', description: 'Todo profissional pode criar e editar documentos privados; esta opção não interfere nos documentos da clínica', category: 'documents' },
   { key: 'can_share_services_with_admin', label: 'Compartilhar seus serviços e pacotes com administrador e recepção', description: 'Se desligado, serviços e pacotes criados por ele ficam visíveis apenas para ele', category: 'services' },
-  { key: 'can_view_other_services', label: 'Ver serviços e pacotes de todos', description: 'Visualizar serviços e pacotes de outros profissionais', category: 'services' },
-  { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Acessar relatórios de outros profissionais', category: 'reports' },
-  { key: 'can_view_only_own_reports', label: 'Ver somente próprios relatórios', description: 'Acesso restrito aos seus relatórios', category: 'reports' },
-  { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Ver logs de ações do sistema', category: 'system' },
-  { key: 'can_access_settings', label: 'Acessar Configurações', description: 'Alterar configurações do sistema', category: 'system' },
+  { key: 'can_view_other_services', label: 'Ver serviços e pacotes de todos', description: 'Vê e pode agendar os serviços, kits e pacotes cadastrados pelos outros profissionais.', category: 'services' },
+  { key: 'can_view_other_reports', label: 'Ver relatórios de todos', description: 'Vê relatórios de atendimentos, faturamento e desempenho de toda a equipe.', category: 'reports' },
+  { key: 'can_view_only_own_reports', label: 'Ver somente próprios relatórios', description: 'Relatórios mostram apenas os atendimentos e valores dele.', category: 'reports' },
+  { key: 'can_access_audit', label: 'Acessar Auditoria', description: 'Vê o histórico de quem fez cada ação no sistema (entradas, alterações e exclusões).', category: 'system' },
+  { key: 'can_access_settings', label: 'Acessar Configurações', description: 'Altera horários de atendimento, WhatsApp, mensagens automáticas e dados do estabelecimento. Afeta toda a equipe.', category: 'system' },
 ];
 
 
@@ -160,7 +161,7 @@ const professionalSchema = z.object({
   email: z.string().trim().email('Email inválido'),
   password: z.string().optional(),
   require_password_change: z.boolean().default(true),
-  store_temp_password: z.boolean().default(true),
+  store_temp_password: z.boolean().default(false),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
   whatsapp_from_number: z.string().trim().max(60, 'Número muito longo').optional(),
   specialties: z.string().optional(),
@@ -230,7 +231,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       email: '',
       password: '',
       require_password_change: true,
-      store_temp_password: true,
+      store_temp_password: false,
       phone: '',
       whatsapp_from_number: '',
       specialties: '',
@@ -359,7 +360,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
               email: data.email, password: data.password, full_name: data.name,
               professional_id: editingId, payload,
               require_password_change: data.require_password_change,
-              store_temp_password: data.store_temp_password,
+              store_temp_password: false,
             },
           });
           if (fnErr) throw fnErr;
@@ -378,7 +379,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           body: {
             email: data.email, password: data.password, full_name: data.name, payload,
             require_password_change: data.require_password_change,
-            store_temp_password: data.store_temp_password,
+            store_temp_password: false,
           },
         });
         if (error) throw error;
@@ -653,9 +654,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                         <Eye className="h-4 w-4 text-primary" />
                       </Button>
                       {isAdmin && (
-                        <ProfessionalCredentialView professionalId={prof.id} />
-                      )}
-                      {isAdmin && (
                         <>
                           <Button
                             variant="ghost"
@@ -764,38 +762,21 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="require_password_change"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                        <div className="pr-2">
-                          <FormLabel className="text-xs">Exigir troca no 1º login</FormLabel>
-                          <p className="text-[10px] text-muted-foreground">Profissional define a própria senha</p>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="store_temp_password"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                        <div className="pr-2">
-                          <FormLabel className="text-xs">Senha visível p/ admin</FormLabel>
-                          <p className="text-[10px] text-amber-600">⚠️ Reduz a segurança</p>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="require_password_change"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                      <div className="pr-2">
+                        <FormLabel className="text-xs">Exigir troca no 1º login</FormLabel>
+                        <p className="text-[10px] text-muted-foreground">Por segurança, a senha nunca fica visível para o administrador. O profissional define a própria senha no primeiro acesso.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -873,7 +854,15 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs">Função no Sistema</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            const emp = (value === 'admin' ? 'administrador' : (form.getValues('employment_type') === 'administrador' ? 'funcionario' : form.getValues('employment_type'))) as EmploymentType;
+                            form.setValue('employment_type', emp);
+                            form.setValue('permissions', recommendedPermissions(value, emp));
+                          }}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger className="h-9 text-sm">
                               <SelectValue placeholder="Selecione a função" />
@@ -904,7 +893,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                           field.onChange(value);
                           form.setValue(
                             'permissions',
-                            normalizePermissionsForEmployment(value as never, form.getValues('permissions') || {}),
+                            recommendedPermissions(form.getValues('app_role'), value as EmploymentType),
                           );
                         }}
                         value={field.value}
@@ -1161,6 +1150,21 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                        <p className="text-[11px] leading-snug">
+                          {ct(ROLE_EMPLOYMENT_HINT[appRole === 'receptionist' ? 'receptionist' : employmentType] ?? '')}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">As permissões abaixo foram sugeridas para essa função e vínculo. Ajuste se precisar.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px]"
+                          onClick={() => form.setValue('permissions', recommendedPermissions(appRole, employmentType))}
+                        >
+                          Restaurar recomendadas
+                        </Button>
+                      </div>
                       {PERMISSION_CATEGORIES.map((category) => {
                         const categoryPerms = PERMISSIONS_CONFIG.filter(p => p.category === category.key);
                         if (categoryPerms.length === 0) return null;
@@ -1187,8 +1191,8 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
                                   className={`flex items-center justify-between p-2 rounded transition-colors ${categoryLocked ? 'opacity-50' : 'hover:bg-muted/30'}`}
                                 >
                                   <div className="flex-1 min-w-0 pr-3">
-                                    <p className="text-xs font-medium truncate">{ct(perm.label)}</p>
-                                    <p className="text-[10px] text-muted-foreground truncate">{ct(perm.description)}</p>
+                                    <p className="text-xs font-medium">{ct(perm.label)}</p>
+                                    <p className="text-[11px] leading-snug text-muted-foreground">{ct(perm.description)}</p>
                                   </div>
                                   <Switch
                                     disabled={categoryLocked}

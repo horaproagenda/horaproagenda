@@ -114,6 +114,77 @@ interface ProductDetailDialogProps {
   onDeleteServiceLink: (id: string) => Promise<void>;
 }
 
+export interface LinkFormState { quantity_per_use: number; estimated_appointments: number | null }
+
+const UNIT_NAMES: Record<string, string> = {
+  L: 'litros', mL: 'mililitros', ml: 'mililitros', g: 'gramas', kg: 'quilos', mg: 'miligramas', 'Unidade(s)': 'unidades', un: 'unidades',
+};
+
+function formatBRL(v: number) {
+  return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+export function formatQtyWithUnit(qty: number, unit: string, digits = 2) {
+  const n = (Number(qty) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: digits });
+  const name = UNIT_NAMES[unit];
+  return name ? `${n} ${unit} (${name})` : `${n} ${unit}`;
+}
+
+/** Remove códigos técnicos das anotações de consumo. */
+export function humanizeConsumptionNote(notes: string) {
+  return notes
+    .replace(/\(\s*source\s*:\s*[^)]*\)/gi, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\b[a-z_]+:[0-9a-f-]{8,}\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function LinkEditForm(props: {
+  title: string; kindLabel: string; isEstimated: boolean; unitLabel: string; containerLabel: string | null;
+  form: LinkFormState; setForm: (f: LinkFormState) => void; saving: boolean;
+  onSave: () => Promise<void>; onCancel: () => void;
+}) {
+  const { title, kindLabel, isEstimated, unitLabel, containerLabel, form, setForm, saving, onSave, onCancel } = props;
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="w-full rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-card to-accent/10 p-4 space-y-4 text-left">
+      <div className="flex items-start gap-3">
+        <div className="rounded-xl bg-primary/15 p-2"><Edit className="h-5 w-5 text-primary" /></div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Editar vínculo · {kindLabel}</p>
+          <p className="font-semibold leading-snug break-words">{title}</p>
+          <Badge variant="secondary" className="mt-1 text-xs">{isEstimated ? 'Método estimado' : 'Método exato'}</Badge>
+        </div>
+      </div>
+      {isEstimated ? (
+        <div className="space-y-1.5">
+          <Label>Quantos atendimentos rende {containerLabel ? `cada ${containerLabel}` : 'cada embalagem'}?</Label>
+          <Input type="number" min="0" step="1" className="h-11"
+            value={form.estimated_appointments ?? ''}
+            onChange={(e) => setForm({ ...form, estimated_appointments: e.target.value ? parseInt(e.target.value) : null })}
+            placeholder="Ex.: 20" />
+          <p className="text-xs text-muted-foreground">Deixe vazio para o sistema calcular pela média real de uso.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <Label>Quantidade usada por atendimento ({unitLabel})</Label>
+          <Input type="number" min="0" step="0.01" className="h-11"
+            value={form.quantity_per_use}
+            onChange={(e) => setForm({ ...form, quantity_per_use: parseFloat(e.target.value) || 0 })} />
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button className="h-12 flex-1 font-semibold shadow-md" disabled={saving || busy}
+          onClick={async () => { setBusy(true); try { await onSave(); } catch { /* mensagem já exibida */ } finally { setBusy(false); } }}>
+          <Save className="h-4 w-4 mr-1.5" /> {busy ? 'Salvando…' : 'Salvar alterações'}
+        </Button>
+        <Button variant="outline" className="h-12" onClick={onCancel}><X className="h-4 w-4 mr-1" /> Cancelar</Button>
+      </div>
+    </div>
+  );
+}
+
 interface ConsumptionRecordView {
   id: string;
   product_id: string;
@@ -287,6 +358,8 @@ export function ProductDetailDialog({
   
   // Purchase editing state
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [linkForm, setLinkForm] = useState<LinkFormState>({ quantity_per_use: 0, estimated_appointments: null });
   const [purchaseEditForm, setPurchaseEditForm] = useState({
     quantity: 0,
     unit_price: 0,
@@ -926,7 +999,7 @@ export function ProductDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh] max-md:max-h-none max-md:flex-1 max-md:min-h-0">
+        <div className="max-h-[70vh] overflow-y-auto overscroll-contain max-md:max-h-none max-md:flex-1 max-md:min-h-0 pb-safe max-md:pb-24 -mx-1 px-1">
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="flex w-full justify-start overflow-x-auto md:grid md:grid-cols-5">
               <TabsTrigger value="info">Info</TabsTrigger>
@@ -2494,7 +2567,7 @@ export function ProductDetailDialog({
 
 
           </Tabs>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
 
@@ -2914,7 +2987,7 @@ function ProductAutomaticConsumption({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-lg border bg-card">
               <div className="text-xs text-muted-foreground">Total</div>
-              <div className="text-lg font-bold">{productConsumption.total_quantity.toFixed(2)} {unitLabel}</div>
+              <div className="text-lg font-bold">{formatQtyWithUnit(productConsumption.total_quantity, unitLabel)}</div>
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <div className="text-xs text-muted-foreground">Atendimentos</div>
@@ -2922,7 +2995,7 @@ function ProductAutomaticConsumption({
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <div className="text-xs text-muted-foreground">Média/Atend.</div>
-              <div className="text-lg font-bold">{productConsumption.avg_per_appointment.toFixed(3)} {unitLabel}</div>
+              <div className="text-lg font-bold">{formatQtyWithUnit(productConsumption.avg_per_appointment, unitLabel, 3)}</div>
             </div>
           </div>
         </>

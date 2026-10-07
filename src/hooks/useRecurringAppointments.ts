@@ -123,66 +123,81 @@ export function useRecurringAppointments() {
       return (params.discount_scope ?? 'all') === 'first' && i > 0 ? 0 : d;
     };
 
-    // Create appointments sequentially to avoid conflicts
-    for (let i = 0; i < appointments.length; i++) {
-      const apt = appointments[i];
-      try {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            client_id: params.client_id,
-            service_id: params.service_id,
-            professional_id: params.professional_id,
-            room_id: params.room_id,
-            start_time: apt.start.toISOString(),
-            end_time: apt.end.toISOString(),
-            notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
-            status: 'scheduled',
-            discount_amount: sessionDiscount(i),
-          }),
-        });
+    // Falhas transitórias (tempo esgotado, rede, servidor ocupado) são repetidas
+    // antes de desistir da série.
+    const isTransient = (status: number | undefined, reason: string) =>
+      status === undefined || status >= 500 || status === 408 || status === 429 ||
+      /timeout|tempo|57014|fetch|network|rede/i.test(reason);
 
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          // Update the appointment with the recurring group ID and discount (if any)
-          const updatePayload: any = { recurring_group_id: recurringGroupId };
-          const { data: updatedApt, error: updateError } = await supabase
-            .from('appointments')
-            .update(updatePayload)
-            .eq('id', result.data.id)
-            .select()
-            .single();
-
-          if (updateError) {
-            console.error('Error updating recurring group:', updateError);
-          }
-
-
-          const saved = updatedApt || result.data;
-          if (Math.abs(Number(saved?.discount_amount || 0) - sessionDiscount(i)) > 0.009) {
-            const msg = `O desconto da sessão ${i + 1} não foi registrado. Confira essa sessão e aplique o desconto ao editar.`;
-            if (!discountWarnings.includes(msg)) discountWarnings.push(msg);
-          }
-          createdAppointments.push(saved);
-          
-          // Invalidate queries after each creation for real-time updates
-          queryClient.invalidateQueries({ queryKey: ['appointments'] });
-        } else {
-          failedAppointments.push(i + 1);
-          const reason = extractReason(result, response);
-          if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
+    const createOne = async (i: number, apt: { start: Date; end: Date }) => {
+      let lastReason = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let status: number | undefined;
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/create-appointment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              client_id: params.client_id,
+              service_id: params.service_id,
+              professional_id: params.professional_id,
+              room_id: params.room_id,
+              start_time: apt.start.toISOString(),
+              end_time: apt.end.toISOString(),
+              notes: params.notes ? `${params.notes} - Sessão ${i + 1} de ${totalSessions}` : `Sessão ${i + 1} de ${totalSessions}`,
+              status: 'scheduled',
+              discount_amount: sessionDiscount(i),
+            }),
+          });
+          status = response.status;
+          const result = await response.json().catch(() => ({}));
+          if (result.success && result.data) return { ok: true as const, data: result.data };
+          lastReason = extractReason(result, response) || lastReason;
+        } catch (error) {
+          lastReason = error instanceof Error ? error.message : 'Falha de conexão.';
         }
-      } catch (error) {
-        console.error(`Error creating appointment ${i + 1}:`, error);
-        failedAppointments.push(i + 1);
-        const reason = error instanceof Error ? error.message : '';
-        if (reason && !failureReasons.includes(reason)) failureReasons.push(reason);
+        if (!isTransient(status, lastReason)) break;
+        await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
       }
+      return { ok: false as const, reason: lastReason || 'Falha ao gravar a sessão.' };
+    };
+
+    // Tudo ou nada: se alguma sessão falhar, as já gravadas são desfeitas
+    // para nunca sobrar série pela metade.
+    for (let i = 0; i < appointments.length; i++) {
+      const res = await createOne(i, appointments[i]);
+      if (!res.ok) {
+        failedAppointments.push(i + 1);
+        failureReasons.push(`Sessão ${i + 1} (${format(appointments[i].start, "dd/MM 'às' HH:mm")}): ${res.reason}`);
+        break;
+      }
+      const { data: updatedApt, error: updateError } = await supabase
+        .from('appointments')
+        .update({ recurring_group_id: recurringGroupId } as any)
+        .eq('id', res.data.id)
+        .select()
+        .single();
+      if (updateError) console.error('Error updating recurring group:', updateError);
+      const saved = updatedApt || res.data;
+      if (Math.abs(Number(saved?.discount_amount || 0) - sessionDiscount(i)) > 0.009) {
+        const msg = `O desconto da sessão ${i + 1} não foi registrado. Confira essa sessão e aplique o desconto ao editar.`;
+        if (!discountWarnings.includes(msg)) discountWarnings.push(msg);
+      }
+      createdAppointments.push(saved);
+    }
+
+    if (failedAppointments.length > 0) {
+      for (const apt of createdAppointments) {
+        const { error } = await supabase.rpc('delete_appointment_cascade' as any, { _appointment_id: apt.id });
+        if (error) console.error('Rollback falhou para', apt.id, error);
+      }
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      throw new Error(
+        `Nenhuma sessão foi salva, para não deixar a série incompleta. ${failureReasons.join(' / ')}. Ajuste essa data e tente novamente.`,
+      );
     }
 
     // Compose WhatsApp notification message (may defer sending for preview)

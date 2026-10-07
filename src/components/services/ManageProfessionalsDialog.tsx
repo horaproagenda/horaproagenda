@@ -161,7 +161,7 @@ const professionalSchema = z.object({
   email: z.string().trim().email('Email inválido'),
   password: z.string().optional(),
   require_password_change: z.boolean().default(true),
-  store_temp_password: z.boolean().default(true),
+  store_temp_password: z.boolean().default(false),
   phone: z.string().trim().max(20, 'Telefone muito longo').optional(),
   whatsapp_from_number: z.string().trim().max(60, 'Número muito longo').optional(),
   specialties: z.string().optional(),
@@ -231,7 +231,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       email: '',
       password: '',
       require_password_change: true,
-      store_temp_password: true,
+      store_temp_password: false,
       phone: '',
       whatsapp_from_number: '',
       specialties: '',
@@ -360,7 +360,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
               email: data.email, password: data.password, full_name: data.name,
               professional_id: editingId, payload,
               require_password_change: data.require_password_change,
-              store_temp_password: data.store_temp_password,
+              store_temp_password: false,
             },
           });
           if (fnErr) throw fnErr;
@@ -379,7 +379,7 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
           body: {
             email: data.email, password: data.password, full_name: data.name, payload,
             require_password_change: data.require_password_change,
-            store_temp_password: data.store_temp_password,
+            store_temp_password: false,
           },
         });
         if (error) throw error;

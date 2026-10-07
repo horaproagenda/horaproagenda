@@ -100,6 +100,7 @@ export function FormasPagamento() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState('');
   const [cancelPackageSaleId, setCancelPackageSaleId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: 'pm' | 'brand'; id: string; name: string } | null>(null);
 
   // Normaliza nome para comparação case/acento-insensível
   const normalize = (s: string) =>
@@ -424,7 +425,7 @@ export function FormasPagamento() {
                 </DialogContent>
               </Dialog>
             </div>
-            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
+            <div className="pb-24 lg:pb-0 lg:max-h-[400px] lg:overflow-y-auto overflow-x-visible">
               <ResponsiveTable
                 data={paymentMethods}
                 getRowKey={(pm) => pm.id}
@@ -467,7 +468,8 @@ export function FormasPagamento() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deletePaymentMethod.mutate(pm.id)}
+                          aria-label={`Excluir ${pm.name}`}
+                          onClick={() => setPendingDelete({ kind: 'pm', id: pm.id, name: pm.name })}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -842,7 +844,7 @@ export function FormasPagamento() {
           {/* Banks Tab */}
           <TabsContent value="banks" className="space-y-4">
             <div className="flex justify-end"><ManageBanksDialog /></div>
-            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
+            <div className="pb-24 lg:pb-0 lg:max-h-[400px] lg:overflow-y-auto overflow-x-visible">
               <ResponsiveTable
                 data={banks}
                 getRowKey={(bank) => bank.id}
@@ -947,7 +949,7 @@ export function FormasPagamento() {
                 </DialogContent>
               </Dialog>
             </div>
-            <div className="max-h-[400px] overflow-y-auto overflow-x-visible">
+            <div className="pb-24 lg:pb-0 lg:max-h-[400px] lg:overflow-y-auto overflow-x-visible">
               <ResponsiveTable
                 data={cardBrands}
                 getRowKey={(brand) => brand.id}
@@ -1018,7 +1020,8 @@ export function FormasPagamento() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => deleteCardBrand.mutate(brand.id)}
+                          aria-label={`Excluir ${brand.name}`}
+                          onClick={() => setPendingDelete({ kind: 'brand', id: brand.id, name: brand.name })}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
@@ -1031,6 +1034,31 @@ export function FormasPagamento() {
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => { if (!o) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingDelete?.kind === 'brand' ? 'Excluir bandeira?' : 'Excluir forma de pagamento?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir "<strong>{pendingDelete?.name}</strong>"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (!pendingDelete) return;
+                if (pendingDelete.kind === 'pm') deletePaymentMethod.mutate(pendingDelete.id);
+                else deleteCardBrand.mutate(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Boleto Detail Modal */}
       <BoletoDetailModal

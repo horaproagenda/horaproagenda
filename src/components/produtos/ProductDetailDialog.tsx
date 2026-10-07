@@ -1642,7 +1642,7 @@ export function ProductDetailDialog({
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Pagamento</TableHead>
 
-                    <TableHead>Uso</TableHead>
+                    <TableHead>{editingPurchaseId ? '' : 'Uso'}</TableHead>
                     {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                       <TableHead className="text-right">Ações</TableHead>
                     )}
@@ -1756,87 +1756,60 @@ export function ProductDetailDialog({
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <label className={cn(
+                                  "flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors max-md:min-h-12",
+                                  purchaseEditForm.skip_cash_transaction ? "border-primary bg-primary/10" : "bg-background"
+                                )}>
                                   <Switch
                                     checked={purchaseEditForm.skip_cash_transaction}
                                     onCheckedChange={(v) => setPurchaseEditForm({ ...purchaseEditForm, skip_cash_transaction: v })}
                                   />
-                                  Já pago
+                                  <span className="text-sm font-medium">Já pago</span>
                                 </label>
-                              </div>
-                            </TableCell>
-                            <TableCell data-label="Início e término do uso">
-                              <div className="flex flex-col gap-1">
-                                <SafeDateInput
-                                  value={purchaseEditForm.started_using_at || ''}
-                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
-                                  className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
-                                />
-                                <SafeDateInput
-                                  value={purchaseEditForm.finished_at || ''}
-                                  onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, finished_at: v ?? '' })}
-                                  className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
-                                  placeholder="Término"
-                                />
                               </div>
                             </TableCell>
                             <TableCell className="text-right" data-actions="edit">
                               <div className="flex gap-2 justify-end max-md:w-full">
                                 <Button
                                   size="sm"
+                                  disabled={isSavingPurchase}
                                   className="h-9 max-md:h-12 max-md:flex-1 font-semibold shadow-md"
                                   onClick={async () => {
-                                    if (onUpdatePurchase) {
-                                      try {
-                                        await onUpdatePurchase({
-                                          id: purchase.id,
-                                          quantity: purchaseEditForm.quantity,
-                                          unit_price: purchaseEditForm.unit_price,
-                                          total_price: purchaseEditForm.total_price,
-                                          purchase_date: purchaseEditForm.purchase_date,
-                                          supplier: purchaseEditForm.supplier || null,
-                                          started_using_at: purchaseEditForm.started_using_at || null,
-                                          finished_at: purchaseEditForm.finished_at || null,
-                                          payment_method_id: purchaseEditForm.payment_method_id || null,
-                                          payment_method: purchaseEditForm.payment_method || null,
-                                          skip_cash_transaction: purchaseEditForm.skip_cash_transaction,
-                                        } as any);
-                                      } catch {
-                                        // A mensagem com o motivo já foi exibida; mantém a edição aberta.
-                                        return;
-                                      }
-                                    }
-                                    // Mantém product.started_using_at / finished_at em sincronia
-                                    // com a compra ativa, evitando que o cache do produto fique
-                                    // defasado (ex.: alerta "ciclo anterior" continuar mostrando
-                                    // a data antiga após promover uma nova compra).
-                                    const startedAt = purchaseEditForm.started_using_at || null;
-                                    const finishedAt = purchaseEditForm.finished_at || null;
-                                    // Sempre o produto dono da compra (ID gravado na compra).
-                                    const ownerProductId = purchase.product_id;
-                                    if (!ownerProductId || ownerProductId !== product?.id) {
-                                      setEditingPurchaseId(null);
+                                    if (!onUpdatePurchase) { setEditingPurchaseId(null); return; }
+                                    if (!(purchaseEditForm.quantity > 0)) {
+                                      toast.error('Informe a quantidade comprada.');
                                       return;
                                     }
-                                    if (startedAt && !finishedAt) {
-                                      await onUpdateProduct({
-                                        id: ownerProductId,
-                                        started_using_at: startedAt,
-                                        finished_at: null,
-                                      });
-                                    } else if (
-                                      finishedAt &&
-                                      product?.started_using_at === purchase.started_using_at
-                                    ) {
-                                      await onUpdateProduct({
-                                        id: ownerProductId,
-                                        finished_at: finishedAt,
-                                      });
+                                    if (!purchaseEditForm.skip_cash_transaction && !purchaseEditForm.payment_method_id) {
+                                      toast.error('Escolha a forma de pagamento ou marque "Já pago".');
+                                      return;
                                     }
-                                    setEditingPurchaseId(null);
+                                    const total = Math.round((Number(purchaseEditForm.total_price) || 0) * 100) / 100;
+                                    setIsSavingPurchase(true);
+                                    try {
+                                      await onUpdatePurchase({
+                                        id: purchase.id,
+                                        quantity: purchaseEditForm.quantity,
+                                        unit_price: purchaseEditForm.quantity > 0 ? total / purchaseEditForm.quantity : 0,
+                                        total_price: total,
+                                        purchase_date: purchaseEditForm.purchase_date || purchase.purchase_date,
+                                        supplier: purchaseEditForm.supplier || null,
+                                        // Datas de uso não são editadas aqui: preserva as atuais.
+                                        started_using_at: purchase.started_using_at || null,
+                                        finished_at: purchase.finished_at || null,
+                                        payment_method_id: purchaseEditForm.skip_cash_transaction ? null : (purchaseEditForm.payment_method_id || null),
+                                        payment_method: purchaseEditForm.skip_cash_transaction ? null : (purchaseEditForm.payment_method || null),
+                                        skip_cash_transaction: purchaseEditForm.skip_cash_transaction,
+                                      } as any);
+                                      setEditingPurchaseId(null);
+                                    } catch {
+                                      // A mensagem com o motivo já foi exibida; mantém a edição aberta.
+                                    } finally {
+                                      setIsSavingPurchase(false);
+                                    }
                                   }}
                                 >
-                                  <Save className="h-4 w-4 mr-1.5" /> Salvar compra
+                                  <Save className="h-4 w-4 mr-1.5" /> {isSavingPurchase ? 'Salvando...' : 'Salvar compra'}
                                 </Button>
                                 <Button
                                   variant="outline"

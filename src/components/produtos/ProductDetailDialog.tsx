@@ -65,7 +65,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { SafeDateInput } from '@/components/ui/safe-date-input';
 import { convertQuantity } from '@/lib/productStock';
 import {

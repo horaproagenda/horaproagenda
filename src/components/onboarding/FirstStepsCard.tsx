@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, MessageCircle, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { openWhatsappWithMessage } from '@/lib/whatsappLink';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export function FirstStepsCard() {
   const [manual, setManual] = useLocalStorage<string[]>(`first-steps-manual-${uid}`, []);
   const isAdmin = hasRole('admin');
   const qc = useQueryClient();
+  const resolvedOwnerId = useAccountOwnerId();
 
   // Ponto único: qualquer cadastro/configuração salvo em qualquer tela
   // (lista recarregada ou gravação concluída) faz o guia conferir de novo.
@@ -52,8 +54,8 @@ export function FirstStepsCard() {
   }, [qc]);
 
   const { data } = useQuery({
-    queryKey: ['first-steps-progress', user?.id, (profile as unknown as { account_owner_id?: string | null } | null)?.account_owner_id ?? null],
-    enabled: !!user && isAdmin && !dismissed,
+    queryKey: ['first-steps-progress', user?.id, resolvedOwnerId],
+    enabled: !!user && isAdmin && !dismissed && !!resolvedOwnerId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: 'always',
@@ -63,24 +65,27 @@ export function FirstStepsCard() {
       const sb = supabase as any;
       // Conta da pessoa vem do próprio perfil (sem depender de chamada que pode falhar).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ownerId: string | null = (profile as any)?.account_owner_id || user?.id || null;
+      const ownerId: string | null = resolvedOwnerId || (profile as any)?.account_owner_id || null;
       if (!ownerId) return computeFirstSteps(EMPTY_INPUT);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const own = (q: any) => q.eq('account_owner_id', ownerId);
       const cnt = async (table: string) => {
         const { count: c } = await own(sb.from(table).select('id', { count: 'exact', head: true }));
-        return c ?? 0;
+        if (c) return c;
+        // Mesma fonte das páginas: o acesso da conta (registros antigos sem dono preenchido).
+        const { count: v } = await sb.from(table).select('id', { count: 'exact', head: true });
+        return v ?? 0;
       };
       const rows = async (table: string, cols = 'created_at, updated_at') => {
         const { data: r } = await own(sb.from(table).select(cols).limit(200));
         return r ?? [];
       };
-      const [services, packages, clients, payments, docs, settingsRes, prefsRes, rooms, equipment] = await Promise.all([
+      const [services, packages, clients, payments, docs, settingsRes, prefsRes, rooms, equipment, appts] = await Promise.all([
         cnt('services'), cnt('package_templates'), cnt('clients'), rows('payment_methods'),
         rows('document_templates', 'title, created_at, updated_at'),
         own(sb.from('business_settings').select('opening_time, closing_time, created_at, updated_at')).limit(1).maybeSingle(),
         sb.from('professional_preferences').select('opening_time, closing_time').eq('user_id', user!.id),
-        cnt('rooms'), cnt('equipment'),
+        cnt('rooms'), cnt('equipment'), cnt('appointments'),
       ]);
       const settings = settingsRes?.data ?? null;
       const candidates = [settings?.created_at, (profile as unknown as { created_at?: string | null } | null)?.created_at, user?.created_at]
@@ -97,6 +102,7 @@ export function FirstStepsCard() {
         clients,
         paymentMethods: payments,
         documents: docs,
+        appointments: appts,
       });
     },
   });

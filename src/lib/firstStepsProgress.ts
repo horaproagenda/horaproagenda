@@ -49,6 +49,8 @@ export interface ProgressInput {
   clients: number;
   paymentMethods: Row[];
   documents: (Row & { title?: string | null })[];
+  /** Atendimentos já registrados: conta em uso prova que horários foram definidos. */
+  appointments?: number;
 }
 
 export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
@@ -57,10 +59,10 @@ export function computeFirstSteps(i: ProgressInput): Record<string, boolean> {
   const settingsHours =
     !!s &&
     !!s.updated_at &&
-    t(s.updated_at) - t(s.created_at) > 60_000 &&
-    (s.opening_time?.slice(0, 5) !== '08:00' || s.closing_time?.slice(0, 5) !== '20:00');
+    !!s.opening_time && !!s.closing_time &&
+    t(s.updated_at) - t(s.created_at) > 60_000;
   return {
-    hours: ownHours || settingsHours,
+    hours: ownHours || settingsHours || (i.appointments ?? 0) > 0,
     resources: (i.resources ?? 0) > 0,
     services: i.services > 0,
     clients: i.clients > 0,
@@ -80,7 +82,7 @@ export const FIRST_STEPS_SOURCE_KEYS = [
   'services', 'package_templates', 'package_template_steps',
   'payment_methods',
   'document_templates',
-  'clients',
+  'clients', 'appointments',
 ] as const;
 
 export const FIRST_STEPS_QUERY_KEY = 'first-steps-progress';

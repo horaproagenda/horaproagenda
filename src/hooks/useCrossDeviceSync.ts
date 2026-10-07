@@ -26,34 +26,27 @@ export function useCrossDeviceSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let lastInvalidate = 0;
+    let lastInvalidate = Date.now();
     const invalidateAll = (reason: string, opts?: { force?: boolean }) => {
       const now = Date.now();
-      // Throttle padrão: 30s entre refetches globais. Eventos críticos
-      // (boot, login, retorno online, link novo) usam `force: true` para
-      // sincronizar imediatamente.
-      if (!opts?.force && now - lastInvalidate < 30_000) {
+      // Throttle: 2 min entre revalidações. Só queries ATIVAS e já
+      // desatualizadas (stale) são refeitas — nada de recarregar tudo.
+      if (!opts?.force && now - lastInvalidate < 120_000) {
         logSyncEvent(reason, 'skipped', { reason: 'throttle', sinceMs: now - lastInvalidate });
         return;
       }
       lastInvalidate = now;
-      console.log(`[CrossDeviceSync] Sincronizando dados (${reason})`);
       try {
-        void queryClient.invalidateQueries({
-          predicate: () => true,
-          refetchType: 'active',
-        });
+        void queryClient.refetchQueries({ type: 'active', stale: true });
         logSyncEvent(reason, 'ok', { forced: !!opts?.force });
       } catch (err) {
         logSyncEvent(reason, 'error', { error: String(err) });
       }
     };
 
-    // 0. Refetch imediato no mount — qualquer link/aba/dispositivo recém-aberto
-    //    deve baixar a versão mais recente antes que a UI mostre dados em cache.
-    invalidateAll('mount', { force: true });
+    // 0. No mount o React Query já busca dados frescos; não duplicar.
 
-    // 1. Foco/visibilidade -> revalida tudo (com throttle)
+    // 1. Foco/visibilidade -> revalida (com throttle)
     const handleFocus = () => invalidateAll('focus');
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') invalidateAll('visible');
@@ -64,12 +57,12 @@ export function useCrossDeviceSync() {
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 2. Heartbeat de fundo (a cada 60s) — fallback caso o Realtime falhe.
+    // 2. Heartbeat de fundo (a cada 5 min) — fallback caso o Realtime falhe.
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         invalidateAll('heartbeat');
       }
-    }, 60_000);
+    }, 300_000);
 
 
     // 3. Sincronização entre abas via BroadcastChannel

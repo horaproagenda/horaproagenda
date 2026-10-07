@@ -151,11 +151,18 @@ export function useAutoHealing() {
       if (document.visibilityState === 'visible' && navigator.onLine) {
         void runCycle('interval');
       }
-    }, Math.max(15, config.intervalSec) * 1000);
+    }, Math.max(600, config.intervalSec) * 1000);
 
-    const onOnline = () => { void runCycle('online'); };
+    // Ao voltar online/visível, só roda se o último ciclo tiver >5 min.
+    let lastEventRun = Date.now();
+    const runIfStale = (reason: string) => {
+      if (Date.now() - lastEventRun < 5 * 60_000) return;
+      lastEventRun = Date.now();
+      void runCycle(reason);
+    };
+    const onOnline = () => runIfStale('online');
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void runCycle('visible');
+      if (document.visibilityState === 'visible') runIfStale('visible');
     };
     const onSyncError = (ev: Event) => {
       const detail = (ev as CustomEvent).detail;

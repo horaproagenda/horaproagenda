@@ -488,7 +488,7 @@ export function CategoriasFinanceiras() {
   };
 
   return (
-    <Card>
+    <Card data-categorias-financeiras>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Categorias</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -1023,7 +1023,7 @@ export function CategoriasFinanceiras() {
                           <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-primary">R$ {cat.total.toFixed(2)}</span>
+                          <span data-cat-total className="text-primary">R$ {cat.total.toFixed(2)}</span>
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEntryDialog(cat.id, 'income'); }} title="Adicionar receita">
                             <Plus className="h-4 w-4 text-primary" />
                           </Button>
@@ -1060,7 +1060,7 @@ export function CategoriasFinanceiras() {
                           <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-red-600">R$ {cat.total.toFixed(2)}</span>
+                          <span data-cat-total className="text-red-600">R$ {cat.total.toFixed(2)}</span>
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEntryDialog(cat.id, 'expense'); }} title="Adicionar despesa">
                             <Plus className="h-4 w-4 text-primary" />
                           </Button>

@@ -1792,3 +1792,19 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
     max-width: 100%;
   }
 }
+
+/* Tipografia compacta em celulares pequenos (<480px): textos um pouco
+   menores para caber melhor. Campos (input/select/textarea) continuam
+   em 16px pelas regras anti-zoom com !important acima. */
+@media (max-width: 479px) {
+  .text-xs { font-size: 11px; line-height: 15px; }
+  .text-sm { font-size: 13px; line-height: 18px; }
+  .text-base { font-size: 15px; line-height: 21px; }
+  .text-lg { font-size: 17px; line-height: 24px; }
+  .text-xl { font-size: 19px; line-height: 26px; }
+  .text-2xl { font-size: 22px; line-height: 28px; }
+  .text-3xl { font-size: 26px; line-height: 32px; }
+  [data-categorias-financeiras] .text-sm,
+  [data-categorias-financeiras] .font-medium { font-size: 12px; }
+  [data-categorias-financeiras] [data-cat-total] { font-size: 12px; white-space: nowrap; }
+}

@@ -1560,7 +1560,7 @@ export function ProductDetailDialog({
               <div className="text-sm text-muted-foreground mb-3">
                 Histórico de compras deste produto
               </div>
-              <Table>
+              <Table className="mobile-card-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -2038,7 +2038,7 @@ export function ProductDetailDialog({
                 </div>
               )}
 
-              <Table>
+              <Table className="mobile-card-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Serviço</TableHead>
@@ -2308,7 +2308,7 @@ export function ProductDetailDialog({
                 </div>
               )}
 
-              <Table>
+              <Table className="mobile-card-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Template de Pacote</TableHead>
@@ -2784,7 +2784,7 @@ function ProductAutomaticConsumption({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {[
           { label: 'Hoje', value: stats.today },
           { label: 'Semana', value: stats.week },
@@ -2831,7 +2831,7 @@ function ProductAutomaticConsumption({
       )}
 
       {history.length > 0 ? (
-        <Table>
+        <Table className="mobile-card-table">
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>

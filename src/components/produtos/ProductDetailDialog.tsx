@@ -358,6 +358,7 @@ export function ProductDetailDialog({
   
   // Purchase editing state
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [isSavingPurchase, setIsSavingPurchase] = useState(false);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [linkForm, setLinkForm] = useState<LinkFormState>({ quantity_per_use: 0, estimated_appointments: null });
   const [purchaseEditForm, setPurchaseEditForm] = useState({
@@ -985,17 +986,6 @@ export function ProductDetailDialog({
                 {product.category && <Badge variant="outline">{product.category}</Badge>}
               </DialogDescription>
             </div>
-            {canEdit && !isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStartEdit}
-                className="mr-8"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Editar informações
-              </Button>
-            )}
           </div>
         </DialogHeader>
 
@@ -1105,20 +1095,6 @@ export function ProductDetailDialog({
                         onCommit={(v) => setEditForm({ ...editForm, expiry_date: v })}
                       />
                     </div>
-                    <div>
-                      <Label>Início do Uso</Label>
-                      <SafeDateInput
-                        value={editForm.started_using_at as any}
-                        onCommit={(v) => setEditForm({ ...editForm, started_using_at: v })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Término do Uso</Label>
-                      <SafeDateInput
-                        value={editForm.finished_at as any}
-                        onCommit={(v) => setEditForm({ ...editForm, finished_at: v })}
-                      />
-                    </div>
                   </div>
 
                   <Separator />
@@ -1204,6 +1180,14 @@ export function ProductDetailDialog({
               ) : (
                 // View Mode
                 <div className="space-y-4">
+                  {canEdit && (
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleStartEdit} className="max-md:w-full max-md:h-11 font-semibold">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar informações
+                      </Button>
+                    </div>
+                  )}
                   {/* Stock Info Card */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4 rounded-lg border bg-card">

@@ -2072,29 +2072,58 @@ export function ProductDetailDialog({
                         remainingAppointments = Math.floor(product.current_stock / sp.quantity_per_use);
                       }
 
+                      if (editingLinkId === sp.id) {
+                        return (
+                          <TableRow key={sp.id} className="bg-muted/30">
+                            <TableCell colSpan={canEdit ? 5 : 4}>
+                              <LinkEditForm
+                                title={service?.name || 'Serviço'}
+                                kindLabel="Serviço"
+                                isEstimated={isEstimated}
+                                unitLabel={PRODUCT_UNITS.find(u => u.value === product.unit)?.label || ''}
+                                containerLabel={hasContainer ? `${sp.container_amount} ${sp.container_unit}` : null}
+                                form={linkForm}
+                                setForm={setLinkForm}
+                                saving={false}
+                                onCancel={() => setEditingLinkId(null)}
+                                onSave={async () => {
+                                  await onUpdateServiceLink({
+                                    id: sp.id,
+                                    ...(isEstimated
+                                      ? { estimated_appointments: linkForm.estimated_appointments || null }
+                                      : { quantity_per_use: linkForm.quantity_per_use }),
+                                  });
+                                  setEditingLinkId(null);
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
                       return (
                         <TableRow key={sp.id} className={isOrphan ? 'opacity-70' : ''}>
                           <TableCell>
                             {isOrphan ? (
                               <Badge variant="destructive" className="text-xs">Serviço removido</Badge>
                             ) : (
-                              <Badge variant="outline">{service.name}</Badge>
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-foreground px-3 py-1 font-semibold">
+                                <Link2 className="h-3.5 w-3.5 text-primary" />{service.name}
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={isEstimated ? 'secondary' : 'outline'} className="text-xs">
-                              {isEstimated ? 'Estimado' : 'Exato'}
-                            </Badge>
+                          <TableCell data-label="Método">
+                            {isEstimated ? 'Estimado' : 'Exato'}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Consumo">
                             {isEstimated ? (
                               hasContainer ? (
-                                <div className="text-sm">
+                                <span>
                                   <span className="font-medium">{sp.container_amount} {sp.container_unit}</span>
                                   <span className="text-muted-foreground">
                                     {hasEstimate ? ` → ${sp.estimated_appointments} atend.` : ' → a calcular'}
                                   </span>
-                                </div>
+                                </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Vínculo incompleto — reconfigure</span>
                               )
@@ -2102,25 +2131,42 @@ export function ProductDetailDialog({
                               <span>{sp.quantity_per_use} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/uso</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="Atendimentos restantes">
                             {remainingAppointments === null ? (
-                              <span className="text-xs text-muted-foreground italic">—</span>
+                              <span className="text-xs text-muted-foreground italic">A calcular</span>
                             ) : (
-                              <Badge variant={remainingAppointments < 5 ? 'destructive' : 'secondary'}>
+                              <span className={remainingAppointments < 5 ? 'text-destructive font-semibold' : 'font-semibold'}>
                                 {remainingAppointments} atendimentos
-                              </Badge>
+                              </span>
                             )}
                           </TableCell>
                           {canEdit && (
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => onDeleteServiceLink(sp.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1.5 justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9"
+                                  onClick={() => {
+                                    setEditingLinkId(sp.id);
+                                    setLinkForm({
+                                      quantity_per_use: Number(sp.quantity_per_use) || 0,
+                                      estimated_appointments: sp.estimated_appointments ?? null,
+                                    });
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" /> Editar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-destructive"
+                                  aria-label="Remover vínculo"
+                                  onClick={() => onDeleteServiceLink(sp.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>

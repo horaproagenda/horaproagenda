@@ -902,7 +902,7 @@ export function ProductDetailDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-md:w-screen max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none max-md:flex max-md:flex-col max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -926,9 +926,9 @@ export function ProductDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="max-h-[70vh] max-md:max-h-none max-md:flex-1 max-md:min-h-0">
           <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="flex w-full justify-start overflow-x-auto md:grid md:grid-cols-5">
               <TabsTrigger value="info">Info</TabsTrigger>
               <TabsTrigger value="purchases">Compras ({productPurchases.length})</TabsTrigger>
               <TabsTrigger value="services">Serviços ({productServiceLinks.length})</TabsTrigger>

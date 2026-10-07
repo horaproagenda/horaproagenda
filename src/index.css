@@ -1808,3 +1808,23 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
   [data-categorias-financeiras] .font-medium { font-size: 12px; }
   [data-categorias-financeiras] [data-cat-total] { font-size: 12px; white-space: nowrap; }
 }
+
+/* Detalhes do produto: no celular, linhas de tabela viram balões organizados */
+@media (max-width: 767px) {
+  .mobile-card-table, .mobile-card-table tbody { display: block; width: 100%; min-width: 0 !important; }
+  .mobile-card-table thead { display: none; }
+  .mobile-card-table tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    border: 1px solid hsl(var(--border)); border-radius: 0.875rem;
+    background: hsl(var(--card)); padding: 0.75rem; margin-bottom: 0.625rem;
+  }
+  .mobile-card-table td {
+    display: block; padding: 0.25rem 0.625rem !important; border: 0;
+    border-radius: 9999px; background: hsl(var(--muted) / 0.5);
+    font-size: 0.8125rem; text-align: left !important; max-width: 100%;
+  }
+  .mobile-card-table td:first-child { flex-basis: 100%; background: transparent; padding: 0 !important; font-weight: 600; }
+  .mobile-card-table td:last-child:not(:first-child) { margin-left: auto; background: transparent; }
+  .mobile-card-table td[colspan] { flex-basis: 100%; background: transparent; text-align: center !important; }
+  .mobile-card-table tr.bg-muted\/30 td { border-radius: 0.5rem; background: transparent; flex-basis: 100%; }
+}

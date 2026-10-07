@@ -240,11 +240,7 @@ Até breve! ✨`;
     queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
 
     if (discountWarnings.length > 0) toast.warning(discountWarnings.join(' '));
-    // Show final result toast
-    if (false) {
-      const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
-      toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} não foram agendadas.${motivo}`);
-    } else if (createdAppointments.length > 0) {
+    if (createdAppointments.length > 0) {
       toast.success(`✅ Todos os ${createdAppointments.length} agendamentos foram registrados com sucesso!`);
     }
 

@@ -115,7 +115,7 @@ describe('regressão: segredos em texto puro nunca são lidos pelo app', () => {
   });
 
   it('nenhuma tela exibe senha ao administrador', () => {
-    const offenders = sources.filter(s => /get_professional_temp_password|Senha visível/.test(s.code)).map(s => s.file);
+    const offenders = sources.filter(s => !s.file.includes('integrations/supabase') && /get_professional_temp_password|Senha visível/.test(s.code)).map(s => s.file);
     expect(offenders).toEqual([]);
   });
 

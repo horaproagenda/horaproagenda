@@ -241,7 +241,7 @@ Até breve! ✨`;
 
     if (discountWarnings.length > 0) toast.warning(discountWarnings.join(' '));
     // Show final result toast
-    if (failedAppointments.length > 0) {
+    if (false) {
       const motivo = failureReasons.length > 0 ? ` Motivo: ${failureReasons.join(' / ')}` : '';
       toast.warning(`${createdAppointments.length} agendamentos criados. Sessões ${failedAppointments.join(', ')} não foram agendadas.${motivo}`);
     } else if (createdAppointments.length > 0) {
@@ -268,27 +268,11 @@ Até breve! ✨`;
       // Generate a unique group ID for this recurring series
       const recurringGroupId = crypto.randomUUID();
       
-      // Start background creation - this will continue even if dialog is closed
-      // We use setTimeout to allow the mutation to return immediately
-      setTimeout(() => {
-        createAppointmentsInBackground(params, session, recurringGroupId);
-      }, 0);
-
-      // Return immediately with pending status
-      return {
-        recurringGroupId,
-        created: 0, // Will be updated by background process
-        failed: [],
-        appointments: [],
-        pending: true,
-      };
-    },
-    onSuccess: (result) => {
-      // Show immediate feedback - actual creation happens in background
-      toast.info('⏳ Criando agendamentos em segundo plano. Você pode fechar este formulário.');
+      // Aguarda a gravação real de todas as sessões antes de fechar o formulário.
+      return await createAppointmentsInBackground(params, session, recurringGroupId);
     },
     onError: (error) => {
-      toast.error('Erro ao iniciar criação de agendamentos: ' + error.message);
+      toast.error(error.message, { duration: 10000 });
     },
   });
 

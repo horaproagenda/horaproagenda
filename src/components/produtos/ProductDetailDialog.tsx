@@ -1597,14 +1597,14 @@ export function ProductDetailDialog({
                       if (isEditingThisPurchase) {
                         return (
                           <TableRow key={purchase.id} className="bg-muted/30">
-                            <TableCell>
+                            <TableCell data-label="Data da compra">
                               <SafeDateInput
                                 value={purchaseEditForm.purchase_date}
                                 onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, purchase_date: v ?? '' })}
-                                className="h-8 text-xs w-28"
+                                className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Quantidade comprada">
                               <Input
                                 type="number"
                                 value={purchaseEditForm.quantity}
@@ -1617,12 +1617,12 @@ export function ProductDetailDialog({
                                     unit_price: qty > 0 ? purchaseEditForm.total_price / qty : purchaseEditForm.unit_price,
                                   });
                                 }}
-                                className="h-8 text-xs w-20"
+                                className="h-8 text-xs w-20 max-md:w-full max-md:h-11 max-md:text-base"
                                 min="0"
                                 step="0.01"
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Valor unitário e total">
                               <div className="flex flex-col gap-1">
                                 <CurrencyInput
                                   value={purchaseEditForm.unit_price}
@@ -1633,7 +1633,7 @@ export function ProductDetailDialog({
                                       total_price: purchaseEditForm.quantity * price
                                     });
                                   }}
-                                  className="h-8 text-xs w-24"
+                                  className="h-8 text-xs w-24 max-md:w-full max-md:h-11 max-md:text-base"
                                   placeholder="Unit."
                                 />
                                 <CurrencyInput
@@ -1646,20 +1646,20 @@ export function ProductDetailDialog({
                                       unit_price: unitPrice
                                     });
                                   }}
-                                  className="h-8 text-xs w-24"
+                                  className="h-8 text-xs w-24 max-md:w-full max-md:h-11 max-md:text-base"
                                   placeholder="Total"
                                 />
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Fornecedor">
                               <Input
                                 value={purchaseEditForm.supplier || ''}
                                 onChange={(e) => setPurchaseEditForm({ ...purchaseEditForm, supplier: e.target.value })}
-                                className="h-8 text-xs w-28"
+                                className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
                                 placeholder="Fornecedor"
                               />
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Forma de pagamento">
                               <div className="flex flex-col gap-1">
                                 <Select
                                   value={purchaseEditForm.payment_method_id || 'none'}
@@ -1673,7 +1673,7 @@ export function ProductDetailDialog({
                                     });
                                   }}
                                 >
-                                  <SelectTrigger className="h-8 text-xs w-28">
+                                  <SelectTrigger className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base">
                                     <SelectValue placeholder="Forma" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1692,27 +1692,26 @@ export function ProductDetailDialog({
                                 </label>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Início e término do uso">
                               <div className="flex flex-col gap-1">
                                 <SafeDateInput
                                   value={purchaseEditForm.started_using_at || ''}
                                   onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, started_using_at: v ?? '' })}
-                                  className="h-8 text-xs w-28"
+                                  className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
                                 />
                                 <SafeDateInput
                                   value={purchaseEditForm.finished_at || ''}
                                   onCommit={(v) => setPurchaseEditForm({ ...purchaseEditForm, finished_at: v ?? '' })}
-                                  className="h-8 text-xs w-28"
+                                  className="h-8 text-xs w-28 max-md:w-full max-md:h-11 max-md:text-base"
                                   placeholder="Término"
                                 />
                               </div>
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex gap-1 justify-end">
+                            <TableCell className="text-right" data-actions="edit">
+                              <div className="flex gap-2 justify-end max-md:w-full">
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
+                                  size="sm"
+                                  className="h-9 max-md:h-12 max-md:flex-1 font-semibold shadow-md"
                                   onClick={async () => {
                                     if (onUpdatePurchase) {
                                       try {
@@ -1764,15 +1763,15 @@ export function ProductDetailDialog({
                                     setEditingPurchaseId(null);
                                   }}
                                 >
-                                  <Save className="h-3.5 w-3.5 text-primary" />
+                                  <Save className="h-4 w-4 mr-1.5" /> Salvar compra
                                 </Button>
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 max-md:h-12"
                                   onClick={() => setEditingPurchaseId(null)}
                                 >
-                                  <X className="h-3.5 w-3.5" />
+                                  <X className="h-4 w-4 mr-1" /> Cancelar
                                 </Button>
                               </div>
                             </TableCell>

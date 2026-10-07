@@ -2764,16 +2764,24 @@ function ProductAutomaticConsumption({
       .map((r) => ({
         id: r.id,
         when: r.appointment.start_time,
-        label: r.appointment?.service?.name || '-',
+        kind: 'Serviço realizado',
+        label: r.appointment?.service?.name || 'Atendimento',
         qty: Number(r.quantity_used) || 0,
       }));
 
-    const fromDaily = productDaily.map((c) => ({
-      id: c.id,
-      when: c.consumption_date + 'T12:00:00',
-      label: c.notes?.includes('[ciclo:') ? 'Ciclo de uso' : (c.notes || 'Consumo registrado'),
-      qty: Number(c.quantity_used) || 0,
-    }));
+    const fromDaily = productDaily.map((c) => {
+      const notes = c.notes || '';
+      const isPackage = /source:package/i.test(notes);
+      const isService = /source:service/i.test(notes);
+      const cleaned = humanizeConsumptionNote(notes);
+      return {
+        id: c.id,
+        when: c.consumption_date + 'T12:00:00',
+        kind: notes.includes('[ciclo:') ? 'Ciclo de uso' : isPackage ? 'Sessão de pacote' : isService ? 'Serviço realizado' : 'Consumo',
+        label: cleaned || (notes.includes('[ciclo:') ? 'Ciclo de uso' : 'Consumo registrado'),
+        qty: Number(c.quantity_used) || 0,
+      };
+    });
 
     return [...fromRecords, ...fromDaily]
       .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
@@ -2843,13 +2851,13 @@ function ProductAutomaticConsumption({
             {history.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="text-sm">
-                  {format(parseISO(r.when), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  {format(parseISO(r.when), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm" data-label={r.kind}>
                   {r.label}
                 </TableCell>
-                <TableCell className="text-sm font-medium tabular-nums">
-                  {Number(r.qty).toFixed(2)} {unitLabel}
+                <TableCell className="text-sm font-semibold tabular-nums" data-label="Quantidade usada">
+                  {formatQtyWithUnit(Number(r.qty), unitLabel)}
                 </TableCell>
               </TableRow>
             ))}

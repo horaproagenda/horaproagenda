@@ -28,10 +28,10 @@ describe('regras únicas de cadastro de clientes', () => {
   });
   it('importação ignora duplicados no arquivo e já cadastrados', () => {
     const { clientsToInsert, skipped } = filterImportBatch(
-      [{ name: 'A', phone: '11999998888' }, { name: 'B', phone: '(11) 99999-8888' }, { name: 'C', phone: '11911112222' }],
+      [{ name: 'Ana', phone: '11999998888' }, { name: 'Bia', phone: '(11) 99999-8888' }, { name: 'Caio', phone: '11911112222' }],
       { phones: new Set(['11911112222']), cpfs: new Set() },
     );
-    expect(clientsToInsert.map((c) => c.name)).toEqual(['A']);
+    expect(clientsToInsert.map((c) => c.name)).toEqual(['Ana']);
     expect(skipped).toHaveLength(2);
   });
 });

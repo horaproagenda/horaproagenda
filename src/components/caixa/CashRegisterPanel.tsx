@@ -1,3 +1,19 @@
+      await recordCashMovement({
+        cashRegisterId: currentOpenRegister.id,
+        type: type as 'income' | 'expense',
+        category,
+        description: transactionDescription || `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}`,
+        amount,
+      });
+
+      // If it's despesa, also create financial entry
+      if (transactionType === 'despesa') {
+        await recordPaidFinancialEntry({
+          type: 'expense',
+          description: transactionDescription || 'Despesa do caixa',
+          amount,
+          date: format(new Date(), 'yyyy-MM-dd'),
+        });
 import { useState, useMemo, useEffect } from 'react';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +69,7 @@ import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { toast } from 'sonner';
+import { recordCashMovement, recordPaidFinancialEntry } from '@/lib/moneyMovements';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';

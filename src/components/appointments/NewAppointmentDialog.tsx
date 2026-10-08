@@ -1,3 +1,4 @@
+import { sortDatesChronologically } from '@/lib/sortDatesChronologically';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

@@ -1,0 +1,1 @@
+REVOKE ALL ON public.auto_schedule_rules FROM anon;

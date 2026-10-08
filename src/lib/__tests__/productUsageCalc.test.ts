@@ -243,3 +243,18 @@ describe('regressão: unidade "Outros"', () => {
     ).toEqual([]);
   });
 });
+
+describe('uso em andamento (sem data de término)', () => {
+  it('aceita só a data de início no modo automático', () => {
+    expect(validateUsage({
+      mode: 'auto', containerAmount: 100, containerUnit: 'un', stockUnit: 'un',
+      startDate: '2026-10-01', endDate: null, serviceIds: ['s1'], appointmentsCounted: 0,
+    })).toEqual([]);
+  });
+  it('continua exigindo a data de início', () => {
+    expect(validateUsage({
+      mode: 'auto', containerAmount: 100, containerUnit: 'un', stockUnit: 'un',
+      startDate: null, endDate: null, serviceIds: ['s1'], appointmentsCounted: 0,
+    })).toContain('Informe a data de início do uso.');
+  });
+});

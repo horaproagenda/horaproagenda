@@ -275,9 +275,11 @@ export function validateUsage(input: UsageValidationInput): string[] {
   if (input.stockUnit && getBaseUnit(input.containerUnit) !== getBaseUnit(input.stockUnit)) {
     errors.push('A unidade do frasco precisa ser da mesma família da unidade do estoque (massa com massa, volume com volume).');
   }
-  if (!input.startDate || !input.endDate) {
-    errors.push('Informe a data de início e a data de término do uso.');
-  } else if (input.endDate < input.startDate) {
+  // Uso em andamento: basta a data de início. A data de término é opcional
+  // e, quando ausente, o ciclo fica aberto até o encerramento.
+  if (!input.startDate) {
+    errors.push('Informe a data de início do uso.');
+  } else if (input.endDate && input.endDate < input.startDate) {
     errors.push('A data de término não pode ser anterior à data de início.');
   }
 
@@ -287,7 +289,7 @@ export function validateUsage(input: UsageValidationInput): string[] {
     } else if (getBaseUnit(input.quantityUnit ?? input.containerUnit) !== getBaseUnit(input.containerUnit)) {
       errors.push('A unidade do consumo por atendimento precisa ser compatível com a unidade do frasco.');
     }
-  } else if (!(Number(input.appointmentsCounted) > 0)) {
+  } else if (input.endDate && !(Number(input.appointmentsCounted) > 0)) {
     errors.push('Não encontramos atendimentos válidos nesse período para esse serviço, então não é possível calcular o consumo médio.');
   }
 

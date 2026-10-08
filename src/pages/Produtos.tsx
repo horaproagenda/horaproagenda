@@ -292,9 +292,13 @@ export default function Produtos() {
   // Calculate appointments for a product
   const getProductAppointments = (productId: string) => {
     const linkedServices = serviceProducts.filter(sp => sp.product_id === productId);
+    const prod: any = products.find(p => p.id === productId);
+    // Só conta atendimentos a partir do início do uso do produto.
+    const start = prod?.started_using_at ? new Date(prod.started_using_at + 'T00:00:00') : null;
+    if (!start) return 0;
     let total = 0;
     linkedServices.forEach(sp => {
-      total += appointments.filter(apt => apt.service_id === sp.service_id && apt.status === 'completed').length;
+      total += appointments.filter(apt => apt.service_id === sp.service_id && apt.status === 'completed' && new Date(apt.start_time) >= start).length;
     });
     return total;
   };

@@ -23,6 +23,7 @@ import {
   History, Sparkles, Package, Layers, Upload, Plus, Trash2, Loader2, Info, Download, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { recordCashMovement } from '@/lib/moneyMovements';
 import { supabase } from '@/integrations/supabase/client';
 import { parseBrazilianCurrency } from '@/lib/utils';
 import { formatDurationClock, parseDurationClock } from '@/lib/duration';
@@ -413,16 +414,15 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
         const dest = await resolveFinancialDestination(professionalId || null);
         const openCash = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
         if (openCash?.id) {
-          await supabase.from('cash_transactions').insert({
-            cash_register_id: openCash.id,
+          await recordCashMovement({
+            cashRegisterId: openCash.id,
             type: 'income',
             category: 'Baixa retroativa (histórico)',
             description: params.description,
             amount: params.amount,
-            payment_method: selectedPaymentMethodName || paymentMethodId,
-            reference_id: params.appointment_id || null,
-            reference_type: params.appointment_id ? 'appointment' : null,
-            created_by: user?.id,
+            paymentMethod: selectedPaymentMethodName || paymentMethodId,
+            referenceId: params.appointment_id || null,
+            referenceType: params.appointment_id ? 'appointment' : null,
           });
         }
       }

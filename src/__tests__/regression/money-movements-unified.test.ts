@@ -8,7 +8,7 @@ describe('movimentações de dinheiro usam o helper único', () => {
     expect(s).not.toMatch(/from\('cash_registers'\)\s*\.select\('id'\)\s*\.eq\('status', 'open'\)/);
   });
   it('caixa, cancelamento de pacote e histórico gravam pelo helper', () => {
-    for (const f of ['src/components/caixa/CashRegisterPanel.tsx', 'src/components/financeiro/CancelPackageDialog.tsx', 'src/components/client-profile/ClientReportTab.tsx']) {
+    for (const f of ['src/components/caixa/CashRegisterPanel.tsx', 'src/components/financeiro/CancelPackageDialog.tsx', 'src/components/client-profile/ClientReportTab.tsx', 'src/components/financeiro/PacotesFinanceiro.tsx', 'src/components/client-profile/LegacyHistoryDialog.tsx']) {
       const s = readFileSync(f, 'utf8');
       expect(s).toContain('recordCashMovement(');
       expect(s).not.toContain("from('cash_transactions').insert(");

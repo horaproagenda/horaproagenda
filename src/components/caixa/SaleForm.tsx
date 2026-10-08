@@ -472,6 +472,11 @@ export function SaleForm() {
     }
 
     setIsProcessing(true);
+    // Tudo ou nada: guardamos o que foi criado para desfazer se algo falhar,
+    // e a baixa de estoque só roda no final, depois que todo o resto gravou.
+    const createdSaleIds: string[] = [];
+    const pendingStock: Array<Parameters<typeof deductStockForSale>[0]> = [];
+    const must = (res: { error: any }) => { if (res?.error) throw res.error; };
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -523,18 +528,19 @@ export function SaleForm() {
           .single();
 
         if (saleError) throw saleError;
+        createdSaleIds.push(saleRecord.id);
 
         // Create client_services for services
         if (item.type === 'service') {
           for (let i = 0; i < item.quantity; i++) {
-            await supabase.from('client_services').insert({
+            must(await supabase.from('client_services').insert({
               client_id: selectedClientId,
               service_id: item.originalId,
               sale_id: saleRecord.id,
               amount_paid: itemFinal / item.quantity,
               status: 'available',
               created_by: user?.id,
-            });
+            }));
           }
         }
 
@@ -586,13 +592,13 @@ export function SaleForm() {
               status: 'pending',
             }));
 
-            await (supabase as any).from('package_appointments').insert(sessions);
+            must(await (supabase as any).from('package_appointments').insert(sessions));
 
             // Update single_sales with package_id
-            await supabase
+            must(await supabase
               .from('single_sales')
               .update({ package_id: newPackage.id })
-              .eq('id', saleRecord.id);
+              .eq('id', saleRecord.id));
 
             console.log(`Package created with payment_methods for client ${selectedClientId}:`, newPackage.id);
           }
@@ -601,7 +607,7 @@ export function SaleForm() {
         // Decrement product stock for product sales
         if (item.type === 'product') {
           // Baixa única (antes o estoque era descontado duas vezes aqui)
-          await deductStockForSale({
+          pendingStock.push({
             saleId: saleRecord.id,
             itemType: 'product',
             productId: item.originalId,
@@ -612,7 +618,7 @@ export function SaleForm() {
 
         // Deduzir produtos vinculados a serviços/pacotes em tempo real
         if (item.type === 'service' || item.type === 'package') {
-          await deductStockForSale({
+          pendingStock.push({
             saleId: saleRecord.id,
             itemType: item.type,
             serviceId: item.type === 'service' ? item.originalId : null,
@@ -863,14 +869,7 @@ export function SaleForm() {
 
       // Create boleto installments if payment is boleto (à vista or parcelado)
       if (isBoleto && saleInfo.items.length > 0) {
-        const { data: lastSales } = await supabase
-          .from('single_sales')
-          .select('id')
-          .eq('client_id', selectedClientId)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        const saleId = lastSales?.[0]?.id;
+        const saleId = createdSaleIds[createdSaleIds.length - 1];
         if (saleId) {
           const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
           const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
@@ -889,9 +888,12 @@ export function SaleForm() {
             };
           });
 
-          await supabase.from('boleto_installments').insert(records);
+          must(await supabase.from('boleto_installments').insert(records));
         }
       }
+
+      // Estoque por último: só baixa quando a venda inteira foi gravada.
+      for (const s of pendingStock) await deductStockForSale(s);
 
       // Invalidate all relevant queries for full sync
       syncAfter(queryClient, 'sale');
@@ -899,7 +901,16 @@ export function SaleForm() {
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();
     } catch (error: any) {
-      toast.error('Erro ao processar venda: ' + error.message);
+      // Desfaz tudo o que já tinha sido gravado (venda, pacote, financeiro, caixa, boletos)
+      let rollbackFailed = false;
+      for (const id of createdSaleIds) {
+        const { error: purgeError } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: id });
+        if (purgeError) rollbackFailed = true;
+      }
+      if (createdSaleIds.length) syncAfter(queryClient, 'sale');
+      toast.error(rollbackFailed
+        ? 'A venda não foi concluída e parte dela pode ter ficado gravada. Confira o Caixa e o Financeiro.'
+        : 'A venda não foi concluída e nada foi gravado. Tente novamente. ' + (error?.message ?? ''));
     } finally {
       setIsProcessing(false);
     }

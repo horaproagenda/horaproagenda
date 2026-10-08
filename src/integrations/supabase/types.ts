@@ -721,6 +721,36 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_schedule_rules: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_id: string
+          group_type: string
+          preferred_day_of_week: number | null
+          preferred_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          group_id: string
+          group_type: string
+          preferred_day_of_week?: number | null
+          preferred_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          group_type?: string
+          preferred_day_of_week?: number | null
+          preferred_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       banks: {
         Row: {
           account_number: string | null

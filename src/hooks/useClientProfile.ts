@@ -651,7 +651,7 @@ export function useClientProfile(clientId: string) {
   // Mantido para compatibilidade da lógica de paymentHistory abaixo.
   const appointmentSaleIds = salePackageIds;
 
-  const totalRevenue = totalFromSales + totalFromAppointments;
+  void totalFromSales; void totalFromAppointments;
 
   // Helper to get payment method name from ID
   const getPaymentMethodName = (methodIdOrName: string): string => {
@@ -870,6 +870,9 @@ export function useClientProfile(clientId: string) {
   const rescheduledAppointments = appointments.filter(a => a.status === 'rescheduled');
   
   const proceduresCount = completedAppointments.length;
+  // Recebido = soma do histórico de pagamentos (já sem duplicidade de pacote,
+  // venda x sessões e boleto). Fonte única para "Recebido" e "Média".
+  const totalRevenue = paymentHistory.reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   // Manual refetch function - comprehensive refresh
   const refetchAll = () => {

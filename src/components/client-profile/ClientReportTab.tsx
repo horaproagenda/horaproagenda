@@ -67,6 +67,8 @@ interface ClientReportTabProps {
   clientId?: string;
   paymentHistory?: PaymentHistoryItem[];
   onEditAppointment?: (appointment: Appointment) => void;
+  /** Abre a janela de detalhes compartilhada (mesma da Agenda), que concentra a exclusão. */
+  onOpenAppointment?: (appointment: Appointment) => void;
 }
 
 const statusOptions = [
@@ -95,7 +97,7 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientReportTab({ appointments, clientName, clientId, paymentHistory = [], onEditAppointment }: ClientReportTabProps) {
+export function ClientReportTab({ appointments, clientName, clientId, paymentHistory = [], onEditAppointment, onOpenAppointment }: ClientReportTabProps) {
   const queryClient = useQueryClient();
   const { equipment } = useEquipment();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -732,6 +734,8 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                           className="h-7 w-7 text-destructive hover:text-destructive"
                           title="Excluir"
                           onClick={() => {
+                            // Exclusão unificada: mesma janela da Agenda (trata pacote, série e kit).
+                            if (onOpenAppointment) { onOpenAppointment(appointment); return; }
                             if (window.confirm('Deseja apagar este agendamento? Esta ação não pode ser desfeita.')) {
                               deleteAppointment.mutate(appointment.id);
                             }

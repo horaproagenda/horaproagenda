@@ -106,6 +106,8 @@ interface NewAppointmentDialogProps {
   onOpenChange: (open: boolean) => void;
   prefilledDate?: Date;
   prefilledTime?: string;
+  /** Cliente já escolhido (ex.: aberto pelo perfil do cliente). */
+  prefilledClient?: { id: string; name: string };
 }
 
 const DAYS_OF_WEEK = [
@@ -122,7 +124,8 @@ export function NewAppointmentDialog({
   open, 
   onOpenChange, 
   prefilledDate, 
-  prefilledTime 
+  prefilledTime,
+  prefilledClient,
 }: NewAppointmentDialogProps) {
   const [selectedClient, setSelectedClient] = useState('');
   const [selectedService, setSelectedService] = useState('');
@@ -352,7 +355,8 @@ export function NewAppointmentDialog({
       setManualServiceDateIndices(new Set());
       setServiceType('service');
       setServiceSearch('');
-      setClientSearch('');
+      setClientSearch(prefilledClient?.name || '');
+      if (prefilledClient) setSelectedClient(prefilledClient.id);
       // Reset recurring service states
       setRepeatServiceEnabled(false);
       setRepeatCount(4);

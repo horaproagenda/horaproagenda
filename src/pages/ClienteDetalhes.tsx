@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Image, Receipt, Info, BarChart3, CircleDollarSign, RefreshCw, History } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CircleDollarSign, RefreshCw, History, Plus } from 'lucide-react';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
 import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
@@ -17,6 +17,7 @@ import { ClientInfoTab } from '@/components/client-profile/ClientInfoTab';
 import { ClientReportTab } from '@/components/client-profile/ClientReportTab';
 import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
 import { EditRecurringAppointmentDialog } from '@/components/appointments/EditRecurringAppointmentDialog';
+import { NewAppointmentDialog } from '@/components/appointments/NewAppointmentDialog';
 import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useProfessionals } from '@/hooks/useProfessionals';
@@ -34,6 +35,7 @@ export default function ClienteDetalhes() {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [legacyOpen, setLegacyOpen] = useState(false);
+  const [newAppointmentOpen, setNewAppointmentOpen] = useState(false);
 
   const [detailAppointmentId, setDetailAppointmentId] = useState<string | null>(null);
   const { appointments: allAppointments } = useAppointments();
@@ -102,6 +104,10 @@ export default function ClienteDetalhes() {
           onBack={handleBack}
           actions={
             <>
+              <Button size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={() => setNewAppointmentOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Novo agendamento
+              </Button>
               <Button variant="outline" size="sm" className="h-9 flex-1 text-xs sm:h-8 sm:flex-none" onClick={() => setLegacyOpen(true)}>
                 <History className="h-3.5 w-3.5 mr-1.5" />
                 Histórico antigo
@@ -162,6 +168,7 @@ export default function ClienteDetalhes() {
               clientId={client.id}
               paymentHistory={paymentHistory}
               onEditAppointment={setEditingAppointment}
+              onOpenAppointment={(a) => setDetailAppointmentId(a.id)}
             />
           </TabsContent>
           <TabsContent value="credits" className="mt-3">
@@ -191,6 +198,12 @@ export default function ClienteDetalhes() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <NewAppointmentDialog
+        open={newAppointmentOpen}
+        onOpenChange={setNewAppointmentOpen}
+        prefilledClient={{ id: client.id, name: client.name }}
+      />
 
       {/* Edit Appointment Dialog */}
       <EditRecurringAppointmentDialog

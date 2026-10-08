@@ -96,7 +96,7 @@ export function ServiceProductsDialog() {
   const { products, activeProducts, updateProduct } = useProducts();
   const { services } = useServices();
   const { appointments } = useAppointments();
-  const { usageRecords, createUsageRecord, usedAppointmentIds } = useProductUsageRecords();
+  const { usageRecords, createUsageRecord, usedAppointmentIds, startCycle } = useProductUsageRecords();
   const { hasRole } = useAuth();
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
@@ -247,8 +247,23 @@ export function ServiceProductsDialog() {
       ?? usage.perAppointment;
   }, [usage, containerUnit, selectedProductData]);
 
+  /** Uso em andamento (sem término): abre o ciclo do produto com o frasco informado. */
+  const openCycleIfOngoing = async () => {
+    if (!selectedProductData || usageEndDate || !usageStartDate || !(Number(containerAmount) > 0)) return;
+    const pd: any = selectedProductData;
+    if (pd.started_using_at && !pd.finished_at) return; // já há ciclo ativo
+    await startCycle.mutateAsync({
+      productId: selectedProduct,
+      startDate: usageStartDate,
+      quantity: Number(containerAmount),
+      unit: containerUnit || selectedProductData.unit,
+    });
+  };
+
   const saveUsageRecord = async (target: { serviceId?: string; templateId?: string }) => {
     if (!selectedProductData || !usage) return;
+    // Sem término o período ainda não fechou: nada a registrar como consumo.
+    if (!usageEndDate) return;
     await createUsageRecord.mutateAsync({
       product_id: selectedProduct,
       service_id: target.serviceId ?? null,
@@ -299,13 +314,16 @@ export function ServiceProductsDialog() {
       container_unit: containerUnit || selectedProductData.unit,
       tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
       usage_start_date: usageStartDate,
-      usage_end_date: usageEndDate,
-      notes: calcMode === 'auto'
+      usage_end_date: usageEndDate || null,
+      notes: calcMode === 'auto' && !usageEndDate
+        ? `Uso iniciado em ${usageStartDate}. O consumo será calculado ao registrar o término.`
+        : calcMode === 'auto'
         ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
     await Promise.all(servicesToLink.map(serviceId => saveUsageRecord({ serviceId })));
+    await openCycleIfOngoing();
 
     toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
     resetForm();
@@ -342,13 +360,16 @@ export function ServiceProductsDialog() {
       container_unit: containerUnit || selectedProductData.unit,
       tracking_method: calcMode === 'auto' ? 'estimated' : 'exact',
       usage_start_date: usageStartDate,
-      usage_end_date: usageEndDate,
-      notes: calcMode === 'auto'
+      usage_end_date: usageEndDate || null,
+      notes: calcMode === 'auto' && !usageEndDate
+        ? `Uso iniciado em ${usageStartDate}. O consumo será calculado ao registrar o término.`
+        : calcMode === 'auto'
         ? `Consumo calculado pelo aplicativo: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento (${periodAppointments.length} atendimento(s) de ${usageStartDate} a ${usageEndDate}).`
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
     await Promise.all(templatesToLink.map(templateId => saveUsageRecord({ templateId })));
+    await openCycleIfOngoing();
 
     toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
     resetForm();

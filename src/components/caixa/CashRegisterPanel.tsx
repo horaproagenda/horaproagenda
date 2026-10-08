@@ -53,6 +53,7 @@ import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useAppointments } from '@/hooks/useAppointments';
 import { useAllBoletoInstallments } from '@/hooks/useBoletoInstallments';
 import { toast } from 'sonner';
+import { recordCashMovement, recordPaidFinancialEntry } from '@/lib/moneyMovements';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { CashRegisterCloseDialog } from './CashRegisterCloseDialog';
@@ -348,25 +349,21 @@ export function CashRegisterPanel() {
     const { type, category } = typeMap[transactionType];
 
     try {
-      await supabase.from('cash_transactions').insert({
-        cash_register_id: currentOpenRegister.id,
-        type,
+      await recordCashMovement({
+        cashRegisterId: currentOpenRegister.id,
+        type: type as 'income' | 'expense',
         category,
         description: transactionDescription || `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)}`,
         amount,
-        created_by: user?.id,
       });
 
       // If it's despesa, also create financial entry
       if (transactionType === 'despesa') {
-        await supabase.from('financial_entries').insert({
+        await recordPaidFinancialEntry({
           type: 'expense',
           description: transactionDescription || 'Despesa do caixa',
           amount,
-          due_date: format(new Date(), 'yyyy-MM-dd'),
-          paid_date: format(new Date(), 'yyyy-MM-dd'),
-          status: 'paid',
-          created_by: user?.id,
+          date: format(new Date(), 'yyyy-MM-dd'),
         });
         queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
       }

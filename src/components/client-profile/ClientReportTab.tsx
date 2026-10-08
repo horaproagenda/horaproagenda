@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
+import { recordCashMovement, resolveRefundCashRegister } from '@/lib/moneyMovements';
 import { Appointment } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -278,25 +279,22 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       const { data: { user } } = await supabase.auth.getUser();
       const today = format(new Date(), 'yyyy-MM-dd');
 
-      const { data: openRegister } = await supabase
-        .from('cash_registers')
-        .select('id')
-        .eq('status', 'open')
-        .maybeSingle();
+      // Mesmo caixa da venda (profissional independente ou clínica).
+      const refundRegisterId = await resolveRefundCashRegister({ packageId: packageId ?? null });
 
       // Build a more descriptive refund description
       const refundDescription = `Devolução: ${selectedSale?.serviceName || 'Serviço'} - Cliente: ${clientName} - Pagamento: ${refundMethod || 'Não especificado'}`;
 
-      if (openRegister) {
-        await supabase.from('cash_transactions').insert({
-          cash_register_id: openRegister.id,
+      if (refundRegisterId) {
+        await recordCashMovement({
+          cashRegisterId: refundRegisterId,
           type: 'expense',
           category: 'refund',
           description: refundDescription,
           amount: refundAmount,
-          reference_id: saleId,
-          reference_type: 'refund',
-          created_by: user?.id,
+          paymentMethod: refundMethod ?? null,
+          referenceId: saleId ?? null,
+          referenceType: 'refund',
         });
       }
 

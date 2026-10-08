@@ -1,6 +1,7 @@
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Appointment, PaymentStatus, AppointmentStatus } from '@/types';
@@ -251,10 +252,7 @@ export function useAppointments() {
     },
     onSuccess: (data) => {
       // Refetch to get the real data with relationships
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      syncAfter(queryClient, 'payment');
       void logAccess({
         module: 'agenda',
         action: 'create',
@@ -379,24 +377,9 @@ export function useAppointments() {
     },
     onSuccess: () => {
       // Refetch all related queries to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['client'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      syncAfter(queryClient, 'payment');
       // Relatórios/extrato de pacotes e atendimentos precisam refletir a baixa na hora
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+      syncAfter(queryClient, 'payment');
       toast.success('Pagamento registrado com sucesso!');
     },
     onError: (error, _, context) => {
@@ -610,17 +593,7 @@ export function useAppointments() {
       return { ...data, sessionReleased: false };
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'], refetchType: 'active' });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'], refetchType: 'active' });
-      queryClient.invalidateQueries({ queryKey: ['client'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_details'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
+      syncAfter(queryClient, 'payment');
       // Notify other tabs/devices to refresh immediately
       broadcastDataChange();
 
@@ -668,18 +641,7 @@ export function useAppointments() {
         targetId: deletedId ?? null,
         metadata: { hadPayment: result?.hadPayment, hadPackageSession: result?.hadPackageSession },
       });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_details'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
+      syncAfter(queryClient, 'payment');
 
       let message = 'Agendamento excluído!';
       if (result.hadPackageSession) {
@@ -819,17 +781,7 @@ export function useAppointments() {
       return { count: appointmentIds.length, refunded: refund?.refundAmount || 0 };
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_details'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      syncAfter(queryClient, 'payment');
       const base = `${result.count} agendamento(s) do pacote excluído(s).`;
       toast.success(
         result.refunded > 0
@@ -859,14 +811,7 @@ export function useAppointments() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard_stats'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
+      syncAfter(queryClient, 'payment');
       toast.success('Baixa do pagamento desfeita. Você já pode dar baixa novamente.');
     },
     onError: (error: Error) => {

@@ -74,3 +74,18 @@ export async function resolveRefundCashRegister(opts: { packageId?: string | nul
     : await resolveFinancialDestination(opts.professionalId ?? null);
   return dest.cashRegisterId;
 }
+
+/**
+ * Gravação direta (linha completa) pelo mesmo ponto único — usada por fluxos
+ * com campos extras (parcelas, taxa de cartão, boleto, cheque). Sempre lança
+ * erro se o banco recusar, para a tela nunca mostrar sucesso falso.
+ */
+export async function insertFinancialEntry(row: Record<string, unknown>) {
+  const { error } = await supabase.from('financial_entries').insert(row as any);
+  if (error) throw error;
+}
+
+export async function insertCashTransaction(row: Record<string, unknown>) {
+  const { error } = await supabase.from('cash_transactions').insert(row as any);
+  if (error) throw error;
+}

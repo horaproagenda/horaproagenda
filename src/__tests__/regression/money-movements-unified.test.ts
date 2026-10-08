@@ -14,4 +14,10 @@ describe('movimentações de dinheiro usam o helper único', () => {
       expect(s).not.toContain("from('cash_transactions').insert(");
     }
   });
+  it('nova venda no Caixa grava pelo ponto único', () => {
+    const s = readFileSync('src/components/caixa/SaleForm.tsx', 'utf8');
+    expect(s).not.toContain("from('cash_transactions').insert(");
+    expect(s).not.toContain("from('financial_entries').insert(");
+    expect(s).toContain('insertCashTransaction(');
+  });
 });

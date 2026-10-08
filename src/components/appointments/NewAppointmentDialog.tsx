@@ -740,7 +740,7 @@ export function NewAppointmentDialog({
 
     const intervals: number[] = [];
     for (let i = 1; i < autoScheduleTotalSessions; i++) {
-      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
+      const previousStep = packageSequenceSteps[stepIndexAt(i - 1)];
       intervals.push(
         packageSequenceSteps.length > 0
           ? resolveStepInterval(previousStep?.interval_after_days, packageInterval)
@@ -748,7 +748,7 @@ export function NewAppointmentDialog({
       );
     }
     return intervals;
-  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, nextPackageStepIndex, customIntervalDays, autoScheduleTotalSessions]);
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, stepIndexAt, customIntervalDays, autoScheduleTotalSessions]);
 
   const autoScheduleChainOptions = useMemo(() => ({
     intervals: autoScheduleIntervals,
@@ -3019,7 +3019,7 @@ Até breve! ✨`;
                                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                                           {selectedPackageData?.package_type === 'sequential' && (() => {
                                             const name = resolveSessionServiceLabel({
-                                              index: nextPackageStepIndex + index,
+                                              index: stepIndexAt(index),
                                               steps: packageSequenceSteps as any,
                                               services: services as any,
                                               pkg: selectedPackageData as any,

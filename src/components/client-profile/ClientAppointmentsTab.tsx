@@ -30,6 +30,8 @@ interface ClientAppointmentsTabProps {
   clientCpf?: string;
   clientPhone?: string;
   onEditAppointment?: (appointment: Appointment) => void;
+  /** Abre a mesma janela de detalhes/pagamento usada na Agenda. */
+  onOpenAppointment?: (appointment: Appointment) => void;
 }
 
 const statusOptions = [
@@ -70,7 +72,7 @@ const getMonthOptions = () => {
   return options;
 };
 
-export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '', onEditAppointment }: ClientAppointmentsTabProps) {
+export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf = '', clientPhone = '', onEditAppointment, onOpenAppointment }: ClientAppointmentsTabProps) {
   const [selectedMonth, setSelectedMonth] = useState('all'); // Default to all months
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedAppointments, setSelectedAppointments] = useState<Set<string>>(new Set());
@@ -487,6 +489,20 @@ export function ClientAppointmentsTab({ appointments, clientName = '', clientCpf
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}>
                           {status.label}
                         </Badge>
+                        {onOpenAppointment && !isSelectionMode && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            data-testid="client-appointment-open"
+                            className="h-8 min-h-8 px-2 text-[11px] shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenAppointment(appointment);
+                            }}
+                          >
+                            Detalhes
+                          </Button>
+                        )}
                         {onEditAppointment && !isSelectionMode && (
                           <Button
                             variant="outline"

@@ -17,6 +17,10 @@ import { ClientInfoTab } from '@/components/client-profile/ClientInfoTab';
 import { ClientReportTab } from '@/components/client-profile/ClientReportTab';
 import { ClientCreditsTab } from '@/components/client-profile/ClientCreditsTab';
 import { EditRecurringAppointmentDialog } from '@/components/appointments/EditRecurringAppointmentDialog';
+import { AppointmentDetailDialog } from '@/components/appointments/AppointmentDetailDialog';
+import { useAppointments } from '@/hooks/useAppointments';
+import { useProfessionals } from '@/hooks/useProfessionals';
+import { useAppointmentPaymentHandler } from '@/hooks/useAppointmentPaymentHandler';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Appointment } from '@/types';
 import { toast } from 'sonner';
@@ -31,6 +35,11 @@ export default function ClienteDetalhes() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [legacyOpen, setLegacyOpen] = useState(false);
 
+  const [detailAppointmentId, setDetailAppointmentId] = useState<string | null>(null);
+  const { appointments: allAppointments } = useAppointments();
+  const { professionals } = useProfessionals();
+  // Mesmo fluxo de pagamento da Agenda (fonte única).
+  const handlePayment = useAppointmentPaymentHandler(allAppointments);
   const { client, appointments, documents, photos, quotes, paymentHistory, isLoading, updateClient, addDocument, addPhoto, addQuote, updateQuote, refetchAll, stats } = useClientProfile(id || '');
 
   const handleRefresh = async () => {
@@ -165,6 +174,7 @@ export default function ClienteDetalhes() {
               clientCpf={client.cpf || ''}
               clientPhone={client.phone || ''}
               onEditAppointment={setEditingAppointment}
+              onOpenAppointment={(a) => setDetailAppointmentId(a.id)}
             />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">
@@ -201,6 +211,20 @@ export default function ClienteDetalhes() {
         onOpenChange={(open) => !open && setEditingAppointment(null)}
       />
 
+
+      <AppointmentDetailDialog
+        appointment={
+          detailAppointmentId
+            ? (allAppointments.find((a) => a.id === detailAppointmentId)
+              ?? (appointments.find((a) => a.id === detailAppointmentId) as Appointment | undefined)
+              ?? null)
+            : null
+        }
+        professionals={professionals}
+        open={!!detailAppointmentId}
+        onOpenChange={(open) => !open && setDetailAppointmentId(null)}
+        onPayment={handlePayment}
+      />
 
       <LegacyHistoryDialog
         open={legacyOpen}

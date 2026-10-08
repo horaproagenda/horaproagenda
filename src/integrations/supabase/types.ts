@@ -5340,6 +5340,7 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           payment_method_id: string | null
+          sale_committed: boolean
           sale_date: string
           service_id: string | null
           updated_at: string
@@ -5364,6 +5365,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           payment_method_id?: string | null
+          sale_committed?: boolean
           sale_date?: string
           service_id?: string | null
           updated_at?: string
@@ -5388,6 +5390,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           payment_method_id?: string | null
+          sale_committed?: boolean
           sale_date?: string
           service_id?: string | null
           updated_at?: string
@@ -6904,6 +6907,7 @@ export type Database = {
       }
       heal_packages_without_sale: { Args: never; Returns: Json }
       heal_phantom_package_sessions: { Args: never; Returns: number }
+      heal_uncommitted_sales: { Args: never; Returns: number }
       is_account_active: { Args: { _user_id: string }; Returns: boolean }
       is_account_admin: { Args: { _user_id?: string }; Returns: boolean }
       is_boleto_installment_sale: {

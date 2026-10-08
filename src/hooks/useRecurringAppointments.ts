@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { applyAutoScheduleRule, loadAutoScheduleRule } from '@/lib/autoScheduleRules';
 import { adjustToBusinessHours, type BusinessHoursConfig } from '@/lib/businessHoursAdjustment';
 
 // Use environment variable for URL - ensures consistency between preview and production
@@ -514,6 +515,15 @@ Até breve! ✨`;
 
       let appointmentsToUpdate: any[] = [];
       let intervalDays = params.interval_days || 7;
+      // Regra original do agendamento automático (dia da semana/horário) deste grupo.
+      const autoRule = params.time_only ? null : await loadAutoScheduleRule(
+        params.propagate_type === 'package' ? params.package_id : params.recurring_group_id,
+      );
+      let ruleTz = 'America/Sao_Paulo';
+      if (autoRule) {
+        const { data: tzRow } = await supabase.from('business_settings').select('timezone').maybeSingle();
+        if ((tzRow as any)?.timezone) ruleTz = (tzRow as any).timezone;
+      }
 
       if (params.propagate_type === 'recurring' && params.recurring_group_id) {
         // Get all appointments in the recurring series
@@ -618,6 +628,7 @@ Até breve! ✨`;
             0, 0
           );
 
+          nextStart = applyAutoScheduleRule(nextStart, autoRule, ruleTz);
           // Adjust to business hours / open days
           if (bhCfg) {
             nextStart = adjustToBusinessHours(nextStart, duration, bhCfg, 14);
@@ -714,12 +725,13 @@ Até breve! ✨`;
           ? new Date(originalAptStart)
           : addDays(currentDate, intervalDays);
 
-        const newAptStart = new Date(nextDate);
+        let newAptStart = new Date(nextDate);
         newAptStart.setHours(
           params.new_start_time.getHours(),
           params.new_start_time.getMinutes(),
           0, 0
         );
+        newAptStart = applyAutoScheduleRule(newAptStart, autoRule, ruleTz);
         const newAptEnd = new Date(newAptStart.getTime() + duration);
 
         const { data: updated, error: updateError } = await rescheduleAppointment({ appointmentId: apt.id, start: newAptStart.toISOString(), end: newAptEnd.toISOString() }).then((data) => ({ data, error: null as any }), (error) => ({ data: null as any, error }));

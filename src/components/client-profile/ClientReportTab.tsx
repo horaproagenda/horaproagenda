@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { syncAfter } from '@/lib/domainSync';
 import { Appointment } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -343,15 +344,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       return { refundAmount };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_services'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
+      syncAfter(queryClient, 'sale');
       toast.success(`Venda cancelada! Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
       setCancelDialogOpen(false);
       setSelectedSale(null);

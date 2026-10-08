@@ -1,6 +1,7 @@
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { syncAfter } from '@/lib/domainSync';
 import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -222,20 +223,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
       toast.success('Pacote apagado. A agenda e o histórico do cliente foram sincronizados.');
       setDeleteOpen(false);
       setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['package_details'] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-pending-package-sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credit_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+      syncAfter(queryClient, 'sale');
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Erro ao apagar pacote.');
@@ -510,13 +498,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         toast.success(`Pacote excluído permanentemente. Devolução de R$ ${data.refundAmount.toFixed(2)} registrada.`);
       }
       setCancelOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['package-sales-financial'] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['client-profile'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      syncAfter(queryClient, 'sale');
     },
     onError: (e: any) => {
       console.error(e);

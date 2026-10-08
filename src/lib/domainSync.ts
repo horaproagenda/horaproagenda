@@ -10,13 +10,15 @@ import type { QueryClient } from '@tanstack/react-query';
 export const DOMAIN_KEYS = {
   agenda: [
     'appointments', 'client-appointments', 'package_appointments', 'package_details',
-    'recurring_appointments', 'dashboard_stats', 'dashboard-stats',
+    'recurring_appointments', 'dashboard_stats', 'dashboard-stats', 'reminders',
+    'client-pending-package-sessions',
   ],
-  clients: ['clients', 'client', 'client_credits', 'clients_credits', 'client_services'],
+  clients: ['clients', 'client', 'client_credits', 'clients_credits', 'client_services',
+    'client_credit_transactions', 'client-profile', 'client_profile'],
   packages: ['service_packages', 'client_packages', 'client_packages_with_counts', 'package_appointments'],
   finance: [
     'financial_entries', 'single_sales', 'client-sales', 'package-sales-financial',
-    'boleto_installments', 'boleto_installments_all', 'fin_dashboard', 'dashboard_stats',
+    'boleto_installments', 'boleto_installments_all', 'fin_dashboard', 'financial-dashboard', 'dashboard_stats',
   ],
   cash: ['cash_transactions', 'cash_registers', 'cash_register_entries'],
   products: ['products', 'product_purchases', 'product_usage_records', 'product_daily_consumption'],

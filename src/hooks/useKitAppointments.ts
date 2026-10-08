@@ -141,15 +141,25 @@ async function realignKitToAutoRule(appointmentId: string) {
   const { data: rows } = await sb.from('appointments').select('id, start_time, end_time, status')
     .eq('composite_group_id', src.composite_group_id).order('start_time', { ascending: true });
   let floor = new Date(src.start_time).getTime();
-  for (const r of rows || []) {
-    if (r.id === src.id || new Date(r.start_time).getTime() <= new Date(src.start_time).getTime()) continue;
-    if (['completed', 'missed', 'cancelled'].includes(r.status)) continue;
-    const dur = new Date(r.end_time).getTime() - new Date(r.start_time).getTime();
-    let start = applyAutoScheduleRule(new Date(r.start_time), rule, tz);
-    if (start.getTime() <= floor) start = applyAutoScheduleRule(new Date(floor + 86400000), rule, tz);
-    if (start.getTime() !== new Date(r.start_time).getTime()) {
-      await rescheduleAppointment({ appointmentId: r.id, start: start.toISOString(), end: new Date(start.getTime() + dur).toISOString() });
+  // Tudo ou nada: guarda os horários originais para desfazer se uma etapa falhar.
+  const done: { id: string; start: string; end: string }[] = [];
+  try {
+    for (const r of rows || []) {
+      if (r.id === src.id || new Date(r.start_time).getTime() <= new Date(src.start_time).getTime()) continue;
+      if (['completed', 'missed', 'cancelled'].includes(r.status)) continue;
+      const dur = new Date(r.end_time).getTime() - new Date(r.start_time).getTime();
+      let start = applyAutoScheduleRule(new Date(r.start_time), rule, tz);
+      if (start.getTime() <= floor) start = applyAutoScheduleRule(new Date(floor + 86400000), rule, tz);
+      if (start.getTime() !== new Date(r.start_time).getTime()) {
+        await rescheduleAppointment({ appointmentId: r.id, start: start.toISOString(), end: new Date(start.getTime() + dur).toISOString() });
+        done.push({ id: r.id, start: r.start_time, end: r.end_time });
+      }
+      floor = start.getTime();
     }
-    floor = start.getTime();
+  } catch (err) {
+    for (const d of done.reverse()) {
+      try { await rescheduleAppointment({ appointmentId: d.id, start: d.start, end: d.end }); } catch { /* segue desfazendo */ }
+    }
+    throw err;
   }
 }

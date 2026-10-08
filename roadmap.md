@@ -10,5 +10,5 @@
 - [x] Validar confirmação de e-mail e conclusão idempotente do cadastro
 - [x] Corrigir falsos negativos nos testes autenticados do GitHub Actions
 - [x] Unificação 1: regras únicas de cadastro de clientes (tela, link público, importações, servidor)
-- [ ] Unificação 2: produtos e estoque (baixa por venda, consumo por atendimento, ajuste manual)
+- [x] Unificação 2: estoque alterado por um único caminho atômico (venda, consumo, devolução)
 - [ ] Unificação 3: venda do Caixa 100% no banco (tudo ou nada)

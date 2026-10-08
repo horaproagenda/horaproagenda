@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateClientInput, normalizeClientInput, duplicateClientMessage } from "../_shared/clientRules.ts";
+import { inferDocumentType } from "../_shared/documentRules.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -112,12 +113,9 @@ serve(async (req) => {
     if (body.filled_documents && body.filled_documents.length > 0) {
       for (const doc of body.filled_documents) {
         try {
-          const { data: tpl } = await admin.from('document_templates').select('id, title').eq('id', doc.template_id).maybeSingle();
+          const { data: tpl } = await admin.from('document_templates').select('id, title, category').eq('id', doc.template_id).maybeSingle();
           if (!tpl) continue;
-          const lowerTitle = (tpl.title || '').toLowerCase();
-          const docType = lowerTitle.includes('anamnese') ? 'anamnese'
-            : lowerTitle.includes('contrato') ? 'contract'
-            : 'other';
+          const docType = inferDocumentType((tpl as any).category, tpl.title);
           await admin.from('client_documents').insert({
             client_id: client.id,
             template_id: tpl.id,

@@ -1,3 +1,4 @@
+import { inferDocumentType } from '@/lib/documentRules';
 import { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -389,21 +390,7 @@ export function FillDocumentDialog({
 
     setSaving(true);
     try {
-      const templateCategory = (template as any)?.category as string | undefined;
-      const titleLc = template.title.toLowerCase();
-      const docType = templateCategory === 'anamnese'
-        ? 'anamnese'
-        : templateCategory === 'contract'
-        ? 'contract'
-        : templateCategory === 'consent'
-        ? 'consent'
-        : titleLc.includes('anamnese')
-        ? 'anamnese'
-        : titleLc.includes('contrato')
-        ? 'contract'
-        : titleLc.includes('termo') || titleLc.includes('consent')
-        ? 'consent'
-        : 'other';
+      const docType = inferDocumentType((template as any)?.category, template.title);
 
       const savedAt = new Date();
       const hasContent = filledContent && filledContent.trim().length > 0;

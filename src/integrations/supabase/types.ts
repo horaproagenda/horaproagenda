@@ -6364,6 +6364,10 @@ export type Database = {
         Args: { _product: Database["public"]["Tables"]["products"]["Row"] }
         Returns: boolean
       }
+      adjust_product_stock: {
+        Args: { p_delta: number; p_product_id: string }
+        Returns: number
+      }
       appointment_conflict_reason: {
         Args: {
           p_end: string

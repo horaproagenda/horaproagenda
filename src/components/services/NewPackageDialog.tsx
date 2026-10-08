@@ -251,7 +251,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
 
       toast.success('Pacote cadastrado!');
       form.reset();
-      setPackageType('standard');
+      setPackageType(initialType);
       recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
       setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
       setPriceManuallyEdited(false);
@@ -276,7 +276,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base">{lockType ? (packageType === 'sequential' ? 'Novo Pacote Sequencial' : 'Novo Pacote Comum') : 'Novo Pacote'}</DialogTitle>
+          <DialogTitle className="text-base">{packageType === 'sequential' ? 'Novo Pacote Sequencial' : 'Novo Pacote Comum'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
@@ -330,16 +330,6 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             </div>
 
 
-            {!lockType && (
-              <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
-                <Button type="button" variant={packageType === 'standard' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('standard')}>
-                  Pacote padrão
-                </Button>
-                <Button type="button" variant={packageType === 'sequential' ? 'default' : 'ghost'} size="sm" onClick={() => setPackageType('sequential')}>
-                  Sequencial
-                </Button>
-              </div>
-            )}
 
             {/* Info: o que é cada tipo de pacote */}
             <div className={

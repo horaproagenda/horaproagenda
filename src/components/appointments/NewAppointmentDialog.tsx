@@ -1540,9 +1540,13 @@ export function NewAppointmentDialog({
           : packageAlreadyPaid;
 
         // Datas exatamente como o profissional escolheu — nenhuma é empurrada.
-        const plannedDates = autoScheduleEnabled && editablePreviewDates.length > 0
-          ? editablePreviewDates
-          : [startTime];
+        // Ordem cronológica obrigatória: a data mais cedo sempre fica com a
+        // etapa pendente de menor número (data 1 → etapa 1, data 2 → etapa 2).
+        const plannedDates = sortDatesChronologically(
+          autoScheduleEnabled && editablePreviewDates.length > 0
+            ? editablePreviewDates
+            : [startTime],
+        );
 
         const batchItems: PackageBatchItem[] = plannedDates
           .slice(0, pendingSteps.length)
@@ -1550,8 +1554,10 @@ export function NewAppointmentDialog({
             const targetStep = pendingSteps[i];
             // Índice da etapa real (ID único), nunca a posição na lista de pendentes.
             const stepIndex = targetStep.step > 0 ? targetStep.step - 1 : nextPackageStepIndex + i;
-            const stepServiceId = targetStep.service_id
-              || packageSequenceSteps[stepIndex]?.service_id
+            // Mesmo critério do banco: o serviço vem da etapa do cadastro do
+            // pacote; o da sessão só é usado se o cadastro não tiver a etapa.
+            const stepServiceId = packageSequenceSteps[stepIndex]?.service_id
+              || targetStep.service_id
               || selectedPackageData?.service_id
               || null;
             const stepService = services.find((s) => s.id === stepServiceId);

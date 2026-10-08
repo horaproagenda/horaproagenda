@@ -1,3 +1,4 @@
+import { inferDocumentType } from '@/lib/documentRules';
 import { useState, useEffect } from 'react';
 import { 
   Dialog, 

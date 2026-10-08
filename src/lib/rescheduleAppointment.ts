@@ -41,7 +41,8 @@ export async function rescheduleAppointment(input: RescheduleInput) {
     (supabase as any).from('appointments').select('version, updated_by').eq('id', input.appointmentId).maybeSingle(),
     supabase.auth.getUser(),
   ]);
-  if (!row || !auth?.user || (row.updated_by && row.updated_by !== auth.user.id)) throw error;
+  // updated_by nulo (registros antigos/rotinas automáticas) não é conflito real.
+  if (!row || !auth?.user || (row.updated_by != null && row.updated_by !== auth.user.id)) throw error;
   const retry = await callRpc(input, row.version ?? null);
   if (retry.error) throw retry.error;
   return retry.data;

@@ -319,13 +319,17 @@ Até breve! ✨`;
 
       // 2) Following occurrences keep their own dates: only the time of day changes.
       if (params.reschedule_following) {
+        // Só horário mudou → mantém as datas seguintes. Se o dia mudou, a
+        // regra automática da série (dia da semana/hora) decide as próximas.
+        const sameDay =
+          format(new Date(originalApt.start_time), 'yyyy-MM-dd') === format(newStart, 'yyyy-MM-dd');
         const propagated = await runPropagateSeriesDates({
           appointment_id: originalApt.id,
           new_start_time: newStart,
           new_end_time: newEnd,
           propagate_type: 'recurring',
           recurring_group_id: params.recurring_group_id,
-          time_only: true,
+          time_only: sameDay,
         });
         updatedAppointments.push(...propagated.appointments);
       }

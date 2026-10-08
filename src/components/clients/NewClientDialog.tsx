@@ -35,8 +35,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useClients } from '@/hooks/useClients';
 import { DuplicateClientAlert } from './DuplicateClientAlert';
-import { isValidCPF, formatCPF } from '@/lib/cpfValidator';
-import { validateCNPJ } from '@/lib/validationSchemas';
+import { formatCPF } from '@/lib/cpfValidator';
+import { validateClientInput } from '@/lib/clientRules';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
@@ -67,37 +67,31 @@ const formatCnpj = (value: string): string => {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 };
 
+// Regras de validação vêm de clientRules.ts (mesmas do link público, importação e servidor).
 const clientSchema = z.object({
   person_type: z.enum(['pf', 'pj']).default('pf'),
-  name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
-  email: z.string().trim().email('Email inválido').max(255, 'Email muito longo').or(z.literal('')),
-  phone: z.string().trim().min(10, 'Telefone deve ter pelo menos 10 dígitos').max(20, 'Telefone muito longo'),
-  cpf: z.string().trim().optional().refine((val) => {
-    if (!val || val === '') return true;
-    return isValidCPF(val);
-  }, 'CPF inválido'),
-  cnpj: z.string().trim().optional().refine((val) => {
-    if (!val || val === '') return true;
-    return validateCNPJ(val);
-  }, 'CNPJ inválido (deve ter 14 dígitos)'),
+  name: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  cpf: z.string().optional(),
+  cnpj: z.string().optional(),
   company_name: z.string().trim().max(150, 'Razão social muito longa').optional(),
   birthdate: z.string().optional(),
-  notes: z.string().trim().max(500, 'Observações muito longas').optional(),
+  notes: z.string().optional(),
   is_active: z.boolean().default(true),
   referral_source: z.string().optional(),
   assigned_professional_id: z.string().optional(),
-  // Address
-  cep: z.string().trim().optional().refine((val) => {
-    if (!val) return true;
-    const digits = val.replace(/\D/g, '');
-    return digits.length === 0 || digits.length === 8;
-  }, 'CEP deve ter 8 dígitos'),
+  cep: z.string().optional(),
   address_street: z.string().trim().max(200).optional(),
   address_number: z.string().trim().max(20).optional(),
   address_complement: z.string().trim().max(100).optional(),
   address_neighborhood: z.string().trim().max(100).optional(),
   address_city: z.string().trim().max(100).optional(),
   address_state: z.string().trim().max(2).optional(),
+}).superRefine((data, ctx) => {
+  for (const err of validateClientInput(data)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [err.field], message: err.message });
+  }
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;

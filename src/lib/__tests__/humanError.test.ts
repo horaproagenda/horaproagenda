@@ -60,3 +60,14 @@ describe('humanizeToastMessage', () => {
     expect(humanizeToastMessage('Cliente salvo com sucesso')).toBe('Cliente salvo com sucesso');
   });
 });
+
+describe('avisos de conflito', () => {
+  const sala = 'A sala Sala 1 já está ocupada em 09/10/2026, das 14:00 às 15:00 (atendimento de Ana). Escolha outra sala ou outro horário.';
+  it('remove prefixo de erro e mantém data, hora e nome', () => {
+    expect(humanizeToastMessage(`Erro ao atualizar agendamento: ${sala}`)).toBe(sala);
+  });
+  it('extrai o aviso de um erro do banco', () => {
+    const msg = 'Ana já tem um atendimento em 09/10/2026, das 14:00 às 15:00. Escolha outro horário ou outro profissional.';
+    expect(humanizeError({ code: 'P0001', message: msg })).toBe(msg);
+  });
+});

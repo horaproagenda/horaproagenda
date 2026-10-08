@@ -241,6 +241,9 @@ export function humanizeError(input: unknown, fallback = GENERIC_FALLBACK): stri
   const code = raw.code != null ? String(raw.code) : '';
   const status = raw.status ?? raw.statusCode;
 
+  const conflict = extractConflictMessage(message);
+  if (conflict) return conflict;
+
   // 1) Regras lançadas de propósito pelo sistema (P0001 / mensagens em PT-BR):
   //    a mensagem já é explicativa, então preservamos sem o código.
   const isPortuguese = /[çãõáéíóúâêô]|\b(não|você|horário|cliente|pacote|conta)\b/i.test(message);
@@ -275,14 +278,33 @@ export function humanizeError(input: unknown, fallback = GENERIC_FALLBACK): stri
  * Mantém prefixos de contexto ("Erro ao salvar cliente") e substitui a parte
  * técnica pela explicação humanizada.
  */
+/**
+ * Avisos de horário ocupado vindos do banco já trazem data, hora e nome
+ * (profissional, sala ou equipamento). Quando presentes, são exibidos
+ * sozinhos, sem prefixos como "Erro ao salvar:".
+ */
+const CONFLICT_SENTENCE =
+  /[^.:—]*?(?:já tem um atendimento em|já está ocupada em|já está em uso em|está ausente de)[^.]*\.(?:\s*Escolha [^.]*\.)?/;
+
+export function extractConflictMessage(value: unknown): string | null {
+  const raw = typeof value === 'string' ? value : value ? extractRaw(value) : {};
+  const text = typeof raw === 'string' ? raw : [raw.message, raw.details].filter(Boolean).join(' — ');
+  const match = text.match(CONFLICT_SENTENCE);
+  if (!match) return null;
+  return match[0].replace(/^\s*(erro|error)[^:]*:\s*/i, '').trim();
+}
+
 export function humanizeToastMessage(value: unknown, fallback?: string): unknown {
   if (typeof value === 'number') return humanizeError(String(value), fallback);
+  const conflict = extractConflictMessage(value);
+  if (conflict) return conflict;
   if (typeof value !== 'string') {
     if (value instanceof Error || (value && typeof value === 'object' && ('code' in value || 'message' in value))) {
       return humanizeError(value, fallback);
     }
     return value; // ReactNode customizado — não mexe
   }
+
 
   const separator = value.match(/^(.{3,60}?)\s*[:]\s*(.+)$/s);
   if (separator) {

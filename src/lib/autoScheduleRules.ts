@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { createDateTimeInTimeZone, formatDateInTimeZone } from '@/lib/timezone';
+import { clinicDateTime, formatDateInTimeZone } from '@/lib/timezone';
 
 /**
  * Regra original de um agendamento automático (dia da semana / horário),
@@ -65,5 +65,5 @@ export function applyAutoScheduleRule(
     ? rule.preferred_time.slice(0, 5)
     : new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(proposed);
   const dayStr = day.toISOString().slice(0, 10);
-  return createDateTimeInTimeZone(new Date(`${dayStr}T12:00:00`), hhmm, timeZone);
+  return clinicDateTime(dayStr, hhmm, timeZone);
 }

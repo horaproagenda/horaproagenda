@@ -600,12 +600,7 @@ export function SaleForm() {
 
         // Decrement product stock for product sales
         if (item.type === 'product') {
-          const product = productsForSale.find(p => p.id === item.originalId);
-          if (product) {
-            await supabase.from('products').update({
-              current_stock: Math.max(0, product.current_stock - item.quantity),
-            }).eq('id', item.originalId);
-          }
+          // Baixa única (antes o estoque era descontado duas vezes aqui)
           await deductStockForSale({
             saleId: saleRecord.id,
             itemType: 'product',

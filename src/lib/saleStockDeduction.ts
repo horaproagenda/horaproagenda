@@ -18,6 +18,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { adjustProductStock } from '@/lib/stockMovements';
 
 interface DeductOptions {
   saleId: string;
@@ -40,17 +41,7 @@ async function alreadyDeducted(saleId: string): Promise<boolean> {
 }
 
 async function deductProduct(productId: string, quantity: number) {
-  const { data: product } = await supabase
-    .from('products')
-    .select('current_stock')
-    .eq('id', productId)
-    .maybeSingle();
-  if (!product) return;
-  const newStock = Math.max(0, Number(product.current_stock || 0) - quantity);
-  await supabase
-    .from('products')
-    .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-    .eq('id', productId);
+  await adjustProductStock(productId, -quantity);
 }
 
 async function recordConsumption(opts: {

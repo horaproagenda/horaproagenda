@@ -1,3 +1,4 @@
+import { adjustProductStock } from '@/lib/stockMovements';
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -134,19 +135,8 @@ export function useProductDailyConsumption(productId?: string) {
         .single();
       if (error) throw error;
 
-      // Deduct from product stock
-      const { data: product } = await supabase
-        .from('products')
-        .select('current_stock')
-        .eq('id', consumption.product_id)
-        .single();
-
-      if (product) {
-        await supabase
-          .from('products')
-          .update({ current_stock: Math.max(0, product.current_stock - consumption.quantity_used) })
-          .eq('id', consumption.product_id);
-      }
+      // Baixa atômica pela forma única de estoque
+      await adjustProductStock(consumption.product_id, -Number(consumption.quantity_used || 0));
 
       return data;
     },
@@ -177,17 +167,7 @@ export function useProductDailyConsumption(productId?: string) {
       if (error) throw error;
 
       if (row) {
-        const { data: product } = await supabase
-          .from('products')
-          .select('current_stock')
-          .eq('id', row.product_id)
-          .single();
-        if (product) {
-          await supabase
-            .from('products')
-            .update({ current_stock: Number(product.current_stock || 0) + Number(row.quantity_used || 0) })
-            .eq('id', row.product_id);
-        }
+        await adjustProductStock(row.product_id, Number(row.quantity_used || 0));
       }
     },
     onSuccess: () => {

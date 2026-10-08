@@ -2,6 +2,7 @@ import { resolveFinancialDestination, resolveFinancialDestinationForPackage } fr
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
+import { recordCashMovement, recordPaidFinancialEntry } from '@/lib/moneyMovements';
 import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -415,18 +416,11 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         const dest = await resolveFinancialDestinationForPackage((selected as any).packageId ?? null);
         const openReg = dest.cashRegisterId ? { id: dest.cashRegisterId } : null;
         if (openReg?.id) {
-          const { error: txErr } = await supabase.from('cash_transactions').insert({
-            cash_register_id: openReg.id,
-            type: 'expense',
-            category: 'refund',
-            description: refundDescription,
-            amount: refundAmount,
-            payment_method: refundMethod,
-            reference_id: selected.saleId,
-            reference_type: 'package_refund',
-            created_by: user?.id,
+          await recordCashMovement({
+            cashRegisterId: openReg.id, type: 'expense', category: 'refund',
+            description: refundDescription, amount: refundAmount, paymentMethod: refundMethod,
+            referenceId: selected.saleId, referenceType: 'package_refund',
           });
-          if (txErr) throw txErr;
         }
       }
 
@@ -441,18 +435,13 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
 
       // 2. Register refund in financial_entries — only if not already registered
       if (!feAlreadyRegistered && refundAmount > 0) {
-        const { error: feErr } = await supabase.from('financial_entries').insert({
+        await recordPaidFinancialEntry({
           type: 'expense',
           description: `${refundDescription} ${refundMarker}`,
-          amount: refundAmount,
-          status: 'paid',
-          due_date: today,
-          paid_date: today,
-          client_id: selected.clientId,
+          amount: refundAmount, date: today,
+          clientId: selected.clientId,
           notes: `Devolução de pacote cancelado - Aplicações usadas: ${selected.usedSessions} - Multa: R$ ${penalty} - Motivo: ${cancelReason.trim()}`,
-          created_by: user?.id,
         });
-        if (feErr) throw feErr;
       }
 
       // 3. Add to client credit_balance (only if not already credited and method = "Crédito em Conta")

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
+import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAccountOwnerId } from '@/hooks/useAccountOwnerId';
@@ -144,19 +145,7 @@ export function useFinancialEntries() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages_with_counts'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client_services'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
+      syncAfter(queryClient, 'financialEntry');
       toast.success('Lançamento excluído com sucesso!');
     },
     onError: (error: any) => {

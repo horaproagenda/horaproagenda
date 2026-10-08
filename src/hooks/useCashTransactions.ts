@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ensureNetAmount } from '@/lib/netValueCalculation';
@@ -224,9 +225,7 @@ export function useCashTransactions(cashRegisterId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      syncAfter(queryClient, 'cash');
     },
     onError: (error: any) => {
       toast.error('Erro ao registrar transação: ' + error.message);
@@ -243,9 +242,7 @@ export function useCashTransactions(cashRegisterId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      syncAfter(queryClient, 'cash');
     },
     onError: (error: any) => {
       toast.error('Erro ao excluir transação: ' + error.message);

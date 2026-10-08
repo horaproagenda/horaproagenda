@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
+import { insertFinancialEntry, insertCashTransaction } from '@/lib/moneyMovements';
 import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { useRecordVisibility } from '@/components/shared/VisibilitySelect';
@@ -645,7 +646,7 @@ export function SaleForm() {
             const dueDateStr = format(dueDate, 'yyyy-MM-dd');
             const amt = i === 0 ? installmentAmount + remainder : installmentAmount;
 
-            await supabase.from('financial_entries').insert({
+            await insertFinancialEntry({
               type: 'receivable',
               description: `Boleto ${i + 1}/${boletoInstallments}: ${financialItemNames} - ${selectedClient?.name} (venc. ${format(dueDate, 'dd/MM/yyyy')})`,
               amount: amt,
@@ -675,7 +676,7 @@ export function SaleForm() {
           }
         } else if (isCheque) {
           // Cheque: create receivable as pending until cash date
-          await supabase.from('financial_entries').insert({
+          await insertFinancialEntry({
             type: 'receivable',
             description: `Cheque nº ${chequeNumber || 'S/N'}: ${financialItemNames} - ${selectedClient?.name}`,
             amount: paymentAmount,
@@ -703,7 +704,7 @@ export function SaleForm() {
           });
         } else if (isBoleto && boletoInstallments === 1) {
           // Boleto à vista: receivable pending until payment confirmed
-          await supabase.from('financial_entries').insert({
+          await insertFinancialEntry({
             type: 'receivable',
             description: `Boleto à vista: ${financialItemNames} - ${selectedClient?.name}`,
             amount: paymentAmount,
@@ -735,7 +736,7 @@ export function SaleForm() {
             ? paymentAmount - feeInfo.feeAmount
             : paymentAmount;
 
-          await supabase.from('financial_entries').insert({
+          await insertFinancialEntry({
             type: 'receivable',
             description: financialDescription,
             amount: netAmount,
@@ -751,7 +752,7 @@ export function SaleForm() {
 
           // If card has fee and deducted from provider, register the fee as expense
           if (selectedCardBrand && feeInfo.feeAmount > 0 && selectedCardBrand.fee_behavior === 'deduct_from_provider') {
-            await supabase.from('financial_entries').insert({
+            await insertFinancialEntry({
               type: 'expense',
               description: `Taxa ${selectedCardBrand.name} (${feeInfo.feePercentage}%): ${financialItemNames}`,
               amount: feeInfo.feeAmount,
@@ -785,7 +786,7 @@ export function SaleForm() {
       if (saleRegister && !isClientCredit) {
         // Skip cash entry for boleto/cheque - money not received yet
         if (!isBoleto && !isCheque) {
-          await supabase.from('cash_transactions').insert({
+          await insertCashTransaction({
             cash_register_id: saleRegister.id,
             type: 'income',
             category: 'sale',
@@ -801,7 +802,7 @@ export function SaleForm() {
           if (isDinheiro && changeAmount > 0) {
             if (changeMethod === 'cash') {
               // Cash change goes out of register
-              await supabase.from('cash_transactions').insert({
+              await insertCashTransaction({
                 cash_register_id: saleRegister.id,
                 type: 'expense',
                 category: 'change',
@@ -812,7 +813,7 @@ export function SaleForm() {
               });
             } else if (changeMethod === 'pix') {
               // PIX change - recorded as outgoing PIX transfer
-              await supabase.from('cash_transactions').insert({
+              await insertCashTransaction({
                 cash_register_id: saleRegister.id,
                 type: 'expense',
                 category: 'change',

@@ -420,13 +420,11 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
           assigned_professional_id: c.assigned_professional_id || fallbackProfId,
         })),
       );
-      const extra = validClients.reduce<Record<number, boolean>>((acc, _c, i) => acc, {});
-      void extra;
       if (clientsToInsert.length === 0) {
         throw new Error(skipped[0] || 'Nenhum cliente novo para importar.');
       }
       const { error } = await supabase.from('clients').insert(
-        clientsToInsert.map((row, i) => ({ ...row, is_active: true, credit_balance: 0 })),
+        clientsToInsert.map((row) => ({ ...row, credit_balance: 0 })),
       );
       if (error) throw error;
 

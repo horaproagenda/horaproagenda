@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, Wallet, History } from 'lucide-react';
@@ -11,6 +13,10 @@ import { useLogAccessOnMount } from '@/hooks/useLogAccess';
 
 export default function Caixa() {
   useLogAccessOnMount({ module: 'caixa', action: 'view', fieldsViewed: ['sale', 'amount', 'payment_method', 'client', 'opening_balance', 'closing_balance', 'history'] });
+  // Desfaz vendas que ficaram pela metade (internet caiu durante a gravação).
+  useEffect(() => {
+    (supabase as any).rpc('heal_uncommitted_sales').then(() => undefined, () => undefined);
+  }, []);
   const { closedRegisters, isLoading } = useCashRegisters();
   const [activeTab, setActiveTab] = useLocalStorage('caixa-tab', 'vendas');
 

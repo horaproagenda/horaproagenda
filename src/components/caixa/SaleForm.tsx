@@ -521,6 +521,9 @@ export function SaleForm() {
         }
         // Note: package_id will be set after creating the service_package
 
+        // Fica "não concluída" até tudo gravar; se a internet cair no meio,
+        // o banco desfaz sozinho depois (heal_uncommitted_sales).
+        (saleData as Record<string, unknown>).sale_committed = false;
         const { data: saleRecord, error: saleError } = await supabase
           .from('single_sales')
           .insert(saleData)
@@ -890,6 +893,11 @@ export function SaleForm() {
 
           must(await supabase.from('boleto_installments').insert(records));
         }
+      }
+
+      // Tudo gravado: marca as vendas como concluídas.
+      if (createdSaleIds.length) {
+        must(await (supabase as any).from('single_sales').update({ sale_committed: true }).in('id', createdSaleIds));
       }
 
       // Estoque por último: só baixa quando a venda inteira foi gravada.

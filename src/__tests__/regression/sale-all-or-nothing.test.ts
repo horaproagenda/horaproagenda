@@ -11,4 +11,11 @@ describe('venda do Caixa tudo ou nada', () => {
   it('boleto usa a venda criada, não a última do cliente', () => {
     expect(s).not.toMatch(/order\('created_at', \{ ascending: false \}\)\s*\.limit\(1\)/);
   });
+  it('venda nasce não concluída e só é marcada concluída no fim', () => {
+    expect(s).toContain('sale_committed = false');
+    expect(s).toMatch(/update\(\{ sale_committed: true \}\)\.in\('id', createdSaleIds\)/);
+  });
+  it('Caixa aciona a limpeza de vendas pela metade', () => {
+    expect(readFileSync('src/pages/Caixa.tsx', 'utf8')).toContain("rpc('heal_uncommitted_sales')");
+  });
 });

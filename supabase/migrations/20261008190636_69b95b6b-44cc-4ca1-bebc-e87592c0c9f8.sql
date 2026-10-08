@@ -1,0 +1,1 @@
+CREATE POLICY "Hide uncommitted sales from others" ON public.single_sales AS RESTRICTIVE FOR SELECT TO authenticated USING (sale_committed OR created_by = auth.uid());

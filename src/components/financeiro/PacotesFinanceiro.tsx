@@ -1,3 +1,4 @@
+import { isPackageSessionRealized } from '@/lib/packageSequence';
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -90,7 +91,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           payment_method:payment_methods(id, name),
           package:service_packages(
             id, name, total_sessions,
-            appointments:package_appointments(id, status, appointment_id)
+            appointments:package_appointments(id, status, appointment_id, appointment:appointments(status))
           )
         `)
         .eq('item_type', 'package')
@@ -129,7 +130,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
 
       return (sales || []).map((s: any): PackageSaleRow => {
         const apps = s.package?.appointments || [];
-        const used = apps.filter((a: any) => a.status === 'completed' || a.status === 'missed').length;
+        const used = apps.filter((a: any) => isPackageSessionRealized(a.status) || isPackageSessionRealized(a.appointment?.status)).length;
         const total = s.package?.total_sessions || 0;
         const isCancelled = (s.notes || '').toUpperCase().includes('CANCELADO');
         const isCompleted = total > 0 && used >= total;

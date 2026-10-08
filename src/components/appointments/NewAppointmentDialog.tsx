@@ -1704,6 +1704,12 @@ Até breve! ✨`;
             discount_amount: discountValue > 0 ? discountValue : 0,
             discount_scope: discountApplyToAll ? 'all' : 'first',
           });
+          if (autoScheduleEnabled) {
+            await saveAutoScheduleRule(recurringResult?.recurringGroupId, 'recurring', {
+              preferredDayOfWeek: servicePreferredDayOfWeek,
+              preferredTime,
+            });
+          }
 
           // Compose WhatsApp preview from the dates the user configured
           if (sendWhatsappNotification && clientData?.phone) {

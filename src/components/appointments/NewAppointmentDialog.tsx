@@ -67,6 +67,7 @@ import { useEquipment } from '@/hooks/useEquipment';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 import { useProfessionalAbsences } from '@/hooks/useProfessionalAbsences';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
+import { saveAutoScheduleRule } from '@/lib/autoScheduleRules';
 import { useKitAppointments } from '@/hooks/useKitAppointments';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 
@@ -1492,6 +1493,9 @@ export function NewAppointmentDialog({
             },
           });
           clientPackageId = newPackage.id;
+          if (autoScheduleEnabled) {
+            await saveAutoScheduleRule(clientPackageId, 'package', { preferredDayOfWeek, preferredTime });
+          }
         }
 
         // ===================================================================
@@ -1678,7 +1682,7 @@ Até breve! ✨`;
           // Create recurring appointments using the hook with custom dates
           const duration = selectedServiceData?.duration || 60;
           
-          await createRecurringAppointments.mutateAsync({
+          const recurringResult = await createRecurringAppointments.mutateAsync({
             client_id: selectedClient,
             service_id: selectedService,
             start_time: editableServiceDates[0],
@@ -1700,6 +1704,12 @@ Até breve! ✨`;
             discount_amount: discountValue > 0 ? discountValue : 0,
             discount_scope: discountApplyToAll ? 'all' : 'first',
           });
+          if (autoScheduleEnabled) {
+            await saveAutoScheduleRule(recurringResult?.recurringGroupId, 'recurring', {
+              preferredDayOfWeek: servicePreferredDayOfWeek,
+              preferredTime,
+            });
+          }
 
           // Compose WhatsApp preview from the dates the user configured
           if (sendWhatsappNotification && clientData?.phone) {
@@ -1752,7 +1762,13 @@ Até breve! ✨`;
           // Mesmo identificador em novas tentativas: se o usuário clicar duas
           // vezes, o banco reconhece o kit já criado e não duplica nada.
           if (!kitGroupIdRef.current) kitGroupIdRef.current = crypto.randomUUID();
-          await createKit.mutateAsync({ clientId: selectedClient, items, groupId: kitGroupIdRef.current });
+          const kitResult = await createKit.mutateAsync({ clientId: selectedClient, items, groupId: kitGroupIdRef.current });
+          if (kitAutoScheduleEnabled) {
+            await saveAutoScheduleRule(kitResult?.composite_group_id || kitGroupIdRef.current, 'kit', {
+              preferredDayOfWeek: kitPreferredDayOfWeek,
+              preferredTime: kitPreferredTime,
+            });
+          }
           kitGroupIdRef.current = null;
 
         } else {

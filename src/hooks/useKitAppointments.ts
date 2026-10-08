@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { applyAutoScheduleRule, loadAutoScheduleRule } from '@/lib/autoScheduleRules';
+import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -85,6 +87,11 @@ export function useKitAppointments() {
         p_new_end: newEnd ? newEnd.toISOString() : null,
       });
       if (error) throw error;
+      // Kits criados no automático: as etapas seguintes voltam ao dia da
+      // semana/horário registrados (a etapa editada fica como o usuário escolheu).
+      if (scope !== 'single') {
+        await realignKitToAutoRule(appointmentId);
+      }
       return data as { count: number };
     },
     onSuccess: (data) => {
@@ -121,4 +128,28 @@ export function useKitAppointments() {
   });
 
   return { createKit, rescheduleKit, deleteKit };
+}
+
+async function realignKitToAutoRule(appointmentId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any;
+  const { data: src } = await sb.from('appointments').select('id, composite_group_id, start_time').eq('id', appointmentId).maybeSingle();
+  const rule = await loadAutoScheduleRule(src?.composite_group_id);
+  if (!src || !rule) return;
+  const { data: tzRow } = await sb.from('business_settings').select('timezone').maybeSingle();
+  const tz = tzRow?.timezone || 'America/Sao_Paulo';
+  const { data: rows } = await sb.from('appointments').select('id, start_time, end_time, status')
+    .eq('composite_group_id', src.composite_group_id).order('start_time', { ascending: true });
+  let floor = new Date(src.start_time).getTime();
+  for (const r of rows || []) {
+    if (r.id === src.id || new Date(r.start_time).getTime() <= new Date(src.start_time).getTime()) continue;
+    if (['completed', 'missed', 'cancelled'].includes(r.status)) continue;
+    const dur = new Date(r.end_time).getTime() - new Date(r.start_time).getTime();
+    let start = applyAutoScheduleRule(new Date(r.start_time), rule, tz);
+    if (start.getTime() <= floor) start = applyAutoScheduleRule(new Date(floor + 86400000), rule, tz);
+    if (start.getTime() !== new Date(r.start_time).getTime()) {
+      await rescheduleAppointment({ appointmentId: r.id, start: start.toISOString(), end: new Date(start.getTime() + dur).toISOString() });
+    }
+    floor = start.getTime();
+  }
 }

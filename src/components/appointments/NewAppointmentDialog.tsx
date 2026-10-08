@@ -509,6 +509,28 @@ export function NewAppointmentDialog({
     return Math.max(0, order - 1);
   }, [existingClientPackage, packageSequenceSteps.length, selectedPackageData]);
 
+  // Etapas pendentes REAIS (índice absoluto da etapa, em ordem). A tela usa
+  // exatamente esta lista para nome/duração/intervalo — a mesma que o
+  // salvamento usa — então o que aparece é o que é gravado, mesmo com etapas
+  // puladas ou já agendadas fora de ordem.
+  const pendingStepIndexes = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type !== 'sequential') return [] as number[];
+    const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+    if (!sessions?.length) return [] as number[];
+    return sessions
+      .filter((s) => !s.appointment_id && !['completed', 'missed', 'cancelled'].includes(s.status))
+      .map((s) => Number(s.original_session_number || s.sequence_order || s.session_number || 0))
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b)
+      .map((n) => n - 1);
+  }, [existingClientPackage, selectedPackageData]);
+
+  const stepIndexAt = useCallback(
+    (relativeIndex: number) => pendingStepIndexes[relativeIndex] ?? (nextPackageStepIndex + relativeIndex),
+    [pendingStepIndexes, nextPackageStepIndex],
+  );
+
   const autoScheduleSessionCount = useMemo(() => {
     if (!selectedPackageData) return 0;
     if (existingClientPackage) {
@@ -522,7 +544,7 @@ export function NewAppointmentDialog({
     if (!packageData) return manualDuration || 60;
 
     if (packageData.package_type === 'sequential') {
-      const absoluteIndex = nextPackageStepIndex + relativeIndex;
+      const absoluteIndex = stepIndexAt(relativeIndex);
       const stepServiceId = packageSequenceSteps[absoluteIndex]?.service_id
         || (relativeIndex === 0 ? (nextPackageStepService as any)?.id : null)
         || (packageData as any)?.service_id;
@@ -531,7 +553,7 @@ export function NewAppointmentDialog({
     }
 
     return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);
-  }, [existingClientPackage, manualDuration, nextPackageStepIndex, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
+  }, [existingClientPackage, manualDuration, stepIndexAt, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
 
   const currentAppointmentDuration = serviceType === 'service'
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)

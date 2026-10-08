@@ -844,12 +844,22 @@ const Servicos: React.FC = () => {
 
 
               <div className="flex items-center gap-2">
-                <NewPackageDialog onPackageCreated={refetchPackages}>
-                  <Button size="sm" className="h-8 gap-1.5 btn-vibrant">
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium tracking-wide">Novo Pacote</span>
-                  </Button>
-                </NewPackageDialog>
+                {packageTypeFilter !== 'sequential' && (
+                  <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
+                    <Button size="sm" className="h-8 gap-1.5 btn-vibrant">
+                      <Plus className="h-3.5 w-3.5" />
+                      <span className="text-xs font-medium tracking-wide">Novo Pacote Comum</span>
+                    </Button>
+                  </NewPackageDialog>
+                )}
+                {packageTypeFilter !== 'standard' && (
+                  <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
+                    <Button size="sm" className="h-8 gap-1.5 btn-vibrant">
+                      <Plus className="h-3.5 w-3.5" />
+                      <span className="text-xs font-medium tracking-wide">Novo Pacote Sequencial</span>
+                    </Button>
+                  </NewPackageDialog>
+                )}
               </div>
             </div>
 
@@ -903,12 +913,20 @@ const Servicos: React.FC = () => {
                   {searchTerm ? 'Nenhum pacote encontrado' : 'Nenhum pacote cadastrado'}
                 </p>
                 {!searchTerm && (
-                  <NewPackageDialog onPackageCreated={refetchPackages}>
-                    <Button size="sm" variant="secondary" className="mt-3">
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Novo Pacote
-                    </Button>
-                  </NewPackageDialog>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="standard" lockType>
+                      <Button size="sm" variant="secondary">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Novo Pacote Comum
+                      </Button>
+                    </NewPackageDialog>
+                    <NewPackageDialog onPackageCreated={refetchPackages} initialType="sequential" lockType>
+                      <Button size="sm" variant="secondary">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Novo Pacote Sequencial
+                      </Button>
+                    </NewPackageDialog>
+                  </div>
                 )}
               </div>
             )}

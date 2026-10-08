@@ -33,6 +33,7 @@ import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { syncAfter } from '@/lib/domainSync';
 import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
 import { useRecordVisibility } from '@/components/shared/VisibilitySelect';
@@ -897,25 +898,7 @@ export function SaleForm() {
       }
 
       // Invalidate all relevant queries for full sync
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
-      queryClient.invalidateQueries({ queryKey: ['client_services'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['client_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['package_appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['client-sales'] });
-      queryClient.invalidateQueries({ queryKey: ['client'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['client_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments'] });
-      queryClient.invalidateQueries({ queryKey: ['clients_credits'] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['reminders'] });
-      queryClient.invalidateQueries({ queryKey: ['boleto_installments_all'] });
+      syncAfter(queryClient, 'sale');
 
       toast.success('Venda lançada no financeiro com sucesso!');
       resetSale();

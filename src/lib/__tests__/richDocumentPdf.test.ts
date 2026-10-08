@@ -46,9 +46,9 @@ describe('downloadRichDocumentPdf', () => {
     // 3 folhas para 2,5 páginas de conteúdo → 2 quebras de página.
     expect(addImage).toHaveBeenCalledTimes(3);
     expect(addPage).toHaveBeenCalledTimes(2);
-    // Cada imagem começa no topo da folha (escala correta, sem corte deslocado).
+    // Cada folha respeita a mesma margem superior.
     for (const call of addImage.mock.calls) {
-      expect(call[3]).toBe(0);
+      expect(call[3]).toBe(15);
     }
     expect(save).toHaveBeenCalledTimes(1);
   });

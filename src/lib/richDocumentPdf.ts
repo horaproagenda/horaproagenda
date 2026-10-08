@@ -1,6 +1,52 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { sanitizeRichDocumentHtml } from './documentRichContent';
+import { computePageSlices } from './pdfPageBreak';
+
+/** Margem padrão (mm) aplicada no topo e no rodapé de TODAS as folhas. */
+export const DOC_PAGE_MARGIN_MM = 15;
+
+function makeBlankRowChecker(canvas: HTMLCanvasElement): (row: number) => boolean {
+  let data: Uint8ClampedArray | null = null;
+  try {
+    const ctx = canvas.getContext?.('2d');
+    data = ctx?.getImageData?.(0, 0, canvas.width, canvas.height)?.data ?? null;
+  } catch { data = null; }
+  if (!data) return () => true;
+  const w = canvas.width;
+  const d = data;
+  return (row: number) => {
+    const base = row * w * 4;
+    for (let x = 0; x < w; x += 2) {
+      const i = base + x * 4;
+      if (d[i] < 235 || d[i + 1] < 235 || d[i + 2] < 235) return false;
+    }
+    return true;
+  };
+}
+
+/** Adiciona o canvas ao PDF em folhas A4 enquadradas, sem cortar linhas. */
+function addCanvasPages(pdf: jsPDF, canvas: HTMLCanvasElement, startOnNewPage: boolean): void {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const pxPerMm = canvas.width / pageWidth;
+  const contentPx = Math.floor((pageHeight - DOC_PAGE_MARGIN_MM * 2) * pxPerMm);
+  const slices = computePageSlices(canvas.height, contentPx, makeBlankRowChecker(canvas));
+  let first = !startOnNewPage;
+  for (const { start, height } of slices) {
+    const slice = window.document.createElement('canvas');
+    slice.width = canvas.width;
+    slice.height = height;
+    const ctx = slice.getContext('2d');
+    if (!ctx) break;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, slice.width, slice.height);
+    ctx.drawImage(canvas, 0, start, canvas.width, height, 0, 0, canvas.width, height);
+    if (!first) pdf.addPage();
+    first = false;
+    pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, DOC_PAGE_MARGIN_MM, pageWidth, height / pxPerMm, undefined, 'FAST');
+  }
+}
 
 interface RichPdfOptions {
   title: string;
@@ -38,7 +84,7 @@ async function buildRichDocumentPdf(opts: RichPdfOptions): Promise<jsPDF> {
   container.style.left = '-10000px';
   container.style.top = '0';
   container.style.width = '794px'; // ~A4 width at 96dpi
-  container.style.padding = '48px 56px';
+  container.style.padding = '8px 56px';
   container.style.background = '#ffffff';
   container.style.color = '#1f2937';
   container.style.fontFamily = "'Segoe UI', Arial, sans-serif";
@@ -82,42 +128,7 @@ async function buildRichDocumentPdf(opts: RichPdfOptions): Promise<jsPDF> {
   try {
     const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    // Fatia o canvas em páginas reais: cada folha recebe apenas o pedaço
-    // correspondente, preservando a escala e sem repetir/cortar conteúdo
-    // entre o fim de uma folha e o início da próxima.
-    const pxPerMm = canvas.width / pageWidth;
-    const pageHeightPx = Math.floor(pageHeight * pxPerMm);
-    let renderedPx = 0;
-    let firstPage = true;
-
-    while (renderedPx < canvas.height) {
-      const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
-      const slice = window.document.createElement('canvas');
-      slice.width = canvas.width;
-      slice.height = sliceHeight;
-      const ctx = slice.getContext('2d');
-      if (!ctx) break;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, slice.width, slice.height);
-      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-
-      if (!firstPage) pdf.addPage();
-      firstPage = false;
-      pdf.addImage(
-        slice.toDataURL('image/jpeg', 0.95),
-        'JPEG',
-        0,
-        0,
-        pageWidth,
-        sliceHeight / pxPerMm,
-        undefined,
-        'FAST',
-      );
-      renderedPx += sliceHeight;
-    }
+    addCanvasPages(pdf, canvas, false);
 
     return pdf;
   } finally {
@@ -138,15 +149,13 @@ export async function downloadCombinedRichDocumentsPdf(opts: {
   const { documents, headerLines = [] } = opts;
   if (documents.length === 0) return;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
   let firstPage = true;
 
   for (const d of documents) {
     const container = window.document.createElement('div');
     container.setAttribute('aria-hidden', 'true');
     Object.assign(container.style, {
-      position: 'fixed', left: '-10000px', top: '0', width: '794px', padding: '48px 56px',
+      position: 'fixed', left: '-10000px', top: '0', width: '794px', padding: '8px 56px',
       background: '#ffffff', color: '#1f2937', fontFamily: "'Segoe UI', Arial, sans-serif",
       fontSize: '13px', lineHeight: '1.6',
     });
@@ -155,29 +164,13 @@ export async function downloadCombinedRichDocumentsPdf(opts: {
     container.innerHTML = `
       <h1 style="font-size:19px;text-align:center;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid #374151;">${d.title}</h1>
       ${header}
-      <div style="margin-top:16px;">${sanitizeRichDocumentHtml(d.bodyHtml)}</div>`;
+      <div class="rich-doc-body" style="margin-top:16px;">${sanitizeRichDocumentHtml(d.bodyHtml)}</div>`;
     container.querySelectorAll('img').forEach(img => { img.style.maxWidth = '100%'; img.style.height = 'auto'; });
     window.document.body.appendChild(container);
     try {
       const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-      const pxPerMm = canvas.width / pageWidth;
-      const pageHeightPx = Math.floor(pageHeight * pxPerMm);
-      let renderedPx = 0;
-      while (renderedPx < canvas.height) {
-        const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
-        const slice = window.document.createElement('canvas');
-        slice.width = canvas.width;
-        slice.height = sliceHeight;
-        const ctx = slice.getContext('2d');
-        if (!ctx) break;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, slice.width, slice.height);
-        ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageWidth, sliceHeight / pxPerMm, undefined, 'FAST');
-        renderedPx += sliceHeight;
-      }
+      addCanvasPages(pdf, canvas, !firstPage);
+      firstPage = false;
     } finally {
       container.remove();
     }

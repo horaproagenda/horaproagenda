@@ -9,3 +9,6 @@
 - [x] Validar banco, testes, typecheck, build e fluxos autenticados possíveis
 - [x] Validar confirmação de e-mail e conclusão idempotente do cadastro
 - [x] Corrigir falsos negativos nos testes autenticados do GitHub Actions
+- [x] Unificação 1: regras únicas de cadastro de clientes (tela, link público, importações, servidor)
+- [ ] Unificação 2: produtos e estoque (baixa por venda, consumo por atendimento, ajuste manual)
+- [ ] Unificação 3: venda do Caixa 100% no banco (tudo ou nada)

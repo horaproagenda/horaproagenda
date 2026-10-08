@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { prepareClientsForImport } from '@/lib/clientImport';
 import { supabase } from '@/integrations/supabase/client';
 import { parseCsv, downloadCsvTemplate } from '@/lib/exportUtils';
 import { Badge } from '@/components/ui/badge';
@@ -413,26 +414,25 @@ export function BulkImportClientsDialog({ onImported, children }: BulkImportClie
           ? defaultProfessionalId
           : null;
 
-      const clientsToInsert = validClients.map((c) => ({
-        name: c.name,
-        phone: c.phone,
-        email: c.email || null,
-        cpf: c.cpf || null,
-        birthdate: c.birthdate || null,
-        notes: c.notes || null,
-        referral_source: c.referral_source || null,
-        assigned_professional_id: c.assigned_professional_id || fallbackProfId,
-        is_active: c.is_active,
-        credit_balance: 0,
-      }));
-
-      const { error } = await supabase.from('clients').insert(clientsToInsert);
-
+      const { clientsToInsert, skipped } = await prepareClientsForImport(
+        validClients.map((c) => ({
+          ...c,
+          assigned_professional_id: c.assigned_professional_id || fallbackProfId,
+        })),
+      );
+      if (clientsToInsert.length === 0) {
+        throw new Error(skipped[0] || 'Nenhum cliente novo para importar.');
+      }
+      const { error } = await supabase.from('clients').insert(
+        clientsToInsert.map((row) => ({ ...row, credit_balance: 0 })),
+      );
       if (error) throw error;
 
       toast({
         title: 'Importação concluída!',
-        description: `${validClients.length} clientes importados com sucesso`,
+        description: skipped.length
+          ? `${clientsToInsert.length} importados. ${skipped.length} ignorados: ${skipped.slice(0, 3).join(' ')}`
+          : `${clientsToInsert.length} clientes importados com sucesso`,
       });
 
       setParsedClients([]);

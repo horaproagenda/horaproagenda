@@ -17,7 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, CheckCircle2, ShieldCheck, AlertTriangle, FileText, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { isValidCPF } from '@/lib/cpfValidator';
+import { validateClientInput } from '@/lib/clientRules';
 import { validateCNPJ } from '@/lib/validationSchemas';
 import { fetchAddressByCep, formatCep } from '@/lib/viacep';
 import {
@@ -209,25 +209,9 @@ export default function CadastroCliente() {
   };
 
   const validateForm = (): string | null => {
-    if (!form.name || form.name.trim().length < 2) return 'Informe o nome completo.';
-    const phoneDigits = form.phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) return 'Telefone inválido.';
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'E-mail inválido.';
-    if (personType === 'pf') {
-      if (!form.cpf || !isValidCPF(form.cpf)) return 'CPF inválido.';
-      if (form.birthdate) {
-        const d = new Date(form.birthdate);
-        if (isNaN(d.getTime()) || d > new Date()) return 'Data de nascimento inválida.';
-      }
-    } else {
-      if (!form.cnpj || !validateCNPJ(form.cnpj)) return 'CNPJ inválido (14 dígitos).';
-    }
-    if (form.cep) {
-      const cd = form.cep.replace(/\D/g, '');
-      if (cd.length !== 8) return 'CEP deve ter 8 dígitos.';
-    }
-    if (form.address_state && !UF_LIST.includes(form.address_state.toUpperCase())) return 'UF inválida.';
-    return null;
+    // Regras únicas de cadastro — as mesmas aplicadas pelo servidor.
+    const errs = validateClientInput({ ...form, person_type: personType }, { requireDocument: true });
+    return errs[0]?.message ?? null;
   };
 
   // Advance from form step. If templates exist, go to documents step (auto-fill them first).

@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { prepareClientsForImport } from '@/lib/clientImport';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
@@ -389,24 +390,15 @@ export function BulkImportDialog({ type, onImportComplete, trigger }: BulkImport
           }
         }
       } else if (type === 'clients') {
-        for (const client of parsedData as ParsedClient[]) {
+        // Regras únicas de cadastro + checagem de duplicidade (arquivo e conta)
+        const { clientsToInsert, skipped } = await prepareClientsForImport(parsedData as ParsedClient[]);
+        errors.push(...skipped);
+        failed += skipped.length;
+        for (const row of clientsToInsert) {
+          const client = row;
           try {
-            // Validate phone - at least 10 digits
-            const phone = client.phone?.replace(/\D/g, '') || '';
-            if (phone.length < 10) {
-              errors.push(`${client.name}: Telefone inválido (mín. 10 dígitos)`);
-              failed++;
-              continue;
-            }
-
             const { error } = await supabase.from('clients').insert({
-              name: client.name,
-              phone: phone,
-              email: client.email || null,
-              cpf: client.cpf || null,
-              birthdate: client.birthdate || null,
-              notes: client.notes || null,
-              is_active: true,
+              ...row,
               assigned_professional_id: isAdminOrReceptionist ? null : professionalId,
             });
 

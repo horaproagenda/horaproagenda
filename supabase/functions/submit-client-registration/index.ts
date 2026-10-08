@@ -1,27 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { validateClientInput, normalizeClientInput, duplicateClientMessage } from "../_shared/clientRules.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-function validateCPF(cpf: string): boolean {
-  const c = cpf.replace(/\D/g, '');
-  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
-  let s = 0;
-  for (let i = 0; i < 9; i++) s += parseInt(c[i]) * (10 - i);
-  let r = (s * 10) % 11; if (r >= 10) r = 0;
-  if (r !== parseInt(c[9])) return false;
-  s = 0;
-  for (let i = 0; i < 10; i++) s += parseInt(c[i]) * (11 - i);
-  r = (s * 10) % 11; if (r >= 10) r = 0;
-  return r === parseInt(c[10]);
-}
-
-const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-const validPhone = (p: string) => { const d = p.replace(/\D/g, ''); return d.length >= 10 && d.length <= 11; };
-const UF = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 interface Payload {
   token: string;
@@ -77,78 +61,44 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Link já utilizado' }), { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Validate
+    // Regras únicas de cadastro (documento obrigatório no link público)
     const isPJ = body.person_type === 'pj';
-    if (!body.name || body.name.trim().length < 2) errors.push({ field: 'name', message: 'Nome obrigatório (mínimo 2 caracteres)' });
-    if (!body.phone || !validPhone(body.phone)) errors.push({ field: 'phone', message: 'Telefone inválido' });
-    if (body.email && !validEmail(body.email)) errors.push({ field: 'email', message: 'Email inválido' });
-
-    if (isPJ) {
-      const cnpjDigits = (body.cnpj || '').replace(/\D/g, '');
-      if (cnpjDigits.length !== 14) errors.push({ field: 'cnpj', message: 'CNPJ deve ter 14 dígitos' });
-    } else {
-      if (!body.cpf || !validateCPF(body.cpf)) errors.push({ field: 'cpf', message: 'CPF inválido' });
-    }
-
-    if (body.cep) {
-      const d = body.cep.replace(/\D/g, '');
-      if (d.length !== 0 && d.length !== 8) errors.push({ field: 'cep', message: 'CEP deve ter 8 dígitos' });
-    }
-    if (body.address_state && !UF.includes(body.address_state.toUpperCase())) {
-      errors.push({ field: 'address_state', message: 'UF inválida' });
-    }
-    if (body.birthdate) {
-      const d = new Date(body.birthdate);
-      if (isNaN(d.getTime()) || d > new Date()) errors.push({ field: 'birthdate', message: 'Data de nascimento inválida' });
-    }
+    errors.push(...validateClientInput(body, { requireDocument: true }));
+    const row = normalizeClientInput(body);
 
     if (errors.length) return new Response(JSON.stringify({ success: false, errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Duplicate checks — scoped to the link's tenant to avoid cross-tenant enumeration.
     const tenantOwner = (link as any).account_owner_id;
-    const cleanPhone = body.phone.replace(/\D/g, '');
+    const cleanPhone = row.phone;
     let phoneQ = admin.from('clients').select('id').eq('phone', cleanPhone);
     if (tenantOwner) phoneQ = phoneQ.eq('account_owner_id', tenantOwner);
     const { data: dupPhone } = await phoneQ.maybeSingle();
-    if (dupPhone) return new Response(JSON.stringify({ success: false, error: 'Este telefone já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (dupPhone) return new Response(JSON.stringify({ success: false, error: duplicateClientMessage('phone') }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     if (!isPJ && body.cpf) {
       const cleanCpf = body.cpf.replace(/\D/g, '');
       let q = admin.from('clients').select('id').eq('cpf', cleanCpf);
       if (tenantOwner) q = q.eq('account_owner_id', tenantOwner);
       const { data: dup } = await q.maybeSingle();
-      if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CPF já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (dup) return new Response(JSON.stringify({ success: false, error: duplicateClientMessage('cpf') }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (isPJ && body.cnpj) {
       const cleanCnpj = body.cnpj.replace(/\D/g, '');
       let q = admin.from('clients').select('id').eq('cnpj', cleanCnpj);
       if (tenantOwner) q = q.eq('account_owner_id', tenantOwner);
       const { data: dup } = await q.maybeSingle();
-      if (dup) return new Response(JSON.stringify({ success: false, error: 'Este CNPJ já está cadastrado no sistema.' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (dup) return new Response(JSON.stringify({ success: false, error: duplicateClientMessage('cnpj') }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Create client — explicitly set account_owner_id from the link's tenant
     // (service-role insert bypasses RLS, but the autofill trigger cannot infer
     // the tenant without auth.uid(), so we must provide it here).
     const { data: client, error: insErr } = await admin.from('clients').insert({
-      name: body.name.trim(),
-      phone: cleanPhone,
-      email: body.email?.trim() || null,
-      cpf: !isPJ && body.cpf ? body.cpf.replace(/\D/g, '') : null,
-      cnpj: isPJ && body.cnpj ? body.cnpj.replace(/\D/g, '') : null,
-      company_name: isPJ ? (body.company_name?.trim() || null) : null,
-      birthdate: !isPJ ? (body.birthdate || null) : null,
-      notes: body.notes?.trim() || null,
-      referral_source: body.referral_source?.trim() || null,
+      ...row,
+      complementary_info: null,
       assigned_professional_id: link.professional_id,
       account_owner_id: tenantOwner ?? null,
-      cep: body.cep ? body.cep.replace(/\D/g, '') : null,
-      address_street: body.address_street?.trim() || null,
-      address_number: body.address_number?.trim() || null,
-      address_complement: body.address_complement?.trim() || null,
-      address_neighborhood: body.address_neighborhood?.trim() || null,
-      address_city: body.address_city?.trim() || null,
-      address_state: body.address_state ? body.address_state.toUpperCase() : null,
       is_active: true,
       registration_source: 'self_link',
     }).select().single();

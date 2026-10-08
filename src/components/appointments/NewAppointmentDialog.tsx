@@ -1,3 +1,4 @@
+import { sortDatesChronologically } from '@/lib/sortDatesChronologically';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -509,6 +510,28 @@ export function NewAppointmentDialog({
     return Math.max(0, order - 1);
   }, [existingClientPackage, packageSequenceSteps.length, selectedPackageData]);
 
+  // Etapas pendentes REAIS (índice absoluto da etapa, em ordem). A tela usa
+  // exatamente esta lista para nome/duração/intervalo — a mesma que o
+  // salvamento usa — então o que aparece é o que é gravado, mesmo com etapas
+  // puladas ou já agendadas fora de ordem.
+  const pendingStepIndexes = useMemo(() => {
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type !== 'sequential') return [] as number[];
+    const sessions = (existingClientPackage as any)?.appointments as any[] | undefined;
+    if (!sessions?.length) return [] as number[];
+    return sessions
+      .filter((s) => !s.appointment_id && !['completed', 'missed', 'cancelled'].includes(s.status))
+      .map((s) => Number(s.original_session_number || s.sequence_order || s.session_number || 0))
+      .filter((n) => n > 0)
+      .sort((a, b) => a - b)
+      .map((n) => n - 1);
+  }, [existingClientPackage, selectedPackageData]);
+
+  const stepIndexAt = useCallback(
+    (relativeIndex: number) => pendingStepIndexes[relativeIndex] ?? (nextPackageStepIndex + relativeIndex),
+    [pendingStepIndexes, nextPackageStepIndex],
+  );
+
   const autoScheduleSessionCount = useMemo(() => {
     if (!selectedPackageData) return 0;
     if (existingClientPackage) {
@@ -522,7 +545,7 @@ export function NewAppointmentDialog({
     if (!packageData) return manualDuration || 60;
 
     if (packageData.package_type === 'sequential') {
-      const absoluteIndex = nextPackageStepIndex + relativeIndex;
+      const absoluteIndex = stepIndexAt(relativeIndex);
       const stepServiceId = packageSequenceSteps[absoluteIndex]?.service_id
         || (relativeIndex === 0 ? (nextPackageStepService as any)?.id : null)
         || (packageData as any)?.service_id;
@@ -531,7 +554,7 @@ export function NewAppointmentDialog({
     }
 
     return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);
-  }, [existingClientPackage, manualDuration, nextPackageStepIndex, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
+  }, [existingClientPackage, manualDuration, stepIndexAt, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
 
   const currentAppointmentDuration = serviceType === 'service'
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
@@ -718,7 +741,7 @@ export function NewAppointmentDialog({
 
     const intervals: number[] = [];
     for (let i = 1; i < autoScheduleTotalSessions; i++) {
-      const previousStep = packageSequenceSteps[nextPackageStepIndex + i - 1];
+      const previousStep = packageSequenceSteps[stepIndexAt(i - 1)];
       intervals.push(
         packageSequenceSteps.length > 0
           ? resolveStepInterval(previousStep?.interval_after_days, packageInterval)
@@ -726,7 +749,7 @@ export function NewAppointmentDialog({
       );
     }
     return intervals;
-  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, nextPackageStepIndex, customIntervalDays, autoScheduleTotalSessions]);
+  }, [existingClientPackage, selectedPackageData, packageSequenceSteps, stepIndexAt, customIntervalDays, autoScheduleTotalSessions]);
 
   const autoScheduleChainOptions = useMemo(() => ({
     intervals: autoScheduleIntervals,
@@ -1518,9 +1541,13 @@ export function NewAppointmentDialog({
           : packageAlreadyPaid;
 
         // Datas exatamente como o profissional escolheu — nenhuma é empurrada.
-        const plannedDates = autoScheduleEnabled && editablePreviewDates.length > 0
-          ? editablePreviewDates
-          : [startTime];
+        // Ordem cronológica obrigatória: a data mais cedo sempre fica com a
+        // etapa pendente de menor número (data 1 → etapa 1, data 2 → etapa 2).
+        const plannedDates = sortDatesChronologically(
+          autoScheduleEnabled && editablePreviewDates.length > 0
+            ? editablePreviewDates
+            : [startTime],
+        );
 
         const batchItems: PackageBatchItem[] = plannedDates
           .slice(0, pendingSteps.length)
@@ -1528,8 +1555,10 @@ export function NewAppointmentDialog({
             const targetStep = pendingSteps[i];
             // Índice da etapa real (ID único), nunca a posição na lista de pendentes.
             const stepIndex = targetStep.step > 0 ? targetStep.step - 1 : nextPackageStepIndex + i;
-            const stepServiceId = targetStep.service_id
-              || packageSequenceSteps[stepIndex]?.service_id
+            // Mesmo critério do banco: o serviço vem da etapa do cadastro do
+            // pacote; o da sessão só é usado se o cadastro não tiver a etapa.
+            const stepServiceId = packageSequenceSteps[stepIndex]?.service_id
+              || targetStep.service_id
               || selectedPackageData?.service_id
               || null;
             const stepService = services.find((s) => s.id === stepServiceId);
@@ -2997,7 +3026,7 @@ Até breve! ✨`;
                                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                                           {selectedPackageData?.package_type === 'sequential' && (() => {
                                             const name = resolveSessionServiceLabel({
-                                              index: nextPackageStepIndex + index,
+                                              index: stepIndexAt(index),
                                               steps: packageSequenceSteps as any,
                                               services: services as any,
                                               pkg: selectedPackageData as any,

@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
+import { buildFollowingPreview, type PreviewItem } from '@/lib/followingPreview';
 
 
 interface EditRecurringAppointmentDialogProps {
@@ -69,6 +70,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
   // Series info
   const [seriesCount, setSeriesCount] = useState(0);
   const [seriesIndex, setSeriesIndex] = useState(0);
+  const [seriesItems, setSeriesItems] = useState<PreviewItem[]>([]);
 
   // WhatsApp preview
   const [whatsappOpen, setWhatsappOpen] = useState(false);
@@ -97,6 +99,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       setSeriesCount(seriesAppointments?.length || 0);
       const index = seriesAppointments?.findIndex(a => a.id === appointment.id) ?? -1;
       setSeriesIndex(index + 1);
+      setSeriesItems((seriesAppointments || []).map((a: any) => ({ id: a.id, start_time: a.start_time, status: a.status })));
     } catch (error) {
       console.error('Error loading series info:', error);
     }
@@ -108,7 +111,7 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       const { supabase } = await import('@/integrations/supabase/client');
       const { data } = await supabase
         .from('package_appointments')
-        .select('id, appointment_id, session_number, sequence_order')
+        .select('id, appointment_id, session_number, sequence_order, appointment:appointments(id, start_time, status)')
         .eq('package_id', packageId)
         .order('sequence_order', { ascending: true, nullsFirst: false })
         .order('session_number', { ascending: true });
@@ -116,6 +119,9 @@ export function EditRecurringAppointmentDialog({ appointment, open, onOpenChange
       setSeriesCount(list.length);
       const idx = list.findIndex((pa: any) => pa.appointment_id === appointment.id);
       setSeriesIndex(idx + 1);
+      setSeriesItems(list.filter((pa: any) => pa.appointment?.start_time).map((pa: any) => ({
+        id: pa.appointment.id, start_time: pa.appointment.start_time, status: pa.appointment.status,
+      })));
     } catch (e) {
       console.error('Error loading package series info:', e);
     }

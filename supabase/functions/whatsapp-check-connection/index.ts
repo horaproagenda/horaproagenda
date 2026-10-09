@@ -141,7 +141,7 @@ serve(async (req) => {
             apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
             Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
           },
-          body: JSON.stringify({ catchup: true, trigger: 'check-connection' }),
+          body: JSON.stringify({ catchup: true, catchup_hours: 24, trigger: 'check-connection' }),
         });
       } catch (_) { /* ignore */ }
     }

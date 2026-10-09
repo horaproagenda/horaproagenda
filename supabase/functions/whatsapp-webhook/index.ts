@@ -8,6 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   decideReplyAction,
   detectIntent,
+  isCourtesyAck,
   extractMessageText,
   extractSenderPhone,
   INTENT_WINDOW_HOURS,
@@ -318,7 +319,7 @@ serve(async (req) => {
             invited_at: invitedAt.get(a.id) ?? null,
           }));
 
-          const decision = decideReplyAction({ intent, candidates, alreadyClarifiedIds: clarifiedIds });
+          const decision = decideReplyAction({ intent, candidates, alreadyClarifiedIds: clarifiedIds, courtesy: isCourtesyAck(bodyText) });
           const pick = (id: string) => rows.find((a) => a.id === id) || null;
 
           if (decision.action === 'silent') {
@@ -344,13 +345,14 @@ serve(async (req) => {
             reply = `Seu horário de *${formatWhen(target?.start_time)}* já está confirmado. ✅\n\nSe precisar de algo, é só escrever por aqui. 🙏`;
           } else {
             target = pick(decision.appointmentId);
+            const appliedIntent = decision.intent ?? intent;
             if (!target?.confirmation_token) {
               outcome = 'appointment_not_found';
               outcomeDetail = 'Agendamento sem código de confirmação.';
             } else {
               const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc('confirm_appointment_by_token', {
                 p_token: target.confirmation_token,
-                p_action: intent,
+                p_action: appliedIntent,
               });
               if (rpcErr || !rpcRes?.success) {
                 outcome = rpcRes?.reason === 'cancelled' ? 'already_cancelled' : 'error';

@@ -56,8 +56,29 @@ describe('decideReplyAction', () => {
       .toEqual({ action: 'apply_intent', appointmentId: 'a1' });
   });
 
-  it('ignora mensagens sem convite algum', () => {
-    expect(decideReplyAction({ intent: 'confirm', candidates: [appt({ invited_at: null })], now: NOW }))
+  it('"1" sem convite recente confirma o próximo horário pendente em até 7 dias', () => {
+    expect(decideReplyAction({ intent: 'confirm', candidates: [appt({ invited_at: hoursAgo(80) })], now: NOW }))
+      .toEqual({ action: 'apply_intent', appointmentId: 'a1' });
+  });
+
+  it('"1" não confirma horário a mais de 7 dias sem convite', () => {
+    const far = new Date(NOW + 10 * 86400_000).toISOString();
+    expect(decideReplyAction({ intent: 'confirm', candidates: [appt({ invited_at: null, start_time: far })], now: NOW }))
       .toEqual({ action: 'silent', reason: 'no_pending_confirmation' });
+  });
+
+  it('"ok" confirma quando há um único horário pendente com convite recente', () => {
+    expect(decideReplyAction({ intent: null, courtesy: true, candidates: [appt()], now: NOW }))
+      .toEqual({ action: 'apply_intent', appointmentId: 'a1', intent: 'confirm' });
+  });
+
+  it('"ok" sem convite recente não confirma', () => {
+    expect(decideReplyAction({ intent: null, courtesy: true, candidates: [appt({ invited_at: hoursAgo(20) })], now: NOW }).action)
+      .toBe('silent');
+  });
+
+  it('"ok" com dois horários pendentes apenas pergunta', () => {
+    expect(decideReplyAction({ intent: null, courtesy: true, candidates: [appt(), appt({ id: 'a2' })], now: NOW }).action)
+      .toBe('ask_clarification');
   });
 });

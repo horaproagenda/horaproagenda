@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.log_package_session_time_change() FROM PUBLIC, anon, authenticated;

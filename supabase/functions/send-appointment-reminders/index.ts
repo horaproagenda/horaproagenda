@@ -92,7 +92,13 @@ function buildVars(apt: any, when: Date) {
 function maybeAppendButtons(message: string, tpl: any, apt: any): string {
   // Default: SEMPRE incluir botões de Confirmar/Cancelar, a menos que o template
   // desative explicitamente (include_confirmation_buttons === false).
-  if (tpl && tpl.include_confirmation_buttons === false) return message;
+  // Mesmo sem links, o cliente com horário ainda não confirmado recebe a
+  // instrução curta de resposta — sem ela ninguém sabe que pode confirmar.
+  if (tpl && tpl.include_confirmation_buttons === false) {
+    const pending = String((apt as any).status || 'scheduled').toLowerCase() === 'scheduled';
+    if (!pending || /responda.*(1|confirmar)/i.test(message)) return message;
+    return `${message}\n\n_Responda *1* para confirmar ou *2* para cancelar._`;
+  }
   const token = (apt as any).confirmation_token;
   if (!token) return message;
   const confirmUrl = `${PUBLIC_APP_BASE}/c/${token}?a=confirm`;

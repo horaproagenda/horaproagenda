@@ -23,3 +23,18 @@ export function buildFollowingPreview(
       return { id: i.id, from, to: locked ? from : new Date(from.getTime() + delta), locked };
     });
 }
+
+// Linha do tempo: dias corridos entre cada sessão e a anterior (no calendário).
+export function daysBetween(prev: Date, next: Date): number {
+  const d = (x: Date) => Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate());
+  return Math.round((d(next) - d(prev)) / 86400000);
+}
+
+export function withIntervals(rows: PreviewRow[], newStart: Date): (PreviewRow & { gapDays: number })[] {
+  let prev = newStart;
+  return rows.map((r) => {
+    const gapDays = daysBetween(prev, r.to);
+    prev = r.to;
+    return { ...r, gapDays };
+  });
+}

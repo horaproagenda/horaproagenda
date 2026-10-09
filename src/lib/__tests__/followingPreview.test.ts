@@ -17,3 +17,17 @@ describe('prévia das sessões seguintes', () => {
     expect(rows[1].to.toISOString()).toBe('2026-12-14T16:00:00.000Z');
   });
 });
+
+import { withIntervals } from '../followingPreview';
+describe('linha do tempo dos intervalos', () => {
+  it('mostra os dias entre cada sessão', () => {
+    const items = [
+      { id: 'a', start_time: '2026-10-19T16:00:00Z' },
+      { id: 'b', start_time: '2026-11-16T16:00:00Z' },
+      { id: 'c', start_time: '2026-12-14T16:00:00Z' },
+    ];
+    const start = new Date('2026-10-19T16:00:00Z');
+    const rows = withIntervals(buildFollowingPreview(items, items[0].start_time, start, 'a'), start);
+    expect(rows.map((r) => r.gapDays)).toEqual([28, 28]);
+  });
+});

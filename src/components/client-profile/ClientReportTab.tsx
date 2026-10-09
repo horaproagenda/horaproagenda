@@ -137,9 +137,8 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
         await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
         // 3) Relink remaining orphan package appointments and fix missing service_id.
         await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
-        // 4) Recalculate package cascades and refresh service/package name snapshots
-        // so rescheduled/cancelled rows remain consistent in the detailed history.
-        await (supabase as any).rpc('repair_client_package_schedule_and_history', { _client_id: resolvedClientIdEarly });
+        // Datas/horários gravados são definitivos: nenhuma rotina automática
+        // pode recalcular ou empurrar sessões ao abrir o histórico.
         if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1');
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
         queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
@@ -160,12 +159,9 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
       await (supabase as any).rpc('purge_orphan_cancelled_appointments', { _client_id: resolvedClientIdEarly });
       const { data, error } = await (supabase as any).rpc('heal_client_package_appointments', { _client_id: resolvedClientIdEarly });
       if (error) throw error;
-      const { data: repairData, error: repairError } = await (supabase as any).rpc('repair_client_package_schedule_and_history', { _client_id: resolvedClientIdEarly });
-      if (repairError) throw repairError;
       const linked = (data?.linkedAppointments ?? 0) as number;
       const svc = (data?.serviceFieldsFixed ?? 0) as number;
-      const shifted = Number(repairData?.rescheduledSessions || 0);
-      toast.success(`Pacotes reparados: ${linked} sessão(ões) vinculadas, ${svc} serviço(s) preenchidos, ${shifted} data(s) recalculadas.`);
+      toast.success(`Pacotes conferidos: ${linked} sessão(ões) vinculadas, ${svc} serviço(s) preenchidos. Datas e horários foram mantidos.`);
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['client-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['service_packages'] });

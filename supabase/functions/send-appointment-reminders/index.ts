@@ -423,20 +423,20 @@ serve(async (req) => {
   // Janela de recuperação (horas) para disparos perdidos — padrão 1h.
   // Permite reprocessar lembretes presos por incidentes sem reenviar duplicatas
   // (o UNIQUE do appointment_reminder_log continua garantindo 1 envio).
-  let catchupHours = 1;
+  let catchupHours = 24;
   let force = false;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       catchup = body?.catchup !== false;
       drain = body?.drain === true;
-      catchupHours = Math.min(Math.max(Number(body?.catchup_hours ?? 1) || 1, 1), 72);
+      catchupHours = Math.min(Math.max(Number(body?.catchup_hours ?? 24) || 24, 1), 72);
       force = body?.force === true;
     } else {
       const url = new URL(req.url);
       catchup = url.searchParams.get('catchup') !== 'false';
       drain = url.searchParams.get('drain') === 'true';
-      catchupHours = Math.min(Math.max(Number(url.searchParams.get('catchup_hours') ?? 1) || 1, 1), 72);
+      catchupHours = Math.min(Math.max(Number(url.searchParams.get('catchup_hours') ?? 24) || 24, 1), 72);
       force = url.searchParams.get('force') === 'true';
     }
   } catch (_) { /* ignore */ }

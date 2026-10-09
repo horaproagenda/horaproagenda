@@ -656,6 +656,34 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               </div>
             </RadioGroup>
 
+            {rescheduleFollowing && appointment && date && startTime && (() => {
+              let rows: ReturnType<typeof buildFollowingPreview> = [];
+              try {
+                rows = buildFollowingPreview(seriesItems, appointment.start_time, clinicDateTime(date, startTime, tz), appointment.id);
+              } catch { rows = []; }
+              const fmt = (d: Date) => `${formatDateInTimeZone(d.toISOString(), tz).split('-').reverse().join('/')} ${formatTimeInTimeZone(d.toISOString(), tz)}`;
+              return (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <p className="text-sm font-medium">Prévia das próximas sessões</p>
+                  {rows.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhuma sessão seguinte será alterada.</p>
+                  ) : (
+                    <ul className="max-h-48 overflow-y-auto space-y-1 text-xs">
+                      {rows.map((r) => (
+                        <li key={r.id} className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">{fmt(r.from)}</span>
+                          <span className={r.locked ? 'text-muted-foreground' : 'font-medium'}>
+                            {r.locked ? 'mantido' : `→ ${fmt(r.to)}`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">Confira as datas antes de confirmar. Nada muda sem sua confirmação.</p>
+                </div>
+              );
+            })()}
+
             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-primary" />

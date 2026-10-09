@@ -72,8 +72,23 @@ export function isEchoOfSystemMessage(body: string): boolean {
 
 /** Horas após o convite em que uma resposta livre ainda é tratada como resposta. */
 export const CLARIFY_WINDOW_HOURS = 12;
-/** Horas em que uma intenção explícita (1/2) ainda é aceita. */
+/** Horas em que uma intenção explícita (1/2) ainda é associada ao convite. */
 export const INTENT_WINDOW_HOURS = 48;
+/**
+ * Resposta explícita (1/2/confirmo) sem convite recente ainda vale para o
+ * próximo horário pendente que comece dentro deste prazo (ex.: lembrete de
+ * 5 dias respondido 3 dias depois).
+ */
+export const DIRECT_INTENT_HORIZON_DAYS = 7;
+/** "Ok" só confirma quando o horário começa dentro deste prazo. */
+export const COURTESY_CONFIRM_HORIZON_HOURS = 36;
+
+/** Cortesia curta ("ok", "beleza", "obrigada") — não é intenção por si só. */
+export function isCourtesyAck(body: string): boolean {
+  const text = normalizeText(body).replace(/[!.,🙂😊🥰❤️]+/gu, ' ').trim();
+  if (!text || text.length > 40) return false;
+  return /^(ok|okay|okk+|ok obrigad[oa]|ok,? obrigad[oa]|beleza|blz|show|perfeito|otimo|certo|ta bom|tudo bem|obrigad[oa]|ok combinado|combinado obrigad[oa])( obrigad[oa])?$/.test(text);
+}
 
 export interface ReplyCandidate {
   id: string;
@@ -85,7 +100,7 @@ export interface ReplyCandidate {
 }
 
 export type ReplyDecision =
-  | { action: 'apply_intent'; appointmentId: string }
+  | { action: 'apply_intent'; appointmentId: string; intent?: ConfirmIntent }
   | { action: 'already_confirmed'; appointmentId: string }
   | { action: 'ask_clarification'; appointmentId: string }
   | { action: 'silent'; reason: 'no_pending_confirmation' | 'intent_unclear_silenced' | 'settled' };
@@ -99,11 +114,13 @@ export function isPendingConfirmation(status: string): boolean {
  * Decide o que fazer com uma mensagem recebida.
  *
  * Regras:
- *  - Intenção explícita (1/2) é aplicada em horários pendentes ou confirmados
- *    dentro da janela de 48h; horário já confirmado que recebe "1" apenas
- *    recebe um aviso curto.
- *  - A pergunta "Não entendi sua resposta" só é enviada quando existe horário
- *    PENDENTE com convite recente (12h) e ainda não foi perguntado antes.
+ *  - Intenção explícita (1/2) é aplicada no horário pendente com convite
+ *    recente (48h); sem convite recente, vale para o próximo horário pendente
+ *    dos próximos 7 dias.
+ *  - "Ok"/"beleza" confirma somente quando há UM único horário pendente,
+ *    convite recente (12h) e início em até 36h.
+ *  - A pergunta "Não entendi sua resposta" só é enviada uma vez, para horário
+ *    PENDENTE com convite recente (12h).
  *  - Horário confirmado/cancelado nunca gera pergunta automática.
  */
 export function decideReplyAction(params: {
@@ -111,6 +128,8 @@ export function decideReplyAction(params: {
   candidates: ReplyCandidate[];
   /** ids de agendamentos que já receberam a pergunta de esclarecimento */
   alreadyClarifiedIds?: string[];
+  /** mensagem é uma cortesia curta ("ok", "beleza") */
+  courtesy?: boolean;
   now?: number;
 }): ReplyDecision {
   const now = params.now ?? Date.now();
@@ -119,6 +138,10 @@ export function decideReplyAction(params: {
     if (!iso) return false;
     const ms = new Date(iso).getTime();
     return Number.isFinite(ms) && now - ms <= hours * 3600 * 1000;
+  };
+  const startsWithin = (iso: string, hours: number) => {
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) && ms >= now && ms - now <= hours * 3600 * 1000;
   };
 
   const invitedIntent = params.candidates.filter((c) => withinHours(c.invited_at, INTENT_WINDOW_HOURS));
@@ -134,10 +157,20 @@ export function decideReplyAction(params: {
         ? { action: 'already_confirmed', appointmentId: conf.id }
         : { action: 'apply_intent', appointmentId: conf.id };
     }
+    // Sem convite recente: próximo horário pendente dos próximos dias.
+    const next = params.candidates
+      .filter((c) => isPendingConfirmation(c.status) && startsWithin(c.start_time, DIRECT_INTENT_HORIZON_DAYS * 24))
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+    if (next) return { action: 'apply_intent', appointmentId: next.id };
     return { action: 'silent', reason: 'no_pending_confirmation' };
   }
 
-  const clarifyTarget = pending.find((c) => withinHours(c.invited_at, CLARIFY_WINDOW_HOURS));
+  const recentPending = pending.filter((c) => withinHours(c.invited_at, CLARIFY_WINDOW_HOURS));
+  if (params.courtesy && recentPending.length === 1 && startsWithin(recentPending[0].start_time, COURTESY_CONFIRM_HORIZON_HOURS)) {
+    return { action: 'apply_intent', appointmentId: recentPending[0].id, intent: 'confirm' };
+  }
+
+  const clarifyTarget = recentPending[0];
   if (!clarifyTarget) {
     return { action: 'silent', reason: pending.length || confirmed.length ? 'settled' : 'no_pending_confirmation' };
   }

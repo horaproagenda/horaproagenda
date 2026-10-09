@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { Trash2, Repeat, Calendar, Clock, AlertTriangle, MessageCircle, User, MapPin, Lock } from 'lucide-react';
 import { WhatsappPreviewDialog } from '@/components/shared/WhatsappPreviewDialog';
 import { appointmentStatusConfig } from '@/lib/appointmentStatus';
-import { buildFollowingPreview, type PreviewItem } from '@/lib/followingPreview';
+import { buildFollowingPreview, withIntervals, type PreviewItem } from '@/lib/followingPreview';
 
 
 interface EditRecurringAppointmentDialogProps {
@@ -657,9 +657,10 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
             </RadioGroup>
 
             {rescheduleFollowing && appointment && date && startTime && (() => {
-              let rows: ReturnType<typeof buildFollowingPreview> = [];
+              let rows: ReturnType<typeof withIntervals> = [];
               try {
-                rows = buildFollowingPreview(seriesItems, appointment.start_time, clinicDateTime(date, startTime, tz), appointment.id);
+                const ns = clinicDateTime(date, startTime, tz);
+                rows = withIntervals(buildFollowingPreview(seriesItems, appointment.start_time, ns, appointment.id), ns);
               } catch { rows = []; }
               const fmt = (d: Date) => `${formatDateInTimeZone(d.toISOString(), tz).split('-').reverse().join('/')} ${formatTimeInTimeZone(d.toISOString(), tz)}`;
               return (
@@ -674,6 +675,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                           <span className="text-muted-foreground">{fmt(r.from)}</span>
                           <span className={r.locked ? 'text-muted-foreground' : 'font-medium'}>
                             {r.locked ? 'mantido' : `→ ${fmt(r.to)}`}
+                            <span className="ml-2 text-muted-foreground font-normal">+{r.gapDays} dias</span>
                           </span>
                         </li>
                       ))}

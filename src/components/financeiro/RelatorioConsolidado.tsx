@@ -292,8 +292,8 @@ export function RelatorioConsolidado() {
           .maybeSingle();
         if (sale && ((sale as any).item_type === 'package' || (sale as any).package_id)) {
           // Venda de PACOTE: o fluxo oficial de exclusão (devolução, liberação das
-          // aplicações e sincronização da agenda) acontece na aba Pacotes.
-          toast.info('Exclusão de venda de pacote acontece na aba Pacotes. Abrindo o formulário...');
+          // aplicações e sincronização da agenda) acontece em Serviços › Pacotes vendidos.
+          toast.info('Exclusão de venda de pacote acontece em Serviços › Pacotes vendidos. Abrindo o formulário...');
           navigate(`/servicos?tab=sold-packages&cancelSale=${saleId}`, { replace: true });
           return;
         }
@@ -582,7 +582,7 @@ export function RelatorioConsolidado() {
             <AlertDialogDescription>
               Esta ação é definitiva. Todos os registros vinculados ao pagamento serão removidos:
               <br />• Se for venda de serviço: o agendamento vinculado é excluído e as aplicações disponíveis voltam a ficar indisponíveis.
-              <br />• Vendas de pacote são excluídas na aba Pacotes, com formulário de devolução.
+              <br />• Vendas de pacote são excluídas em Serviços › Pacotes vendidos, com formulário de devolução.
               <br />• O lançamento no Caixa, no Financeiro e no perfil do cliente também serão apagados.
               {deleteTarget && (
                 <span className="block mt-3 text-foreground font-medium">

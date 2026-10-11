@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLogAccessOnMount } from '@/hooks/useLogAccess';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Sparkles, Loader2, Package, Download, Upload, FolderPlus, MoreHorizontal, Repeat, Info } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useListPosition } from '@/hooks/useListPosition';
@@ -170,7 +171,19 @@ const PackageCardsSection: React.FC<PackageCardsSectionProps> = ({ items, onSele
 
 const Servicos: React.FC = () => {
   useLogAccessOnMount({ module: 'servicos', action: 'view', fieldsViewed: ['name', 'category', 'duration', 'price', 'professionals', 'is_active'] });
-  const [activeTab, setActiveTab] = useState<string>('services');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get('tab') === 'sold-packages' ? 'sold-packages' : 'services');
+  const [focusSaleId, setFocusSaleId] = useState<string | null>(() => searchParams.get('cancelSale'));
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const sale = searchParams.get('cancelSale');
+    if (!tab && !sale) return;
+    if (tab === 'sold-packages' || sale) setActiveTab('sold-packages');
+    if (sale) setFocusSaleId(sale);
+    searchParams.delete('tab');
+    searchParams.delete('cancelSale');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<PackageTemplate | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -506,7 +519,9 @@ const Servicos: React.FC = () => {
           </TabsList>
 
           <TabsContent value="sold-packages" className="mt-3 page-enter">
-            {activeTab === 'sold-packages' && <PacotesFinanceiro />}
+            {activeTab === 'sold-packages' && (
+              <PacotesFinanceiro focusSaleId={focusSaleId} onFocusHandled={() => setFocusSaleId(null)} />
+            )}
           </TabsContent>
 
 

@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useLogAccessOnMount } from '@/hooks/useLogAccess';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +30,6 @@ import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolida
 import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
 import { TransferBetweenAccountsDialog } from '@/components/financeiro/TransferBetweenAccountsDialog';
 
-import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -67,7 +66,6 @@ export default function Financeiro() {
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',
-        'pacotes': 'pacotes',
         'categorias': 'categorias',
         'formas': 'formas-pagamento',
         'comissoes': 'comissoes',
@@ -77,13 +75,12 @@ export default function Financeiro() {
       };
       const mappedTab = tabParam ? (tabMap[tabParam] || tabParam) : null;
       if (mappedTab) setActiveTab(mappedTab);
-      if (cancelSaleParam) setFocusPackageSaleId(cancelSaleParam);
       searchParams.delete('tab');
       searchParams.delete('entry');
       searchParams.delete('cancelSale');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setActiveTab, setSearchParams]);
+  }, [searchParams, setActiveTab, setSearchParams, navigate]);
 
 
   const balance = totalReceivables - totalPayables;

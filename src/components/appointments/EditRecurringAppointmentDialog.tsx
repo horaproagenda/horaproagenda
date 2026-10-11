@@ -656,7 +656,14 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               </div>
             </RadioGroup>
 
-            {rescheduleFollowing && appointment && date && startTime && (() => {
+            {rescheduleFollowing && appointment && date && startTime && !isRecurringSeries && isPackageAppointment && packageId && (
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">
+                  As próximas sessões do pacote serão recalculadas pelo intervalo de cada etapa, pelo horário de funcionamento e pela regra do pacote. Confira as novas datas na agenda depois de salvar.
+                </p>
+              </div>
+            )}
+            {rescheduleFollowing && appointment && date && startTime && !(!isRecurringSeries && isPackageAppointment && packageId) && (() => {
               let rows: ReturnType<typeof withIntervals> = [];
               try {
                 const ns = clinicDateTime(date, startTime, tz);

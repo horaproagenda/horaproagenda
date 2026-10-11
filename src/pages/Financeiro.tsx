@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useLogAccessOnMount } from '@/hooks/useLogAccess';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +30,6 @@ import { RelatorioConsolidado } from '@/components/financeiro/RelatorioConsolida
 import { FinancialDashboard } from '@/components/financeiro/FinancialDashboard';
 import { TransferBetweenAccountsDialog } from '@/components/financeiro/TransferBetweenAccountsDialog';
 
-import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useBanks } from '@/hooks/useBanks';
 import { useAppointments } from '@/hooks/useAppointments';
@@ -48,20 +47,25 @@ export default function Financeiro() {
   const { professionals } = useProfessionals();
   // Sempre abre na aba Relatório ao entrar na página
   const [activeTab, setActiveTab] = useState('relatorio');
-  // Venda de pacote a ser focada na aba Pacotes (deep link a partir do Relatório)
-  const [focusPackageSaleId, setFocusPackageSaleId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Handle URL query params for deep linking from notifications
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     const cancelSaleParam = searchParams.get('cancelSale');
-    if (tabParam || cancelSaleParam) {
+    // Pacotes vendidos agora ficam em Serviços: links antigos são redirecionados.
+    if (tabParam === 'pacotes' || cancelSaleParam) {
+      const qs = new URLSearchParams({ tab: 'sold-packages' });
+      if (cancelSaleParam) qs.set('cancelSale', cancelSaleParam);
+      navigate(`/servicos?${qs.toString()}`, { replace: true });
+      return;
+    }
+    if (tabParam) {
       const tabMap: Record<string, string> = {
         'dashboard': 'dashboard',
         'pagar': 'contas-pagar',
         'extrato': 'extrato',
         'caixas': 'caixas',
-        'pacotes': 'pacotes',
         'categorias': 'categorias',
         'formas': 'formas-pagamento',
         'comissoes': 'comissoes',
@@ -71,13 +75,12 @@ export default function Financeiro() {
       };
       const mappedTab = tabParam ? (tabMap[tabParam] || tabParam) : null;
       if (mappedTab) setActiveTab(mappedTab);
-      if (cancelSaleParam) setFocusPackageSaleId(cancelSaleParam);
       searchParams.delete('tab');
       searchParams.delete('entry');
       searchParams.delete('cancelSale');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setActiveTab, setSearchParams]);
+  }, [searchParams, setActiveTab, setSearchParams, navigate]);
 
 
   const balance = totalReceivables - totalPayables;
@@ -164,7 +167,6 @@ export default function Financeiro() {
               { v: 'contas-pagar', label: 'A Pagar', Icon: ArrowDownCircle, color: 'text-red-600', active: 'data-[state=active]:bg-red-500/15 data-[state=active]:text-red-700 data-[state=active]:border-red-500/40' },
               { v: 'categorias', label: 'Categorias', Icon: Tag, color: 'text-amber-600', active: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 data-[state=active]:border-amber-500/40' },
               { v: 'formas-pagamento', label: 'Pagamento', Icon: CreditCard, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
-              { v: 'pacotes', label: 'Pacotes', Icon: Tag, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'comissoes', label: 'Comissões', Icon: Percent, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'metas', label: 'Metas', Icon: Target, color: 'text-primary', active: 'data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40' },
               { v: 'precificacao', label: 'Precificação', Icon: Calculator, color: 'text-orange-600', active: 'data-[state=active]:bg-orange-500/15 data-[state=active]:text-orange-700 data-[state=active]:border-orange-500/40' },
@@ -198,13 +200,6 @@ export default function Financeiro() {
             <ExtratoFinanceiro />
           </TabsContent>
 
-          <TabsContent value="pacotes" className="page-enter">
-            <PacotesFinanceiro
-              focusSaleId={focusPackageSaleId}
-              onFocusHandled={() => setFocusPackageSaleId(null)}
-            />
-
-          </TabsContent>
 
           <TabsContent value="categorias" className="page-enter">
             <CategoriasFinanceiras />

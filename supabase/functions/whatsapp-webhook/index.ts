@@ -261,7 +261,7 @@ serve(async (req) => {
           const nowIso = new Date().toISOString();
           const { data: appts } = await supabase
             .from('appointments')
-            .select('id, confirmation_token, start_time, status')
+            .select('id, confirmation_token, start_time, status, professional_id')
             .eq('client_id', matchedClient.id)
             .gte('start_time', nowIso)
             .not('status', 'in', '(completed,missed,rescheduled,cancelled)')
@@ -402,26 +402,63 @@ serve(async (req) => {
       }
 
       // Responde ao cliente pelo mesmo WhatsApp que recebeu a mensagem.
-      if (reply && phone && professionalId) {
-        try {
-          const resolved = await resolveWhatsapp(supabase, professionalId);
-          if (resolved.source === 'professional') {
-            await whatsappSendText(resolved, { to: normalizePhone(phone), body: reply });
-            // Registra a pergunta de esclarecimento para nunca repetir no mesmo horário.
-            if (outcome === 'intent_unclear' && ownerId) {
-              await supabase.from('whatsapp_messages').insert({
-                account_owner_id: ownerId,
-                direction: 'out',
-                from_number: instanceId || null,
-                to_number: normalizePhone(phone),
-                body: reply.slice(0, 2000),
-                status: 'clarification_sent',
-                provider_payload: { appointment_id: target?.id ?? null, kind: 'confirmation_clarification' },
-              });
+      // Toda resposta fica registrada (enviada ou com falha); falhas entram
+      // na fila de reenvio automático para a cliente nunca ficar sem retorno.
+      const replyProfessionalId = professionalId || target?.professional_id || null;
+      if (reply && phone) {
+        const to = normalizePhone(phone);
+        let sendError: string | null = null;
+        if (!replyProfessionalId) {
+          sendError = 'Nenhum WhatsApp de profissional encontrado para responder.';
+        } else {
+          try {
+            const resolved = await resolveWhatsapp(supabase, replyProfessionalId);
+            if (resolved.source !== 'professional') {
+              sendError = 'WhatsApp do profissional não está conectado.';
+            } else {
+              await whatsappSendText(resolved, { to, body: reply });
             }
+          } catch (e) {
+            sendError = String((e as any)?.message || e || 'Falha desconhecida no envio');
+            console.warn('[whatsapp-webhook] reply failed', sendError);
           }
-        } catch (e) {
-          console.warn('[whatsapp-webhook] reply failed', (e as any)?.message);
+        }
+        if (ownerId) {
+          const { error: outErr } = await supabase.from('whatsapp_messages').insert({
+            account_owner_id: ownerId,
+            direction: 'out',
+            from_number: instanceId || null,
+            to_number: to,
+            body: reply.slice(0, 2000),
+            status: outcome === 'intent_unclear'
+              ? 'clarification_sent'
+              : (sendError ? 'reply_failed' : 'reply_sent'),
+            provider_payload: {
+              appointment_id: target?.id ?? null,
+              kind: outcome === 'intent_unclear' ? 'confirmation_clarification' : 'confirmation_reply',
+              outcome,
+              error: sendError,
+              queued_retry: !!sendError && !!replyProfessionalId,
+            },
+          });
+          if (outErr) console.warn('[whatsapp-webhook] out log failed', outErr.message);
+        }
+        if (sendError && replyProfessionalId) {
+          const { error: qErr } = await supabase.from('whatsapp_send_queue').upsert({
+            to_phone: to,
+            body: reply,
+            appointment_id: null, // não conta como novo convite de confirmação
+            professional_id: replyProfessionalId,
+            provider: 'whatsapp_reply',
+            dedup_key: `reply:${data?.key?.id || `${to}:${Date.now()}`}`,
+            reason: 'confirmation_reply',
+            account_owner_id: ownerId,
+            last_error: sendError,
+            next_attempt_at: new Date(Date.now() + 60_000).toISOString(),
+            status: 'pending',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'dedup_key', ignoreDuplicates: false });
+          if (qErr) console.error('[whatsapp-webhook] retry enqueue failed', qErr.message);
         }
       }
 

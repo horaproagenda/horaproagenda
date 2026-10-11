@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, GripVertical, CalendarCheck, Bot, MessageSquare, Users, LayoutGrid, TrendingUp, Zap, RotateCcw, User as UserIcon } from 'lucide-react';
 import { useProfessionalPreferences } from '@/hooks/useProfessionalPreferences';
 import { useBusinessSettings } from '@/hooks/useBusinessSettings';
+import { toast } from '@/lib/toast';
 
 /**
  * Campo de horário pré-preenchido com o horário geral não deve virar horário

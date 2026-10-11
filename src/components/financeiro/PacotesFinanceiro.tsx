@@ -1,3 +1,4 @@
+import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 import { isPackageSessionRealized } from '@/lib/packageSequence';
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
 import { useEffect, useMemo, useState } from 'react';

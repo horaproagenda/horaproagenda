@@ -649,9 +649,10 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           {isLoading ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Carregando...</p>
           ) : loadError ? (
-            <p className="text-xs text-destructive py-4 text-center">
-              Não foi possível carregar os pacotes. Seu usuário pode não ter permissão para ver as vendas — peça ao administrador para liberar o acesso ao Financeiro.
-            </p>
+            <div className="py-4 text-center space-y-2">
+              <p className="text-xs text-destructive">Não foi possível carregar os pacotes vendidos agora.</p>
+              <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries()}>Tentar novamente</Button>
+            </div>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pacote vendido encontrado.</p>
           ) : (

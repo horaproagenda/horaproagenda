@@ -64,7 +64,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
   const { paymentMethods } = usePaymentMethods();
   const [search, setSearch] = useState('');
   // Por padrão só pacotes em andamento; o filtro permite ver concluídos e cancelados.
-  const [statusFilter, setStatusFilter] = useState<'andamento' | 'concluidos' | 'cancelados' | 'todos'>('andamento');
+  const [statusFilter, setStatusFilter] = useState<'andamento' | 'concluidos' | 'cancelados' | 'todos'>('todos');
   const [deleteTarget, setDeleteTarget] = useState<PackageSaleRow | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>('');
@@ -80,9 +80,11 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
   const [autoCostInfo, setAutoCostInfo] = useState<string | null>(null);
   const [calculatingCost, setCalculatingCost] = useState(false);
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, error: loadError } = useQuery({
     queryKey: ['package-sales-financial'],
     queryFn: async () => {
+      // Pacotes sem registro de venda não apareceriam aqui: regulariza antes (nunca apaga).
+      try { await healPackagesWithoutSale(); } catch { /* sem permissão: segue com o que houver */ }
       const { data: sales, error } = await supabase
         .from('single_sales')
         .select(`
@@ -645,6 +647,10 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         <CardContent className="p-3">
           {isLoading ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Carregando...</p>
+          ) : loadError ? (
+            <p className="text-xs text-destructive py-4 text-center">
+              Não foi possível carregar os pacotes. Seu usuário pode não ter permissão para ver as vendas — peça ao administrador para liberar o acesso ao Financeiro.
+            </p>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-4 text-center">Nenhum pacote vendido encontrado.</p>
           ) : (

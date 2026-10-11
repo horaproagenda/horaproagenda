@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { PacotesFinanceiro } from '@/components/financeiro/PacotesFinanceiro';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -501,7 +502,12 @@ const Servicos: React.FC = () => {
           <TabsList className="h-8 bg-muted/50 p-1 gap-1">
             <TabsTrigger value="services" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">Serviços</TabsTrigger>
             <TabsTrigger value="packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Pacotes</TabsTrigger>
+            <TabsTrigger value="sold-packages" className="text-xs h-7 px-3 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">Pacotes vendidos</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sold-packages" className="mt-3 page-enter">
+            {activeTab === 'sold-packages' && <PacotesFinanceiro />}
+          </TabsContent>
 
 
           {/* Services Tab */}

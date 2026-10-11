@@ -499,14 +499,14 @@ serve(async (req) => {
     const pickTpl = (type: string, professional_id: string | null) => {
       const list = tplByType(type);
       const own = list.find((t: any) => t.professional_id === professional_id);
-      return own || list.find((t: any) => t.professional_id == null) || list[0] || null;
+      // Never borrow another professional's template.
+      return own || list.find((t: any) => t.professional_id == null) || null;
     };
     const pickTpls = (type: string, professional_id: string | null) => {
       const list = tplByType(type);
       const own = list.filter((t: any) => t.professional_id === professional_id);
       if (own.length > 0) return own;
-      const global = list.filter((t: any) => t.professional_id == null);
-      return global.length > 0 ? global : list;
+      return list.filter((t: any) => t.professional_id == null);
     };
 
     // Load all professionals' quiet hours into a map

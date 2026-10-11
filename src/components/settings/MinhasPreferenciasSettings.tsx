@@ -38,6 +38,10 @@ export function MinhasPreferenciasSettings() {
   const [slot, setSlot] = useState<number | ''>('');
   const [workSat, setWorkSat] = useState<boolean | null>(null);
   const [workSun, setWorkSun] = useState<boolean | null>(null);
+  const [satOpen, setSatOpen] = useState('');
+  const [satClose, setSatClose] = useState('');
+  const [sunOpen, setSunOpen] = useState('');
+  const [sunClose, setSunClose] = useState('');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -51,6 +55,10 @@ export function MinhasPreferenciasSettings() {
     if (prefs !== undefined && global && !initialized) {
       setOpening(prefs?.opening_time?.substring(0, 5) ?? global.opening_time?.substring(0, 5) ?? '');
       setClosing(prefs?.closing_time?.substring(0, 5) ?? global.closing_time?.substring(0, 5) ?? '');
+      setSatOpen(prefs?.saturday_opening_time?.substring(0, 5) ?? global.saturday_opening_time?.substring(0, 5) ?? '');
+      setSatClose(prefs?.saturday_closing_time?.substring(0, 5) ?? global.saturday_closing_time?.substring(0, 5) ?? '');
+      setSunOpen(prefs?.sunday_opening_time?.substring(0, 5) ?? global.sunday_opening_time?.substring(0, 5) ?? '');
+      setSunClose(prefs?.sunday_closing_time?.substring(0, 5) ?? global.sunday_closing_time?.substring(0, 5) ?? '');
       if (!prefs) { setInitialized(true); return; }
       setSlot(prefs.slot_interval ?? '');
       setWorkSat(prefs.work_saturdays);
@@ -63,7 +71,9 @@ export function MinhasPreferenciasSettings() {
   const isDirty = (() => {
     const go = global?.opening_time?.substring(0, 5) ?? '';
     const gc = global?.closing_time?.substring(0, 5) ?? '';
-    if (!prefs) return (opening !== go && opening !== '') || (closing !== gc && closing !== '') || slot !== '' || workSat !== null || workSun !== null;
+    const wk = (v: string, p: string | null | undefined, g: string | null | undefined) => v !== (p?.substring(0, 5) ?? g?.substring(0, 5) ?? '');
+    const weekendDirty = wk(satOpen, prefs?.saturday_opening_time, global?.saturday_opening_time) || wk(satClose, prefs?.saturday_closing_time, global?.saturday_closing_time) || wk(sunOpen, prefs?.sunday_opening_time, global?.sunday_opening_time) || wk(sunClose, prefs?.sunday_closing_time, global?.sunday_closing_time);
+    if (!prefs) return (opening !== go && opening !== '') || (closing !== gc && closing !== '') || slot !== '' || workSat !== null || workSun !== null || weekendDirty;
     const o = prefs.opening_time?.substring(0, 5) ?? go;
     const c = prefs.closing_time?.substring(0, 5) ?? gc;
     const s = prefs.slot_interval ?? '';
@@ -72,11 +82,17 @@ export function MinhasPreferenciasSettings() {
       closing !== c ||
       String(slot) !== String(s) ||
       workSat !== prefs.work_saturdays ||
-      workSun !== prefs.work_sundays
+      workSun !== prefs.work_sundays ||
+      weekendDirty
     );
   })();
 
   const saveHours = () => {
+    const bad = (o: string, c: string) => o && c && o >= c;
+    if (bad(opening, closing) || bad(satOpen, satClose) || bad(sunOpen, sunClose)) {
+      toast.error('O horário de término precisa ser depois do horário de início.');
+      return;
+    }
     update.mutate(
       {
         opening_time: resolveHourOverride(opening, prefs?.opening_time, global?.opening_time),
@@ -84,6 +100,10 @@ export function MinhasPreferenciasSettings() {
         slot_interval: slot === '' ? null : Number(slot),
         work_saturdays: workSat,
         work_sundays: workSun,
+        saturday_opening_time: resolveHourOverride(satOpen, prefs?.saturday_opening_time, global?.saturday_opening_time),
+        saturday_closing_time: resolveHourOverride(satClose, prefs?.saturday_closing_time, global?.saturday_closing_time),
+        sunday_opening_time: resolveHourOverride(sunOpen, prefs?.sunday_opening_time, global?.sunday_opening_time),
+        sunday_closing_time: resolveHourOverride(sunClose, prefs?.sunday_closing_time, global?.sunday_closing_time),
       },
       { onSuccess: () => setLastSavedAt(new Date()) }
     );
@@ -144,14 +164,29 @@ export function MinhasPreferenciasSettings() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-              <Label className="text-[11px]">Atendo sábados</Label>
-              <Switch checked={workSat ?? global?.work_saturdays ?? false} onCheckedChange={v => setWorkSat(v)} />
-            </div>
-            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-              <Label className="text-[11px]">Atendo domingos</Label>
-              <Switch checked={workSun ?? global?.work_sundays ?? false} onCheckedChange={v => setWorkSun(v)} />
-            </div>
+            {([
+              { label: 'Atendo sábados', on: workSat ?? global?.work_saturdays ?? false, set: setWorkSat, o: satOpen, so: setSatOpen, c: satClose, sc: setSatClose },
+              { label: 'Atendo domingos', on: workSun ?? global?.work_sundays ?? false, set: setWorkSun, o: sunOpen, so: setSunOpen, c: sunClose, sc: setSunClose },
+            ]).map(d => (
+              <div key={d.label} className="rounded-md border px-3 py-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px]">{d.label}</Label>
+                  <Switch checked={d.on} onCheckedChange={v => d.set(v)} />
+                </div>
+                {d.on && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Início</Label>
+                      <Input type="time" className="h-8 text-sm" value={d.o} onChange={e => d.so(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Término</Label>
+                      <Input type="time" className="h-8 text-sm" value={d.c} onChange={e => d.sc(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" className="h-8" onClick={saveHours} disabled={update.isPending || !isDirty}>
@@ -160,10 +195,13 @@ export function MinhasPreferenciasSettings() {
             <Button size="sm" variant="ghost" className="h-8 text-xs gap-1"
               onClick={() => {
                 setOpening(''); setClosing(''); setSlot(''); setWorkSat(null); setWorkSun(null);
+                setSatOpen(''); setSatClose(''); setSunOpen(''); setSunClose('');
                 update.mutate(
                   {
                     opening_time: null, closing_time: null, slot_interval: null,
                     work_saturdays: null, work_sundays: null,
+                    saturday_opening_time: null, saturday_closing_time: null,
+                    sunday_opening_time: null, sunday_closing_time: null,
                   },
                   { onSuccess: () => setLastSavedAt(new Date()) }
                 );

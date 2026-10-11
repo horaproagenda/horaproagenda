@@ -94,7 +94,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           payment_method:payment_methods(id, name),
           package:service_packages(
             id, name, total_sessions,
-            appointments:package_appointments(id, status, appointment_id, appointment:appointments(status))
+            appointments:package_appointments(id, status, appointment_id, appointment:appointments!package_appointments_appointment_id_fkey(status))
           )
         `)
         .eq('item_type', 'package')

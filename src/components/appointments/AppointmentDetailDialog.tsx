@@ -863,11 +863,19 @@ export function AppointmentDetailDialog({
 
     // For package appointments being marked as "faltou" or "cancelado",
     // ask whether to release the package session or consume it.
-    if (
-      !!appointment.package_appointment &&
-      (newStatus === 'missed' || newStatus === 'cancelled')
-    ) {
-      setPendingPackageOutcome({ newStatus });
+    if (newStatus === 'missed' || newStatus === 'cancelled') {
+      if (appointment.package_appointment) {
+        setPendingPackageOutcome({ newStatus });
+        return;
+      }
+      // Agendamento sem vínculo: verifica se pertence a um pacote do cliente.
+      void (async () => {
+        const { data } = await (supabase as any).rpc('find_package_session_for_appointment', {
+          p_appointment_id: appointment.id,
+        });
+        if (data) setPendingPackageOutcome({ newStatus });
+        else applyStatusUpdate(newStatus);
+      })();
       return;
     }
 

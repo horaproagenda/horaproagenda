@@ -94,7 +94,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           payment_method:payment_methods(id, name),
           package:service_packages(
             id, name, total_sessions,
-            appointments:package_appointments(id, status, appointment_id, appointment:appointments!package_appointments_appointment_id_fkey(status))
+            appointments:package_appointments(id, status, appointment_id, appointment:appointments!package_appointments_appointment_id_fkey(status, start_time, payment_status, amount_paid))
           )
         `)
         .eq('item_type', 'package')
@@ -133,10 +133,30 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
 
       return (sales || []).map((s: any): PackageSaleRow => {
         const apps = s.package?.appointments || [];
-        const used = apps.filter((a: any) => isPackageSessionRealized(a.status) || isPackageSessionRealized(a.appointment?.status)).length;
+        const nowIso = new Date().toISOString();
+        // Aplicação feita = concluída/falta, OU sessão já passada que não foi cancelada.
+        const used = apps.filter((a: any) => {
+          if (isPackageSessionRealized(a.status) || isPackageSessionRealized(a.appointment?.status)) return true;
+          const st = a.appointment?.status;
+          const start = a.appointment?.start_time;
+          return !!start && start < nowIso && st !== 'cancelled' && st !== 'rescheduled' && a.status !== 'cancelled';
+        }).length;
         const total = s.package?.total_sessions || 0;
         const isCancelled = (s.notes || '').toUpperCase().includes('CANCELADO');
         const isCompleted = total > 0 && used >= total;
+        // Se a baixa foi feita nas sessões mas a venda não foi marcada, usa o valor das sessões.
+        const sessionPaid = Math.max(0, ...apps.map((a: any) =>
+          a.appointment?.payment_status === 'paid' || a.appointment?.payment_status === 'partial'
+            ? Number(a.appointment?.amount_paid || 0) : 0));
+        const salePaid = computePackageReceivedAmount({
+          boletoCount: boletoBySale.get(s.id)?.count || 0,
+          boletoPaidAmount: boletoBySale.get(s.id)?.paid || 0,
+          paidAt: s.paid_at,
+          finalAmount: Number(s.final_amount || 0),
+        });
+        const paidAmount = salePaid > 0 || (boletoBySale.get(s.id)?.count || 0) > 0
+          ? salePaid
+          : Number(Math.min(sessionPaid, Number(s.final_amount || 0)).toFixed(2));
         return {
           saleId: s.id,
           packageId: s.package_id || s.package?.id || null,
@@ -145,12 +165,7 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           clientName: s.client?.name || '-',
           saleDate: s.sale_date || (s.paid_at ? String(s.paid_at).slice(0,10) : ''),
           totalAmount: Number(s.original_amount || s.final_amount || 0),
-          paidAmount: computePackageReceivedAmount({
-            boletoCount: boletoBySale.get(s.id)?.count || 0,
-            boletoPaidAmount: boletoBySale.get(s.id)?.paid || 0,
-            paidAt: s.paid_at,
-            finalAmount: Number(s.final_amount || 0),
-          }),
+          paidAmount,
           paymentMethodName: s.payment_method?.name || '-',
           totalSessions: total,
           usedSessions: used,

@@ -226,7 +226,11 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
   const deletePackageMutation = useMutation({
     mutationFn: async (row: PackageSaleRow) => {
       if (!row.packageId) {
-        throw new Error('Pacote sem identificador válido.');
+        // Venda cancelada sem pacote vinculado: apaga só o registro de venda.
+        if (!row.isCancelled) throw new Error('Pacote sem identificador válido.');
+        const { error: delErr } = await supabase.from('single_sales').delete().eq('id', row.saleId);
+        if (delErr) throw delErr;
+        return { success: true };
       }
       const { data, error } = await (supabase as any).rpc(
         'delete_completed_or_cancelled_client_package',

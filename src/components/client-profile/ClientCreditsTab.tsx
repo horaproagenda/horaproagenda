@@ -600,7 +600,7 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
       </Card>
 
       <Dialog open={!!selectedCreditTransaction} onOpenChange={(open) => !open && setSelectedCreditTransaction(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md md:max-w-xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
               <WalletCards className="h-4 w-4" /> Detalhes da transação
@@ -634,82 +634,103 @@ export function ClientCreditsTab({ clientId }: ClientCreditsTabProps) {
 
       {/* Package Details Dialog */}
       <Dialog open={!!selectedPackageId} onOpenChange={(open) => !open && setSelectedPackageId(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md sm:max-w-2xl md:max-w-3xl lg:max-w-5xl max-h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
+            <DialogTitle className="text-base md:text-lg flex items-center gap-2">
               <Package className="h-4 w-4" /> {selectedPackage?.name}
             </DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-3">
-            {/* Mini Stats */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 bg-primary/5 rounded-lg text-center">
-                <p className="text-lg font-bold text-primary">{completedSessions}</p>
-                <p className="text-[10px] text-muted-foreground">Realizadas</p>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="grid grid-cols-3 gap-2 md:gap-3">
+              <div className="p-2 md:p-3 bg-primary/5 rounded-lg text-center">
+                <p className="text-lg md:text-2xl font-bold text-primary">{completedSessions}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">Realizadas</p>
               </div>
-              <div className="p-2 bg-accent/5 rounded-lg text-center">
-                <p className="text-lg font-bold text-accent">{scheduledSessions}</p>
-                <p className="text-[10px] text-muted-foreground">Agendadas</p>
+              <div className="p-2 md:p-3 bg-accent/5 rounded-lg text-center">
+                <p className="text-lg md:text-2xl font-bold text-accent">{scheduledSessions}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">Agendadas</p>
               </div>
-              <div className="p-2 bg-orange-500/5 rounded-lg text-center">
-                <p className="text-lg font-bold text-orange-600">{pendingSessions}</p>
-                <p className="text-[10px] text-muted-foreground">Restantes</p>
+              <div className="p-2 md:p-3 bg-orange-500/5 rounded-lg text-center">
+                <p className="text-lg md:text-2xl font-bold text-orange-600">{pendingSessions}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground">Restantes</p>
               </div>
             </div>
 
-            {/* Sessions List */}
-            <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
-              {packageDetails?.map((session) => {
+            {(() => {
+              const rows = (packageDetails || []).map((session) => {
                 const effectiveStatus = session.appointment?.status || session.status;
                 const status = getAppointmentStatusConfig(effectiveStatus);
                 const isCompleted = isPackageSessionRealized(effectiveStatus);
                 const isCancelled = effectiveStatus === 'cancelled';
-                const isScheduled = session.appointment_id && !isCompleted && !isCancelled;
+                const isScheduled = !!session.appointment_id && !isCompleted && !isCancelled;
                 const isRestante = session.status === 'pending' && !session.appointment_id;
-
-                const getStatusColor = () => {
-                  if (isCompleted) return 'bg-primary/5 border-primary/20';
-                  if (isCancelled) return 'bg-red-500/5 border-red-500/20';
-                  if (isScheduled) return 'bg-accent/5 border-accent/20';
-                  return 'bg-orange-500/5 border-orange-500/20';
-                };
-
-                const serviceName =
-                  session.appointment?.service?.name ||
-                  session.service?.name ||
-                  selectedPackage?.name ||
-                  'Serviço';
-
+                const color = isCompleted
+                  ? 'bg-primary/5 border-primary/20'
+                  : isCancelled
+                    ? 'bg-red-500/5 border-red-500/20'
+                    : isScheduled
+                      ? 'bg-accent/5 border-accent/20'
+                      : 'bg-orange-500/5 border-orange-500/20';
+                const serviceName = session.appointment?.service?.name || session.service?.name || selectedPackage?.name || 'Serviço';
                 const sequenceNumber = packageSequenceMap.get(session.id);
                 const applicationLabel = isRestante || !sequenceNumber
                   ? 'Aplicação restante'
                   : `Aplicação ${sequenceNumber}/${selectedPackage?.total_sessions || '-'}`;
-
-                return (
-                  <div key={session.id} className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${getStatusColor()}`}>
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium truncate">
-                          {applicationLabel} <span className="text-muted-foreground font-normal">·</span> {serviceName}
-                        </div>
-                        {session.appointment && (
-                          <div className="text-[10px] text-muted-foreground">
-                            {format(new Date(session.appointment.start_time), "dd/MM HH:mm", { locale: ptBR })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0 shrink-0 ${status.className}`}
-                    >
-                      {isRestante ? 'Pendente' : status.label}
-                    </Badge>
-                  </div>
+                const when = session.appointment
+                  ? `${format(new Date(session.appointment.start_time), 'dd/MM/yyyy', { locale: ptBR })} às ${format(new Date(session.appointment.start_time), 'HH:mm', { locale: ptBR })}${session.appointment.end_time ? `–${format(new Date(session.appointment.end_time), 'HH:mm', { locale: ptBR })}` : ''}`
+                  : 'A agendar';
+                const badge = (
+                  <Badge variant="outline" className={`text-[10px] md:text-xs px-1.5 py-0 shrink-0 ${status.className}`}>
+                    {isRestante ? 'Pendente' : status.label}
+                  </Badge>
                 );
-              })}
-            </div>
+                return { session, color, serviceName, applicationLabel, when, badge };
+              });
+
+              return (
+                <div className="min-h-0 flex-1 overflow-y-auto rounded-lg">
+                  {/* Celular: cartões */}
+                  <div className="space-y-1.5 md:hidden">
+                    {rows.map(({ session, color, serviceName, applicationLabel, when, badge }) => (
+                      <div key={session.id} className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${color}`}>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium">
+                            {applicationLabel} <span className="text-muted-foreground font-normal">·</span> {serviceName}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">{when}</div>
+                        </div>
+                        {badge}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tablet e computador: tabela completa */}
+                  <div className="hidden md:block border rounded-lg">
+                    <Table>
+                      <TableHeader className="sticky top-0 z-10 bg-background">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="text-xs">Aplicação</TableHead>
+                          <TableHead className="text-xs">Serviço</TableHead>
+                          <TableHead className="text-xs">Data e horário</TableHead>
+                          <TableHead className="text-xs text-right">Situação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows.map(({ session, color, serviceName, applicationLabel, when, badge }) => (
+                          <TableRow key={session.id} className={color}>
+                            <TableCell className="text-sm font-medium whitespace-nowrap">{applicationLabel}</TableCell>
+                            <TableCell className="text-sm">{serviceName}</TableCell>
+                            <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{when}</TableCell>
+                            <TableCell className="text-right">{badge}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>

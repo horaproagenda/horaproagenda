@@ -783,15 +783,15 @@ export function ContasAPagar() {
 
         <div className="w-full overflow-x-auto rounded-md border">
           <div className="max-h-[500px] overflow-y-auto">
-          <Table className="min-w-[640px]">
+          <Table className="w-full table-fixed min-w-[520px]">
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
-                <TableHead className="text-[11px]">Data</TableHead>
+                <TableHead className="text-[11px] w-[96px]">Data</TableHead>
                 <TableHead className="text-[11px]">Descrição</TableHead>
-                <TableHead className="text-[11px]">Valor</TableHead>
-                <TableHead className="text-[11px]">Status</TableHead>
-                <TableHead className="text-[11px] text-right">Ações</TableHead>
+                <TableHead className="text-[11px] w-[110px]">Valor</TableHead>
+                <TableHead className="text-[11px] w-[120px]">Status</TableHead>
+                <TableHead className="text-[11px] w-[112px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -815,7 +815,7 @@ export function ContasAPagar() {
                       </TableCell>
                     )}
                     <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-xs py-2 max-w-[320px] truncate" title={entry.description}>{entry.description}</TableCell>
+                    <TableCell className="text-xs py-2 truncate" title={entry.description}>{entry.description}</TableCell>
                     <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums whitespace-nowrap">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>

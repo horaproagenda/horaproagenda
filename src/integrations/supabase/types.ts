@@ -6679,6 +6679,10 @@ export type Database = {
       }
       ensure_primary_admin_setup: { Args: never; Returns: Json }
       expire_old_temp_passwords: { Args: never; Returns: undefined }
+      find_package_session_for_appointment: {
+        Args: { p_appointment_id: string }
+        Returns: string
+      }
       finish_product_usage_cycle: {
         Args: {
           _appointment_dates: string[]

@@ -81,3 +81,13 @@ describe('isEchoOfSystemMessage', () => {
     expect(isEchoOfSystemMessage('Bom dia, posso remarcar?')).toBe(false);
   });
 });
+
+import { detectIntent as _di, isEchoOfSystemMessage as _echo } from '../../../supabase/functions/_shared/whatsappIntent';
+import { describe as _d, it as _it, expect as _e } from 'vitest';
+_d('falso cancelamento', () => {
+  const lembrete = 'Olá Ana! Lembrete do seu agendamento amanhã às 09:00.\n\n✅ *CONFIRMAR presença:*\nhttps://x/c/abc?a=confirm\n\n❌ *CANCELAR agendamento:*\nhttps://x/c/abc?a=cancel';
+  _it('eco/citação do lembrete não cancela', () => { _e(_di(lembrete)).toBeNull(); _e(_echo(lembrete)).toBe(true); });
+  _it('texto com confirmar e cancelar é ambíguo', () => { _e(_di('quero confirmar, não cancelar')).not.toBe('cancel'); });
+  _it('"confirmar" continua confirmando', () => { _e(_di('confirmar')).toBe('confirm'); _e(_di('está confirmado')).toBe('confirm'); });
+  _it('"2" continua cancelando', () => { _e(_di('2')).toBe('cancel'); });
+});

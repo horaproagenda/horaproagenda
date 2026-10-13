@@ -625,7 +625,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -643,7 +643,9 @@ serve(async (req) => {
           const profId = (apt as any).professional_id ?? null;
           if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
-          const applicableTpls = pickTpls('reminder', profId);
+          const applicableTpls = pickTpls('reminder', profId, (apt as any).account_owner_id)
+            // Se há modelo de confirmação no mesmo prazo, só ele é enviado.
+            .filter((t: any) => !pickTpls('confirmation', profId, (apt as any).account_owner_id).some((c: any) => Number(c.hours_before) === Number(t.hours_before)));
           if (applicableTpls.length === 0) continue;
           for (const tpl of applicableTpls) {
           const h = Number(tpl.hours_before);
@@ -670,7 +672,7 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp').maybeSingle();
-          if (existing && !force) continue;
+          if ((existing || await alreadySentForHours(apt.id, h)) && !force) continue;
 
           const message = maybeAppendButtons(
             renderTemplate(tpl.message, buildVars(apt, start)),
@@ -725,7 +727,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -743,7 +745,7 @@ serve(async (req) => {
           const profId = (apt as any).professional_id ?? null;
           if (!accountEnabled((apt as any).account_owner_id)) { summary.skipped++; continue; }
         if (remindersDisabledForPro(profId)) { summary.skipped++; continue; }
-          const applicableTpls = pickTpls('confirmation', profId);
+          const applicableTpls = pickTpls('confirmation', profId, (apt as any).account_owner_id);
           if (applicableTpls.length === 0) continue;
           for (const tpl of applicableTpls) {
           const h = Number(tpl.hours_before);
@@ -765,7 +767,7 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
             .select('id').eq('appointment_id', apt.id).eq('hours_before', h).eq('provider', 'whatsapp_confirmation').maybeSingle();
-          if (existing && !force) continue;
+          if ((existing || await alreadySentForHours(apt.id, h)) && !force) continue;
 
           const message = maybeAppendButtons(
             renderTemplate(tpl.message, buildVars(apt, start)),

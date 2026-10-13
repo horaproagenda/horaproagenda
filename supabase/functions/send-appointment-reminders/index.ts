@@ -502,11 +502,30 @@ serve(async (req) => {
       // Never borrow another professional's template.
       return own || list.find((t: any) => t.professional_id == null) || null;
     };
-    const pickTpls = (type: string, professional_id: string | null) => {
-      const list = tplByType(type);
-      const own = list.filter((t: any) => t.professional_id === professional_id);
-      if (own.length > 0) return own;
-      return list.filter((t: any) => t.professional_id == null);
+    // Modelos do profissional + modelos gerais DA MESMA CONTA para os prazos
+    // (horas) que o profissional não cobriu. Antes, ter só o modelo de 120h
+    // próprio fazia o de 24h geral ser ignorado; e modelos gerais de outras
+    // contas podiam ser usados.
+    const pickTpls = (type: string, professional_id: string | null, accountOwnerId?: string | null) => {
+      const list = tplByType(type).filter((t: any) =>
+        !accountOwnerId || !t.account_owner_id || String(t.account_owner_id) === String(accountOwnerId));
+      const own = list.filter((t: any) => professional_id && t.professional_id === professional_id);
+      const ownHours = new Set(own.map((t: any) => Number(t.hours_before)));
+      const globals = list.filter((t: any) => t.professional_id == null && !ownHours.has(Number(t.hours_before)));
+      // Um único modelo por prazo
+      const seen = new Set<number>();
+      return [...own, ...globals].filter((t: any) => {
+        const h = Number(t.hours_before);
+        if (seen.has(h)) return false;
+        seen.add(h); return true;
+      });
+    };
+    /** Já existe envio (lembrete OU confirmação) para este horário e prazo? */
+    const alreadySentForHours = async (aptId: string, h: number) => {
+      const { data } = await supabase.from('appointment_reminder_log')
+        .select('id').eq('appointment_id', aptId).eq('hours_before', h)
+        .in('provider', ['whatsapp', 'whatsapp_confirmation']).limit(1);
+      return (data || []).length > 0;
     };
 
     // Load all professionals' quiet hours into a map

@@ -37,8 +37,14 @@ export function detectIntent(body: string): ConfirmIntent | null {
   if (/^(1|1\)|1-|opcao 1|confirmar|confirmo|confirmado|confirmada|confirma|sim|estarei|estou|presente|vou sim|pode manter|mantenho|manter|combinado|confirmando)\b/.test(text)) return 'confirm';
   if (/^(2|2\)|2-|opcao 2|cancelar|cancelo|cancelado|cancelada|cancela|nao|nao posso|nao vou|nao consigo|nao da|desmarcar|desmarca|desmarque|remarcar|remarca|remarque|adiar)\b/.test(text)) return 'cancel';
 
-  if (/\bcancel/.test(text) || /\bdesmarc/.test(text) || /\bremarc/.test(text) || /\badiar\b/.test(text)) return 'cancel';
-  if (/\bconfirm/.test(text)) return 'confirm';
+  // Busca por palavra solta só em mensagens curtas e sem ambiguidade. Textos
+  // longos (ex.: a própria mensagem de lembrete citada/ecoada, que contém
+  // "CONFIRMAR" e "CANCELAR") cancelavam horários sem o cliente pedir.
+  const hasCancel = /\bcancel/.test(text) || /\bdesmarc/.test(text) || /\bremarc/.test(text) || /\badiar\b/.test(text);
+  const hasConfirm = /\bconfirm/.test(text);
+  if (text.length > 80 || (hasCancel && hasConfirm)) return null;
+  if (hasCancel) return 'cancel';
+  if (hasConfirm) return 'confirm';
 
   if (CONFIRM_EMOJI.some((e) => original.includes(e))) return 'confirm';
   if (CANCEL_EMOJI.some((e) => original.includes(e))) return 'cancel';
@@ -56,6 +62,11 @@ const SYSTEM_MESSAGE_MARKERS = [
   'responda 1 para confirmar',
   'seu horario:',
   'lembrete do seu horario',
+  'cancelar agendamento',
+  'confirmar presenca',
+  'responda esta mensagem',
+  'para confirmar ou',
+  '/c/',
 ];
 
 /**

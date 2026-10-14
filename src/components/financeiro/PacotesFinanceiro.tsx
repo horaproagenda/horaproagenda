@@ -47,6 +47,7 @@ interface PackageSaleRow {
   totalAmount: number;
   paidAmount: number;
   paymentMethodName: string;
+  ledgerMissing: boolean;
   totalSessions: number;
   usedSessions: number;
   isCancelled: boolean;
@@ -783,7 +784,11 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                     priority: 'secondary',
                     className: 'text-xs',
                     headClassName: 'text-[10px] whitespace-nowrap',
-                    cell: (r) => r.paymentMethodName,
+                    cell: (r) => r.ledgerMissing ? (
+                      <span className="text-warning" title="Existe valor pago no pacote sem lançamento financeiro correspondente.">
+                        Valor pago sem lançamento financeiro correspondente
+                      </span>
+                    ) : r.paymentMethodName,
                   },
                   {
                     key: 'sessions',

@@ -171,8 +171,7 @@ export function InteractiveDocumentFiller({ rawContent, state, onChange, showObs
 
   return (
     <div className="space-y-3">
-      {plain.split('\n').map((line, index) => {
-        const tokens = tokenizeDocumentLine(line, index);
+      {tokenizeDocument(plain).map((tokens, index) => {
         // Empty / blank lines: render as plain spacer (no bordered card) to avoid
         // "little empty brackets" between questions.
         const isBlankLine =

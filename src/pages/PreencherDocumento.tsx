@@ -383,8 +383,7 @@ export default function PreencherDocumento() {
     const missing = new Set<string>();
     if (!template) return missing;
 
-    template.content.split('\n').forEach((line, lineIndex) => {
-      const tokens = tokenizeDocumentLine(line, lineIndex);
+    tokenizeDocument(template.content).forEach((tokens) => {
       tokens.forEach((token) => {
         switch (token.type) {
           case 'variable': {
@@ -691,8 +690,7 @@ export default function PreencherDocumento() {
   const renderInteractiveForm = () => {
     if (!template) return null;
 
-    return template.content.split('\n').map((line, index) => {
-      const tokens = tokenizeDocumentLine(line, index);
+    return tokenizeDocument(template.content).map((tokens, index) => {
       const hasBlockField = tokens.some(token => token.type === 'freeText');
 
       return (

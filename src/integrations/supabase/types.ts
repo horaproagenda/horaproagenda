@@ -3427,6 +3427,7 @@ export type Database = {
           account_owner_id: string
           appointment_id: string | null
           created_at: string
+          display_session_number: number | null
           id: string
           interval_after_days: number
           notes: string | null
@@ -3443,6 +3444,7 @@ export type Database = {
           account_owner_id?: string
           appointment_id?: string | null
           created_at?: string
+          display_session_number?: number | null
           id?: string
           interval_after_days?: number
           notes?: string | null
@@ -3459,6 +3461,7 @@ export type Database = {
           account_owner_id?: string
           appointment_id?: string | null
           created_at?: string
+          display_session_number?: number | null
           id?: string
           interval_after_days?: number
           notes?: string | null

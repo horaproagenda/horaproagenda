@@ -1,9 +1,11 @@
 # Roadmap
 
-- [ ] Centralizar o ciclo de uso e proteger datas, versões e baixa única no banco
-- [ ] Sincronizar Produtos, histórico, previsões e correções auditadas
-- [ ] Auditar e reconciliar somente ciclos antigos comprovados
-- [ ] Testar ciclo, estoque, datas e acesso; conferir a página de Produtos
+- [x] Centralizar o ciclo de uso e proteger datas, versões e baixa única no banco
+- [x] Sincronizar Produtos, histórico, previsões e correções auditadas
+- [x] Auditar e reconciliar 19 ciclos antigos comprovados sem baixar estoque
+- [x] Executar 91 testes unitários de produtos, conferir build e bloqueio anônimo
+- [ ] Validar finalização/correção e sincronização pelas telas autenticadas — Supabase externo sem sessão ou conta de teste disponível
+- [ ] Reconciliar dois usos sem quantidade e uma compra com término anterior ao início — depende das informações corretas do responsável
 
 - [x] Auditar permissões e isolamento do financeiro próprio versus caixa da clínica
 - [x] Corrigir CRUD financeiro próprio e abertura/fechamento do caixa da clínica

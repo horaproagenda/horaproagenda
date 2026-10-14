@@ -60,3 +60,29 @@ describe('mapeamento de campos do documento', () => {
     expect(out).toBe('Áreas? axila\n\nDor? baixa');
   });
 });
+
+import { buildDocumentFieldSchema, buildSubmittedFields } from '../documentTemplateFields';
+
+describe('esquema oficial de campos', () => {
+  const MODEL = 'Nome: {nome}\nProfissão: {profissao}\nFuma? ( ) Sim ( ) Não\nÁreas? [TEXTO_LIVRE]\nAceito ( )';
+
+  it('cada campo tem identificador único e regra de obrigatório', () => {
+    const schema = buildDocumentFieldSchema(MODEL);
+    expect(schema.map(f => [f.field_id, f.required])).toEqual([
+      ['nome', false], ['profissao', true], ['question_0', true], ['texto_livre_0', true], ['checkbox_0', false],
+    ]);
+  });
+
+  it('envia pares {field_id, value}, nunca por posição', () => {
+    const schema = buildDocumentFieldSchema(MODEL);
+    const fields = buildSubmittedFields(schema, {
+      formData: { nome: 'Ana', profissao: 'Médica' },
+      yesNoAnswers: { question_0: 'nao' },
+      additionalInfo: { texto_livre_0: 'axila' },
+      checkboxAnswers: { checkbox_0: true },
+    });
+    expect(Object.fromEntries(fields.map(f => [f.field_id, f.value]))).toEqual({
+      nome: 'Ana', profissao: 'Médica', question_0: 'nao', texto_livre_0: 'axila', checkbox_0: 'true',
+    });
+  });
+});

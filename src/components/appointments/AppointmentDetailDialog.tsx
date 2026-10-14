@@ -1203,8 +1203,8 @@ export function AppointmentDetailDialog({
   const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
   const notesPackageMatch = appointment.notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
   const notesPackageName = notesPackageMatch?.[1]?.trim() || null;
-  const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot || !!notesPackageName;
-  const packageData = appointment.package_appointment?.package;
+  const isPackageAppointment = !!appointment.package_appointment || !!linkedPackageAppointmentId || !!packageNameSnapshot || !!notesPackageName;
+  const packageData = appointment.package_appointment?.package || fallbackPackage || undefined;
   const resolvedPackageName = resolveAppointmentPackageName(appointment as any, notesPackageName || 'Pacote');
   const resolvedServiceName = resolveAppointmentStepServiceName(appointment as any, 'Serviço');
 

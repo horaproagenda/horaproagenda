@@ -1629,6 +1629,7 @@ export type Database = {
           professional_id: string | null
           reference_id: string | null
           reference_type: string | null
+          request_id: string | null
           type: string
           updated_at: string
         }
@@ -1648,6 +1649,7 @@ export type Database = {
           professional_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          request_id?: string | null
           type: string
           updated_at?: string
         }
@@ -1667,6 +1669,7 @@ export type Database = {
           professional_id?: string | null
           reference_id?: string | null
           reference_type?: string | null
+          request_id?: string | null
           type?: string
           updated_at?: string
         }
@@ -7031,6 +7034,10 @@ export type Database = {
         }[]
       }
       count_account_seats: { Args: { _owner: string }; Returns: number }
+      create_cash_transaction_atomic: {
+        Args: { _request_id: string; _transaction: Json }
+        Returns: Json
+      }
       create_client_document: {
         Args: {
           _client_id: string

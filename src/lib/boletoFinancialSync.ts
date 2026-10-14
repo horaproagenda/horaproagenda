@@ -49,7 +49,7 @@ export async function syncBoletoInstallmentsToFinancial(installmentIds: string[]
       .from('boleto_installments')
       .select(`
         id, sale_id, installment_number, total_installments, amount, due_date, paid_date, status,
-        sale:single_sales(id, description, client_id, client:clients(name))
+        sale:single_sales(id, description, client_id, payment_method_id, client:clients(name))
       `)
       .in('id', ids);
     if (error) throw error;
@@ -87,6 +87,7 @@ export async function syncBoletoInstallmentsToFinancial(installmentIds: string[]
             due_date: dueDate,
             paid_date: paidDate,
             status,
+            ...(status === 'paid' && item.sale?.payment_method_id ? { payment_method_id: item.sale.payment_method_id } : {}),
             paid_by: status === 'paid' ? (user?.id ?? null) : null,
             updated_at: new Date().toISOString(),
           })
@@ -113,6 +114,7 @@ export async function syncBoletoInstallmentsToFinancial(installmentIds: string[]
               amount,
               paid_date: paidDate,
               status,
+              ...(status === 'paid' && item.sale?.payment_method_id ? { payment_method_id: item.sale.payment_method_id } : {}),
               paid_by: status === 'paid' ? (user?.id ?? null) : null,
               notes: `${candidate.notes ? `${candidate.notes} ` : ''}${tag}`,
               updated_at: new Date().toISOString(),
@@ -132,6 +134,7 @@ export async function syncBoletoInstallmentsToFinancial(installmentIds: string[]
         status,
         client_id: item.sale?.client_id ?? null,
         sale_id: item.sale_id,
+        payment_method_id: item.sale?.payment_method_id ?? null,
         installments: total,
         notes: `Parcela de boleto ${number}/${total} ${tag}`,
         created_by: user?.id ?? null,

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_payment_method_on_paid_income() FROM PUBLIC, anon, authenticated;

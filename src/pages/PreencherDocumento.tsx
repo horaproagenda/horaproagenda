@@ -997,8 +997,6 @@ export default function PreencherDocumento() {
               ))}
             </ScrollArea>
           </div>
-          <AlertDialogHeader className="hidden">
-          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Revisar</AlertDialogCancel>
             <AlertDialogAction onClick={handleSubmit}>Confirmar e Enviar</AlertDialogAction>

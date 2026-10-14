@@ -1133,7 +1133,7 @@ export function ProductDetailDialog({
                     </div>
                     <div className="p-4 rounded-lg border bg-card">
                       <div className="text-sm text-muted-foreground">Atendimentos Realizados</div>
-                      <div className="text-2xl font-bold">{usageStats.totalAppointments}</div>
+                      <div className="text-2xl font-bold">{usageStats.totalAppointments + (cycleSummary?.isCycleActive ? cycleSummary.currentAppointments : 0)}</div>
                     </div>
                     <div className="p-4 rounded-lg border bg-card">
                       <div className="text-sm text-muted-foreground">Tipo</div>
@@ -1538,8 +1538,6 @@ export function ProductDetailDialog({
                     <TableHead>Valor</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Pagamento</TableHead>
-
-                    <TableHead>{editingPurchaseId ? '' : 'Uso'}</TableHead>
                     {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                       <TableHead className="text-right">Ações</TableHead>
                     )}
@@ -1736,26 +1734,6 @@ export function ProductDetailDialog({
                           <TableCell data-label="Fornecedor">{purchase.supplier || 'Não informado'}</TableCell>
                           <TableCell data-label="Pagamento">{purchase.payment_method || ((purchase as any).skip_cash_transaction ? 'Já pago' : 'Não informado')}</TableCell>
 
-                          <TableCell data-label="Período de uso">
-                            {purchase.started_using_at ? (
-                              <div className="text-sm">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(parseISO(purchase.started_using_at), 'dd/MM')}
-                                  {purchase.finished_at && (
-                                    <> - {format(parseISO(purchase.finished_at), 'dd/MM')}</>
-                                  )}
-                                </div>
-                                {daysInUse !== null && (
-                                  <Badge variant="secondary" className="mt-1 text-xs">
-                                    {daysInUse} dias
-                                  </Badge>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">Não iniciado</span>
-                            )}
-                          </TableCell>
                           {canEdit && (onUpdatePurchase || onDeletePurchase) && (
                             <TableCell className="text-right">
                               <div className="flex gap-1.5 justify-end">
@@ -2826,28 +2804,6 @@ function ProductAutomaticConsumption({
         </p>
       </div>
 
-      {productConsumption && (
-        <>
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Resumo Automático
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-lg border bg-card">
-              <div className="text-xs text-muted-foreground">Total</div>
-              <div className="text-lg font-bold">{formatQtyWithUnit(productConsumption.total_quantity, unitLabel)}</div>
-            </div>
-            <div className="p-3 rounded-lg border bg-card">
-              <div className="text-xs text-muted-foreground">Atendimentos</div>
-              <div className="text-lg font-bold">{productConsumption.appointment_count}</div>
-            </div>
-            <div className="p-3 rounded-lg border bg-card">
-              <div className="text-xs text-muted-foreground">Média/Atend.</div>
-              <div className="text-lg font-bold">{formatQtyWithUnit(productConsumption.avg_per_appointment, unitLabel, 3)}</div>
-            </div>
-          </div>
-        </>
-      )}
 
       {history.length > 0 ? (
         <Table className="mobile-card-table">

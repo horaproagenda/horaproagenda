@@ -317,7 +317,7 @@ export function ProductDetailDialog({
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
-  const { consumptions: dailyConsumptions } = useProductDailyConsumption(product?.id);
+  const { consumptions: dailyConsumptions } = useProductDailyConsumption(rawProduct?.id);
   const { usageRecords, startCycle, finishCycle, adjustStock } = useProductUsageRecords(rawProduct?.id);
   const cycleSaving = useRef(false);
   const activeUsage = usageRecords.find(record => record.status === 'in_use');
@@ -734,13 +734,14 @@ export function ProductDetailDialog({
   const runStartCycle = async (dateStr: string, cycleQty: number, unit: ProductUnit) => {
     if (!product || cycleSaving.current) return;
     const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
-    await startCycle.mutateAsync({
+    cycleSaving.current = true;
+    try { await startCycle.mutateAsync({
       productId: product.id,
       purchaseId: pending?.id,
       startDate: dateStr,
       quantity: cycleQty,
       unit,
-    });
+    }); } finally { cycleSaving.current = false; }
     toast.success(
       `Início registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(cycleQty)} ${PRODUCT_UNITS.find(u => u.value === unit)?.label} em uso.`,
     );

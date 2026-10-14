@@ -54,6 +54,7 @@ interface PaymentHistoryItem {
   serviceName: string;
   amount: number;
   totalPrice: number;
+  discountAmount?: number;
   pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';

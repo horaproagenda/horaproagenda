@@ -1,13 +1,15 @@
 # Roadmap
 
 ## Backend como fonte oficial — revisão integral
-- [ ] Auditar operações e regras instaladas de todos os módulos
-- [ ] Consolidar vendas, recebimentos, caixa e comissões em operações oficiais
+- [ ] Concluir auditoria detalhada de todos os módulos — inventário inicial em docs/backend-authority-audit.md
+- [x] Consolidar venda avulsa e criação de movimento de caixa com solicitação idempotente
+- [ ] Consolidar venda multi-item, demais recebimentos, estornos e comissões — validar em ambiente autenticado isolado antes de ampliar mudanças financeiras
 - [ ] Consolidar agenda, pacotes e recursos preservando datas manuais
 - [ ] Conferir produtos, documentos e fichas com autoridade e histórico protegidos
 - [ ] Conferir cadastros, configurações, usuários, assinaturas e integrações
 - [ ] Fechar escritas que contornam regras e conferir isolamento/grants/RLS
-- [ ] Alinhar telas, cache, PWA e sincronização às respostas do servidor
+- [x] Limpar cache/fila na troca de conta, rejeitar respostas antigas e desativar repetição automática global
+- [ ] Concluir alinhamento de todas as telas, PWA, relatórios e sincronização às respostas oficiais
 - [ ] Validar regressões e fluxos autenticados com dados isolados — acesso autenticado de teste indisponível no Supabase externo
 
 - [x] Centralizar o ciclo de uso e proteger datas, versões e baixa única no banco

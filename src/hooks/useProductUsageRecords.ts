@@ -72,13 +72,9 @@ export function useProductUsageRecords(productId?: string) {
   const createUsageRecord = useMutation({
     mutationFn: async (record: NewProductUsageRecord) => {
       if (!record.start_date || !record.end_date) throw new Error('Informe início e término.');
-      const { data: started, error: startError } = await supabase.rpc('start_product_usage_cycle', {
-        _product_id: record.product_id, _quantity: record.container_amount, _unit: record.container_unit, _start_date: record.start_date,
-      });
-      if (startError) throw startError;
-      const cycle = started as unknown as ProductUsageRecord;
-      const { data, error } = await supabase.rpc('finish_product_usage_record', {
-        _usage_id: cycle.id, _end_date: record.end_date, _expected_version: cycle.version,
+      const { data, error } = await supabase.rpc('record_completed_product_usage', {
+        _product_id: record.product_id, _quantity: record.container_amount, _unit: record.container_unit,
+        _start_date: record.start_date, _end_date: record.end_date,
       });
       if (error) throw error;
       return data as unknown as ProductUsageRecord;
@@ -133,8 +129,8 @@ export function useProductUsageRecords(productId?: string) {
   const changeCycle = useMutation({
     mutationFn: async (input: { usageId: string; version: number; startDate: string | null; endDate: string | null; reason: string; action: 'correct' | 'reopen' | 'cancel' }) => {
       const { data, error } = await supabase.rpc('change_product_usage_record', {
-        _usage_id: input.usageId, _expected_version: input.version, _start_date: input.startDate ?? undefined,
-        _end_date: input.endDate ?? undefined, _reason: input.reason, _action: input.action,
+        _usage_id: input.usageId, _expected_version: input.version, _start_date: input.startDate as string,
+        _end_date: input.endDate as string, _reason: input.reason, _action: input.action,
       });
       if (error) throw error;
       return data;

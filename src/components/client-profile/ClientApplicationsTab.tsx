@@ -249,7 +249,7 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   const { data: appointments = [] } = useQuery({
     queryKey: ['application_appts', clientId],
     queryFn: async () => {
-      const { data } = await supabase.from('appointments').select('id, start_time, title').eq('client_id', clientId).order('start_time', { ascending: false }).limit(30);
+      const { data } = await supabase.from('appointments').select('id, start_time').eq('client_id', clientId).order('start_time', { ascending: false }).limit(30);
       return (data ?? []) as any[];
     },
   });
@@ -348,7 +348,7 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
               <div className="space-y-1"><Label className="text-xs">Agendamento vinculado</Label>
                 <Select value={appointmentId || undefined} onValueChange={setAppointmentId}>
                   <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                  <SelectContent>{appointments.map((a) => <SelectItem key={a.id} value={a.id}>{format(new Date(a.start_time), 'dd/MM/yyyy HH:mm')} {a.title ?? ''}</SelectItem>)}</SelectContent>
+                  <SelectContent>{appointments.map((a) => <SelectItem key={a.id} value={a.id}>{format(new Date(a.start_time), 'dd/MM/yyyy HH:mm')}</SelectItem>)}</SelectContent>
                 </Select></div>
             </div>
             <div className="space-y-1"><Label className="text-xs">Motivo do atendimento</Label><Input value={state.reason} onChange={(e) => set({ reason: e.target.value })} /></div>

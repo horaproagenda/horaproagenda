@@ -405,3 +405,46 @@ export function buildFilledDocumentContent({
     .join('\n');
 }
 
+
+// ===================== Esquema oficial de campos (field_id) =====================
+
+export interface DocumentFieldSchemaItem {
+  field_id: string;
+  label: string;
+  type: DocumentFieldDefinition['type'];
+  required: boolean;
+}
+
+/** Lista oficial de campos gravada no link. Lança erro em campo duplicado. */
+export function buildDocumentFieldSchema(rawContent: string): DocumentFieldSchemaItem[] {
+  return listDocumentFields(htmlToPlainText(rawContent)).map(f => ({
+    field_id: f.fieldKey,
+    label: f.label,
+    type: f.type,
+    required: f.type === 'checkbox' ? false : f.type === 'variable' ? !isAutoFilledVariable(f.fieldKey) : true,
+  }));
+}
+
+export interface DocumentAnswerState {
+  formData: Record<string, string>;
+  yesNoAnswers: Record<string, 'sim' | 'nao' | ''>;
+  additionalInfo: Record<string, string>;
+  checkboxAnswers: Record<string, boolean>;
+}
+
+/** Converte as respostas em pares {field_id, value} — nunca por posição. */
+export function buildSubmittedFields(
+  schema: Array<Pick<DocumentFieldSchemaItem, 'field_id' | 'type'>>,
+  state: DocumentAnswerState,
+): Array<{ field_id: string; value: string }> {
+  return schema.map(f => {
+    let value = '';
+    switch (f.type) {
+      case 'variable': value = state.formData[f.field_id] ?? ''; break;
+      case 'yesno': value = state.yesNoAnswers[f.field_id] ?? ''; break;
+      case 'checkbox': value = state.checkboxAnswers[f.field_id] ? 'true' : ''; break;
+      default: value = state.additionalInfo[f.field_id] ?? '';
+    }
+    return { field_id: f.field_id, value: String(value) };
+  });
+}

@@ -417,13 +417,13 @@ export default function PreencherDocumento() {
    * Confere, campo a campo, que cada resposta foi gravada no seu lugar no
    * documento final. Bloqueia o envio se algum campo ficar sem destino.
    */
-  const verifyFilledDocument = (): { ok: true; content: string } | { ok: false; message: string } => {
-    if (!template) return { ok: false, message: 'Documento não carregado.' };
+  const verifyFilledDocument = (): { ok: boolean; content: string; message: string } => {
+    if (!template) return { ok: false, content: '', message: 'Documento não carregado.' };
     let fields;
     try {
       fields = listDocumentFields(template.content);
     } catch {
-      return { ok: false, message: 'Este modelo tem campos repetidos. Avise o profissional para revisar o modelo.' };
+      return { ok: false, content: '', message: 'Este modelo tem campos repetidos. Avise o profissional para revisar o modelo.' };
     }
     const stamp = new Date();
     const content = buildFilledContent(stamp);
@@ -436,10 +436,10 @@ export default function PreencherDocumento() {
       const unplaced = fields.filter((f) => f.type !== 'variable' && !placed.has(f.fieldKey));
       if (unplaced.length) {
         console.error('[documento] campos sem destino no documento final', unplaced.map((f) => f.fieldKey));
-        return { ok: false, message: 'Não foi possível montar o documento com segurança. Avise o profissional para revisar o modelo.' };
+        return { ok: false, content: '', message: 'Não foi possível montar o documento com segurança. Avise o profissional para revisar o modelo.' };
       }
     }
-    return { ok: true, content };
+    return { ok: true, content, message: '' };
   };
 
   const handleAttemptSubmit = () => {

@@ -804,7 +804,7 @@ export function useClientProfile(clientId: string) {
         // service (e.g. "Axila R$50") in the payment history.
         const packageNameSnapshot = (a as any).package_name_snapshot as string | null | undefined;
         const notesPackageMatch = (a as any).notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
-        const isLikelyPackageSession = !!packageId || !!packageNameSnapshot || !!notesPackageMatch;
+        const isLikelyPackageSession = !!packageId;
 
         if (isLikelyPackageSession) {
           // Only shadow with the sale-side row when we can positively link

@@ -11,6 +11,11 @@ Legenda de cobertura:
 
 ## Autenticação e conta
 
+### Avulsos e pacotes
+- Atendimento anterior avulso não pertence à nova compra por nome, valor, serviço ou cronologia; somente vínculo explícito identifica etapa.
+- Cobertura: `src/lib/__tests__/standalonePackageSeparation.test.ts`, `packageSequence.test.ts`, `packageBatchScheduling.test.ts`; validação autenticada isolada ainda pendente.
+- Correção Ana Flávia: atendimentos 17/08 e 19/08 independentes, início do pacote em 02/09, 15 etapas preservadas e recebimento único de R$ 3.800 em 26/09 mantido na venda.
+
 | # | Comportamento protegido | Cobertura |
 | - | ----------------------- | --------- |
 | 1 | Login com e-mail/senha funciona e redireciona para `/dashboard` | `manual` (runbook §4) + `smoke` (`setup.ts` autentica em todo smoke) |

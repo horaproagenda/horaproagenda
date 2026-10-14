@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Avulsos separados dos pacotes
-- [ ] Remover vínculos por semelhança e proteger a origem oficial nas duas direções
-- [ ] Corrigir avaliação avulsa de Ana Flávia e sequência sem alterar horários ou recebimento
-- [ ] Alinhar telas, adicionar testes e verificar dados oficiais
+- [x] Remover vínculos por semelhança e proteger a origem oficial nas duas direções
+- [x] Corrigir avulsos comprovados de Ana Flávia e sequência sem alterar horários ou recebimento
+- [x] Alinhar telas, executar 20 testes e verificar dados oficiais
 - [ ] Validar fluxo autenticado isolado — ambiente autorizado indisponível
 
 ## Produtos — conclusão da autoridade do servidor

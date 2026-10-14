@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,6 +31,7 @@ export interface CashTransaction {
 
 export function useCashTransactions(cashRegisterId?: string) {
   const queryClient = useQueryClient();
+  const pendingRequest = useRef<{ payload: string; id: string } | null>(null);
 
   // Realtime sync for cash_transactions
   useEffect(() => {
@@ -192,29 +193,15 @@ export function useCashTransactions(cashRegisterId?: string) {
 
   const createTransaction = useMutation({
     mutationFn: async (transaction: Omit<CashTransaction, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Cada movimento pertence ao mesmo caixa (da clínica ou do profissional).
-      let professionalId: string | null = transaction.professional_id ?? null;
-      if (!professionalId && transaction.cash_register_id) {
-        const { data: reg } = await supabase
-          .from('cash_registers')
-          .select('professional_id')
-          .eq('id', transaction.cash_register_id)
-          .maybeSingle();
-        professionalId = (reg as any)?.professional_id ?? null;
+      const payload = JSON.stringify(transaction);
+      if (pendingRequest.current?.payload !== payload) {
+        pendingRequest.current = { payload, id: crypto.randomUUID() };
       }
-
-      const { data, error } = await supabase
-        .from('cash_transactions')
-        .insert({
-          ...transaction,
-          professional_id: professionalId,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
-
+      const request = pendingRequest.current;
+      if (!request) throw new Error('Não foi possível preparar a movimentação.');
+      const { data, error } = await supabase.rpc('create_cash_transaction_atomic', {
+        _transaction: JSON.parse(payload), _request_id: request.id,
+      });
       if (error) throw error;
 
       // NOTE: Do NOT mirror to financial_entries here.
@@ -225,6 +212,7 @@ export function useCashTransactions(cashRegisterId?: string) {
       return data;
     },
     onSuccess: () => {
+      pendingRequest.current = null;
       syncAfter(queryClient, 'cash');
     },
     onError: (error: any) => {

@@ -44,28 +44,15 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // Segredo do webhook: EVOLUTION_WEBHOOK_SECRET (preferido) ou WHATSAPP_WEBHOOK_TOKEN (legado).
-    const expectedToken =
-      Deno.env.get('EVOLUTION_WEBHOOK_SECRET') || Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '';
-    const url = new URL(req.url);
-    const incoming =
-      req.headers.get('x-webhook-secret') ||
-      req.headers.get('x-webhook-token') ||
-      url.searchParams.get('token') ||
-      '';
-
-    // Fail-closed: sem segredo configurado, não há como distinguir eventos
-    // legítimos da Evolution API de payloads forjados (que poderiam confirmar
-    // ou cancelar agendamentos reais). Rejeita até o segredo ser configurado.
-    if (!expectedToken) {
-      console.error('[whatsapp-webhook] WHATSAPP_WEBHOOK_TOKEN não configurado — rejeitando evento.');
-      return new Response(JSON.stringify({ ok: false, error: 'Webhook not configured' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Autenticação única: cabeçalho x-webhook-secret === EVOLUTION_WEBHOOK_SECRET.
+    const expectedSecret = (Deno.env.get('EVOLUTION_WEBHOOK_SECRET') || '').trim();
+    const receivedSecret = (req.headers.get('x-webhook-secret') || '').trim();
+    if (!expectedSecret || receivedSecret !== expectedSecret) {
+      console.warn('[whatsapp-webhook] 401', {
+        configured: Boolean(expectedSecret),
+        hasHeader: Boolean(receivedSecret),
+        hasQueryToken: new URL(req.url).searchParams.has('token'),
       });
-    }
-
-    if (incoming !== expectedToken) {
-      console.warn('[whatsapp-webhook] Token inválido no webhook — rejeitando.');
       return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

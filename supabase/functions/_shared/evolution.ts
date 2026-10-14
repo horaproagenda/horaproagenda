@@ -108,23 +108,23 @@ async function evolutionFetch(
 }
 
 
-const WEBHOOK_EVENTS = ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'];
+const WEBHOOK_EVENTS = ['MESSAGES_UPSERT'];
 
 function webhookUrl() {
-  const base = `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
-  // O webhook é público (verify_jwt=false) mas valida um segredo compartilhado:
-  // sem o token na URL, o receptor rejeita o evento (fail-closed).
-  const token = (Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '').trim();
-  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  // URL limpa: a autenticação vai só no cabeçalho x-webhook-secret.
+  return `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/whatsapp-webhook`;
 }
 
+function webhookHeaders() {
+  return { 'x-webhook-secret': (Deno.env.get('EVOLUTION_WEBHOOK_SECRET') || '').trim() };
+}
 
 /** Registra/atualiza o webhook da instância (Evolution v2: /webhook/set/{instance}). */
 export async function evolutionSetWebhook(override: EvolutionCreds) {
   const cfg = getEvolutionConfig(override);
   const payloads = [
-    { webhook: { enabled: true, url: webhookUrl(), byEvents: false, base64: false, events: WEBHOOK_EVENTS } },
-    { enabled: true, url: webhookUrl(), webhook_by_events: false, events: WEBHOOK_EVENTS },
+    { webhook: { enabled: true, url: webhookUrl(), headers: webhookHeaders(), byEvents: false, base64: false, events: WEBHOOK_EVENTS } },
+    { enabled: true, url: webhookUrl(), headers: webhookHeaders(), webhook_by_events: false, events: WEBHOOK_EVENTS },
   ];
   for (const body of payloads) {
     try {

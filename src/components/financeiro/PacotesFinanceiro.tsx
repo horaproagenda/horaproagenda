@@ -1,3 +1,4 @@
+import { resolvePackagePayment, type LedgerEntry } from '@/lib/packageLedger';
 import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 import { isPackageSessionRealized } from '@/lib/packageSequence';
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';

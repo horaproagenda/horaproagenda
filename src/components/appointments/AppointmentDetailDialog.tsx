@@ -207,6 +207,22 @@ export function AppointmentDetailDialog({
   const { appointments: pkgSessions } = usePackageAppointments(
     appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null,
   );
+  // Fallback: vínculo de sessão existe mas o pacote não veio junto na listagem.
+  // Sem isso, a etapa de R$ 0 (ex.: avaliação) escondia a baixa do pacote.
+  const linkedPackageAppointmentId = (appointment as any)?.package_appointment_id || null;
+  const { data: fallbackPackage } = useQuery({
+    queryKey: ['appointment-linked-package', linkedPackageAppointmentId],
+    enabled: open && !!linkedPackageAppointmentId && !appointment?.package_appointment?.package,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('package_appointments')
+        .select('package:service_packages(id, name, package_type, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)')
+        .eq('id', linkedPackageAppointmentId)
+        .maybeSingle();
+      return (data as any)?.package ?? null;
+    },
+  });
+
 
   // Detect if this appointment's package was sold via boleto parcelado and still has open installments.
   // When true, we redirect the user to the client's boleto page instead of the inline payment flow.

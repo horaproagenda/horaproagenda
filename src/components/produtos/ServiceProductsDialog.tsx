@@ -322,7 +322,7 @@ export function ServiceProductsDialog() {
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
-    await Promise.all(servicesToLink.map(serviceId => saveUsageRecord({ serviceId })));
+    await saveUsageRecord({});
     await openCycleIfOngoing();
 
     toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
@@ -368,7 +368,7 @@ export function ServiceProductsDialog() {
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
-    await Promise.all(templatesToLink.map(templateId => saveUsageRecord({ templateId })));
+    await saveUsageRecord({});
     await openCycleIfOngoing();
 
     toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);

@@ -120,6 +120,7 @@ export function useProductUsagePrediction() {
       const { data, error } = await supabase
         .from('product_usage_records')
         .select('*')
+        .eq('status', 'completed')
         .order('end_date', { ascending: false });
       
       if (error) throw error;
@@ -131,12 +132,11 @@ export function useProductUsagePrediction() {
     queryKey: ['product-active-cycles'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('product_purchases')
-        .select('id, product_id, started_using_at, cycle_quantity, cycle_unit')
-        .not('started_using_at', 'is', null)
-        .is('finished_at', null);
+        .from('product_usage_records')
+        .select('id, product_id, start_date, stock_quantity, container_unit')
+        .eq('status', 'in_use');
       if (error) throw error;
-      return (data || []) as ActiveCycleRow[];
+      return (data || []).map(row => ({ product_id: row.product_id, started_using_at: row.start_date, cycle_quantity: row.stock_quantity, cycle_unit: row.container_unit })) as ActiveCycleRow[];
     },
   });
 

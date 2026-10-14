@@ -1,4 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { ProductUsageHistory } from './ProductUsageHistory';
+import { usageDurationDays } from '@/lib/productUsageLifecycle';
 import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -297,7 +299,7 @@ function getContainerTerms(unit: ProductUnit | string | null | undefined) {
 
 
 export function ProductDetailDialog({
-  product,
+  product: rawProduct,
   purchases,
   open,
   onOpenChange,
@@ -315,8 +317,15 @@ export function ProductDetailDialog({
   const { serviceProducts, updateServiceProduct } = useServiceProducts();
   const { templateProducts, createTemplateProduct, updateTemplateProduct, deleteTemplateProduct } = usePackageTemplateProducts();
   const { consumptionReport, consumptionRecords } = useProductConsumption();
-  const { consumptions: dailyConsumptions } = useProductDailyConsumption(product?.id);
-  const { startCycle, finishCycle } = useProductUsageRecords(product?.id);
+  const { consumptions: dailyConsumptions } = useProductDailyConsumption(rawProduct?.id);
+  const { usageRecords, startCycle, finishCycle, adjustStock } = useProductUsageRecords(rawProduct?.id);
+  const cycleSaving = useRef(false);
+  const activeUsage = usageRecords.find(record => record.status === 'in_use');
+  const latestUsage = activeUsage ?? usageRecords.find(record => record.status === 'completed');
+  const product = useMemo(() => rawProduct && latestUsage ? {
+    ...rawProduct, started_using_at: latestUsage.start_date, finished_at: latestUsage.end_date,
+    cycle_quantity: activeUsage?.stock_quantity ?? null, cycle_unit: activeUsage?.container_unit ?? null,
+  } : rawProduct, [rawProduct, latestUsage, activeUsage]);
 
 
   const { appointments } = useAppointments();
@@ -447,11 +456,7 @@ export function ProductDetailDialog({
 
     // Total já comprado = soma das compras registradas (o campo do produto pode
     // ficar defasado se uma compra for editada ou excluída).
-    const totalPurchased = Math.max(
-      Number(product.quantity_purchased || 0),
-      productPurchases.reduce((s, p) => s + (Number(p.quantity) || 0), 0),
-    );
-    const totalQuantityUsed = Math.max(0, totalPurchased - (product.current_stock || 0));
+    const totalQuantityUsed = usageRecords.filter(r => r.status === 'completed').reduce((sum, r) => sum + Number(r.stock_quantity ?? 0), 0);
     let totalAppointments = 0;
 
     const perService = productServiceLinks.map((sp: any) => {
@@ -485,7 +490,7 @@ export function ProductDetailDialog({
 
     const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
     return { totalAppointments, avgPerAppointment, byService };
-  }, [product, productServiceLinks, productPurchases, appointments, activeServices]);
+  }, [product, productServiceLinks, productPurchases, appointments, activeServices, usageRecords]);
 
   // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark.
   // Funciona para TODOS os produtos — com ou sem vínculo a serviços. Quando o produto não
@@ -497,59 +502,28 @@ export function ProductDetailDialog({
     const matchesProduct = (a: any) =>
       !hasServiceLinks || productServiceLinks.some(sp => sp.service_id === a.service_id);
 
-    const finishedCycles = productPurchases
-      .filter(p => p.started_using_at && p.finished_at)
-      .map(p => {
-        const start = parseISO(p.started_using_at! + 'T00:00:00');
-        const end = parseISO(p.finished_at! + 'T23:59:59');
-        const days = Math.max(1, differenceInDays(end, start) + 1);
-        const apts = appointments.filter(a => {
-          if (a.status !== 'completed') return false;
-          const t = new Date(a.start_time);
-          return t >= start && t <= end && matchesProduct(a);
-        }).length;
-        const qtyConsumed = Number(p.quantity || 0);
-        return { purchase: p, days, appointments: apts, qtyConsumed };
-      });
-
+    const finishedCycles = usageRecords.filter(r => r.status === 'completed').map(r => ({
+      purchase: productPurchases.find(p => p.id === r.purchase_id) ?? null,
+      days: r.duration_days ?? 1, appointments: r.appointments_counted, qtyConsumed: r.stock_quantity ?? 0,
+    }));
     const lastCycle = finishedCycles[0] || null;
-
-    const activePurchase = productPurchases.find(p => p.started_using_at && !p.finished_at) || null;
-
-    // Fonte de verdade do ciclo ativo: a compra ativa. O campo
-    // product.started_using_at é apenas um cache denormalizado que pode ficar
-    // defasado quando uma nova compra é promovida fora do fluxo principal
-    // (edição manual de compra, encerramento + nova compra etc.). Sempre que
-    // houver uma compra ativa, usamos a data dela.
-    const effectiveCycleStart =
-      activePurchase?.started_using_at
-      || (product.finished_at ? null : product.started_using_at)
-      || null;
-    const isCycleActive = !!activePurchase || (!!product.started_using_at && !product.finished_at);
+    const activePurchase = activeUsage ? productPurchases.find(p => p.id === activeUsage.purchase_id) ?? null : null;
+    const effectiveCycleStart = activeUsage?.start_date ?? null;
+    const isCycleActive = !!activeUsage;
 
     let currentDays = 0;
     let currentAppointments = 0;
     let currentConsumed = 0;
     let initialQty = 0;
     // Quantidade colocada em uso no ciclo ativo (parcial), quando informada.
-    const activeCycleQuantity = Math.max(
-      Number(product.cycle_quantity || 0),
-      Number(activePurchase?.cycle_quantity || 0),
-    );
-    // Média histórica por atendimento, apurada nos ciclos já encerrados.
-    const historicAverage = averageFromCycles(
-      productPurchases
-        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
-        .map(p => ({
-          cycle_quantity: p.cycle_quantity,
-          cycle_appointments: p.cycle_appointments,
-          started_using_at: p.started_using_at,
-          finished_at: p.finished_at,
-        })),
-    );
+    const activeCycleQuantity = Number(activeUsage?.stock_quantity ?? 0);
+    const historicAverage = averageFromCycles(usageRecords.filter(r => r.status === 'completed').map(r => ({
+      cycle_quantity: r.stock_quantity, cycle_appointments: r.appointments_counted,
+      started_using_at: r.start_date, finished_at: r.end_date,
+    })));
     if (effectiveCycleStart && isCycleActive) {
       const start = parseISO(effectiveCycleStart + 'T00:00:00');
-      currentDays = Math.max(0, differenceInDays(new Date(), start));
+      currentDays = usageDurationDays(effectiveCycleStart, format(new Date(), 'yyyy-MM-dd')) ?? 0;
       currentAppointments = appointments.filter(a => {
         if (a.status !== 'completed') return false;
         const t = new Date(a.start_time);
@@ -635,7 +609,7 @@ export function ProductDetailDialog({
       effectiveCycleStart,
       isCycleActive,
     };
-  }, [product, productPurchases, appointments, productServiceLinks]);
+  }, [product, productPurchases, appointments, productServiceLinks, usageRecords, activeUsage]);
 
   // === Cycle lifecycle helpers (container-based) ===
   // O ciclo é sempre relativo ao RECIPIENTE em uso (ex.: 500 ml), e não ao total
@@ -648,7 +622,7 @@ export function ProductDetailDialog({
       productPurchases.find(p => p.started_using_at && !p.finished_at)
       || productPurchases.find(p => !p.finished_at)
       || null;
-    const cycleStart = activePurchase?.started_using_at || product.started_using_at;
+    const cycleStart = activeUsage?.start_date;
     const startDate = cycleStart ? parseISO(cycleStart + 'T00:00:00') : null;
     const endDate = parseISO(pendingEndDate + 'T23:59:59');
     const days = startDate ? Math.max(1, differenceInDays(endDate, startDate) + 1) : 0;
@@ -700,10 +674,7 @@ export function ProductDetailDialog({
     // Quantidade parcial colocada em uso (ex.: 100 das 600 unidades compradas).
     // Guardada no produto (ciclo ativo) e também na compra em uso, para que o
     // controle continue correto quando o mesmo lote passa por vários ciclos.
-    const cycleQuantity = Math.max(
-      Number((product as any).cycle_quantity || 0),
-      Number(activePurchase?.cycle_quantity || 0),
-    );
+    const cycleQuantity = Number(activeUsage?.stock_quantity ?? 0);
 
     const totalDeduction = cycleQuantity;
     const remainingStock = Math.max(0, stockBefore - totalDeduction);
@@ -758,18 +729,19 @@ export function ProductDetailDialog({
       forecast,
     };
 
-  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments]);
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments, activeUsage]);
 
   const runStartCycle = async (dateStr: string, cycleQty: number, unit: ProductUnit) => {
-    if (!product) return;
+    if (!product || cycleSaving.current) return;
     const pending = productPurchases.find(p => !p.started_using_at && !p.finished_at);
-    await startCycle.mutateAsync({
+    cycleSaving.current = true;
+    try { await startCycle.mutateAsync({
       productId: product.id,
       purchaseId: pending?.id,
       startDate: dateStr,
       quantity: cycleQty,
       unit,
-    });
+    }); } finally { cycleSaving.current = false; }
     toast.success(
       `Início registrado em ${format(parseISO(dateStr + 'T00:00:00'), 'dd/MM/yyyy')} com ${formatCycleQuantity(cycleQty)} ${PRODUCT_UNITS.find(u => u.value === unit)?.label} em uso.`,
     );
@@ -778,23 +750,10 @@ export function ProductDetailDialog({
 
   const runEndCycle = async (dateStr: string) => {
     if (!product || !endCyclePreview) return;
-    const { activePurchase, cycleApts, forecast } = endCyclePreview;
-    if (!activePurchase) {
-      toast.error('Registre primeiro a data de início e a quantidade em uso.');
-      return;
-    }
-    const unit = (activePurchase.cycle_unit as ProductUnit) || (product.cycle_unit as ProductUnit) || linkedCycleUnit;
-    const result = await finishCycle.mutateAsync({
-      productId: product.id,
-      purchaseId: activePurchase.id,
-      endDate: dateStr,
-      unit,
-      appointments: cycleApts.map((appointment) => ({
-        id: appointment.id,
-        date: format(new Date(appointment.start_time), 'yyyy-MM-dd'),
-        serviceId: appointment.service_id,
-      })),
-    });
+    const { cycleApts, forecast } = endCyclePreview;
+    if (!activeUsage) { toast.error('Confira o registro de uso antes de finalizar.'); return; }
+    const unit = activeUsage.container_unit as ProductUnit;
+    const result = await finishCycle.mutateAsync({ usageId: activeUsage.id, version: activeUsage.version, endDate: dateStr });
     const newStock = Number(result?.stock_after ?? product.current_stock);
     const usedQuantity = Number(result?.quantity ?? endCyclePreview.cycleQuantity);
     const unitLabel = PRODUCT_UNITS.find(option => option.value === unit)?.label ?? unit;
@@ -852,10 +811,7 @@ export function ProductDetailDialog({
       is_active: product.is_active,
       is_for_sale: product.is_for_sale,
       sale_price: product.sale_price,
-      started_using_at: product.started_using_at,
-      finished_at: product.finished_at,
       expiry_date: product.expiry_date,
-      current_stock: product.current_stock,
     });
     setIsEditing(true);
   };
@@ -1263,7 +1219,7 @@ export function ProductDetailDialog({
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">Motivo (opcional)</Label>
+                          <Label className="text-xs">Motivo do ajuste</Label>
                           <Input
                             value={stockEditReason}
                             onChange={(e) => setStockEditReason(e.target.value)}
@@ -1278,14 +1234,12 @@ export function ProductDetailDialog({
                         </Button>
                         <Button
                           size="sm"
+                          disabled={adjustStock.isPending || !stockEditReason.trim()}
                           onClick={async () => {
-                            const reason = stockEditReason ? ` (${stockEditReason})` : '';
-                            const noteEntry = `\n[${format(new Date(), 'dd/MM/yyyy HH:mm')}] Estoque ajustado de ${product.current_stock} para ${newStockValue}${reason}`;
-                            await onUpdateProduct({
-                              id: product.id,
-                              current_stock: newStockValue,
-                              notes: (product.notes || '') + noteEntry,
-                            });
+                            try {
+                              await adjustStock.mutateAsync({ productId: product.id, expectedStock: product.current_stock, newStock: newStockValue, reason: stockEditReason });
+                              toast.success('Estoque ajustado e alteração registrada.');
+                            } catch { return; }
                             setIsEditingStock(false);
                           }}
                         >
@@ -1484,6 +1438,7 @@ export function ProductDetailDialog({
                                 toast.warning('A data de início faz parte do registro. Para corrigi-la, informe uma nova data.');
                                 return;
                               }
+                              if (activeUsage) { toast.warning('Use Corrigir registro no histórico para alterar o início.'); return; }
                               setPendingStartDate(v);
                             }}
                             className="h-9"
@@ -1497,7 +1452,7 @@ export function ProductDetailDialog({
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
-                            ? 'Data em que esta compra começou a ser usada. O ciclo considera a quantidade total comprada.'
+                            ? 'Data em que a quantidade separada começou a ser usada.'
                             : `Refere-se à ${containerTerms.noun}, não ao total comprado. ${containerTerms.exampleHint}`}
                         </p>
                       </div>
@@ -1513,6 +1468,7 @@ export function ProductDetailDialog({
                                 toast.warning('A data de término faz parte do histórico e não pode ficar vazia.');
                                 return;
                               }
+                              if (!activeUsage) { toast.warning('Use Corrigir registro no histórico para alterar o término.'); return; }
                               setPendingEndDate(v);
                             }}
                             className="h-9"
@@ -1526,7 +1482,7 @@ export function ProductDetailDialog({
                         )}
                         <p className="mt-1 text-[10px] text-muted-foreground leading-tight">
                           {isBulkProduct
-                            ? 'Encerra este ciclo de consumo. A quantidade total da compra será baixada do estoque.'
+                            ? 'Encerra o ciclo e baixa somente a quantidade separada para uso.'
                             : `Encerra o ciclo da ${containerTerms.nounShort} atual. Atendimentos do período serão contabilizados.`}
                         </p>
 
@@ -1559,11 +1515,12 @@ export function ProductDetailDialog({
                     </div>
                   )}
                     </div>
+                    <ProductUsageHistory productId={product.id} canEdit={canEdit} />
                     {product.started_using_at && (
                       <p className="text-xs text-muted-foreground mt-2">
                         {product.finished_at 
-                          ? `Duração: ${differenceInDays(parseISO(product.finished_at), parseISO(product.started_using_at))} dias`
-                          : `Em uso há ${differenceInDays(new Date(), parseISO(product.started_using_at))} dias`}
+                          ? `Duração: ${latestUsage?.duration_days ?? usageDurationDays(product.started_using_at, product.finished_at)} dias`
+                          : `Em uso há ${usageDurationDays(product.started_using_at, format(new Date(), 'yyyy-MM-dd')) ?? 0} dias`}
                       </p>
                     )}
                   </div>
@@ -1643,10 +1600,7 @@ export function ProductDetailDialog({
                   ) : (
                     productPurchases.map((purchase) => {
                       const daysInUse = purchase.started_using_at 
-                        ? differenceInDays(
-                            purchase.finished_at ? parseISO(purchase.finished_at) : new Date(),
-                            parseISO(purchase.started_using_at)
-                          )
+                        ? usageDurationDays(purchase.started_using_at, purchase.finished_at ?? format(new Date(), 'yyyy-MM-dd'))
                         : null;
 
                       const isEditingThisPurchase = editingPurchaseId === purchase.id;
@@ -1779,8 +1733,6 @@ export function ProductDetailDialog({
                                         purchase_date: purchaseEditForm.purchase_date || purchase.purchase_date,
                                         supplier: purchaseEditForm.supplier || null,
                                         // Datas de uso não são editadas aqui: preserva as atuais.
-                                        started_using_at: purchase.started_using_at || null,
-                                        finished_at: purchase.finished_at || null,
                                         payment_method_id: purchaseEditForm.skip_cash_transaction ? null : (purchaseEditForm.payment_method_id || null),
                                         payment_method: purchaseEditForm.skip_cash_transaction ? null : (purchaseEditForm.payment_method || null),
                                         skip_cash_transaction: purchaseEditForm.skip_cash_transaction,
@@ -2619,9 +2571,12 @@ export function ProductDetailDialog({
                 );
                 return;
               }
-              setPendingStartDate(null);
-              setCycleQtyInput('');
-              await runStartCycle(d, qty, cycleUnitInput);
+              e.preventDefault();
+              if (cycleSaving.current) return;
+              try {
+                await runStartCycle(d, qty, cycleUnitInput);
+                setPendingStartDate(null); setCycleQtyInput('');
+              } catch { /* Retém formulário em caso de falha. */ }
             }}
             disabled={startCycle.isPending}
           >
@@ -2646,8 +2601,8 @@ export function ProductDetailDialog({
                 Será encerrado o ciclo em{' '}
                 <strong>{pendingEndDate ? format(parseISO(pendingEndDate + 'T00:00:00'), 'dd/MM/yyyy') : ''}</strong>
                 {isBulkProduct
-                  ? <> com base na <strong>quantidade em uso registrada</strong> (ou na quantidade da compra em uso).</>
-                  : <> com base nas quantidades informadas nos <strong>vínculos com serviços e pacotes</strong>.</>}
+                  ? <> com base na <strong>quantidade em uso registrada</strong>.</>
+                  : <> com base na <strong>quantidade registrada no início deste ciclo</strong>.</>}
               </p>
               {endCyclePreview && product && (
                 <div className="rounded-md border bg-muted/30 p-2 text-xs space-y-1">
@@ -2717,8 +2672,12 @@ export function ProductDetailDialog({
                 toast.error('A data de término não pode ser anterior à data de início.');
                 return;
               }
-              setPendingEndDate(null);
-              await runEndCycle(d);
+              event.preventDefault();
+              if (cycleSaving.current) return;
+              cycleSaving.current = true;
+              try { await runEndCycle(d); setPendingEndDate(null); }
+              catch { /* Retém formulário em caso de falha. */ }
+              finally { cycleSaving.current = false; }
             }}
             disabled={finishCycle.isPending}
           >

@@ -87,6 +87,8 @@ Legenda de cobertura:
 
 ## Regra de ouro
 
+- Uso de produto: datas sem horário, duração inclusiva, quantidade do ciclo e baixa idempotente (600 − 100 = 500); correções exigem motivo e versão. Testes: `productUsageLifecycle.test.ts` e `product-usage-lifecycle.smoke.test.ts`.
+
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.
 Nenhuma correção validada pode existir sem teste que a proteja.
 

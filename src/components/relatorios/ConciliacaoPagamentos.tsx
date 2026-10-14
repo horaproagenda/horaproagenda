@@ -63,22 +63,31 @@ export function ConciliacaoPagamentos() {
     queryKey: ['conciliacao-pagamentos', accountOwnerId],
     enabled: !!accountOwnerId,
     queryFn: async (): Promise<Row[]> => {
-      const [aptRes, feRes, ctRes] = await Promise.all([
+      const [aptRes, feRes, ctRes, clRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, client_id, amount_paid, payment_status, payment_date, start_time, clients(name)')
+          .select('id, client_id, amount_paid, payment_status, payment_date, start_time, package_appointment_id, booking_origin, clients(name)')
           .eq('account_owner_id', accountOwnerId!)
-          .gt('amount_paid', 0),
+          .gt('amount_paid', 0)
+          .limit(10000),
         supabase
           .from('financial_entries')
-          .select('id, client_id, appointment_id, amount, paid_date, status, type')
+          .select('id, client_id, appointment_id, sale_id, description, amount, paid_date, status, type')
           .eq('account_owner_id', accountOwnerId!)
-          .eq('status', 'paid'),
+          .eq('status', 'paid')
+          .eq('type', 'income')
+          .limit(10000),
         supabase
           .from('cash_transactions')
           .select('id, amount, reference_id, reference_type, type, created_at')
           .eq('account_owner_id', accountOwnerId!)
-          .eq('type', 'income'),
+          .eq('type', 'income')
+          .limit(10000),
+        supabase
+          .from('clients')
+          .select('id, name')
+          .eq('account_owner_id', accountOwnerId!)
+          .limit(10000),
       ]);
       if (aptRes.error) throw aptRes.error;
       if (feRes.error) throw feRes.error;
@@ -87,18 +96,16 @@ export function ConciliacaoPagamentos() {
       const appointments = aptRes.data || [];
       const financials = feRes.data || [];
       const cash = ctRes.data || [];
+      const clientName = new Map<string, string>();
+      for (const c of (clRes.data || []) as any[]) clientName.set(c.id, c.name);
 
       const feByApt = new Map<string, number>();
-      const feUnmatched = new Map<string, { amount: number; client_id: string | null; paid_date: string | null }>();
+      const feUnmatched: any[] = [];
       for (const f of financials as any[]) {
         if (f.appointment_id) {
           feByApt.set(f.appointment_id, (feByApt.get(f.appointment_id) || 0) + Number(f.amount || 0));
         } else {
-          feUnmatched.set(f.id, {
-            amount: Number(f.amount || 0),
-            client_id: f.client_id,
-            paid_date: f.paid_date,
-          });
+          feUnmatched.push(f);
         }
       }
 
@@ -116,39 +123,43 @@ export function ConciliacaoPagamentos() {
         const feAmt = feByApt.get(a.id) || 0;
         const cashAmt = cashByApt.get(a.id) || 0;
         const date = (a.payment_date || a.start_time || '').slice(0, 10);
+        const isPackage = a.booking_origin === 'package' || !!a.package_appointment_id;
         let divergence: DivergenceKind = 'ok';
-        if (feAmt === 0 && cashAmt === 0) divergence = 'missing_financial';
-        else if (feAmt === 0) divergence = 'missing_financial';
+        let description = 'Agendamento com pagamento';
+        if (isPackage && feAmt === 0) {
+          // Sessão de pacote: o recebimento fica na venda do pacote, não na sessão.
+          description = 'Sessão de pacote (recebido na venda do pacote)';
+        } else if (feAmt === 0) divergence = 'missing_financial';
         else if (Math.abs(feAmt - aptAmt) > 0.01) divergence = 'amount_mismatch';
 
         rows.push({
           key: `apt:${a.id}`,
           clientId: a.client_id,
-          clientName: a.clients?.name || 'Cliente removido',
+          clientName: a.clients?.name || clientName.get(a.client_id) || 'Cliente removido',
           appointmentId: a.id,
           date,
           appointmentAmount: aptAmt,
           financialAmount: feAmt,
           cashAmount: cashAmt,
           divergence,
-          description: 'Agendamento com pagamento',
+          description,
         });
       }
 
-      // Financial entries sem appointment vinculado — não aparecem no perfil
-      // do cliente por agendamento, mas devem estar reconciliadas de outra forma.
-      for (const [id, f] of feUnmatched.entries()) {
+      // Lançamentos sem agendamento: vendas do caixa/pacotes são legítimas.
+      for (const f of feUnmatched) {
+        const fromSale = !!f.sale_id;
         rows.push({
-          key: `fe:${id}`,
+          key: `fe:${f.id}`,
           clientId: f.client_id,
-          clientName: 'Lançamento avulso',
+          clientName: (f.client_id && clientName.get(f.client_id)) || 'Sem cliente vinculado',
           appointmentId: null,
           date: (f.paid_date || '').slice(0, 10),
           appointmentAmount: 0,
-          financialAmount: f.amount,
+          financialAmount: Number(f.amount || 0),
           cashAmount: 0,
-          divergence: 'missing_appointment_payment',
-          description: 'Lançamento no financeiro sem agendamento vinculado',
+          divergence: fromSale ? 'ok' : 'missing_appointment_payment',
+          description: f.description || (fromSale ? 'Venda registrada no caixa' : 'Lançamento sem agendamento vinculado'),
         });
       }
 

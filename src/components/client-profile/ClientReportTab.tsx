@@ -385,6 +385,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     payment.serviceName,
     payment.description || '-',
     `R$ ${Number(payment.totalPrice || 0).toFixed(2)}`,
+    `R$ ${Number(payment.discountAmount || 0).toFixed(2)}`,
     `R$ ${Number(payment.amount || 0).toFixed(2)}`,
     getPaymentMethodName(payment.paymentMethod),
     isClientCreditPaymentMethod(payment.paymentMethod) ? NON_CASH_PAYMENT_LABEL : 'Com entrada no caixa',
@@ -392,7 +393,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
 
   const exportToCSV = () => exportRowsToCSV({
     filename: `relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}`,
-    headers: ['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa'],
+    headers: ['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor integral', 'Desconto', 'Valor pago', 'Forma', 'Caixa'],
     rows: paymentExportRows,
     successMessage: 'Relatório filtrado exportado em CSV!',
   });

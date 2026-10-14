@@ -689,6 +689,7 @@ serve(async (req) => {
           reference_id: body.appointment_id,
           reference_type: 'appointment',
           created_by: userId,
+          account_owner_id: callerOwner,
         });
 
         if (creditCashError) {
@@ -873,6 +874,7 @@ serve(async (req) => {
             card_fee_amount: body.card_fee_amount || 0,
             installments: body.installments || 1,
             created_by: userId,
+            account_owner_id: callerOwner,
           });
 
           if (cashError) {

@@ -761,6 +761,7 @@ export type Database = {
         Row: {
           account_owner_id: string
           amount_paid: number | null
+          booking_origin: string | null
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null
@@ -795,6 +796,7 @@ export type Database = {
         Insert: {
           account_owner_id?: string
           amount_paid?: number | null
+          booking_origin?: string | null
           client_id: string
           composite_group_id?: string | null
           composite_sequence_order?: number | null
@@ -829,6 +831,7 @@ export type Database = {
         Update: {
           account_owner_id?: string
           amount_paid?: number | null
+          booking_origin?: string | null
           client_id?: string
           composite_group_id?: string | null
           composite_sequence_order?: number | null
@@ -7654,6 +7657,7 @@ export type Database = {
         Returns: {
           account_owner_id: string
           amount_paid: number | null
+          booking_origin: string | null
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null
@@ -7712,6 +7716,7 @@ export type Database = {
         Returns: {
           account_owner_id: string
           amount_paid: number | null
+          booking_origin: string | null
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null
@@ -7796,6 +7801,7 @@ export type Database = {
         Returns: {
           account_owner_id: string
           amount_paid: number | null
+          booking_origin: string | null
           client_id: string
           composite_group_id: string | null
           composite_sequence_order: number | null

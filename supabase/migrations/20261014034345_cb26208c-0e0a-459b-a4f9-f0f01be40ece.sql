@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.keep_purchase_usage_dates_legacy(), public.sync_product_active_cycle() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.keep_purchase_usage_dates_legacy(), public.sync_product_active_cycle() TO service_role;

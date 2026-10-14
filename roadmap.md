@@ -4,7 +4,7 @@
 - [x] Unir consumo manual, estoque e auditoria com idempotência e cancelamento histórico
 - [x] Retirar substituição de consumo de ciclo pela tela e usar estatísticas persistidas
 - [x] Proteger unidade/histórico e reserva de estoque nas alterações de compras
-- [ ] Executar testes de produtos e conferir banco e prévia
+- [x] Executar 44 testes de produtos e 2 bloqueios anônimos, conferir grants e compilação automática
 - [ ] Validar fluxo autenticado isolado — indisponível no Supabase externo
 
 ## Backend como fonte oficial — revisão integral

@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify';
 import {
   createTokenCounters,
+  isBlankFieldLine,
   tokenizeDocumentSegment,
   type DocumentFieldToken,
 } from './documentTemplateFields';
@@ -198,26 +199,59 @@ function collectLineGroups(root: HTMLElement): LineGroup[] {
  * checkboxes and free-text placeholders inside TEXT NODES ONLY, so every bit of
  * formatting, color and every image is preserved exactly as edited.
  */
-export function fillDocumentHtml(html: string, values: DocumentFillValues): string {
+export interface DocumentFillReport {
+  html: string;
+  /** Field ids that exist in the document and were written into it. */
+  placedKeys: string[];
+}
+
+export function fillDocumentHtmlWithReport(html: string, values: DocumentFillValues): DocumentFillReport {
   const safeHtml = sanitizeRichDocumentHtml(html);
-  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return safeHtml;
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return { html: safeHtml, placedKeys: [] };
 
   const doc = new DOMParser().parseFromString(`<div id="__doc_root">${safeHtml}</div>`, 'text/html');
   const root = doc.getElementById('__doc_root');
-  if (!root) return safeHtml;
+  if (!root) return { html: safeHtml, placedKeys: [] };
 
+  const placed = new Set<string>();
+  // One counter set for the whole document so field ids match the form.
+  const counters = createTokenCounters();
   collectLineGroups(root).forEach(group => {
-    const counters = createTokenCounters();
+    const lineText = group.nodes.map(n => n.textContent || '').join('');
+    if (lineText.trim() && isBlankFieldLine(lineText)) {
+      // "Endereço: ____" — same rule as the on-screen form.
+      const key = `field_${counters.blankIndex++}`;
+      placed.add(key);
+      const answer = values.additionalInfo?.[key] || '';
+      const last = [...group.nodes].reverse().find(n => (n.textContent || '').trim());
+      if (last && answer) {
+        const text = last.textContent || '';
+        last.textContent = /_{3,}/.test(text)
+          ? text.replace(/_{3,}/, answer)
+          : `${text.replace(/\s+$/, '')} ${answer}`;
+      }
+      return;
+    }
     group.nodes.forEach(textNode => {
       const original = textNode.textContent || '';
       if (!original) return;
       const tokens = tokenizeDocumentSegment(original, group.index, counters);
+      tokens.forEach(t => { if (t.type !== 'text') placed.add(t.fieldKey); });
       const filled = tokens.map(token => resolveDocumentTokenValue(token, values)).join('');
       if (filled !== original) textNode.textContent = filled;
     });
   });
 
-  return root.innerHTML;
+  return { html: root.innerHTML, placedKeys: Array.from(placed) };
+}
+
+/**
+ * Fills a rich (HTML) document template: replaces {variables}, Yes/No answers,
+ * checkboxes and free-text placeholders inside TEXT NODES ONLY, so every bit of
+ * formatting, color and every image is preserved exactly as edited.
+ */
+export function fillDocumentHtml(html: string, values: DocumentFillValues): string {
+  return fillDocumentHtmlWithReport(html, values).html;
 }
 
 /** Wraps a filled document body in printable A4 HTML (print window / PDF). */

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isCurrentSessionResponse, sessionIdentityChanged } from '@/lib/sessionAuthority';
+import { clearQueue } from '@/lib/offlineQueue';
 import { User, Session } from '@supabase/supabase-js';
 import { readEdgeFunctionError, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           currentIdentity.current = nextIdentity;
           void queryClient.cancelQueries();
           queryClient.clear();
+          clearQueue();
           setProfile(null);
           setRoles([]);
           setLoading(Boolean(nextIdentity));

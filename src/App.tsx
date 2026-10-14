@@ -113,8 +113,8 @@ const createQueryClient = () => {
         networkMode: mobile ? 'offlineFirst' : 'online',
       },
       mutations: {
-        // Mutations partem do cache local; se offline, ficam em pausa e
-        // retomam ao voltar — evita travar a UI aguardando rede fraca.
+        // A gravação só é confirmada online pelo servidor. Sem repetição
+        // automática enquanto ainda houver caminhos legados não idempotentes.
         networkMode: 'online',
         retry: 0,
       },

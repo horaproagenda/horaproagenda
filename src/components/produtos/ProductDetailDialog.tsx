@@ -2740,32 +2740,8 @@ function ProductAutomaticConsumption({
     if (dailyEvents.length > 0) return dailyEvents;
 
 
-    // Fallback automático: deriva consumo de atendimentos concluídos
-    const serviceQtyMap = new Map<string, number>();
-    for (const sp of serviceLinks || []) {
-      serviceQtyMap.set(sp.service_id, Number(sp.quantity_per_use) || 0);
-    }
-    const templateQtyMap = new Map<string, number>();
-    for (const tp of templateLinks || []) {
-      const templateId = tp.package_template_id || tp.template_id;
-      if (templateId) templateQtyMap.set(templateId, Number(tp.quantity_per_use) || 0);
-    }
-
-    const events: { date: Date; qty: number }[] = [];
-    for (const apt of appointments || []) {
-      if (apt.status !== 'completed') continue;
-      let qty = 0;
-      if (apt.service_id && serviceQtyMap.has(apt.service_id)) {
-        qty = serviceQtyMap.get(apt.service_id) || 0;
-      } else if (apt.package_template_id && templateQtyMap.has(apt.package_template_id)) {
-        qty = templateQtyMap.get(apt.package_template_id) || 0;
-      }
-      if (qty <= 0) continue;
-      const d = apt.start_time ? new Date(apt.start_time) : null;
-      if (!d || isNaN(d.getTime())) continue;
-      events.push({ date: d, qty });
-    }
-    return events;
+    // Without persisted movements there is no confirmed consumption.
+    return [];
   }, [productRecords, productDaily, appointments, serviceLinks, templateLinks]);
 
   const stats = useMemo(() => {

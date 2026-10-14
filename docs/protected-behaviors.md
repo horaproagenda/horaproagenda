@@ -54,6 +54,8 @@ Legenda de cobertura:
 | 25 | Financeiro: "vendas de hoje" não conta valores já pagos | `unit` `paymentStatus.test.ts`, `legacyPaymentDedup.test.ts` |
 | 26 | Financeiro: cascata de lançamentos e comissões a partir das vendas | `smoke` `commission.smoke.test.ts`, `payments.smoke.test.ts` |
 | 27 | Estoque: consumo manual x automático, conversões kg/g/mg e L/ml | `unit` `productUsageCalc.test.ts`, `productStockFlow.test.ts`, `productCycleAnalytics.test.ts` |
+| 27a | Consumo manual e estoque gravam juntos; cancelamento exige motivo e mantém histórico, nova tentativa mantém chave única | `unit` `useProductDailyConsumption.authority.test.tsx` + `smoke` `product-manual-authority.smoke.test.ts` |
+| 27b | Histórico por serviço usa quantidades persistidas, sem redistribuição pela quantidade atual de atendimentos/vínculos | `unit` `productOfficialUsageStats.test.ts` |
 | 28 | Estoque: baixa de produto ao concluir atendimento | `unit` `productStockDeduction.test.ts` + `smoke` `product-stock-deduction.smoke.test.ts` |
 | 29 | Documentos: negrito/cor/imagens preservados no PDF; `{data_extenso}` por extenso | `unit` `documentRichContent.test.ts` |
 | 30 | Relatórios/exportação: colunas obrigatórias (retorno, profissional, sala, equipamento) | `unit` `exportUtils.test.ts`, `importMapping.test.ts` |

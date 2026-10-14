@@ -1,0 +1,1 @@
+CREATE POLICY usage_record_product_scope ON public.product_usage_records AS RESTRICTIVE FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.products p WHERE p.id=product_id));

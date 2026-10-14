@@ -47,6 +47,7 @@ interface PackageSaleRow {
   totalAmount: number;
   paidAmount: number;
   paymentMethodName: string;
+  ledgerMissing: boolean;
   totalSessions: number;
   usedSessions: number;
   isCancelled: boolean;

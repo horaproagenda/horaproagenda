@@ -283,6 +283,274 @@ export type Database = {
         }
         Relationships: []
       }
+      application_attachments: {
+        Row: {
+          application_id: string
+          attachment_type: string
+          created_at: string
+          document_id: string | null
+          id: string
+          photo_id: string | null
+        }
+        Insert: {
+          application_id: string
+          attachment_type: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          photo_id?: string | null
+        }
+        Update: {
+          application_id?: string
+          attachment_type?: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          photo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_attachments_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "application_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_attachments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "client_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_attachments_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_field_values: {
+        Row: {
+          application_id: string
+          field_id: string
+          id: string
+          value: string | null
+        }
+        Insert: {
+          application_id: string
+          field_id: string
+          id?: string
+          value?: string | null
+        }
+        Update: {
+          application_id?: string
+          field_id?: string
+          id?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_field_values_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "application_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_items: {
+        Row: {
+          application_id: string
+          created_at: string
+          dilution: string | null
+          expiration_date: string | null
+          id: string
+          instrument: string | null
+          lot_number: string | null
+          manufacturer_snapshot: string | null
+          notes: string | null
+          position: number
+          product_id: string | null
+          product_name_snapshot: string
+          quantity: number | null
+          region: string
+          side: string | null
+          technique: string | null
+          unit: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          dilution?: string | null
+          expiration_date?: string | null
+          id?: string
+          instrument?: string | null
+          lot_number?: string | null
+          manufacturer_snapshot?: string | null
+          notes?: string | null
+          position?: number
+          product_id?: string | null
+          product_name_snapshot?: string
+          quantity?: number | null
+          region?: string
+          side?: string | null
+          technique?: string | null
+          unit?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          dilution?: string | null
+          expiration_date?: string | null
+          id?: string
+          instrument?: string | null
+          lot_number?: string | null
+          manufacturer_snapshot?: string | null
+          notes?: string | null
+          position?: number
+          product_id?: string | null
+          product_name_snapshot?: string
+          quantity?: number | null
+          region?: string
+          side?: string | null
+          technique?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_items_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "application_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      application_records: {
+        Row: {
+          account_owner_id: string
+          amendment_reason: string | null
+          amends_id: string | null
+          appointment_id: string | null
+          based_on_id: string | null
+          client_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          follow_up_date: string | null
+          id: string
+          performed_at: string
+          procedure_name: string
+          procedure_template_id: string | null
+          professional_id: string | null
+          reason: string | null
+          room: string | null
+          status: string
+          template_snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          account_owner_id: string
+          amendment_reason?: string | null
+          amends_id?: string | null
+          appointment_id?: string | null
+          based_on_id?: string | null
+          client_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          follow_up_date?: string | null
+          id?: string
+          performed_at?: string
+          procedure_name: string
+          procedure_template_id?: string | null
+          professional_id?: string | null
+          reason?: string | null
+          room?: string | null
+          status?: string
+          template_snapshot?: Json
+          updated_at?: string
+        }
+        Update: {
+          account_owner_id?: string
+          amendment_reason?: string | null
+          amends_id?: string | null
+          appointment_id?: string | null
+          based_on_id?: string | null
+          client_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          follow_up_date?: string | null
+          id?: string
+          performed_at?: string
+          procedure_name?: string
+          procedure_template_id?: string | null
+          professional_id?: string | null
+          reason?: string | null
+          room?: string | null
+          status?: string
+          template_snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_records_amends_id_fkey"
+            columns: ["amends_id"]
+            isOneToOne: false
+            referencedRelation: "application_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_records_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_records_based_on_id_fkey"
+            columns: ["based_on_id"]
+            isOneToOne: false
+            referencedRelation: "application_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_records_procedure_template_id_fkey"
+            columns: ["procedure_template_id"]
+            isOneToOne: false
+            referencedRelation: "procedure_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_records_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_additional_items: {
         Row: {
           account_owner_id: string
@@ -3742,6 +4010,42 @@ export type Database = {
         }
         Relationships: []
       }
+      procedure_templates: {
+        Row: {
+          account_owner_id: string | null
+          created_at: string
+          fields: Json
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          account_owner_id?: string | null
+          created_at?: string
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          account_owner_id?: string | null
+          created_at?: string
+          fields?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       processed_asaas_events: {
         Row: {
           created_at: string
@@ -6407,6 +6711,10 @@ export type Database = {
         Args: { p_delta: number; p_product_id: string }
         Returns: number
       }
+      amend_application_record: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
       appointment_conflict_reason: {
         Args: {
           p_end: string
@@ -6492,6 +6800,10 @@ export type Database = {
         Args: { _package_appointment_id: string }
         Returns: boolean
       }
+      can_read_application_technical: {
+        Args: { _rec_id: string }
+        Returns: boolean
+      }
       can_see_appointment_row: {
         Args: { _professional_id: string }
         Returns: boolean
@@ -6530,10 +6842,12 @@ export type Database = {
         Returns: boolean
       }
       can_use_financial_module: { Args: never; Returns: boolean }
+      can_write_application: { Args: { _rec_id: string }; Returns: boolean }
       can_write_record: {
         Args: { _action: string; _module: string; _owner: string }
         Returns: boolean
       }
+      cancel_application_record: { Args: { _id: string }; Returns: Json }
       cascade_package_intervals_after_anchor: {
         Args: {
           _anchor_start: string
@@ -6570,6 +6884,7 @@ export type Database = {
         Args: { p_cash_register_id: string; p_closed_by: string }
         Returns: undefined
       }
+      complete_application_record: { Args: { _id: string }; Returns: Json }
       confirm_appointment_by_token: {
         Args: { p_action: string; p_token: string }
         Returns: Json
@@ -6963,6 +7278,7 @@ export type Database = {
         }
         Returns: Json
       }
+      is_receptionist_only: { Args: never; Returns: boolean }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       is_tenant_staff: { Args: never; Returns: boolean }
       issue_verification_code: {

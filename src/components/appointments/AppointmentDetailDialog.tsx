@@ -1,3 +1,4 @@
+import { getPaymentAction } from '@/lib/paymentAction';
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';

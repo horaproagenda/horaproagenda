@@ -1,5 +1,12 @@
 # Roadmap
 
+## Produtos — conclusão da autoridade do servidor
+- [x] Unir consumo manual, estoque e auditoria com idempotência e cancelamento histórico
+- [x] Retirar substituição de consumo de ciclo pela tela e usar estatísticas persistidas
+- [x] Proteger unidade/histórico e reserva de estoque nas alterações de compras
+- [ ] Executar testes de produtos e conferir banco e prévia
+- [ ] Validar fluxo autenticado isolado — indisponível no Supabase externo
+
 ## Backend como fonte oficial — revisão integral
 - [ ] Concluir auditoria detalhada de todos os módulos — inventário inicial em docs/backend-authority-audit.md
 - [x] Consolidar venda avulsa e criação de movimento de caixa com solicitação idempotente

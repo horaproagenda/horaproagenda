@@ -38,11 +38,12 @@ import {
   htmlToPlainText,
   buildDocumentDateTimeValues,
   isAutoFilledVariable,
+  listDocumentFields,
   normalizeDocumentLinkPayload,
   tokenizeDocument,
   type DocumentFieldToken,
 } from '@/lib/documentTemplateFields';
-import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
+import { fillDocumentHtml, fillDocumentHtmlWithReport, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';
 import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
 
 interface DocumentLinkPayload {
@@ -138,6 +139,7 @@ export default function PreencherDocumento() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [previewContent, setPreviewContent] = useState('');
   const [showPdfDownload, setShowPdfDownload] = useState(false);
   const [filledContentForPdf, setFilledContentForPdf] = useState('');
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -411,6 +413,35 @@ export default function PreencherDocumento() {
     return missing;
   };
 
+  /**
+   * Confere, campo a campo, que cada resposta foi gravada no seu lugar no
+   * documento final. Bloqueia o envio se algum campo ficar sem destino.
+   */
+  const verifyFilledDocument = (): { ok: true; content: string } | { ok: false; message: string } => {
+    if (!template) return { ok: false, message: 'Documento não carregado.' };
+    let fields;
+    try {
+      fields = listDocumentFields(template.content);
+    } catch {
+      return { ok: false, message: 'Este modelo tem campos repetidos. Avise o profissional para revisar o modelo.' };
+    }
+    const stamp = new Date();
+    const content = buildFilledContent(stamp);
+    if (isRichDocument(template.rawContent)) {
+      const values = { ...formData, ...buildDocumentDateTimeValues(stamp) };
+      const { placedKeys } = fillDocumentHtmlWithReport(sanitizeRichDocumentHtml(template.rawContent), {
+        formData: values, yesNoAnswers, additionalInfo, checkboxAnswers,
+      });
+      const placed = new Set(placedKeys);
+      const unplaced = fields.filter((f) => f.type !== 'variable' && !placed.has(f.fieldKey));
+      if (unplaced.length) {
+        console.error('[documento] campos sem destino no documento final', unplaced.map((f) => f.fieldKey));
+        return { ok: false, message: 'Não foi possível montar o documento com segurança. Avise o profissional para revisar o modelo.' };
+      }
+    }
+    return { ok: true, content };
+  };
+
   const handleAttemptSubmit = () => {
     const missing = collectMissingFields();
     if (missing.size > 0) {
@@ -431,8 +462,15 @@ export default function PreencherDocumento() {
       }, 50);
       return;
     }
+    const check = verifyFilledDocument();
+    if (!check.ok) {
+      setValidationError(check.message);
+      toast.error(check.message);
+      return;
+    }
     setMissingFields(new Set());
     setValidationError(null);
+    setPreviewContent(check.content);
     setShowConfirmDialog(true);
   };
 
@@ -442,7 +480,13 @@ export default function PreencherDocumento() {
     setSaving(true);
 
     try {
-      const filledContent = buildFilledContent();
+      const check = verifyFilledDocument();
+      if (!check.ok) {
+        toast.error(check.message);
+        return;
+      }
+      // Salva exatamente o que a cliente conferiu na prévia.
+      const filledContent = previewContent || check.content;
       const payload = {
         ...formData,
         ...additionalInfo,
@@ -930,7 +974,7 @@ export default function PreencherDocumento() {
       </div>
 
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar envio do documento</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
@@ -939,6 +983,21 @@ export default function PreencherDocumento() {
                 Após confirmar, nenhuma alteração poderá ser feita neste documento.
               </p>
             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Prévia do documento como será salvo</p>
+            <ScrollArea className="h-[45dvh] rounded-md border bg-background p-4">
+              {showConfirmDialog && (isRichDocument(previewContent) ? (
+                <div
+                  className="rich-document-view text-sm leading-6 text-foreground"
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichDocumentHtml(previewContent) }}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-foreground">{previewContent}</pre>
+              ))}
+            </ScrollArea>
+          </div>
+          <AlertDialogHeader className="hidden">
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Revisar</AlertDialogCancel>

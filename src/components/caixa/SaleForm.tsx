@@ -28,8 +28,8 @@ import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useCardBrands } from '@/hooks/useCardBrands';
 import { useBanks } from '@/hooks/useBanks';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
-import { supabase } from '@/integrations/supabase/client';
 import { submitMultiItemSale } from '@/lib/multiItemSale';
+import { humanizeError } from '@/lib/humanError';
 import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
@@ -464,11 +464,6 @@ export function SaleForm() {
 
     const isClientCredit = isClientCreditPaymentMethod(paymentMethod.name);
 
-    if (!currentOpenRegister && !isClientCredit) {
-      toast.error('É necessário abrir o caixa antes de realizar vendas!');
-      return;
-    }
-
     if (processingRef.current) return;
     processingRef.current = true;
     setIsProcessing(true);
@@ -494,7 +489,7 @@ export function SaleForm() {
       resetSale();
     } catch (error: unknown) {
       // A lost response can follow a successful commit. Keep the request ID for a safe retry.
-      toast.error(error);
+      toast.error(humanizeError(error));
     } finally {
       processingRef.current = false;
       setIsProcessing(false);

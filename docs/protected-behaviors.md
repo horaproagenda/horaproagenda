@@ -53,6 +53,7 @@ Legenda de cobertura:
 | 24 | Pacotes: sessões numeradas em ordem, sem sessão fantasma, saldo correto | `smoke` `packages.smoke.test.ts`, `db-integrity.smoke.test.ts` |
 | 25 | Financeiro: "vendas de hoje" não conta valores já pagos | `unit` `paymentStatus.test.ts`, `legacyPaymentDedup.test.ts` |
 | 26 | Financeiro: cascata de lançamentos e comissões a partir das vendas | `smoke` `commission.smoke.test.ts`, `payments.smoke.test.ts` |
+| 26a | Venda de vários itens usa uma chamada oficial, transmite parcelas e chave de repetição; erro não confirma sucesso | `unit` `multiItemSale.test.ts` + `smoke` `multi-item-sale-authority.smoke.test.ts`; transação autenticada ainda requer ambiente isolado |
 | 27 | Estoque: consumo manual x automático, conversões kg/g/mg e L/ml | `unit` `productUsageCalc.test.ts`, `productStockFlow.test.ts`, `productCycleAnalytics.test.ts` |
 | 27a | Consumo manual e estoque gravam juntos; cancelamento exige motivo e mantém histórico, nova tentativa mantém chave única | `unit` `useProductDailyConsumption.authority.test.tsx` + `smoke` `product-manual-authority.smoke.test.ts` |
 | 27b | Histórico por serviço usa quantidades persistidas, sem redistribuição pela quantidade atual de atendimentos/vínculos | `unit` `productOfficialUsageStats.test.ts` |

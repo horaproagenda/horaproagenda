@@ -3,6 +3,7 @@
 - Backend operations own definitive business transitions; frontend validation and cache are advisory only, because retries and concurrent devices must obey the same database rules.
 - Single-item cash sales use create_single_sale_atomic with a stable request ID and invoker RLS; sales, bookable inventory, ledger and exact stock deductions commit together so failures cannot leave partial sales.
 - Multi-item checkout uses create_multi_item_sale_atomic with invoker RLS and a basket request identity; catalog prices, payment fees, item-linked ledger, deferred installments, credit and stock commit together rather than browser compensation.
+- Package price/name guards validate only new or changed values, and application quantity guards allow incomplete drafts but reject invalid supplied amounts; unrelated edits must not rewrite legacy records or appointment times.
 - Cash transaction creation uses create_cash_transaction_atomic and an insert guard deriving register ownership/status server-side; direct callers cannot select a different professional or a closed register.
 - Database settings guards validate business invariants on every write while retaining invoker RLS; frontend formatting is not authoritative.
 - Clear query/mutation caches on authenticated identity changes and reject stale profile responses; never automatically retry mutations globally because non-idempotent legacy paths still exist.

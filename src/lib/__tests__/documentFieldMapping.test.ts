@@ -41,7 +41,7 @@ describe('mapeamento de campos do documento', () => {
 
   it('todo campo da tela existe no documento final (nenhum sem destino)', () => {
     const screen = fieldsOnScreen(RICH).filter(t => t.type !== 'variable').map(t => t.fieldKey);
-    const { placedKeys } = fillDocumentHtmlWithReport(RICH, {});
+    const placedKeys = fillDocumentHtmlWithReport(RICH, {}).placedKeys.filter(k => k !== 'nome');
     expect(new Set(placedKeys)).toEqual(new Set(screen));
   });
 

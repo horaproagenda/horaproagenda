@@ -54,6 +54,7 @@ interface PaymentHistoryItem {
   serviceName: string;
   amount: number;
   totalPrice: number;
+  discountAmount?: number;
   pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
@@ -384,6 +385,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     payment.serviceName,
     payment.description || '-',
     `R$ ${Number(payment.totalPrice || 0).toFixed(2)}`,
+    `R$ ${Number(payment.discountAmount || 0).toFixed(2)}`,
     `R$ ${Number(payment.amount || 0).toFixed(2)}`,
     getPaymentMethodName(payment.paymentMethod),
     isClientCreditPaymentMethod(payment.paymentMethod) ? NON_CASH_PAYMENT_LABEL : 'Com entrada no caixa',
@@ -391,7 +393,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
 
   const exportToCSV = () => exportRowsToCSV({
     filename: `relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}`,
-    headers: ['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa'],
+    headers: ['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor integral', 'Desconto', 'Valor pago', 'Forma', 'Caixa'],
     rows: paymentExportRows,
     successMessage: 'Relatório filtrado exportado em CSV!',
   });
@@ -404,13 +406,13 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
     doc.text(`Filtro: ${paymentTypeFilter === 'client_credit' ? CLIENT_CREDIT_SOURCE_LABEL : paymentTypeFilter === 'non_cash' ? NON_CASH_PAYMENT_LABEL : 'Todos pagamentos'} • Período: ${selectedMonth === 'all' ? 'Todos os meses' : format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy', { locale: ptBR })}`, 14, 21);
     autoTable(doc, {
       startY: 28,
-      head: [['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor item', 'Pago', 'Forma', 'Caixa']],
+      head: [['Data pagamento', 'Serviço/Pacote', 'Descrição', 'Valor integral', 'Desconto', 'Valor pago', 'Forma', 'Caixa']],
       body: paymentExportRows,
       margin: { left: 14, right: 14 },
       tableWidth: 'auto',
       styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
       headStyles: { fillColor: [41, 98, 255], halign: 'center', valign: 'middle' },
-      columnStyles: { 0: { cellWidth: 26 }, 1: { cellWidth: 48 }, 2: { cellWidth: 70 }, 3: { halign: 'right', cellWidth: 24 }, 4: { halign: 'right', cellWidth: 24 }, 5: { cellWidth: 36 }, 6: { cellWidth: 36 } },
+      columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 44 }, 2: { cellWidth: 58 }, 3: { halign: 'right', cellWidth: 24 }, 4: { halign: 'right', cellWidth: 22 }, 5: { halign: 'right', cellWidth: 24 }, 6: { cellWidth: 34 }, 7: { cellWidth: 34 } },
     });
     doc.save(`relatorio_pagamentos_${clientName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
@@ -506,7 +508,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                 },
                 {
                   key: 'amount',
-                  header: 'Pago',
+                  header: 'Valor pago',
                   priority: 'primary',
                   className: 'text-xs py-1.5 text-right font-semibold text-primary',
                   headClassName: 'text-[10px] py-1.5 h-auto text-right',
@@ -526,7 +528,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                 },
                 {
                   key: 'total',
-                  header: 'Valor item',
+                  header: 'Valor integral',
                   priority: 'secondary',
                   className: 'text-xs py-1.5 text-right',
                   headClassName: 'text-[10px] py-1.5 h-auto text-right',
@@ -535,6 +537,18 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                       R$ {Number(payment.totalPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   ),
+                },
+                {
+                  key: 'discount',
+                  header: 'Desconto',
+                  priority: 'secondary',
+                  className: 'text-xs py-1.5 text-right',
+                  headClassName: 'text-[10px] py-1.5 h-auto text-right',
+                  cell: (payment) => Number(payment.discountAmount || 0) > 0 ? (
+                    <span className="tabular-nums text-warning">
+                      − R$ {Number(payment.discountAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  ) : <span className="text-muted-foreground">-</span>,
                 },
                 {
                   key: 'method',

@@ -1,4 +1,5 @@
 import { resolvePackagePayment, type LedgerEntry } from '@/lib/packageLedger';
+import { resolveSaleAmounts } from '@/lib/saleAmounts';
 import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 import { isPackageSessionRealized } from '@/lib/packageSequence';
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
@@ -45,6 +46,7 @@ interface PackageSaleRow {
   clientName: string;
   saleDate: string;
   totalAmount: number;
+  discountAmount: number;
   paidAmount: number;
   paymentMethodName: string;
   ledgerMissing: boolean;
@@ -197,7 +199,8 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           clientId: s.client?.id || null,
           clientName: s.client?.name || '-',
           saleDate: paidAmount > 0 ? resolved.paymentDate : (s.sale_date || ''),
-          totalAmount: Number(s.original_amount || s.final_amount || 0),
+          totalAmount: resolveSaleAmounts(s).fullAmount,
+          discountAmount: resolveSaleAmounts(s).discountAmount,
           paidAmount,
           paymentMethodName: resolved.paymentMethodName,
           ledgerMissing: resolved.ledgerMissing,
@@ -764,15 +767,25 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
                   },
                   {
                     key: 'totalAmount',
-                    header: 'Valor',
+                    header: 'Valor integral',
                     priority: 'secondary',
                     className: 'text-xs text-right',
                     headClassName: 'text-[10px] text-right whitespace-nowrap',
                     cell: (r) => `R$ ${r.totalAmount.toFixed(2)}`,
                   },
                   {
+                    key: 'discountAmount',
+                    header: 'Desconto',
+                    priority: 'secondary',
+                    className: 'text-xs text-right',
+                    headClassName: 'text-[10px] text-right whitespace-nowrap',
+                    cell: (r) => r.discountAmount > 0
+                      ? <span className="text-warning">− R$ {r.discountAmount.toFixed(2)}</span>
+                      : <span className="text-muted-foreground">-</span>,
+                  },
+                  {
                     key: 'paidAmount',
-                    header: 'Pago',
+                    header: 'Valor pago',
                     priority: 'secondary',
                     className: 'text-xs text-right text-primary font-semibold',
                     headClassName: 'text-[10px] text-right whitespace-nowrap',

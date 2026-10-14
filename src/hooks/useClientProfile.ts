@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paidPackageSaleIds } from '@/lib/packageLedger';
+import { resolveSaleAmounts, pendingAfterDiscount } from '@/lib/saleAmounts';
 import { useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -17,6 +18,8 @@ interface PaymentHistoryItem {
   serviceName: string;
   amount: number;
   totalPrice: number;
+  /** Desconto concedido na venda (valor integral - desconto = valor cobrado). */
+  discountAmount: number;
   pendingAmount: number;
   paymentMethod: string;
   source: 'appointment' | 'sale';
@@ -704,6 +707,7 @@ export function useClientProfile(clientId: string) {
               ? sale.service.price
               : sale.final_amount || 0
       );
+      const saleDiscount = resolveSaleAmounts(sale as any, totalPrice).discountAmount;
       // Boleto parcelado é exibido parcela a parcela. Quando todas as parcelas
       // são quitadas, `single_sales.paid_at` fica preenchido apenas para marcar
       // a venda como quitada; não é um quarto pagamento pelo valor total.
@@ -745,7 +749,8 @@ export function useClientProfile(clientId: string) {
           serviceName,
           amount: payment.amount,
           totalPrice,
-          pendingAmount: Math.max(0, totalPrice - payment.amount),
+          discountAmount: saleDiscount,
+          pendingAmount: pendingAfterDiscount(totalPrice, saleDiscount, payment.amount),
           paymentMethod: payment.paymentMethod,
           source: 'sale' as const,
           status: 'paid' as const,
@@ -852,7 +857,8 @@ export function useClientProfile(clientId: string) {
           serviceName: displayName,
           amount: amountPaid,
           totalPrice,
-          pendingAmount: Math.max(0, totalPrice - amountPaid),
+          discountAmount: Number((a as any).discount_amount || 0),
+          pendingAmount: pendingAfterDiscount(totalPrice, Number((a as any).discount_amount || 0), amountPaid),
           paymentMethod: paymentMethodNames || '-',
           source: 'appointment' as const,
           status: 'paid' as const,

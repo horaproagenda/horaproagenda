@@ -47,3 +47,7 @@
 - [x] Unificação 2: estoque alterado por um único caminho atômico (venda, consumo, devolução)
 - [x] Unificação 3: venda do Caixa 100% no banco (tudo ou nada)
 - [x] Unificação 4: tipo do documento (anamnese/contrato/termo) igual no app e no link público
+
+## Valores com desconto
+- [x] Perfil do cliente e Pacotes vendidos mostram valor integral, desconto e valor pago
+- [x] Corrigido pacote de Túlio Rodrigues Mendonça (2.200 / 400 / 1.800)

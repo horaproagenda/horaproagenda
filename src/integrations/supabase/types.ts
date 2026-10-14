@@ -4281,6 +4281,56 @@ export type Database = {
           },
         ]
       }
+      product_usage_events: {
+        Row: {
+          account_owner_id: string
+          changed_by: string | null
+          created_at: string
+          event_type: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          product_id: string
+          reason: string | null
+          stock_delta: number
+          usage_id: string | null
+        }
+        Insert: {
+          account_owner_id: string
+          changed_by?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          product_id: string
+          reason?: string | null
+          stock_delta?: number
+          usage_id?: string | null
+        }
+        Update: {
+          account_owner_id?: string
+          changed_by?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          product_id?: string
+          reason?: string | null
+          stock_delta?: number
+          usage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_usage_events_usage_id_fkey"
+            columns: ["usage_id"]
+            isOneToOne: false
+            referencedRelation: "product_usage_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_usage_records: {
         Row: {
           account_owner_id: string
@@ -4288,22 +4338,28 @@ export type Database = {
           appointments_counted: number
           avg_quantity_per_appointment: number | null
           calc_mode: string
+          cancellation_reason: string | null
           container_amount: number
           container_unit: string
           container_yield: number | null
           created_at: string
           created_by: string | null
           cycle_key: string | null
-          end_date: string
+          duration_days: number | null
+          end_date: string | null
           id: string
           package_template_id: string | null
           product_id: string
+          purchase_id: string | null
           quantity_per_appointment: number | null
           service_id: string | null
-          start_date: string
+          start_date: string | null
+          status: string
           stock_after: number | null
+          stock_quantity: number | null
           total_consumed: number | null
           updated_at: string
+          version: number
         }
         Insert: {
           account_owner_id?: string
@@ -4311,22 +4367,28 @@ export type Database = {
           appointments_counted?: number
           avg_quantity_per_appointment?: number | null
           calc_mode?: string
+          cancellation_reason?: string | null
           container_amount: number
           container_unit: string
           container_yield?: number | null
           created_at?: string
           created_by?: string | null
           cycle_key?: string | null
-          end_date: string
+          duration_days?: number | null
+          end_date?: string | null
           id?: string
           package_template_id?: string | null
           product_id: string
+          purchase_id?: string | null
           quantity_per_appointment?: number | null
           service_id?: string | null
-          start_date: string
+          start_date?: string | null
+          status?: string
           stock_after?: number | null
+          stock_quantity?: number | null
           total_consumed?: number | null
           updated_at?: string
+          version?: number
         }
         Update: {
           account_owner_id?: string
@@ -4334,22 +4396,28 @@ export type Database = {
           appointments_counted?: number
           avg_quantity_per_appointment?: number | null
           calc_mode?: string
+          cancellation_reason?: string | null
           container_amount?: number
           container_unit?: string
           container_yield?: number | null
           created_at?: string
           created_by?: string | null
           cycle_key?: string | null
-          end_date?: string
+          duration_days?: number | null
+          end_date?: string | null
           id?: string
           package_template_id?: string | null
           product_id?: string
+          purchase_id?: string | null
           quantity_per_appointment?: number | null
           service_id?: string | null
-          start_date?: string
+          start_date?: string | null
+          status?: string
           stock_after?: number | null
+          stock_quantity?: number | null
           total_consumed?: number | null
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -4364,6 +4432,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_usage_records_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "product_purchases"
             referencedColumns: ["id"]
           },
           {
@@ -6707,9 +6782,26 @@ export type Database = {
         Args: { _product: Database["public"]["Tables"]["products"]["Row"] }
         Returns: boolean
       }
+      activate_product_usage: {
+        Args: {
+          _expected_version: number
+          _start_date: string
+          _usage_id: string
+        }
+        Returns: Json
+      }
       adjust_product_stock: {
         Args: { p_delta: number; p_product_id: string }
         Returns: number
+      }
+      adjust_product_stock_audited: {
+        Args: {
+          _expected_stock: number
+          _new_stock: number
+          _product_id: string
+          _reason: string
+        }
+        Returns: Json
       }
       amend_application_record: {
         Args: { _id: string; _reason: string }
@@ -6856,6 +6948,17 @@ export type Database = {
         }
         Returns: number
       }
+      change_product_usage_record: {
+        Args: {
+          _action?: string
+          _end_date: string
+          _expected_version: number
+          _reason: string
+          _start_date: string
+          _usage_id: string
+        }
+        Returns: Json
+      }
       check_trial_eligibility:
         | {
             Args: { p_cnpj?: string; p_email: string; p_phone?: string }
@@ -6969,6 +7072,15 @@ export type Database = {
         Args: { p_client_id: string; p_group_id?: string; p_items: Json }
         Returns: Json
       }
+      create_product_usage_plan: {
+        Args: {
+          _product_id: string
+          _purchase_id?: string
+          _quantity: number
+          _unit: string
+        }
+        Returns: Json
+      }
       create_treatment_photo: {
         Args: {
           _appointment_id?: string
@@ -7043,6 +7155,14 @@ export type Database = {
           _purchase_id: string
           _service_ids?: string[]
           _unit: string
+        }
+        Returns: Json
+      }
+      finish_product_usage_record: {
+        Args: {
+          _end_date: string
+          _expected_version: number
+          _usage_id: string
         }
         Returns: Json
       }
@@ -7386,6 +7506,7 @@ export type Database = {
         Returns: undefined
       }
       product_scope_is_clinic: { Args: never; Returns: boolean }
+      product_usage_result: { Args: { _id: string }; Returns: Json }
       professional_permission: { Args: { _key: string }; Returns: boolean }
       professional_share_flag: {
         Args: { _module: string; _owner: string }

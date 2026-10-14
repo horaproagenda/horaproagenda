@@ -155,7 +155,7 @@ export function useAppointments() {
           ),
           room:rooms(id, name),
           package_appointment:package_appointments!appointments_package_appointment_id_fkey(
-            id, package_id, session_number, original_session_number, status,
+            id, package_id, session_number, original_session_number, display_session_number, status,
             package:service_packages(id, name, package_type, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)
           ),
           additional_items:appointment_additional_items(

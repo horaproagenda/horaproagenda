@@ -7,7 +7,7 @@ type SequencedPackageSession = Partial<PackageAppointment> & {
 
 export const getPreservedPackageSessionNumber = (session?: PackageAppointment | null) => {
   if (!session) return null;
-  return session.original_session_number || session.session_number || null;
+  return session.display_session_number || session.original_session_number || session.session_number || null;
 };
 
 export const extractApplicationLabelFromNotes = (
@@ -28,17 +28,14 @@ export const getPackageApplicationLabel = (
   sequenceNumber?: number | null,
   fallbackNotes?: string | null,
 ) => {
-  const number = sequenceNumber || getPreservedPackageSessionNumber(session);
+  if (!session) return '-';
+  const number = session.display_session_number || sequenceNumber || getPreservedPackageSessionNumber(session);
   if (number) {
     return `Aplicação ${number}/${totalSessions || '-'}`;
   }
   // Fallback: legacy appointments whose package_appointment row was lost
   // still carry the "Aplicação N/M" hint inside notes. Use it so the badge
   // renders even without the DB link.
-  const fromNotes = extractApplicationLabelFromNotes(fallbackNotes);
-  if (fromNotes) {
-    return `Aplicação ${fromNotes.current}/${fromNotes.total}`;
-  }
   return '-';
 };
 
@@ -54,8 +51,8 @@ export const sortPackageSessionsByPreservedSequence = <T extends Pick<PackageApp
   sessions: T[],
 ) => {
   return sessions.slice().sort((a, b) => {
-    const numberA = a.original_session_number || a.session_number || 0;
-    const numberB = b.original_session_number || b.session_number || 0;
+    const numberA = ('display_session_number' in a ? Number(a.display_session_number) : 0) || a.original_session_number || a.session_number || 0;
+    const numberB = ('display_session_number' in b ? Number(b.display_session_number) : 0) || b.original_session_number || b.session_number || 0;
     if (numberA !== numberB) return numberA - numberB;
     return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
   });

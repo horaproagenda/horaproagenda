@@ -885,14 +885,7 @@ export function AppointmentDetailDialog({
         setPendingPackageOutcome({ newStatus });
         return;
       }
-      // Agendamento sem vínculo: verifica se pertence a um pacote do cliente.
-      void (async () => {
-        const { data } = await (supabase as any).rpc('find_package_session_for_appointment', {
-          p_appointment_id: appointment.id,
-        });
-        if (data) setPendingPackageOutcome({ newStatus });
-        else applyStatusUpdate(newStatus);
-      })();
+      applyStatusUpdate(newStatus);
       return;
     }
 
@@ -1204,7 +1197,7 @@ export function AppointmentDetailDialog({
   const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
   const notesPackageMatch = appointment.notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
   const notesPackageName = notesPackageMatch?.[1]?.trim() || null;
-  const isPackageAppointment = !!appointment.package_appointment || !!linkedPackageAppointmentId || !!packageNameSnapshot || !!notesPackageName;
+  const isPackageAppointment = !!appointment.package_appointment || !!linkedPackageAppointmentId;
   const packageData = appointment.package_appointment?.package || fallbackPackage || undefined;
   const resolvedPackageName = resolveAppointmentPackageName(appointment as any, notesPackageName || 'Pacote');
   const resolvedServiceName = resolveAppointmentStepServiceName(appointment as any, 'Serviço');

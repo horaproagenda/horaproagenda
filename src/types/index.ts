@@ -173,6 +173,7 @@ export interface PackageAppointment {
   service_id?: string | null;
   session_number: number;
   original_session_number?: number;
+  display_session_number?: number | null;
   sequence_order?: number | null;
   interval_after_days?: number | null;
   scheduled_date: string | null;

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
+import { buildDocumentFieldSchema, type DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 
 export interface DocumentFillLink {
   id: string;

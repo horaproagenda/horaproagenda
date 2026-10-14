@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { useRef } from 'react';
 import { humanizeError } from '@/lib/humanError';
+import { canonicalOperationPayload } from '@/lib/operationRequest';
 
 export interface SingleSale {
   id: string;
@@ -59,7 +60,7 @@ export function useSingleSales() {
   const createSale = useMutation({
     mutationFn: async (sale: Omit<SingleSale, 'id' | 'created_at' | 'updated_at' | 'client' | 'service' | 'payment_method' | 'bank' | 'package'>) => {
       // resolveFinancialDestination is invoked by the official database operation.
-      const payload = JSON.stringify(sale);
+      const payload = canonicalOperationPayload(sale);
       if (pendingRequest.current?.payload !== payload) {
         pendingRequest.current = { payload, id: crypto.randomUUID() };
       }

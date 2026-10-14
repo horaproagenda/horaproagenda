@@ -57,9 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let authEventSeen = false;
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        authEventSeen = true;
         const nextIdentity = session?.user.id ?? null;
         if (sessionIdentityChanged(currentIdentity.current, nextIdentity)) {
           currentIdentity.current = nextIdentity;
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+          setLoading(false);
         }
 
         // Após login/logout/refresh, revalida versão do bundle.
@@ -95,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (authEventSeen) return;
       currentIdentity.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);

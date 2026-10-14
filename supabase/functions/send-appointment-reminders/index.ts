@@ -90,28 +90,19 @@ function buildVars(apt: any, when: Date) {
 }
 
 function maybeAppendButtons(message: string, tpl: any, apt: any): string {
-  // Default: SEMPRE incluir botões de Confirmar/Cancelar, a menos que o template
-  // desative explicitamente (include_confirmation_buttons === false).
-  // Mesmo sem links, o cliente com horário ainda não confirmado recebe a
-  // instrução curta de resposta — sem ela ninguém sabe que pode confirmar.
-  if (tpl && tpl.include_confirmation_buttons === false) {
-    const pending = String((apt as any).status || 'scheduled').toLowerCase() === 'scheduled';
-    if (!pending || /responda.*(1|confirmar)/i.test(message)) return message;
-    return `${message}\n\n_Responda *1* para confirmar ou *2* para cancelar._`;
-  }
-  const token = (apt as any).confirmation_token;
-  if (!token) return message;
-  const confirmUrl = `${PUBLIC_APP_BASE}/c/${token}?a=confirm`;
-  const cancelUrl = `${PUBLIC_APP_BASE}/c/${token}?a=cancel`;
-  // Evita duplicar se o template já mencionar os links
-  const hasLinks = message.includes(confirmUrl) || message.includes(cancelUrl);
-  const hint = hasLinks
-    ? ''
-    : `\n\n✅ *CONFIRMAR presença:*\n${confirmUrl}\n\n❌ *CANCELAR agendamento:*\n${cancelUrl}`;
-  const replyHint = /responda.*confirmar|responda.*cancelar/i.test(message)
-    ? ''
-    : `\n\n_Ou responda esta mensagem com *CONFIRMAR* ou *CANCELAR*._`;
-  return `${message}${hint}${replyHint}`;
+  // Chave desligada: mensagem sai exatamente como escrita, sem confirmar/cancelar.
+  if (!tpl || tpl.include_confirmation_buttons !== true) return message;
+  // Chave ligada: instrução de resposta (sem links), só para horário ainda não confirmado.
+  const pending = String((apt as any).status || 'scheduled').toLowerCase() === 'scheduled';
+  if (!pending || /responda.*(confirmar|cancelar|\b1\b)/i.test(message)) return message;
+  return `${message}\n\n_Digite *CONFIRMAR* ou *CANCELAR*. Se preferir, responda *1* para confirmar ou *2* para cancelar._`;
+}
+
+/** Lembretes de 24h+ só valem para agendamentos criados com 20h ou mais de antecedência. */
+export function tooLateForLongReminder(h: number, apt: any): boolean {
+  if (h < 24 || !apt?.created_at) return false;
+  const lead = (new Date(apt.start_time).getTime() - new Date(apt.created_at).getTime()) / 3600_000;
+  return lead < 20;
 }
 
 
@@ -429,20 +420,20 @@ serve(async (req) => {
   // Janela de recuperação (horas) para disparos perdidos — padrão 1h.
   // Permite reprocessar lembretes presos por incidentes sem reenviar duplicatas
   // (o UNIQUE do appointment_reminder_log continua garantindo 1 envio).
-  let catchupHours = 24;
+  let catchupHours = 5;
   let force = false;
   try {
     if (req.method === 'POST') {
       const body = await req.json().catch(() => ({}));
       catchup = body?.catchup !== false;
       drain = body?.drain === true;
-      catchupHours = Math.min(Math.max(Number(body?.catchup_hours ?? 24) || 24, 1), 72);
+      catchupHours = Math.min(Math.max(Number(body?.catchup_hours ?? 5) || 5, 1), 5);
       force = body?.force === true;
     } else {
       const url = new URL(req.url);
       catchup = url.searchParams.get('catchup') !== 'false';
       drain = url.searchParams.get('drain') === 'true';
-      catchupHours = Math.min(Math.max(Number(url.searchParams.get('catchup_hours') ?? 24) || 24, 1), 72);
+      catchupHours = Math.min(Math.max(Number(url.searchParams.get('catchup_hours') ?? 5) || 5, 1), 5);
       force = url.searchParams.get('force') === 'true';
     }
   } catch (_) { /* ignore */ }
@@ -625,7 +616,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, created_at, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -668,6 +659,7 @@ serve(async (req) => {
           // junto com o de 24h quando o agendamento era criado tarde.
           const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -catchupHours;
           if (!inBand && !preemptive && !catchupOk) continue;
+          if (tooLateForLongReminder(h, apt)) { summary.skipped++; continue; }
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')
@@ -727,7 +719,7 @@ serve(async (req) => {
         const toIso = new Date(now + (maxH + 1) * 3600_000).toISOString();
         const { data: appts } = await supabase
           .from('appointments')
-          .select('id, start_time, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
+          .select('id, start_time, created_at, status, confirmation_token, professional_id, account_owner_id, client:clients(name, phone, is_active), service:services(name), professional:professionals(name)')
           .gte('start_time', fromIso).lte('start_time', toIso)
           .not('status', 'in', '(cancelled,missed,rescheduled,completed)');
 
@@ -763,6 +755,7 @@ serve(async (req) => {
           }
           const catchupOk = catchup && hoursUntilTrigger < 0 && hoursUntilTrigger >= -catchupHours;
           if (!inBand && !preemptive && !catchupOk) continue;
+          if (tooLateForLongReminder(h, apt)) { summary.skipped++; continue; }
 
           const { data: existing } = await supabase
             .from('appointment_reminder_log')

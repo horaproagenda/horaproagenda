@@ -433,9 +433,10 @@ export function WhatsappTemplatesSettings() {
             {(formData.type === 'reminder' || formData.type === 'confirmation') && (
               <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3 bg-muted/30">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Incluir botões de Confirmar / Cancelar</Label>
+                  <Label className="text-sm font-medium">Incluir Confirmar / Cancelar</Label>
                   <p className="text-xs text-muted-foreground">
-                    Acrescenta automaticamente um link de <strong>Confirmar</strong> e <strong>Cancelar</strong> no final da mensagem. Quando o cliente clica, o agendamento é atualizado na sua agenda em tempo real.
+                    <strong>Ligado:</strong> acrescenta no final "Digite CONFIRMAR ou CANCELAR (ou responda 1 para confirmar ou 2 para cancelar)". A resposta do cliente atualiza a agenda.{' '}
+                    <strong>Desligado:</strong> a mensagem sai sem pedir confirmação ou cancelamento.
                   </p>
                 </div>
                 <Switch

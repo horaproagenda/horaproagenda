@@ -7575,6 +7575,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resolve_boleto_payment_method: {
+        Args: { _owner: string }
+        Returns: string
+      }
       resolve_financial_destination: {
         Args: { p_owner?: string; p_professional_id?: string }
         Returns: {

@@ -1,3 +1,4 @@
+import { resolvePackagePayment, type LedgerEntry } from '@/lib/packageLedger';
 import { healPackagesWithoutSale } from '@/lib/healPackagesWithoutSale';
 import { isPackageSessionRealized } from '@/lib/packageSequence';
 import { resolveFinancialDestination, resolveFinancialDestinationForPackage } from '@/lib/financialDestination';
@@ -131,6 +132,31 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         });
       }
 
+      // Livro financeiro: lançamentos pagos ligados à venda ou às sessões do pacote.
+      const apptToSale = new Map<string, string>();
+      (sales || []).forEach((s: any) => (s.package?.appointments || []).forEach((pa: any) => {
+        if (pa.appointment_id) apptToSale.set(pa.appointment_id, s.id);
+      }));
+      const ledgerBySale = new Map<string, LedgerEntry[]>();
+      const pushLedger = (saleId: string | undefined, fe: any, seen: Set<string>) => {
+        if (!saleId || seen.has(fe.id)) return;
+        seen.add(fe.id);
+        const list = ledgerBySale.get(saleId) || [];
+        list.push({ amount: Number(fe.amount || 0), paidDate: fe.paid_date || fe.due_date || null, methodName: fe.payment_method?.name || null });
+        ledgerBySale.set(saleId, list);
+      };
+      const seenFe = new Set<string>();
+      const feSelect = 'id, amount, paid_date, due_date, sale_id, appointment_id, payment_method:payment_methods(name)';
+      if (saleIds.length > 0) {
+        const { data } = await supabase.from('financial_entries').select(feSelect).eq('type', 'receivable').eq('status', 'paid').in('sale_id', saleIds);
+        (data || []).forEach((fe: any) => pushLedger(fe.sale_id, fe, seenFe));
+      }
+      const apptIds = [...apptToSale.keys()];
+      for (let i = 0; i < apptIds.length; i += 200) {
+        const { data } = await supabase.from('financial_entries').select(feSelect).eq('type', 'receivable').eq('status', 'paid').is('sale_id', null).in('appointment_id', apptIds.slice(i, i + 200));
+        (data || []).forEach((fe: any) => pushLedger(apptToSale.get(fe.appointment_id), fe, seenFe));
+      }
+
       return (sales || []).map((s: any): PackageSaleRow => {
         const apps = s.package?.appointments || [];
         const nowIso = new Date().toISOString();
@@ -144,7 +170,6 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
         const total = s.package?.total_sessions || 0;
         const isCancelled = (s.notes || '').toUpperCase().includes('CANCELADO');
         const isCompleted = total > 0 && used >= total;
-        // Se a baixa foi feita nas sessões mas a venda não foi marcada, usa o valor das sessões.
         const sessionPaid = Math.max(0, ...apps.map((a: any) =>
           a.appointment?.payment_status === 'paid' || a.appointment?.payment_status === 'partial'
             ? Number(a.appointment?.amount_paid || 0) : 0));
@@ -154,19 +179,27 @@ export function PacotesFinanceiro({ focusSaleId, onFocusHandled }: PacotesFinanc
           paidAt: s.paid_at,
           finalAmount: Number(s.final_amount || 0),
         });
-        const paidAmount = salePaid > 0 || (boletoBySale.get(s.id)?.count || 0) > 0
-          ? salePaid
-          : Number(Math.min(sessionPaid, Number(s.final_amount || 0)).toFixed(2));
+        const resolved = resolvePackagePayment({
+          salePaid,
+          hasBoleto: (boletoBySale.get(s.id)?.count || 0) > 0,
+          sessionPaid,
+          finalAmount: Number(s.final_amount || 0),
+          salePaymentMethodName: s.payment_method?.name || null,
+          saleDate: s.sale_date || (s.paid_at ? String(s.paid_at).slice(0, 10) : ''),
+          ledger: ledgerBySale.get(s.id) || [],
+        });
+        const paidAmount = resolved.paidAmount;
         return {
           saleId: s.id,
           packageId: s.package_id || s.package?.id || null,
           packageName: s.package?.name || 'Pacote',
           clientId: s.client?.id || null,
           clientName: s.client?.name || '-',
-          saleDate: s.sale_date || (s.paid_at ? String(s.paid_at).slice(0,10) : ''),
+          saleDate: paidAmount > 0 ? resolved.paymentDate : (s.sale_date || ''),
           totalAmount: Number(s.original_amount || s.final_amount || 0),
           paidAmount,
-          paymentMethodName: s.payment_method?.name || '-',
+          paymentMethodName: resolved.paymentMethodName,
+          ledgerMissing: resolved.ledgerMissing,
           totalSessions: total,
           usedSessions: used,
           isCancelled,

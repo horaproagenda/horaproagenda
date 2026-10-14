@@ -689,13 +689,13 @@ export function ProductDetailDialog({
 
     // Média histórica combinando ciclos anteriores + este ciclo
     const combinedAverage = averageFromCycles([
-      ...productPurchases
-        .filter(p => p.finished_at && Number(p.cycle_quantity || 0) > 0)
+      ...usageRecords
+        .filter(p => p.status === 'completed')
         .map(p => ({
-          cycle_quantity: p.cycle_quantity,
-          cycle_appointments: p.cycle_appointments,
-          started_using_at: p.started_using_at,
-          finished_at: p.finished_at,
+          cycle_quantity: p.stock_quantity,
+          cycle_appointments: p.appointments_counted,
+          started_using_at: p.start_date,
+          finished_at: p.end_date,
         })),
       {
         cycle_quantity: cycleQuantity > 0 ? cycleQuantity : totalDeduction,
@@ -729,7 +729,7 @@ export function ProductDetailDialog({
       forecast,
     };
 
-  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments, activeUsage]);
+  }, [product, pendingEndDate, productPurchases, productServiceLinks, productTemplateLinks, appointments, activeUsage, usageRecords]);
 
   const runStartCycle = async (dateStr: string, cycleQty: number, unit: ProductUnit) => {
     if (!product || cycleSaving.current) return;

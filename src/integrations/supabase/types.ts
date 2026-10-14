@@ -7540,6 +7540,16 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: Json
       }
+      record_completed_product_usage: {
+        Args: {
+          _end_date: string
+          _product_id: string
+          _quantity: number
+          _start_date: string
+          _unit: string
+        }
+        Returns: Json
+      }
       record_data_migration: {
         Args: { p_details?: Json; p_key: string }
         Returns: boolean

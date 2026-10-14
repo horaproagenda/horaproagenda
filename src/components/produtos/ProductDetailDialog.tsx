@@ -1,3 +1,4 @@
+import { groupCycleHistoryByDay } from '@/lib/groupCycleHistory';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ProductUsageHistory } from './ProductUsageHistory';
 import { usageDurationDays } from '@/lib/productUsageLifecycle';
@@ -2793,9 +2794,9 @@ function ProductAutomaticConsumption({
       };
     });
 
-    return [...fromRecords, ...fromDaily]
-      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime())
-      .slice(0, 50);
+    const sorted = [...fromRecords, ...fromDaily]
+      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
+    return groupCycleHistoryByDay(sorted).slice(0, 50);
   }, [productRecords, productDaily]);
 
 
@@ -2861,7 +2862,7 @@ function ProductAutomaticConsumption({
             {history.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="text-sm">
-                  {format(parseISO(r.when), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {format(parseISO(r.when), r.dateOnly ? 'dd/MM/yyyy' : "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </TableCell>
                 <TableCell className="text-sm" data-label={r.kind}>
                   {r.label}

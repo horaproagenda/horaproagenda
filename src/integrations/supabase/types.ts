@@ -2268,6 +2268,33 @@ export type Database = {
         }
         Relationships: []
       }
+      document_events: {
+        Row: {
+          account_owner_id: string | null
+          created_at: string
+          event_type: string
+          id: number
+          link_id: string
+          payload: Json
+        }
+        Insert: {
+          account_owner_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: number
+          link_id: string
+          payload?: Json
+        }
+        Update: {
+          account_owner_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: number
+          link_id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       document_fill_links: {
         Row: {
           account_owner_id: string
@@ -2281,6 +2308,8 @@ export type Database = {
           professional_id: string | null
           status: string | null
           template_id: string
+          template_snapshot: Json | null
+          template_version: number | null
           token: string
           updated_at: string
         }
@@ -2296,6 +2325,8 @@ export type Database = {
           professional_id?: string | null
           status?: string | null
           template_id: string
+          template_snapshot?: Json | null
+          template_version?: number | null
           token: string
           updated_at?: string
         }
@@ -2311,6 +2342,8 @@ export type Database = {
           professional_id?: string | null
           status?: string | null
           template_id?: string
+          template_snapshot?: Json | null
+          template_version?: number | null
           token?: string
           updated_at?: string
         }
@@ -2352,6 +2385,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           variables: string[] | null
+          version: number
           visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
@@ -2367,6 +2401,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variables?: string[] | null
+          version?: number
           visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
@@ -2382,6 +2417,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variables?: string[] | null
+          version?: number
           visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: []
@@ -7003,6 +7039,10 @@ export type Database = {
         }
         Returns: string
       }
+      log_document_event: {
+        Args: { p_event: string; p_payload?: Json; p_token: string }
+        Returns: undefined
+      }
       mark_password_changed: { Args: never; Returns: undefined }
       must_change_password_for_current_user: { Args: never; Returns: boolean }
       my_employment_type: {
@@ -7332,6 +7372,17 @@ export type Database = {
             }
             Returns: string
           }
+      submit_document_fill_validated: {
+        Args: {
+          p_cpf?: string
+          p_fields: Json
+          p_filled_content: string
+          p_filled_variables: Json
+          p_template_version?: number
+          p_token: string
+        }
+        Returns: Json
+      }
       super_admin_approve_whatsapp_release: {
         Args: { p_request_id: string }
         Returns: Json

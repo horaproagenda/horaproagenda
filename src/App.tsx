@@ -115,8 +115,8 @@ const createQueryClient = () => {
       mutations: {
         // Mutations partem do cache local; se offline, ficam em pausa e
         // retomam ao voltar — evita travar a UI aguardando rede fraca.
-        networkMode: 'offlineFirst',
-        retry: 1,
+        networkMode: 'online',
+        retry: 0,
       },
     },
   });

@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { isCurrentSessionResponse, sessionIdentityChanged } from '@/lib/sessionAuthority';
 import { User, Session } from '@supabase/supabase-js';
 import { readEdgeFunctionError, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +47,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const currentIdentity = useRef<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -55,6 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        const nextIdentity = session?.user.id ?? null;
+        if (sessionIdentityChanged(currentIdentity.current, nextIdentity)) {
+          currentIdentity.current = nextIdentity;
+          void queryClient.cancelQueries();
+          queryClient.clear();
+          setProfile(null);
+          setRoles([]);
+          setLoading(Boolean(nextIdentity));
+        }
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -80,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      currentIdentity.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -90,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const fetchUserData = async (userId: string) => {
     try {
@@ -101,19 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
-      if (profileData) {
-        setProfile(profileData as Profile);
-      }
-
       // Fetch roles
       const { data: rolesData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
 
-      if (rolesData) {
-        setRoles(rolesData.map(r => r.role as AppRole));
-      }
+      if (!isCurrentSessionResponse(userId, currentIdentity.current)) return;
+      setProfile(profileData ? profileData as Profile : null);
+      setRoles((rolesData ?? []).map(r => r.role as AppRole));
 
       // Garante que o profissional logado fique vinculado ao seu registro mesmo se
       // o cadastro tiver sido criado apenas com o e-mail. Funciona em qualquer
@@ -126,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
-      setLoading(false);
+      if (isCurrentSessionResponse(userId, currentIdentity.current)) setLoading(false);
     }
   };
 

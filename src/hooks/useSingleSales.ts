@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/lib/toast';
 import { useRef } from 'react';
+import { humanizeError } from '@/lib/humanError';
 
 export interface SingleSale {
   id: string;
@@ -105,7 +106,7 @@ export function useSingleSales() {
       toast.success('Venda registrada com sucesso!');
     },
     onError: (error: unknown) => {
-      toast.error(error);
+      toast.error(humanizeError(error));
     },
   });
 

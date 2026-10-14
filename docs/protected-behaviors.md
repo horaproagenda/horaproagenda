@@ -87,6 +87,9 @@ Legenda de cobertura:
 
 ## Regra de ouro
 
+- Troca de usuário/logout descarta o cache e respostas atrasadas do perfil anterior; renovação da mesma sessão preserva o cache. Teste: `sessionAuthority.test.ts`.
+- Venda avulsa só confirma após `create_single_sale_atomic`, com solicitação idempotente; repetição automática de mutações está desativada até todos os caminhos serem idempotentes.
+
 - Uso de produto: datas sem horário, duração inclusiva, quantidade do ciclo e baixa idempotente (600 − 100 = 500); correções exigem motivo e versão. Testes: `productUsageLifecycle.test.ts` e `product-usage-lifecycle.smoke.test.ts`.
 
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.

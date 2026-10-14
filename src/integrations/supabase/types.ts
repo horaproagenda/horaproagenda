@@ -5754,6 +5754,8 @@ export type Database = {
         Row: {
           account_owner_id: string
           bank_id: string | null
+          batch_payload: Json | null
+          batch_request_id: string | null
           card_fee_amount: number | null
           client_id: string | null
           created_at: string
@@ -5780,6 +5782,8 @@ export type Database = {
         Insert: {
           account_owner_id?: string
           bank_id?: string | null
+          batch_payload?: Json | null
+          batch_request_id?: string | null
           card_fee_amount?: number | null
           client_id?: string | null
           created_at?: string
@@ -5806,6 +5810,8 @@ export type Database = {
         Update: {
           account_owner_id?: string
           bank_id?: string | null
+          batch_payload?: Json | null
+          batch_request_id?: string | null
           card_fee_amount?: number | null
           client_id?: string | null
           created_at?: string
@@ -7096,6 +7102,10 @@ export type Database = {
       }
       create_composite_kit_appointments: {
         Args: { p_client_id: string; p_group_id?: string; p_items: Json }
+        Returns: Json
+      }
+      create_multi_item_sale_atomic: {
+        Args: { _input: Json; _request_id: string }
         Returns: Json
       }
       create_product_usage_plan: {

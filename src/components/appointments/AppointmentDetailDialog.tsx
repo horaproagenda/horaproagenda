@@ -1275,9 +1275,19 @@ export function AppointmentDetailDialog({
   
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
   const persistedDiscount = appointmentDiscount;
-  const remainingAmount = isPackagePaid
-    ? 0
-    : Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
+  // Regra única (src/lib/paymentAction): pacote primeiro, preço da etapa depois.
+  const paymentAction = getPaymentAction({
+    isPackage: isPackageAppointment && packagePrice > 0,
+    packageTotal: packagePrice,
+    packagePaid: Number(appointment.amount_paid || 0),
+    packageMarkedPaid: isPackagePaid,
+    servicePrice: totalPrice,
+    extras: persistedAdditionalItemsTotal,
+    discount: persistedDiscount,
+    amountPaid,
+  });
+  const remainingAmount = paymentAction.balance;
+  const isPackageAction = paymentAction.kind === 'package_pay' || paymentAction.kind === 'package_paid';
   
   // Regra única de status (compartilhada com a agenda e o servidor):
   // desconto entra como valor devido a menos, nunca como saldo em aberto.

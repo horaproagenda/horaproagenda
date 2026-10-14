@@ -68,13 +68,25 @@ export function AtendimentosPorProfissional() {
           id, start_time, amount_paid, payment_status, status,
           professional_id,
           client:clients(id, name),
-          service:services(id, name, price, commission_percentage)
+          service:services(id, name, price)
         `)
         .gte('start_time', from.toISOString())
         .in('status', ['completed', 'confirmed', 'scheduled'])
-        .order('start_time', { ascending: false });
+        .order('start_time', { ascending: false })
+        .limit(10000);
       if (error) throw error;
-      return data || [];
+      // Percentual por profissional+serviço vem da tabela própria (services não tem essa coluna).
+      const { data: rules } = await supabase
+        .from('professional_service_commissions')
+        .select('professional_id, service_id, commission_percentage');
+      const pctMap = new Map<string, number>();
+      for (const r of (rules || []) as any[]) {
+        if (r.commission_percentage != null) pctMap.set(`${r.professional_id}|${r.service_id}`, Number(r.commission_percentage));
+      }
+      return (data || []).map((a: any) => {
+        const pct = a.service ? pctMap.get(`${a.professional_id}|${a.service.id}`) : undefined;
+        return a.service ? { ...a, service: { ...a.service, commission_percentage: pct ?? null } } : a;
+      });
     },
     staleTime: 0,
     refetchOnWindowFocus: true,

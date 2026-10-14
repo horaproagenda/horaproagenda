@@ -1,3 +1,4 @@
+import { getPaymentAction } from '@/lib/paymentAction';
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
@@ -207,6 +208,22 @@ export function AppointmentDetailDialog({
   const { appointments: pkgSessions } = usePackageAppointments(
     appointment?.package_appointment?.package?.id || appointment?.package_appointment?.package_id || null,
   );
+  // Fallback: vínculo de sessão existe mas o pacote não veio junto na listagem.
+  // Sem isso, a etapa de R$ 0 (ex.: avaliação) escondia a baixa do pacote.
+  const linkedPackageAppointmentId = (appointment as any)?.package_appointment_id || null;
+  const { data: fallbackPackage } = useQuery({
+    queryKey: ['appointment-linked-package', linkedPackageAppointmentId],
+    enabled: open && !!linkedPackageAppointmentId && !appointment?.package_appointment?.package,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('package_appointments')
+        .select('package:service_packages(id, name, package_type, client_id, total_sessions, sessions_scheduled, total_price, payment_methods, is_active, duration)')
+        .eq('id', linkedPackageAppointmentId)
+        .maybeSingle();
+      return (data as any)?.package ?? null;
+    },
+  });
+
 
   // Detect if this appointment's package was sold via boleto parcelado and still has open installments.
   // When true, we redirect the user to the client's boleto page instead of the inline payment flow.
@@ -1187,8 +1204,8 @@ export function AppointmentDetailDialog({
   const packageNameSnapshot = (appointment as any).package_name_snapshot as string | null | undefined;
   const notesPackageMatch = appointment.notes?.match(/^(.+?)\s*-\s*Sessão\s+\d+\s+de\s+\d+/i);
   const notesPackageName = notesPackageMatch?.[1]?.trim() || null;
-  const isPackageAppointment = !!appointment.package_appointment || !!packageNameSnapshot || !!notesPackageName;
-  const packageData = appointment.package_appointment?.package;
+  const isPackageAppointment = !!appointment.package_appointment || !!linkedPackageAppointmentId || !!packageNameSnapshot || !!notesPackageName;
+  const packageData = appointment.package_appointment?.package || fallbackPackage || undefined;
   const resolvedPackageName = resolveAppointmentPackageName(appointment as any, notesPackageName || 'Pacote');
   const resolvedServiceName = resolveAppointmentStepServiceName(appointment as any, 'Serviço');
 
@@ -1259,9 +1276,19 @@ export function AppointmentDetailDialog({
   
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
   const persistedDiscount = appointmentDiscount;
-  const remainingAmount = isPackagePaid
-    ? 0
-    : Math.max(0, (totalPrice + persistedAdditionalItemsTotal - persistedDiscount) - amountPaid);
+  // Regra única (src/lib/paymentAction): pacote primeiro, preço da etapa depois.
+  const paymentAction = getPaymentAction({
+    isPackage: isPackageAppointment && packagePrice > 0,
+    packageTotal: packagePrice,
+    packagePaid: Number(appointment.amount_paid || 0),
+    packageMarkedPaid: isPackagePaid,
+    servicePrice: totalPrice,
+    extras: persistedAdditionalItemsTotal,
+    discount: persistedDiscount,
+    amountPaid,
+  });
+  const remainingAmount = paymentAction.balance;
+  const isPackageAction = paymentAction.kind === 'package_pay' || paymentAction.kind === 'package_paid';
   
   // Regra única de status (compartilhada com a agenda e o servidor):
   // desconto entra como valor devido a menos, nunca como saldo em aberto.
@@ -2110,16 +2137,21 @@ export function AppointmentDetailDialog({
 
               </div>
 
-              {/* Package payment indicator - packages must be paid in full */}
-              {isPackageAppointment && !isPackagePaid && remainingAmount > 0 && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <Package className="h-4 w-4 text-primary flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-primary">Pagamento de Pacote</p>
-                    <p className="text-xs text-muted-foreground">
-                      O valor total do pacote é <strong>R$ {(packageData?.total_price || 0).toFixed(2)}</strong>; pagamentos parciais são sincronizados em todas as aplicações.
-                    </p>
+              {/* Pacote vinculado — o financeiro é do pacote, não da etapa (mesmo se a etapa custar R$ 0) */}
+              {isPackageAction && paymentAction.kind === 'package_pay' && (
+                <div className="space-y-1 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary flex-shrink-0" />
+                    <p className="text-sm font-medium text-primary">Pacote vinculado: {packageData?.name || resolvedPackageName}</p>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div><p className="text-muted-foreground">Valor total</p><p className="font-medium">{formatCurrency(packagePrice)}</p></div>
+                    <div><p className="text-muted-foreground">Pago</p><p className="font-medium">{formatCurrency(Number(appointment.amount_paid || 0))}</p></div>
+                    <div><p className="text-muted-foreground">Saldo</p><p className="font-medium">{formatCurrency(remainingAmount)}</p></div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Status: {Number(appointment.amount_paid || 0) > 0 ? 'Parcialmente pago' : 'Pendente'} · a baixa é registrada no pacote e vale para todas as etapas.
+                  </p>
                 </div>
               )}
 

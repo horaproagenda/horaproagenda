@@ -5755,6 +5755,7 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           payment_method_id: string | null
+          request_id: string | null
           sale_committed: boolean
           sale_date: string
           service_id: string | null
@@ -5780,6 +5781,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           payment_method_id?: string | null
+          request_id?: string | null
           sale_committed?: boolean
           sale_date?: string
           service_id?: string | null
@@ -5805,6 +5807,7 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           payment_method_id?: string | null
+          request_id?: string | null
           sale_committed?: boolean
           sale_date?: string
           service_id?: string | null
@@ -7079,6 +7082,10 @@ export type Database = {
           _quantity: number
           _unit: string
         }
+        Returns: Json
+      }
+      create_single_sale_atomic: {
+        Args: { _request_id: string; _sale: Json }
         Returns: Json
       }
       create_treatment_photo: {

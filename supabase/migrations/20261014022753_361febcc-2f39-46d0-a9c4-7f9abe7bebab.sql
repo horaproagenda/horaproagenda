@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.submit_document_fill_by_token(text, text, jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.submit_document_fill_by_token(text, text, jsonb, text) FROM PUBLIC, anon, authenticated;

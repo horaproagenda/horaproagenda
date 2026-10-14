@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Centralizar o ciclo de uso e proteger datas, versões e baixa única no banco
+- [ ] Sincronizar Produtos, histórico, previsões e correções auditadas
+- [ ] Auditar e reconciliar somente ciclos antigos comprovados
+- [ ] Testar ciclo, estoque, datas e acesso; conferir a página de Produtos
+
 - [x] Auditar permissões e isolamento do financeiro próprio versus caixa da clínica
 - [x] Corrigir CRUD financeiro próprio e abertura/fechamento do caixa da clínica
 - [x] Corrigir criação privada de produtos por qualquer profissional

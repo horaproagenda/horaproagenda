@@ -1,0 +1,3 @@
+REVOKE ALL ON public.procedure_templates, public.application_records, public.application_items, public.application_field_values, public.application_attachments FROM anon;
+REVOKE EXECUTE ON FUNCTION public.is_receptionist_only(), public.can_write_application(uuid), public.can_read_application_technical(uuid) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.is_receptionist_only(), public.can_write_application(uuid), public.can_read_application_technical(uuid) TO authenticated;

@@ -20,6 +20,7 @@ export interface ProductDailyConsumption {
   created_at: string;
   updated_at: string;
   cancelled_at?: string | null;
+  cycle_key?: string | null;
 }
 
 export function useProductDailyConsumption(productId?: string) {

@@ -7,6 +7,7 @@
 - Clear query/mutation caches on authenticated identity changes and reject stale profile responses; never automatically retry mutations globally because non-idempotent legacy paths still exist.
 
 - Product usage lifecycle uses product_usage_records and transactional lifecycle RPCs as its sole authority; purchases/products are read mirrors so manual dates, version checks and stock movements cannot diverge.
+- Manual daily consumption uses permission-checked atomic record/cancel RPCs with request IDs and audited stock quantities; persisted cycle consumption alone supplies historical per-service statistics so current links cannot redistribute prior usage.
 
 - Receipt PDF summary positioning must use the pure `receiptPdfLayout` helper so spacing and page-break behavior remain regression-testable.- Document fill links freeze a template snapshot (content, version, field schema) at creation and clients submit `{field_id, value}` pairs validated by `submit_document_fill_validated`; never fill by position or from the live template, so edits never shift answers.
 - Application records (fichas) lock once completed; corrections only via amend_application_record RPC creating a linked new record, so clinical history stays immutable.

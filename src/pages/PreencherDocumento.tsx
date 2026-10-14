@@ -39,6 +39,9 @@ import {
   buildDocumentDateTimeValues,
   isAutoFilledVariable,
   listDocumentFields,
+  buildDocumentFieldSchema,
+  buildSubmittedFields,
+  type DocumentFieldSchemaItem,
   normalizeDocumentLinkPayload,
   tokenizeDocument,
   type DocumentFieldToken,
@@ -58,6 +61,8 @@ interface DocumentLinkPayload {
   filled_variables: Record<string, unknown> | null;
   template?: { id: string; title: string; content: string; variables: string[] | null } | null;
   requires_cpf?: boolean;
+  template_version?: number | null;
+  template_fields?: DocumentFieldSchemaItem[] | null;
 }
 
 interface DocumentLink {
@@ -71,6 +76,8 @@ interface DocumentLink {
   filled_content: string | null;
   filled_variables: Record<string, unknown>;
   requires_cpf: boolean;
+  template_version: number | null;
+  template_fields: DocumentFieldSchemaItem[];
 }
 
 interface Template {
@@ -119,6 +126,15 @@ const formatBirthdate = (birthdate: string | null): string => {
   } catch {
     return '';
   }
+};
+
+const SUBMIT_REJECT_MESSAGES: Record<string, string> = {
+  FIELD_REQUIRED: 'Há perguntas obrigatórias sem resposta. Preencha todas antes de enviar.',
+  VERSION_MISMATCH: 'O modelo deste documento foi atualizado. Peça um novo link ao profissional.',
+  FIELD_UNKNOWN: 'Este documento não confere com o modelo enviado. Peça um novo link ao profissional.',
+  FIELD_DUPLICATE: 'Este documento tem campos repetidos. Avise o profissional para revisar o modelo.',
+  FIELD_WITHOUT_ID: 'Não foi possível identificar todas as respostas. Recarregue a página e tente de novo.',
+  LINK_NOT_FOUND: 'Este link não é mais válido.',
 };
 
 const formatNumber = (value: string) => {
@@ -236,6 +252,11 @@ export default function PreencherDocumento() {
     void loadDocument();
   }, [token]);
 
+  const logEvent = (event: string, payload: Record<string, unknown> = {}) => {
+    if (!token) return;
+    void supabase.rpc('log_document_event' as any, { p_token: token, p_event: event, p_payload: payload } as any);
+  };
+
   const loadDocument = async () => {
     try {
       const { data, error: rpcError } = await supabase.rpc('get_document_fill_link_by_token', { p_token: token });
@@ -319,7 +340,10 @@ export default function PreencherDocumento() {
         filled_content: linkData.filled_content,
         filled_variables: linkData.filled_variables || {},
         requires_cpf: !!linkData.requires_cpf,
+        template_version: linkData.template_version ?? null,
+        template_fields: Array.isArray(linkData.template_fields) ? linkData.template_fields : [],
       });
+      if (linkData.status !== 'filled') logEvent('link_opened', { template_version: linkData.template_version ?? null });
       setTemplate({
         id: templateData.id,
         title: templateData.title,
@@ -435,6 +459,7 @@ export default function PreencherDocumento() {
       const placed = new Set(placedKeys);
       const unplaced = fields.filter((f) => f.type !== 'variable' && !placed.has(f.fieldKey));
       if (unplaced.length) {
+        logEvent('preview_rejected', { unplaced: unplaced.map((f) => f.fieldKey) });
         console.error('[documento] campos sem destino no documento final', unplaced.map((f) => f.fieldKey));
         return { ok: false, content: '', message: 'Não foi possível montar o documento com segurança. Avise o profissional para revisar o modelo.' };
       }
@@ -471,6 +496,7 @@ export default function PreencherDocumento() {
     setMissingFields(new Set());
     setValidationError(null);
     setPreviewContent(check.content);
+    logEvent('preview_generated', { template_version: documentLink?.template_version ?? null });
     setShowConfirmDialog(true);
   };
 
@@ -494,10 +520,19 @@ export default function PreencherDocumento() {
         checkboxAnswers,
       };
 
-      const { error: submitError } = await supabase.rpc('submit_document_fill_by_token', {
+      // Lista oficial do link; links antigos usam a lista montada do próprio modelo.
+      const schema = documentLink.template_fields.length
+        ? documentLink.template_fields
+        : buildDocumentFieldSchema(template.rawContent);
+      const fields = buildSubmittedFields(schema, { formData, yesNoAnswers, additionalInfo, checkboxAnswers });
+      logEvent('preview_validated', { field_count: fields.length });
+
+      const { data: result, error: submitError } = await supabase.rpc('submit_document_fill_validated' as any, {
         p_token: token,
         p_filled_content: filledContent,
         p_filled_variables: payload,
+        p_fields: fields,
+        p_template_version: documentLink.template_version,
         p_cpf: onlyDigits(cpfInput),
       } as any);
 
@@ -507,6 +542,13 @@ export default function PreencherDocumento() {
           return;
         }
         throw submitError;
+      }
+      const res = result as { ok?: boolean; reason?: string } | null;
+      if (!res?.ok) {
+        const msg = SUBMIT_REJECT_MESSAGES[res?.reason || ''] || 'Não foi possível enviar o documento. Revise as respostas e tente novamente.';
+        setValidationError(msg);
+        toast.error(msg);
+        return;
       }
 
       setFilledContentForPdf(filledContent);
@@ -986,7 +1028,13 @@ export default function PreencherDocumento() {
           </AlertDialogHeader>
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Prévia do documento como será salvo</p>
-            <ScrollArea className="h-[45dvh] rounded-md border bg-background p-4">
+            <ScrollArea className="relative h-[45dvh] rounded-md border bg-background p-4">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none sticky top-0 z-10 -mx-4 -mt-4 mb-3 bg-destructive/10 py-1.5 text-center text-xs font-semibold tracking-widest text-destructive"
+              >
+                PRÉVIA — NÃO ASSINADO
+              </div>
               {showConfirmDialog && (isRichDocument(previewContent) ? (
                 <div
                   className="rich-document-view text-sm leading-6 text-foreground"

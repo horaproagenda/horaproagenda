@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
+import { buildDocumentFieldSchema, type DocumentPrefillSnapshot } from '@/lib/documentTemplateFields';
 
 export interface DocumentFillLink {
   id: string;
@@ -106,6 +106,21 @@ export function useDocumentFillLinks(templateId?: string) {
         }
       }
 
+      // Lista oficial de campos do modelo (congelada no link junto com a versão).
+      const { data: tpl, error: tplError } = await supabase
+        .from('document_templates')
+        .select('content')
+        .eq('id', templateId)
+        .maybeSingle();
+      if (tplError) throw tplError;
+      let fieldSchema;
+      try {
+        fieldSchema = buildDocumentFieldSchema(tpl?.content || '');
+      } catch {
+        toast.error('Este modelo tem campos repetidos. Revise o modelo antes de enviar o link.');
+        return null;
+      }
+
       const token = generateToken();
       const expiresAt = options?.expiresInDays
         ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
@@ -125,7 +140,8 @@ export function useDocumentFillLinks(templateId?: string) {
           expires_at: expiresAt,
           status: 'pending',
           filled_variables: filledVariables as unknown as Record<string, never>,
-        }]);
+          template_snapshot: { fields: fieldSchema },
+        } as any]);
 
       if (error) throw error;
 

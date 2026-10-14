@@ -32,7 +32,7 @@ describe('mapeamento de campos do documento', () => {
     const out = fillDocumentHtml(RICH, { formData: { nome: 'Ana' }, additionalInfo, yesNoAnswers, checkboxAnswers });
     const text = htmlToPlainText(out);
     expect(text).toContain('quais áreas? RESP<Se sim, quais áreas?>');
-    expect(text).toContain('RESP<Quantas aplicações?>');
+    expect(text).toContain('Quantas aplicações?\nRESP<Campo de texto 2>');
     expect(text).toContain('Frequência:RESP<Frequência> Observação:RESP<Observação>');
     expect(text).toContain('Já fez laser antes? (X) Sim ( ) Não');
     expect(text).toContain('Alergia? ( ) Sim (X) Não');

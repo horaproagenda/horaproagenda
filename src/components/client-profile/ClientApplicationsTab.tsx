@@ -40,7 +40,7 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const receptionOnly = hasRole('receptionist') && !isAdmin && !hasRole('professional');
-  const { data: myProfId } = useCurrentProfessional();
+  const { professionalId: myProfId } = useCurrentProfessional();
   const { professionals } = useProfessionals();
   const profName = (id: string | null) => (professionals as any[])?.find((p) => p.id === id)?.name ?? '—';
 

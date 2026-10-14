@@ -86,6 +86,7 @@ import { useServiceProducts } from '@/hooks/useServiceProducts';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useProductConsumption } from '@/hooks/useProductConsumption';
 import { useProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
+import { productOfficialUsageStats } from '@/lib/productOfficialUsageStats';
 import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
 import type { ProductDailyConsumption } from '@/hooks/useProductDailyConsumption';
 
@@ -440,57 +441,11 @@ export function ProductDetailDialog({
     return consumptionReport.find(r => r.product_id === product.id);
   }, [product, consumptionReport]);
 
-  // Calculate usage statistics within the product's usage window
+  // Saved server results are authoritative; current appointments/links cannot rewrite history.
   const usageStats = useMemo(() => {
-    if (!product) return { totalAppointments: 0, avgPerAppointment: 0, byService: [] as Array<{ service_id: string; service_name: string; appointments: number; qtyPerUse: number; totalQty: number }> };
-
-    const startedUsing = product.started_using_at ? parseISO(product.started_using_at + 'T00:00:00') : null;
-    const finishedUsing = product.finished_at ? parseISO(product.finished_at + 'T23:59:59') : new Date();
-
-    const inWindow = (apt: any) => {
-      if (apt.status !== 'completed') return false;
-      if (!startedUsing) return true;
-      const t = new Date(apt.start_time);
-      return t >= startedUsing && t <= finishedUsing;
-    };
-
-    // Total já comprado = soma das compras registradas (o campo do produto pode
-    // ficar defasado se uma compra for editada ou excluída).
-    const totalQuantityUsed = usageRecords.filter(r => r.status === 'completed').reduce((sum, r) => sum + Number(r.stock_quantity ?? 0), 0);
-    let totalAppointments = 0;
-
-    const perService = productServiceLinks.map((sp: any) => {
-      const apts = appointments.filter(apt => apt.service_id === sp.service_id && inWindow(apt));
-      totalAppointments += apts.length;
-      const qtyPerUse = Number(sp.quantity_per_use ?? 0);
-      return {
-        service_id: sp.service_id,
-        service_name: sp.service?.name || activeServices.find(s => s.id === sp.service_id)?.name || 'Serviço',
-        appointments: apts.length,
-        qtyPerUse,
-        totalQty: apts.length * qtyPerUse,
-      };
-    });
-
-    // Quando o consumo planejado (sum(qty_per_use*apts)) é 0 ou divergente do consumo real
-    // do estoque, distribuímos o consumo real proporcionalmente entre os serviços com base
-    // no número de atendimentos. Isso garante que o "Consumo por serviço" reflita o que
-    // realmente saiu do estoque, e não um valor fixo por serviço.
-    const plannedTotal = perService.reduce((s, x) => s + x.totalQty, 0);
-    const useReal = totalQuantityUsed > 0 && (plannedTotal === 0 || Math.abs(plannedTotal - totalQuantityUsed) > 0.001);
-    const byService = perService.map(x => {
-      if (useReal && totalAppointments > 0) {
-        const share = x.appointments / totalAppointments;
-        const totalQty = totalQuantityUsed * share;
-        const qtyPerUse = x.appointments > 0 ? totalQty / x.appointments : 0;
-        return { ...x, qtyPerUse, totalQty };
-      }
-      return x;
-    });
-
-    const avgPerAppointment = totalAppointments > 0 ? totalQuantityUsed / totalAppointments : 0;
-    return { totalAppointments, avgPerAppointment, byService };
-  }, [product, productServiceLinks, productPurchases, appointments, activeServices, usageRecords]);
+    return productOfficialUsageStats(usageRecords, dailyConsumptions, product?.unit ?? 'un', id =>
+      activeServices.find(s => s.id === id)?.name ?? 'Serviço');
+  }, [product?.unit, usageRecords, dailyConsumptions, activeServices]);
 
   // Cycle summary: tracks current cycle (days & appointments) and previous cycle benchmark.
   // Funciona para TODOS os produtos — com ou sem vínculo a serviços. Quando o produto não

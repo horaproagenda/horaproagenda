@@ -1,10 +1,8 @@
-import { adjustProductStock } from '@/lib/stockMovements';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { cycleConsumptionTag, type CycleConsumptionEntry } from '@/lib/productCycleConsumption';
 import { humanizeError } from '@/lib/humanError';
 
 
@@ -21,10 +19,14 @@ export interface ProductDailyConsumption {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  cancelled_at?: string | null;
+  cycle_key?: string | null;
 }
 
 export function useProductDailyConsumption(productId?: string) {
   const queryClient = useQueryClient();
+  const requestRef = useRef<{ payload: string; id: string } | null>(null);
+  const invalidate = () => Promise.all(['product_daily_consumption', 'products', 'product_usage_events', 'product_usage_records', 'products-for-prediction'].map(key => queryClient.invalidateQueries({ queryKey: [key] })));
 
   const { data: consumptions = [], isLoading, refetch } = useQuery({
     queryKey: ['product_daily_consumption', productId],
@@ -32,6 +34,7 @@ export function useProductDailyConsumption(productId?: string) {
       let query = supabase
         .from('product_daily_consumption')
         .select('*')
+        .is('cancelled_at', null)
         .order('consumption_date', { ascending: false });
 
       if (productId) {
@@ -63,59 +66,6 @@ export function useProductDailyConsumption(productId?: string) {
     };
   }, [queryClient]);
 
-  /**
-   * Grava (ou regrava) os lançamentos de consumo de um ciclo encerrado.
-   * NÃO altera o estoque: o abatimento do ciclo é feito uma única vez pelo
-   * próprio encerramento. Regravar substitui os lançamentos daquele ciclo,
-   * então encerrar duas vezes nunca soma consumo em dobro.
-   */
-  const replaceCycleConsumption = useMutation({
-    mutationFn: async (params: {
-      product_id: string;
-      cycle_key: string;
-      unit: string;
-      entries: CycleConsumptionEntry[];
-      professional_id?: string | null;
-    }) => {
-      const tag = cycleConsumptionTag(params.cycle_key);
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const { error: delError } = await supabase
-        .from('product_daily_consumption')
-        .delete()
-        .eq('product_id', params.product_id)
-        .like('notes', `%${tag}%`);
-      if (delError) throw delError;
-
-      if (params.entries.length === 0) return;
-
-      const rows = params.entries.map((e) => ({
-        product_id: params.product_id,
-        consumption_date: e.consumption_date,
-        quantity_used: e.quantity_used,
-        unit: params.unit,
-        appointment_id: e.appointment_id,
-        service_id: e.service_id,
-        professional_id: params.professional_id ?? null,
-        notes: `Consumo do ciclo de uso ${tag}`,
-        created_by: user?.id ?? null,
-      }));
-
-      const { error } = await supabase.from('product_daily_consumption').insert(rows);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['product_usage_records'] });
-    },
-    onError: (error: unknown) => {
-      toast.error(humanizeError(error));
-    },
-  });
-
-
-
   const createConsumption = useMutation({
     mutationFn: async (consumption: {
       product_id: string;
@@ -127,22 +77,19 @@ export function useProductDailyConsumption(productId?: string) {
       appointment_id?: string | null;
       notes?: string | null;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('product_daily_consumption')
-        .insert({ ...consumption, created_by: user?.id })
-        .select()
-        .single();
+      const payload = JSON.stringify(consumption);
+      if (requestRef.current?.payload !== payload) requestRef.current = { payload, id: crypto.randomUUID() };
+      const request = requestRef.current;
+      if (!request) throw new Error('Não foi possível preparar o consumo.');
+      const { data, error } = await supabase.rpc('record_manual_product_consumption', {
+        _input: JSON.parse(payload), _request_id: request.id,
+      });
       if (error) throw error;
-
-      // Baixa atômica pela forma única de estoque
-      await adjustProductStock(consumption.product_id, -Number(consumption.quantity_used || 0));
-
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      requestRef.current = null;
+      void invalidate();
       toast.success('Consumo registrado!');
     },
     onError: (error: any) => {
@@ -151,29 +98,16 @@ export function useProductDailyConsumption(productId?: string) {
   });
 
   const deleteConsumption = useMutation({
-    mutationFn: async (id: string) => {
-      // Busca o registro para devolver a quantidade ao estoque antes de excluir
-      const { data: row, error: fetchErr } = await supabase
-        .from('product_daily_consumption')
-        .select('product_id, quantity_used')
-        .eq('id', id)
-        .single();
-      if (fetchErr) throw fetchErr;
-
-      const { error } = await supabase
-        .from('product_daily_consumption')
-        .delete()
-        .eq('id', id);
+    mutationFn: async (input: { id: string; reason: string }) => {
+      const { data, error } = await supabase.rpc('cancel_manual_product_consumption', {
+        _id: input.id, _reason: input.reason,
+      });
       if (error) throw error;
-
-      if (row) {
-        await adjustProductStock(row.product_id, Number(row.quantity_used || 0));
-      }
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product_daily_consumption'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Consumo removido e estoque restaurado!');
+      void invalidate();
+      toast.success('Consumo cancelado e estoque restaurado!');
     },
     onError: (error: any) => {
       toast.error('Erro ao remover consumo: ' + error.message);
@@ -203,7 +137,6 @@ export function useProductDailyConsumption(productId?: string) {
     isLoading,
     refetch,
     createConsumption,
-    replaceCycleConsumption,
     deleteConsumption,
 
     stats,

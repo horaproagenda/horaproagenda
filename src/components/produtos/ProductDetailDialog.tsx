@@ -1553,9 +1553,6 @@ export function ProductDetailDialog({
                     </TableRow>
                   ) : (
                     productPurchases.map((purchase) => {
-                      const daysInUse = purchase.started_using_at 
-                        ? usageDurationDays(purchase.started_using_at, purchase.finished_at ?? format(new Date(), 'yyyy-MM-dd'))
-                        : null;
 
                       const isEditingThisPurchase = editingPurchaseId === purchase.id;
 

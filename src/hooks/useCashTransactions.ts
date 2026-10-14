@@ -4,6 +4,7 @@ import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ensureNetAmount } from '@/lib/netValueCalculation';
+import { canonicalOperationPayload } from '@/lib/operationRequest';
 
 export interface CashTransaction {
   id: string;
@@ -193,7 +194,7 @@ export function useCashTransactions(cashRegisterId?: string) {
 
   const createTransaction = useMutation({
     mutationFn: async (transaction: Omit<CashTransaction, 'id' | 'created_at' | 'updated_at'>) => {
-      const payload = JSON.stringify(transaction);
+      const payload = canonicalOperationPayload(transaction);
       if (pendingRequest.current?.payload !== payload) {
         pendingRequest.current = { payload, id: crypto.randomUUID() };
       }

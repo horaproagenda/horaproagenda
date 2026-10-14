@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isCurrentSessionResponse, sessionIdentityChanged } from '@/lib/sessionAuthority';
+import { clearQueue } from '@/lib/offlineQueue';
 import { User, Session } from '@supabase/supabase-js';
 import { readEdgeFunctionError, isEmailExistsCode } from '@/lib/edgeFunctionError';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,14 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let authEventSeen = false;
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        authEventSeen = true;
         const nextIdentity = session?.user.id ?? null;
         if (sessionIdentityChanged(currentIdentity.current, nextIdentity)) {
           currentIdentity.current = nextIdentity;
           void queryClient.cancelQueries();
           queryClient.clear();
+          clearQueue();
           setProfile(null);
           setRoles([]);
           setLoading(Boolean(nextIdentity));
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+          setLoading(false);
         }
 
         // Após login/logout/refresh, revalida versão do bundle.
@@ -93,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (authEventSeen) return;
       currentIdentity.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);

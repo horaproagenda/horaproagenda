@@ -2,6 +2,7 @@
 
 - Backend operations own definitive business transitions; frontend validation and cache are advisory only, because retries and concurrent devices must obey the same database rules.
 - Single-item cash sales use create_single_sale_atomic with a stable request ID and invoker RLS; sales, bookable inventory, ledger and exact stock deductions commit together so failures cannot leave partial sales.
+- Cash transaction creation uses create_cash_transaction_atomic and an insert guard deriving register ownership/status server-side; direct callers cannot select a different professional or a closed register.
 - Clear query/mutation caches on authenticated identity changes and reject stale profile responses; never automatically retry mutations globally because non-idempotent legacy paths still exist.
 
 - Product usage lifecycle uses product_usage_records and transactional lifecycle RPCs as its sole authority; purchases/products are read mirrors so manual dates, version checks and stock movements cannot diverge.

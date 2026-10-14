@@ -648,8 +648,9 @@ export function useClientProfile(clientId: string) {
     return sum;
   })();
 
-  // Mantido para compatibilidade da lógica de paymentHistory abaixo.
-  const appointmentSaleIds = salePackageIds;
+  // Só vendas de pacote que registraram pagamento escondem o pagamento feito
+  // pela agenda; a ficha automática do pacote (sem pagamento) não esconde.
+  const appointmentSaleIds = paidPackageSaleIds(clientSales as any);
 
   void totalFromSales; void totalFromAppointments;
 

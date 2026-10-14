@@ -1,5 +1,11 @@
 # Roadmap
 
+## Avulsos separados dos pacotes
+- [ ] Remover vínculos por semelhança e proteger a origem oficial nas duas direções
+- [ ] Corrigir avaliação avulsa de Ana Flávia e sequência sem alterar horários ou recebimento
+- [ ] Alinhar telas, adicionar testes e verificar dados oficiais
+- [ ] Validar fluxo autenticado isolado — ambiente autorizado indisponível
+
 ## Produtos — conclusão da autoridade do servidor
 - [x] Unir consumo manual, estoque e auditoria com idempotência e cancelamento histórico
 - [x] Retirar substituição de consumo de ciclo pela tela e usar estatísticas persistidas

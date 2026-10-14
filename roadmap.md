@@ -8,12 +8,13 @@
 - [ ] Validar fluxo autenticado isolado — indisponível no Supabase externo
 
 ## Backend como fonte oficial — revisão integral
-- [ ] Continuação solicitada: vendas com vários itens e guardas restantes, preservando dados existentes; registrar evidências por etapa
+- [x] Continuação: venda multi-item e guardas de pacotes/fichas implementadas, evidências registradas sem alterações em dados existentes
 - [ ] Concluir auditoria detalhada de todos os módulos — inventário inicial em docs/backend-authority-audit.md
 - [x] Consolidar venda avulsa e criação de movimento de caixa com solicitação idempotente
-- [ ] Consolidar venda multi-item, demais recebimentos, estornos e comissões — validar em ambiente autenticado isolado antes de ampliar mudanças financeiras
+- [x] Consolidar criação multi-item em uma chamada oficial com estoque, parcelas, taxas, crédito e identidade de repetição
+- [ ] Validar venda multi-item, demais recebimentos, estornos e comissões — requer ambiente autenticado isolado autorizado
 - [ ] Consolidar agenda, pacotes e recursos preservando datas manuais
-- [ ] Conferir produtos, documentos e fichas com autoridade e histórico protegidos
+- [ ] Concluir documentos/fichas e validação autenticada de Produtos — guardas de quantidade e histórico implementadas; falta ambiente isolado
 - [ ] Conferir cadastros, configurações, usuários, assinaturas e integrações
 - [ ] Fechar escritas que contornam regras e conferir isolamento/grants/RLS
 - [x] Limpar cache/fila na troca de conta, rejeitar respostas antigas e desativar repetição automática global

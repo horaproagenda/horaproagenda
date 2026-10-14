@@ -138,13 +138,22 @@ export function isAutoFilledVariable(name: string): boolean {
 
 
 
+/**
+ * Field ids are numbered by ORDER OF APPEARANCE IN THE WHOLE DOCUMENT, per
+ * field type (question_0, question_1, texto_livre_0, ...). They never depend
+ * on line numbers, because the on-screen form (plain text) and the saved
+ * document (HTML) count lines differently — that mismatch put answers in the
+ * wrong fields. One counter object must be shared across the whole document.
+ */
 export interface DocumentTokenCounters {
   freeTextIndex: number;
   checkboxIndex: number;
+  yesNoIndex: number;
+  blankIndex: number;
 }
 
 export function createTokenCounters(): DocumentTokenCounters {
-  return { freeTextIndex: 0, checkboxIndex: 0 };
+  return { freeTextIndex: 0, checkboxIndex: 0, yesNoIndex: 0, blankIndex: 0 };
 }
 
 /**
@@ -163,6 +172,10 @@ export function tokenizeDocumentSegment(
   }
 
   const tokens: DocumentFieldToken[] = [];
+  const previousLabel = () => {
+    const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
+    return previousText?.value.trim() || '';
+  };
 
   parts.forEach(part => {
     if (/^\{[^}]+\}$/.test(part)) {
@@ -172,26 +185,23 @@ export function tokenizeDocumentSegment(
     }
 
     if (part === '[TEXTO_LIVRE]') {
-      const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
-      const label = previousText?.value.trim().replace(/:$/, '') || `Campo de texto ${lineIndex + 1}.${counters.freeTextIndex + 1}`;
-      tokens.push({ type: 'freeText', fieldKey: `texto_livre_${lineIndex}_${counters.freeTextIndex}`, label });
-      counters.freeTextIndex += 1;
+      const n = counters.freeTextIndex++;
+      const label = previousLabel().replace(/:$/, '') || `Campo de texto ${n + 1}`;
+      tokens.push({ type: 'freeText', fieldKey: `texto_livre_${n}`, label });
       return;
     }
 
     if (YES_NO_REGEX.test(part)) {
-      const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
-      const label = previousText?.value.trim().replace(/:$/, '') || `Pergunta ${lineIndex + 1}`;
-      tokens.push({ type: 'yesno', fieldKey: `question_${lineIndex}`, label });
+      const n = counters.yesNoIndex++;
+      const label = previousLabel().replace(/:$/, '') || `Pergunta ${n + 1}`;
+      tokens.push({ type: 'yesno', fieldKey: `question_${n}`, label });
       return;
     }
 
     if (SINGLE_CHECKBOX_REGEX.test(part)) {
-      // Use surrounding text as label (prefer next text, fallback to previous)
-      const previousText = [...tokens].reverse().find(token => token.type === 'text') as { type: 'text'; value: string } | undefined;
-      const label = previousText?.value.trim().replace(/[:•-]$/, '').trim() || `Opção ${lineIndex + 1}.${counters.checkboxIndex + 1}`;
-      tokens.push({ type: 'checkbox', fieldKey: `checkbox_${lineIndex}_${counters.checkboxIndex}`, label });
-      counters.checkboxIndex += 1;
+      const n = counters.checkboxIndex++;
+      const label = previousLabel().replace(/[:•-]$/, '').trim() || `Opção ${n + 1}`;
+      tokens.push({ type: 'checkbox', fieldKey: `checkbox_${n}`, label });
       return;
     }
 
@@ -201,23 +211,70 @@ export function tokenizeDocumentSegment(
   return tokens;
 }
 
-export function tokenizeDocumentLine(line: string, lineIndex: number): DocumentFieldToken[] {
+/** Lines like "Endereço: ______" or "Observações:" with no other field. */
+export function isBlankFieldLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed || new RegExp(TOKEN_REGEX.source, 'i').test(line)) return false;
+  return trimmed.includes('_____') || (trimmed.endsWith(':') && trimmed.length > 3);
+}
+
+export function tokenizeDocumentLine(
+  line: string,
+  lineIndex: number,
+  counters: DocumentTokenCounters = createTokenCounters(),
+): DocumentFieldToken[] {
   const trimmedLine = line.trim();
 
   if (!trimmedLine) {
     return [{ type: 'text', value: '' }];
   }
 
-  if (!line.match(TOKEN_REGEX) && (trimmedLine.includes('_____') || (trimmedLine.endsWith(':') && trimmedLine.length > 3))) {
+  if (isBlankFieldLine(line)) {
     const label = trimmedLine.replace(/_+/g, '').replace(/:$/, '').trim();
+    const n = counters.blankIndex++;
     return [
       { type: 'text', value: label ? `${label}: ` : '' },
-      { type: 'blankField', fieldKey: `field_${lineIndex}`, label: label || `Campo ${lineIndex + 1}` },
+      { type: 'blankField', fieldKey: `field_${n}`, label: label || `Campo ${n + 1}` },
     ];
   }
 
-  return tokenizeDocumentSegment(line, lineIndex, createTokenCounters());
+  return tokenizeDocumentSegment(line, lineIndex, counters);
 }
+
+/** Tokenizes a whole plain-text document with ONE shared counter set. */
+export function tokenizeDocument(content: string): DocumentFieldToken[][] {
+  const counters = createTokenCounters();
+  return String(content || '').split('\n').map((line, i) => tokenizeDocumentLine(line, i, counters));
+}
+
+export interface DocumentFieldDefinition {
+  fieldKey: string;
+  type: Exclude<DocumentFieldToken['type'], 'text'>;
+  label: string;
+}
+
+/**
+ * Unique list of every fillable field of a document (the explicit field map).
+ * Throws when two different fields would share the same id.
+ */
+export function listDocumentFields(content: string): DocumentFieldDefinition[] {
+  const seen = new Map<string, DocumentFieldDefinition>();
+  tokenizeDocument(content).flat().forEach(token => {
+    if (token.type === 'text') return;
+    const label = token.type === 'variable' ? (token.label || token.name) : token.label;
+    const existing = seen.get(token.fieldKey);
+    if (existing) {
+      // The same {variavel} may legitimately repeat; other ids never may.
+      if (token.type !== 'variable' || existing.type !== 'variable') {
+        throw new Error(`Campo duplicado no documento: ${token.fieldKey}`);
+      }
+      return;
+    }
+    seen.set(token.fieldKey, { fieldKey: token.fieldKey, type: token.type, label });
+  });
+  return Array.from(seen.values());
+}
+
 
 const MONTHS_PT = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',

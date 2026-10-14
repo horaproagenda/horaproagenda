@@ -4,8 +4,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useClientProfile } from '@/hooks/useClientProfile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Image, Receipt, Info, BarChart3, CircleDollarSign, RefreshCw, History, Plus } from 'lucide-react';
+import { Calendar, FileText, Image, Receipt, Info, BarChart3, CircleDollarSign, RefreshCw, History, Plus, ClipboardList } from 'lucide-react';
 import { LegacyHistoryDialog } from '@/components/client-profile/LegacyHistoryDialog';
+import { ClientApplicationsTab } from '@/components/client-profile/ClientApplicationsTab';
 import { PageHeaderActions } from '@/components/shared/PageHeaderActions';
 import { ClientHeader } from '@/components/client-profile/ClientHeader';
 import { ClientStatsSection } from '@/components/client-profile/ClientStatsSection';
@@ -129,7 +130,11 @@ export default function ClienteDetalhes() {
 
         {/* Compact Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto bg-muted/50 p-1 lg:grid lg:grid-cols-7">
+          <TabsList className="flex h-auto w-full snap-x justify-start gap-1 overflow-x-auto bg-muted/50 p-1 lg:grid lg:grid-cols-8">
+            <TabsTrigger value="fichas" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:border-primary/40">
+              <ClipboardList className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="leading-tight">Fichas</span>
+            </TabsTrigger>
             <TabsTrigger value="report" className="flex shrink-0 snap-start min-w-[4.75rem] flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1 text-[11px] px-2 py-1.5 border border-transparent data-[state=active]:bg-accent/15 data-[state=active]:text-accent data-[state=active]:border-accent/40">
               <BarChart3 className="h-3.5 w-3.5 text-accent shrink-0" />
               <span className="leading-tight">Relatório</span>
@@ -183,6 +188,9 @@ export default function ClienteDetalhes() {
               onEditAppointment={setEditingAppointment}
               onOpenAppointment={(a) => setDetailAppointmentId(a.id)}
             />
+          </TabsContent>
+          <TabsContent value="fichas" className="mt-3">
+            <ClientApplicationsTab clientId={client.id} clientName={client.name} />
           </TabsContent>
           <TabsContent value="documents" className="mt-3">
             <ClientDocumentsTab documents={documents} clientId={client.id} client={client} onAddDocument={addDocument.mutateAsync} onRefresh={refetchAll} />

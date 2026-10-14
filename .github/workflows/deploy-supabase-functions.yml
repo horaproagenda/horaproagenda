@@ -1,0 +1,24 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_ID: nsgcllrbswodjoadybsj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Publicar funções do WhatsApp
+        run: |
+          supabase functions deploy whatsapp-webhook --project-ref "$PROJECT_ID" --no-verify-jwt
+          supabase functions deploy send-appointment-reminders --project-ref "$PROJECT_ID" --no-verify-jwt

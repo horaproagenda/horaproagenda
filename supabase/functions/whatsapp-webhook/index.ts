@@ -23,7 +23,7 @@ import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.t
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret, x-webhook-token',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
@@ -44,12 +44,14 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // Token opcional de verificação do webhook.
-    const expectedToken = Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '';
+    // Segredo do webhook: EVOLUTION_WEBHOOK_SECRET (preferido) ou WHATSAPP_WEBHOOK_TOKEN (legado).
+    const expectedToken =
+      Deno.env.get('EVOLUTION_WEBHOOK_SECRET') || Deno.env.get('WHATSAPP_WEBHOOK_TOKEN') || '';
     const url = new URL(req.url);
     const incoming =
-      url.searchParams.get('token') ||
+      req.headers.get('x-webhook-secret') ||
       req.headers.get('x-webhook-token') ||
+      url.searchParams.get('token') ||
       '';
 
     // Fail-closed: sem segredo configurado, não há como distinguir eventos

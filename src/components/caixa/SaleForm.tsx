@@ -1,7 +1,5 @@
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
-import { resolveFinancialDestination } from '@/lib/financialDestination';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { deductStockForSale } from '@/lib/saleStockDeduction';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,13 +29,12 @@ import { useCardBrands } from '@/hooks/useCardBrands';
 import { useBanks } from '@/hooks/useBanks';
 import { useCashRegisters } from '@/hooks/useCashRegisters';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { submitMultiItemSale } from '@/lib/multiItemSale';
+import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
-import { insertFinancialEntry, insertCashTransaction } from '@/lib/moneyMovements';
 import { formatCurrency, normalizeBrazilianCurrency } from '@/lib/utils';
 import { getClientCreditPaymentLimit, isClientCreditPaymentMethod, showClientCreditValidationToast, validateClientCreditPayment } from '@/lib/clientCreditPayment';
-import { useRecordVisibility } from '@/components/shared/VisibilitySelect';
 
 interface SaleItem {
   id: string;
@@ -72,7 +69,8 @@ export function SaleForm() {
   const { currentOpenRegister } = useCashRegisters();
   // Pacotes vendidos precisam ficar visíveis para a equipe operar a agenda;
   // quem tem permissão de compartilhar grava 'clinic', senão o banco aplica o padrão.
-  const saleVis = useRecordVisibility('servicos');
+  const requestRef = useRef<{ payload: string; id: string } | null>(null);
+  const processingRef = useRef(false);
 
   // Client selection
   const [clientSearch, setClientSearch] = useState('');
@@ -471,455 +469,34 @@ export function SaleForm() {
       return;
     }
 
+    if (processingRef.current) return;
+    processingRef.current = true;
     setIsProcessing(true);
-    // Tudo ou nada: guardamos o que foi criado para desfazer se algo falhar,
-    // e a baixa de estoque só roda no final, depois que todo o resto gravou.
-    const createdSaleIds: string[] = [];
-    const pendingStock: Array<Parameters<typeof deductStockForSale>[0]> = [];
-    const must = (res: { error: any }) => { if (res?.error) throw res.error; };
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Create single_sales record for each item
-      // Calculate the fee proportion for each item if there's a card fee
-      const totalItems = saleInfo.items.length;
-      const feePerItem = feeInfo.feeAmount / totalItems;
-      const totalWithFeeToUse = selectedCardBrand?.fee_behavior === 'add_to_client' 
-        ? feeInfo.totalWithFee 
-        : saleInfo.total;
-      
-      for (const item of saleInfo.items) {
-        const itemDiscount = saleInfo.discount * (item.total / saleInfo.subtotal);
-        let itemFinal = item.total - itemDiscount;
-        
-        // If fee should be added to client, include the proportional fee in the item
-        if (selectedCardBrand?.fee_behavior === 'add_to_client' && feeInfo.feeAmount > 0) {
-          const itemFeeShare = (item.total / saleInfo.subtotal) * feeInfo.feeAmount;
-          itemFinal = itemFinal + itemFeeShare;
-        }
-
-        const isDeferredPayment = isBoleto || isCheque;
-        const saleData: any = {
-          client_id: selectedClientId,
-          original_amount: item.total,
-          discount_amount: itemDiscount,
-          final_amount: itemFinal,
-          card_fee_amount: selectedCardBrand ? (item.total / saleInfo.subtotal) * feeInfo.feeAmount : 0,
-          installments: installments,
-          payment_method_id: paymentMethodId,
-          sale_date: paymentDate,
-          item_type: item.type,
-          description: item.name,
-          notes: `Venda ${saleInfo.code} - Qtd: ${item.quantity}${selectedCardBrand ? ` - ${selectedCardBrand.name} ${installments}x` : ''}`,
-          paid_at: isDeferredPayment ? null : new Date().toISOString(),
-          paid_by: isDeferredPayment ? null : user?.id,
-          created_by: user?.id,
-        };
-
-        if (item.type === 'service') {
-          saleData.service_id = item.originalId;
-        }
-        // Note: package_id will be set after creating the service_package
-
-        // Fica "não concluída" até tudo gravar; se a internet cair no meio,
-        // o banco desfaz sozinho depois (heal_uncommitted_sales).
-        (saleData as Record<string, unknown>).sale_committed = false;
-        const { data: saleRecord, error: saleError } = await supabase
-          .from('single_sales')
-          .insert(saleData)
-          .select()
-          .single();
-
-        if (saleError) throw saleError;
-        createdSaleIds.push(saleRecord.id);
-
-        // Create client_services for services
-        if (item.type === 'service') {
-          for (let i = 0; i < item.quantity; i++) {
-            must(await supabase.from('client_services').insert({
-              client_id: selectedClientId,
-              service_id: item.originalId,
-              sale_id: saleRecord.id,
-              amount_paid: itemFinal / item.quantity,
-              status: 'available',
-              created_by: user?.id,
-            }));
-          }
-        }
-
-        // For packages: Create service_package for the client with payment_methods set
-        if (item.type === 'package') {
-          const template = packageTemplates.find(t => t.id === item.originalId);
-          if (template) {
-            // Create service_package for the client
-            const { data: newPackage, error: pkgError } = await (supabase as any)
-              .from('service_packages')
-              .insert({
-                name: template.name,
-                client_id: selectedClientId,
-                template_id: template.id,
-                total_sessions: template.total_sessions,
-                duration: template.duration || 60,
-                interval_days: template.interval_days || 7,
-                total_price: template.price,
-                package_type: template.package_type || 'standard',
-                professional_id: template.professional_id,
-                room_id: template.room_id,
-                equipment: template.equipment || [],
-                payment_methods: [paymentMethod.name],
-                sessions_scheduled: 0,
-                is_active: true,
-                ...saleVis.visibilityField,
-              })
-              .select()
-              .single();
-
-            if (pkgError) throw pkgError;
-
-            // Create package_appointments for all sessions
-            const templateSteps = template.package_type === 'sequential' && template.steps?.length
-              ? template.steps
-              : Array.from({ length: template.total_sessions }, (_, i) => ({
-                  service_id: null,
-                  interval_after_days: template.interval_days || 7,
-                  sequence_order: i + 1,
-                }));
-
-            const sessions = templateSteps.map((step: any, i: number) => ({
-              package_id: newPackage.id,
-              service_id: step.service_id || template.service_id || null,
-              session_number: i + 1,
-              original_session_number: i + 1,
-              sequence_order: step.sequence_order || i + 1,
-              interval_after_days: i === templateSteps.length - 1 ? 0 : step.interval_after_days || template.interval_days || 7,
-              status: 'pending',
-            }));
-
-            must(await (supabase as any).from('package_appointments').insert(sessions));
-
-            // Update single_sales with package_id
-            must(await supabase
-              .from('single_sales')
-              .update({ package_id: newPackage.id })
-              .eq('id', saleRecord.id));
-
-            console.log(`Package created with payment_methods for client ${selectedClientId}:`, newPackage.id);
-          }
-        }
-
-        // Decrement product stock for product sales
-        if (item.type === 'product') {
-          // Baixa única (antes o estoque era descontado duas vezes aqui)
-          pendingStock.push({
-            saleId: saleRecord.id,
-            itemType: 'product',
-            productId: item.originalId,
-            quantity: item.quantity,
-            userId: user?.id ?? null,
-          });
-        }
-
-        // Deduzir produtos vinculados a serviços/pacotes em tempo real
-        if (item.type === 'service' || item.type === 'package') {
-          pendingStock.push({
-            saleId: saleRecord.id,
-            itemType: item.type,
-            serviceId: item.type === 'service' ? item.originalId : null,
-            packageId: item.type === 'package' ? item.originalId : null,
-            userId: user?.id ?? null,
-          });
-        }
-      }
-
-      // Create financial entry only for real money payments. Client credit is non-cash.
-      // Build description with item names for financial entry
-      const financialItemNames = saleInfo.items.map(item => item.name).join(', ');
-      const financialDescription = isBoleto && boletoInstallments > 1
-        ? `Parcelamento Boleto Bancário ${boletoInstallments}x: ${financialItemNames} - ${selectedClient?.name}`
-        : `Venda: ${financialItemNames} - ${selectedClient?.name}`;
-      
-      if (!isClientCredit) {
-        if (isBoleto && boletoInstallments > 1) {
-          // For boleto installments, create one receivable per installment
-          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
-          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
-
-          for (let i = 0; i < boletoInstallments; i++) {
-            const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
-            dueDate.setDate(dueDate.getDate() + i * 30);
-            const dueDateStr = format(dueDate, 'yyyy-MM-dd');
-            const amt = i === 0 ? installmentAmount + remainder : installmentAmount;
-
-            await insertFinancialEntry({
-              type: 'receivable',
-              description: `Boleto ${i + 1}/${boletoInstallments}: ${financialItemNames} - ${selectedClient?.name} (venc. ${format(dueDate, 'dd/MM/yyyy')})`,
-              amount: amt,
-              due_date: dueDateStr,
-              paid_date: null,
-              status: 'pending',
-              payment_method_id: paymentMethodId,
-              client_id: selectedClientId,
-              installments: boletoInstallments,
-              created_by: user?.id,
-              notes: `Parcelamento no Boleto Bancário ${boletoInstallments}x`,
-            });
-
-            // Create reminder for each boleto due date
-            await supabase.from('reminders').insert({
-              title: `Verificar boleto ${i + 1}/${boletoInstallments}: ${selectedClient?.name}`,
-              description: `Boleto de R$ ${amt.toFixed(2)} referente a "${financialItemNames}" vence em ${format(dueDate, 'dd/MM/yyyy')}. Verificar se foi pago e dar baixa no sistema.`,
-              reminder_date: dueDateStr,
-              reminder_time: '09:00',
-              is_recurring: false,
-              is_active: true,
-              is_completed: false,
-              category: 'financeiro',
-              priority: 'high',
-              created_by: user?.id,
-            });
-          }
-        } else if (isCheque) {
-          // Cheque: create receivable as pending until cash date
-          await insertFinancialEntry({
-            type: 'receivable',
-            description: `Cheque nº ${chequeNumber || 'S/N'}: ${financialItemNames} - ${selectedClient?.name}`,
-            amount: paymentAmount,
-            due_date: chequeCashDate,
-            paid_date: null,
-            status: 'pending',
-            payment_method_id: paymentMethodId,
-            client_id: selectedClientId,
-            created_by: user?.id,
-            notes: `Cheque nº ${chequeNumber || 'S/N'} - Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'} - Descontar em ${format(new Date(chequeCashDate + 'T12:00:00'), 'dd/MM/yyyy')}`,
-          });
-
-          // Create reminder for the cash date
-          await supabase.from('reminders').insert({
-            title: `Descontar cheque: ${selectedClient?.name}`,
-            description: `Ir ao banco descontar cheque nº ${chequeNumber || 'S/N'} de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}". Banco: ${activeBanks.find(b => b.id === chequeBank)?.name || 'Não informado'}.`,
-            reminder_date: chequeCashDate,
-            reminder_time: '08:00',
-            is_recurring: false,
-            is_active: true,
-            is_completed: false,
-            category: 'financeiro',
-            priority: 'high',
-            created_by: user?.id,
-          });
-        } else if (isBoleto && boletoInstallments === 1) {
-          // Boleto à vista: receivable pending until payment confirmed
-          await insertFinancialEntry({
-            type: 'receivable',
-            description: `Boleto à vista: ${financialItemNames} - ${selectedClient?.name}`,
-            amount: paymentAmount,
-            due_date: boletoFirstDueDate,
-            paid_date: null,
-            status: 'pending',
-            payment_method_id: paymentMethodId,
-            client_id: selectedClientId,
-            created_by: user?.id,
-            notes: 'Boleto Bancário à vista',
-          });
-
-          // Create reminder
-          await supabase.from('reminders').insert({
-            title: `Verificar boleto à vista: ${selectedClient?.name}`,
-            description: `Boleto à vista de R$ ${paymentAmount.toFixed(2)} referente a "${financialItemNames}" vence em ${format(new Date(boletoFirstDueDate + 'T12:00:00'), 'dd/MM/yyyy')}.`,
-            reminder_date: boletoFirstDueDate,
-            reminder_time: '09:00',
-            is_recurring: false,
-            is_active: true,
-            is_completed: false,
-            category: 'financeiro',
-            priority: 'high',
-            created_by: user?.id,
-          });
-        } else {
-          // All other methods (Dinheiro, PIX, Transferência, Cartão): immediate paid entry
-          const netAmount = selectedCardBrand && selectedCardBrand.fee_behavior === 'deduct_from_provider'
-            ? paymentAmount - feeInfo.feeAmount
-            : paymentAmount;
-
-          await insertFinancialEntry({
-            type: 'receivable',
-            description: financialDescription,
-            amount: netAmount,
-            due_date: paymentDate,
-            paid_date: paymentDate,
-            status: 'paid',
-            payment_method_id: paymentMethodId,
-            client_id: selectedClientId,
-            installments: selectedCardBrand && isCreditCard ? installments : null,
-            created_by: user?.id,
-            notes: selectedCardBrand ? `Taxa ${selectedCardBrand.name}: ${feeInfo.feePercentage}% = R$ ${feeInfo.feeAmount.toFixed(2)}` : (isDinheiro && changeAmount > 0 ? `Troco: R$ ${changeAmount.toFixed(2)} (${changeMethod === 'cash' ? 'Dinheiro' : changeMethod === 'pix' ? 'PIX' : 'Crédito ao Cliente'})` : null),
-          });
-
-          // If card has fee and deducted from provider, register the fee as expense
-          if (selectedCardBrand && feeInfo.feeAmount > 0 && selectedCardBrand.fee_behavior === 'deduct_from_provider') {
-            await insertFinancialEntry({
-              type: 'expense',
-              description: `Taxa ${selectedCardBrand.name} (${feeInfo.feePercentage}%): ${financialItemNames}`,
-              amount: feeInfo.feeAmount,
-              due_date: paymentDate,
-              paid_date: paymentDate,
-              status: 'paid',
-              created_by: user?.id,
-              notes: `Taxa de cartão descontada do provedor - Venda: ${financialItemNames}`,
-            });
-          }
-        }
-      }
-
-      // Create cash transaction if register is open
-      // Skip cash transaction for "Crédito ao Cliente" because it uses existing balance.
-      // Build description with item names
-      const itemNames = saleInfo.items.map(item => item.name).join(', ');
-      const saleDescription = isBoleto && boletoInstallments > 1
-        ? `Boleto Bancário ${boletoInstallments}x: ${itemNames} - ${selectedClient?.name}`
-        : `${itemNames} - ${selectedClient?.name}`;
-      
-      // Destino único: caixa de acordo com o vínculo do profissional da venda.
-      const saleProfessionalId =
-        saleInfo.items.find(item => item.professionalId)?.professionalId || selectedProfessionalId || null;
-      const saleDest = await resolveFinancialDestination(saleProfessionalId);
-      const saleRegisterId = saleDest.cashRegisterId || currentOpenRegister?.id || null;
-      const saleRegister = saleRegisterId ? { id: saleRegisterId } : null;
-      if (!saleRegister && !isClientCredit && !isBoleto && !isCheque) {
-        throw new Error('Abra o caixa do profissional antes de registrar esta venda.');
-      }
-      if (saleRegister && !isClientCredit) {
-        // Skip cash entry for boleto/cheque - money not received yet
-        if (!isBoleto && !isCheque) {
-          await insertCashTransaction({
-            cash_register_id: saleRegister.id,
-            type: 'income',
-            category: 'sale',
-            description: isDinheiro ? `${saleDescription} (Dinheiro físico)` : saleDescription,
-            amount: paymentAmount,
-            payment_method: paymentMethod.name,
-            card_fee_amount: selectedCardBrand ? feeInfo.feeAmount : null,
-            installments: selectedCardBrand && isCreditCard ? installments : null,
-            created_by: user?.id,
-          });
-
-          // Handle cash change (troco) for Dinheiro
-          if (isDinheiro && changeAmount > 0) {
-            if (changeMethod === 'cash') {
-              // Cash change goes out of register
-              await insertCashTransaction({
-                cash_register_id: saleRegister.id,
-                type: 'expense',
-                category: 'change',
-                description: `Troco em dinheiro: ${selectedClient?.name}`,
-                amount: changeAmount,
-                payment_method: 'Dinheiro',
-                created_by: user?.id,
-              });
-            } else if (changeMethod === 'pix') {
-              // PIX change - recorded as outgoing PIX transfer
-              await insertCashTransaction({
-                cash_register_id: saleRegister.id,
-                type: 'expense',
-                category: 'change',
-                description: `Troco via PIX: ${selectedClient?.name}`,
-                amount: changeAmount,
-                payment_method: 'PIX',
-                created_by: user?.id,
-              });
-            } else if (changeMethod === 'credit') {
-              // Leave as client credit
-              const currentCredit = selectedClient?.credit_balance || 0;
-              const newBalance = currentCredit + changeAmount;
-              await supabase
-                .from('clients')
-                .update({ credit_balance: newBalance })
-                .eq('id', selectedClientId);
-
-              await (supabase as any).from('client_credit_transactions').insert({
-                client_id: selectedClientId,
-                transaction_type: 'credit_added',
-                amount: changeAmount,
-                previous_balance: currentCredit,
-                new_balance: newBalance,
-                description: `Troco deixado como crédito: ${saleDescription}`,
-                created_by: user?.id,
-              });
-
-              toast.info(`R$ ${changeAmount.toFixed(2)} adicionado como crédito ao cliente`);
-            }
-          }
-        }
-      }
-
-      // Deduct credit balance when using "Crédito ao Cliente"
-      if (isClientCredit && selectedClientId) {
-        const newBalance = Math.max(0, clientCreditBalance - paymentAmount);
-        await supabase
-          .from('clients')
-          .update({ credit_balance: newBalance })
-          .eq('id', selectedClientId);
-
-        await (supabase as any).from('client_credit_transactions').insert({
-          client_id: selectedClientId,
-          transaction_type: 'credit_used',
-          amount: paymentAmount,
-          previous_balance: clientCreditBalance,
-          new_balance: newBalance,
-          description: `Uso de crédito ao cliente: ${saleDescription}`,
-          created_by: user?.id,
-        });
-      }
-
-      // Create boleto installments if payment is boleto (à vista or parcelado)
-      if (isBoleto && saleInfo.items.length > 0) {
-        const saleId = createdSaleIds[createdSaleIds.length - 1];
-        if (saleId) {
-          const installmentAmount = Math.round((paymentAmount / boletoInstallments) * 100) / 100;
-          const remainder = Math.round((paymentAmount - installmentAmount * boletoInstallments) * 100) / 100;
-
-          const records = Array.from({ length: boletoInstallments }, (_, i) => {
-            const dueDate = new Date(boletoFirstDueDate + 'T12:00:00');
-            dueDate.setDate(dueDate.getDate() + i * 30);
-            return {
-              sale_id: saleId,
-              installment_number: i + 1,
-              total_installments: boletoInstallments,
-              amount: i === 0 ? installmentAmount + remainder : installmentAmount,
-              due_date: format(dueDate, 'yyyy-MM-dd'),
-              status: 'pending' as const,
-              created_by: user?.id || null,
-            };
-          });
-
-          must(await supabase.from('boleto_installments').insert(records));
-        }
-      }
-
-      // Tudo gravado: marca as vendas como concluídas.
-      if (createdSaleIds.length) {
-        must(await (supabase as any).from('single_sales').update({ sale_committed: true }).in('id', createdSaleIds));
-      }
-
-      // Estoque por último: só baixa quando a venda inteira foi gravada.
-      for (const s of pendingStock) await deductStockForSale(s);
-
-      // Invalidate all relevant queries for full sync
+      const payload = JSON.stringify({
+        client_id: selectedClientId, sale_date: paymentDate,
+        payment_method_id: paymentMethodId, discount_amount: saleInfo.discount,
+        payment_amount: Math.round(paymentAmount * 100) / 100,
+        installments, card_brand_id: cardBrandId || null,
+        boleto_installments: boletoInstallments, boleto_first_due_date: boletoFirstDueDate,
+        cheque_cash_date: chequeCashDate, cheque_number: chequeNumber, cheque_bank_id: chequeBank || null,
+        cash_received: cashReceived, change_method: changeMethod,
+        items: saleInfo.items.map(item => ({ type: item.type, source_id: item.originalId,
+          quantity: item.quantity, professional_id: item.professionalId || null })),
+      });
+      if (requestRef.current?.payload !== payload) requestRef.current = { payload, id: crypto.randomUUID() };
+      const request = requestRef.current;
+      if (!request) throw new Error('Não foi possível preparar a venda.');
+      await submitMultiItemSale(JSON.parse(payload), request.id);
+      requestRef.current = null;
       syncAfter(queryClient, 'sale');
-
-      toast.success('Venda lançada no financeiro com sucesso!');
+      toast.success('Venda registrada com sucesso!');
       resetSale();
-    } catch (error: any) {
-      // Desfaz tudo o que já tinha sido gravado (venda, pacote, financeiro, caixa, boletos)
-      let rollbackFailed = false;
-      for (const id of createdSaleIds) {
-        const { error: purgeError } = await (supabase as any).rpc('purge_single_sale_cascade', { _sale_id: id });
-        if (purgeError) rollbackFailed = true;
-      }
-      if (createdSaleIds.length) syncAfter(queryClient, 'sale');
-      toast.error(rollbackFailed
-        ? 'A venda não foi concluída e parte dela pode ter ficado gravada. Confira o Caixa e o Financeiro.'
-        : 'A venda não foi concluída e nada foi gravado. Tente novamente. ' + (error?.message ?? ''));
+    } catch (error: unknown) {
+      // A lost response can follow a successful commit. Keep the request ID for a safe retry.
+      toast.error(error);
     } finally {
+      processingRef.current = false;
       setIsProcessing(false);
     }
   };

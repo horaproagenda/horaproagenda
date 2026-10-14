@@ -2136,16 +2136,21 @@ export function AppointmentDetailDialog({
 
               </div>
 
-              {/* Package payment indicator - packages must be paid in full */}
-              {isPackageAppointment && !isPackagePaid && remainingAmount > 0 && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <Package className="h-4 w-4 text-primary flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-primary">Pagamento de Pacote</p>
-                    <p className="text-xs text-muted-foreground">
-                      O valor total do pacote é <strong>R$ {(packageData?.total_price || 0).toFixed(2)}</strong>; pagamentos parciais são sincronizados em todas as aplicações.
-                    </p>
+              {/* Pacote vinculado — o financeiro é do pacote, não da etapa (mesmo se a etapa custar R$ 0) */}
+              {isPackageAction && paymentAction.kind === 'package_pay' && (
+                <div className="space-y-1 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary flex-shrink-0" />
+                    <p className="text-sm font-medium text-primary">Pacote vinculado: {packageData?.name || resolvedPackageName}</p>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div><p className="text-muted-foreground">Valor total</p><p className="font-medium">{formatCurrency(packagePrice)}</p></div>
+                    <div><p className="text-muted-foreground">Pago</p><p className="font-medium">{formatCurrency(Number(appointment.amount_paid || 0))}</p></div>
+                    <div><p className="text-muted-foreground">Saldo</p><p className="font-medium">{formatCurrency(remainingAmount)}</p></div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Status: {Number(appointment.amount_paid || 0) > 0 ? 'Parcialmente pago' : 'Pendente'} · a baixa é registrada no pacote e vale para todas as etapas.
+                  </p>
                 </div>
               )}
 

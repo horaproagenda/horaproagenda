@@ -376,11 +376,8 @@ export function buildFilledDocumentContent({
   additionalInfo,
   checkboxAnswers = {},
 }: BuildContentOptions): string {
-  return content
-    .split('\n')
-    .map((line, lineIndex) => {
-      const tokens = tokenizeDocumentLine(line, lineIndex);
-
+  return tokenizeDocument(content)
+    .map((tokens) => {
       return tokens
         .map(token => {
           switch (token.type) {

@@ -6,7 +6,7 @@ import {
   buildFilledDocumentContent,
   htmlToPlainText,
   isAutoFilledVariable,
-  tokenizeDocumentLine,
+  tokenizeDocument,
   type DocumentFieldToken,
 } from '@/lib/documentTemplateFields';
 import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/lib/documentRichContent';

@@ -206,8 +206,9 @@ export function fillDocumentHtml(html: string, values: DocumentFillValues): stri
   const root = doc.getElementById('__doc_root');
   if (!root) return safeHtml;
 
+  // One counter set for the whole document so field ids match the form.
+  const counters = createTokenCounters();
   collectLineGroups(root).forEach(group => {
-    const counters = createTokenCounters();
     group.nodes.forEach(textNode => {
       const original = textNode.textContent || '';
       if (!original) return;

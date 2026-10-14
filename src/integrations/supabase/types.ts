@@ -4095,6 +4095,8 @@ export type Database = {
         Row: {
           account_owner_id: string
           appointment_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           consumption_date: string
           created_at: string
           created_by: string | null
@@ -4104,13 +4106,17 @@ export type Database = {
           product_id: string
           professional_id: string | null
           quantity_used: number
+          request_id: string | null
           service_id: string | null
+          stock_quantity: number | null
           unit: string
           updated_at: string
         }
         Insert: {
           account_owner_id?: string
           appointment_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           consumption_date?: string
           created_at?: string
           created_by?: string | null
@@ -4120,13 +4126,17 @@ export type Database = {
           product_id: string
           professional_id?: string | null
           quantity_used?: number
+          request_id?: string | null
           service_id?: string | null
+          stock_quantity?: number | null
           unit?: string
           updated_at?: string
         }
         Update: {
           account_owner_id?: string
           appointment_id?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           consumption_date?: string
           created_at?: string
           created_by?: string | null
@@ -4136,7 +4146,9 @@ export type Database = {
           product_id?: string
           professional_id?: string | null
           quantity_used?: number
+          request_id?: string | null
           service_id?: string | null
+          stock_quantity?: number | null
           unit?: string
           updated_at?: string
         }
@@ -6946,6 +6958,10 @@ export type Database = {
         Returns: boolean
       }
       cancel_application_record: { Args: { _id: string }; Returns: Json }
+      cancel_manual_product_consumption: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
       cascade_package_intervals_after_anchor: {
         Args: {
           _anchor_start: string
@@ -7567,6 +7583,10 @@ export type Database = {
       record_data_migration: {
         Args: { p_details?: Json; p_key: string }
         Returns: boolean
+      }
+      record_manual_product_consumption: {
+        Args: { _input: Json; _request_id: string }
+        Returns: Json
       }
       record_migration: {
         Args: {

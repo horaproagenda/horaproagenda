@@ -556,6 +556,7 @@ serve(async (req) => {
     if (additionalItems.length > 0) {
       const rows = additionalItems.map((item) => ({
         appointment_id: body.appointment_id,
+        account_owner_id: callerOwner,
         item_type: item.item_type,
         service_id: item.item_type === 'service' ? item.service_id : null,
         product_id: item.item_type === 'product' ? item.product_id : null,

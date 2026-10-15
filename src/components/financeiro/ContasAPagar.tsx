@@ -57,6 +57,7 @@ import { AdvancedFilters, type FilterGroup } from '@/components/shared/AdvancedF
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 import { useQueryClient } from '@tanstack/react-query';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
+import { payableChainState, chainOf, chainPaidTotal } from '@/lib/payableChain';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
@@ -478,11 +479,16 @@ export function ContasAPagar() {
 
   const getStatusDisplay = (entry: any) => {
     if (entry.status === 'paid') {
-      const isPartialPaid = entry.notes?.includes('Pagamento parcial');
-      if (isPartialPaid) {
+      const state = payableChainState(entry, payables as any[]);
+      if (state === 'partial') {
         return <span className="text-sm font-semibold text-yellow-600">Parcialmente Pago</span>;
       }
-      return <span className="text-sm font-semibold text-primary">Pago</span>;
+      const isChain = chainOf(entry, payables as any[]).length > 1;
+      return (
+        <span className="text-sm font-semibold text-primary" title={isChain ? `Quitado em partes: R$ ${chainPaidTotal(entry, payables as any[]).toFixed(2)}` : undefined}>
+          {isChain ? 'Pago (quitado)' : 'Pago'}
+        </span>
+      );
     }
     const dueDate = parseISO(entry.due_date + 'T12:00:00');
     const today = new Date();

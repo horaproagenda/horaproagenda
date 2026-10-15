@@ -1,3 +1,4 @@
+import { buildReceiptRows, type ReceiptExtraItem } from "@/lib/receiptRows";
 import { getPaymentAction } from '@/lib/paymentAction';
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';

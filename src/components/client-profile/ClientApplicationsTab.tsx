@@ -15,11 +15,12 @@ import { Card } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Plus, Trash2, Copy, Printer, Lock, Settings2, List, Table as TableIcon } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Copy, Printer, Lock, Settings2 } from 'lucide-react';
 import {
   ApplicationItemDraft, BASE_FIELDS, GUIDANCE_FIELDS, SIDE_OPTIONS, STATUS_LABEL, TemplateField, UNIT_OPTIONS,
   buildReferenceItems, emptyItem, parseQuantity, validateCompletion, REFERENCE_COPY_FIELD_PREFIXES,
 } from '@/lib/applicationRecords';
+import { applicationLocalInput, applicationDateLabel, isApplicationLocalDate } from '@/lib/applicationDates';
 
 const db = supabase as any;
 
@@ -27,13 +28,13 @@ interface Template { id: string; name: string; slug: string; fields: TemplateFie
 interface RecordRow {
   id: string; client_id: string; professional_id: string | null; procedure_template_id: string | null; procedure_name: string;
   template_snapshot: { fields?: TemplateField[]; version?: number }; appointment_id: string | null; room: string | null; reason: string | null;
-  status: string; performed_at: string; follow_up_date: string | null; based_on_id: string | null; amends_id: string | null; amendment_reason: string | null;
+  status: string; updated_at: string; performed_at: string; follow_up_date: string | null; based_on_id: string | null; amends_id: string | null; amendment_reason: string | null;
   application_items?: (ApplicationItemDraft & { id: string; position: number; quantity: any })[];
   application_field_values?: { field_id: string; value: string }[];
 }
 
 const statusVariant = (s: string) => (s === 'completed' ? 'default' : s === 'cancelled' || s === 'amended' ? 'outline' : 'secondary') as any;
-const toLocalInput = (iso: string) => format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+const toLocalInput = applicationLocalInput;
 
 export function ClientApplicationsTab({ clientId, clientName }: { clientId: string; clientName: string }) {
   const qc = useQueryClient();
@@ -47,7 +48,6 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [profFilter, setProfFilter] = useState('all');
-  const [view, setView] = useState<'timeline' | 'table'>('timeline');
   const [editing, setEditing] = useState<EditorState | null>(null);
   const [viewing, setViewing] = useState<RecordRow | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -97,7 +97,7 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
   const startEdit = (r: RecordRow) => {
     setViewing(null);
     setEditing({
-      id: r.id, professional_id: r.professional_id, procedure_template_id: r.procedure_template_id, procedure_name: r.procedure_name,
+      id: r.id, updated_at: r.updated_at, appointment_id: r.appointment_id, professional_id: r.professional_id, procedure_template_id: r.procedure_template_id, procedure_name: r.procedure_name,
       templateFields: r.template_snapshot?.fields ?? [], templateVersion: r.template_snapshot?.version ?? 1, performed_at: toLocalInput(r.performed_at),
       room: r.room ?? '', reason: r.reason ?? '', follow_up_date: r.follow_up_date ?? '', based_on_id: r.based_on_id, status: r.status,
       items: (r.application_items ?? []).sort((a, b) => a.position - b.position).map((i) => ({
@@ -121,25 +121,23 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Input placeholder="Buscar procedimento, região, produto…" value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+      <div className="grid min-w-0 grid-cols-1 gap-2 lg:flex lg:flex-wrap lg:items-center">
+        <Input placeholder="Buscar procedimento, região, produto…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-w-0 lg:max-w-xs" />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="sm:w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full lg:w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
             {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={profFilter} onValueChange={setProfFilter}>
-          <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full lg:w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os profissionais</SelectItem>
             {(professionals as any[]).map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex gap-1 sm:ml-auto">
-          <Button variant="ghost" size="icon" aria-label="Linha do tempo" onClick={() => setView('timeline')} className={view === 'timeline' ? 'bg-muted' : ''}><List className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Tabela comparativa" onClick={() => setView('table')} className={view === 'table' ? 'bg-muted' : ''}><TableIcon className="h-4 w-4" /></Button>
+        <div className="grid grid-cols-2 gap-2 lg:ml-auto lg:flex">
           {isAdmin && <Button variant="outline" size="sm" onClick={() => setTemplatesOpen(true)}><Settings2 className="mr-1 h-4 w-4" />Modelos</Button>}
           {!receptionOnly && <Button size="sm" onClick={startNew}><Plus className="mr-1 h-4 w-4" />Nova ficha</Button>}
         </div>
@@ -150,20 +148,20 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
           <ClipboardList className="h-8 w-8" />
           <p className="text-sm">Nenhuma ficha de aplicação registrada.</p>
         </Card>
-      ) : view === 'timeline' ? (
+      ) : (
         <div className="space-y-2">
           {filtered.map((r) => {
             const items = r.application_items ?? [];
             return (
-              <Card key={r.id} className="cursor-pointer p-3 transition-colors hover:bg-muted/40" onClick={() => setViewing(r)}>
-                <div className="flex items-start justify-between gap-2">
+              <Card key={r.id} className="min-w-0 cursor-pointer break-words p-3 transition-colors hover:bg-muted/40" onClick={() => setViewing(r)}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{format(new Date(r.performed_at), 'dd/MM/yyyy HH:mm')}</p>
+                    <p className="text-xs text-muted-foreground">{applicationDateLabel(r.performed_at)}</p>
                     <p className="font-medium">{r.procedure_name}</p>
                     {items.length > 0 && <p className="text-sm text-muted-foreground">{items.map((i) => `${i.region} · ${i.quantity ?? '?'} ${i.unit}`).join(' | ')}</p>}
                     <p className="text-xs text-muted-foreground">Profissional: {profName(r.professional_id)}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-wrap items-center gap-1 sm:flex-col sm:items-end">
                     <Badge variant={statusVariant(r.status)}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
                     {r.amends_id && <span className="text-[11px] text-muted-foreground">Retificação</span>}
                     {r.based_on_id && <span className="text-[11px] text-muted-foreground">Baseada em anterior</span>}
@@ -172,28 +170,6 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
               </Card>
             );
           })}
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left"><tr>{['Data', 'Procedimento', 'Região', 'Produto', 'Quantidade', 'Profissional', 'Status'].map((h) => <th key={h} className="px-3 py-2 font-medium">{h}</th>)}</tr></thead>
-            <tbody>
-              {filtered.flatMap((r) => {
-                const items = r.application_items?.length ? r.application_items : [null];
-                return items.map((i, idx) => (
-                  <tr key={r.id + idx} className="cursor-pointer border-t hover:bg-muted/40" onClick={() => setViewing(r)}>
-                    <td className="px-3 py-2 whitespace-nowrap">{format(new Date(r.performed_at), 'dd/MM/yyyy')}</td>
-                    <td className="px-3 py-2">{r.procedure_name}</td>
-                    <td className="px-3 py-2">{i?.region ?? '—'}</td>
-                    <td className="px-3 py-2">{i?.product_name_snapshot ?? '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{i ? `${i.quantity ?? '?'} ${i.unit}` : '—'}</td>
-                    <td className="px-3 py-2">{profName(r.professional_id)}</td>
-                    <td className="px-3 py-2"><Badge variant={statusVariant(r.status)}>{STATUS_LABEL[r.status]}</Badge></td>
-                  </tr>
-                ));
-              })}
-            </tbody>
-          </table>
         </div>
       )}
 
@@ -213,13 +189,13 @@ export function ClientApplicationsTab({ clientId, clientName }: { clientId: stri
 
 /* ---------------- Editor ---------------- */
 interface EditorState {
-  id?: string; professional_id: string | null; procedure_template_id: string | null; procedure_name: string;
+  id?: string; updated_at?: string; appointment_id: string | null; professional_id: string | null; procedure_template_id: string | null; procedure_name: string;
   templateFields: TemplateField[]; templateVersion: number; performed_at: string; room: string; reason: string; follow_up_date: string;
   based_on_id: string | null; status: string; items: ApplicationItemDraft[]; values: Record<string, string>;
 }
 const newEditorState = (prof: string | null): EditorState => ({
-  professional_id: prof, procedure_template_id: null, procedure_name: '', templateFields: [], templateVersion: 1,
-  performed_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"), room: '', reason: '', follow_up_date: '', based_on_id: null, status: 'draft',
+  id: crypto.randomUUID(), appointment_id: null, professional_id: prof, procedure_template_id: null, procedure_name: '', templateFields: [], templateVersion: 1,
+  performed_at: applicationLocalInput(new Date().toISOString()), room: '', reason: '', follow_up_date: '', based_on_id: null, status: 'draft',
   items: [emptyItem()], values: {},
 });
 
@@ -242,18 +218,21 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   const { data: products = [] } = useQuery({
     queryKey: ['application_products'],
     queryFn: async () => {
-      const { data } = await supabase.from('products').select('id, name, brand, unit').eq('is_active', true).order('name');
+      const { data, error } = await supabase.from('products').select('id, name, brand, unit').eq('is_active', true).order('name');
+      if (error) throw error;
       return data ?? [];
     },
   });
   const { data: appointments = [] } = useQuery({
     queryKey: ['application_appts', clientId],
     queryFn: async () => {
-      const { data } = await supabase.from('appointments').select('id, start_time').eq('client_id', clientId).order('start_time', { ascending: false }).limit(30);
+      const { data, error } = await supabase.from('appointments').select('id, start_time').eq('client_id', clientId).order('start_time', { ascending: false }).limit(30);
+      if (error) throw error;
       return (data ?? []) as any[];
     },
   });
-  const [appointmentId, setAppointmentId] = useState<string>('');
+  const appointmentId = state.appointment_id ?? '';
+  const setAppointmentId = (id: string) => setState({ ...state, appointment_id: id });
 
   const set = (patch: Partial<EditorState>) => setState({ ...state, ...patch });
   const setItem = (idx: number, patch: Partial<ApplicationItemDraft>) => set({ items: state.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) });
@@ -266,6 +245,8 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   };
 
   const save = async (finalize: boolean) => {
+    if (saving) return;
+    if (!isApplicationLocalDate(state.performed_at)) { toast.error('Informe uma data e hora válidas.'); return; }
     if (!state.procedure_name.trim()) { toast.error('Informe o procedimento.'); return; }
     const allFields = [...state.templateFields];
     if (finalize) {
@@ -276,39 +257,26 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
     try {
       const payload: any = {
         client_id: clientId, professional_id: state.professional_id, procedure_template_id: state.procedure_template_id,
-        procedure_name: state.procedure_name.trim(), template_snapshot: { fields: state.templateFields, version: state.templateVersion },
-        performed_at: new Date(state.performed_at).toISOString(), room: state.room || null, reason: state.reason || null,
+        procedure_name: state.procedure_name.trim(),
+        performed_at: state.performed_at, room: state.room || null, reason: state.reason || null,
         follow_up_date: state.follow_up_date || null, based_on_id: state.based_on_id, status: state.status === 'draft' ? 'in_progress' : state.status,
       };
-      if (appointmentId) payload.appointment_id = appointmentId;
-      let id = state.id;
-      if (id) {
-        const { error } = await db.from('application_records').update(payload).eq('id', id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await db.from('application_records').insert(payload).select('id').single();
-        if (error) throw error;
-        id = data.id;
-      }
-      await db.from('application_items').delete().eq('application_id', id);
+      payload.appointment_id = appointmentId || null;
+      const id = state.id;
+      if (!id) throw new Error('Reabra a ficha para continuar.');
       const items = state.items.filter((i) => i.product_name_snapshot || i.region || i.quantity).map((i, idx) => ({
-        application_id: id, position: idx, product_id: i.product_id, product_name_snapshot: i.product_name_snapshot,
+        position: idx, product_id: i.product_id, product_name_snapshot: i.product_name_snapshot,
         manufacturer_snapshot: i.manufacturer_snapshot || null, lot_number: i.lot_number || null, expiration_date: i.expiration_date || null,
         region: i.region, side: i.side || null, quantity: parseQuantity(i.quantity), unit: i.unit, technique: i.technique || null,
         dilution: i.dilution || null, instrument: i.instrument || null, notes: i.notes || null,
       }));
-      if (items.length) { const { error } = await db.from('application_items').insert(items); if (error) throw error; }
-      const vals = Object.entries(state.values).map(([field_id, value]) => ({ application_id: id, field_id, value }));
-      if (vals.length) { const { error } = await db.from('application_field_values').upsert(vals, { onConflict: 'application_id,field_id' }); if (error) throw error; }
-      if (finalize) {
-        const { data, error } = await db.rpc('complete_application_record', { _id: id });
-        if (error) throw error;
-        if (!data?.ok) {
-          toast.error(data?.missing ? `Para finalizar, preencha: ${data.missing.join(', ')}.` : 'Não foi possível finalizar a ficha.');
-          set({ id }); await onSaved(); return;
-        }
-        toast.success('Ficha finalizada.');
-      } else toast.success('Ficha salva.');
+      const { data, error } = await db.rpc('save_application_record_atomic', {
+        _id: id, _record: payload, _items: items, _values: state.values,
+        _finalize: finalize, _expected_updated_at: state.updated_at ?? null,
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error('Não foi possível salvar a ficha.');
+      toast.success(finalize ? 'Ficha finalizada.' : 'Ficha salva.');
       await onSaved();
       setState(null);
     } catch (e) {
@@ -317,7 +285,7 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   };
 
   const cancelRecord = async () => {
-    if (!state.id || !window.confirm('Cancelar esta ficha? Ela ficará registrada como cancelada.')) return;
+    if (!state.id || !state.updated_at || !window.confirm('Cancelar esta ficha? Ela ficará registrada como cancelada.')) return;
     const { data } = await db.rpc('cancel_application_record', { _id: state.id });
     if (!data?.ok) { toast.error('Não foi possível cancelar a ficha.'); return; }
     toast.success('Ficha cancelada.'); await onSaved(); setState(null);
@@ -325,8 +293,8 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
 
   return (
     <Sheet open onOpenChange={(o) => !o && setState(null)}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-        <SheetHeader><SheetTitle>{state.id ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle></SheetHeader>
+      <SheetContent side="right" aria-describedby={undefined} className="w-full max-w-none overflow-x-hidden overflow-y-auto sm:max-w-2xl [&_input]:min-w-0 [&_input]:max-w-full [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:text-base">
+        <SheetHeader><SheetTitle>{state.updated_at ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle></SheetHeader>
         {state.based_on_id && <p className="mt-2 rounded-md bg-muted p-2 text-xs">Baseada em ficha anterior. Confirme produto, lote, validade e quantidade.</p>}
         <div className="mt-4 space-y-5">
           <section className="space-y-3">
@@ -348,13 +316,13 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
               <div className="space-y-1"><Label className="text-xs">Agendamento vinculado</Label>
                 <Select value={appointmentId || undefined} onValueChange={setAppointmentId}>
                   <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                  <SelectContent>{appointments.map((a) => <SelectItem key={a.id} value={a.id}>{format(new Date(a.start_time), 'dd/MM/yyyy HH:mm')}</SelectItem>)}</SelectContent>
+                  <SelectContent>{appointments.map((a) => <SelectItem key={a.id} value={a.id}>{applicationDateLabel(a.start_time)}</SelectItem>)}</SelectContent>
                 </Select></div>
             </div>
             <div className="space-y-1"><Label className="text-xs">Motivo do atendimento</Label><Input value={state.reason} onChange={(e) => set({ reason: e.target.value })} /></div>
           </section>
 
-          <details className="rounded-md border p-3" open={!state.id}>
+          <details className="rounded-md border p-3" open={!state.updated_at}>
             <summary className="cursor-pointer text-sm font-semibold">Avaliação antes do procedimento</summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {BASE_FIELDS.map((f) => <FieldInput key={f.id} field={f} value={state.values[f.id] ?? ''} onChange={(v) => setVal(f.id, v)} />)}
@@ -418,7 +386,7 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
           </section>
 
           <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-            {state.id && <Button variant="ghost" onClick={cancelRecord} disabled={saving}>Cancelar ficha</Button>}
+            {state.updated_at && <Button variant="ghost" onClick={cancelRecord} disabled={saving}>Cancelar ficha</Button>}
             <Button variant="outline" onClick={() => save(false)} disabled={saving}>Salvar rascunho</Button>
             <Button onClick={() => save(true)} disabled={saving}>Finalizar ficha</Button>
           </div>
@@ -441,10 +409,10 @@ function ViewDialog({ record: r, clientName, profName, receptionOnly, canEdit, o
   const print = () => {
     const w = window.open('', '_blank');
     if (!w) return;
-    const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
+    const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] ?? c));
     w.document.write(`<html><head><title>Ficha de aplicação</title><style>body{font-family:system-ui,sans-serif;padding:24px;font-size:13px}h1{font-size:18px}td,th{border:1px solid #ccc;padding:4px 6px;text-align:left}table{border-collapse:collapse;width:100%;margin:8px 0}</style></head><body>
       <h1>FICHA DE APLICAÇÃO</h1>
-      <p><b>Cliente:</b> ${esc(clientName)}<br><b>Data:</b> ${format(new Date(r.performed_at), 'dd/MM/yyyy HH:mm')}<br><b>Profissional:</b> ${esc(profName(r.professional_id))}<br><b>Procedimento:</b> ${esc(r.procedure_name)}<br><b>Status:</b> ${STATUS_LABEL[r.status]}</p>
+      <p><b>Cliente:</b> ${esc(clientName)}<br><b>Data:</b> ${applicationDateLabel(r.performed_at)}<br><b>Profissional:</b> ${esc(profName(r.professional_id))}<br><b>Procedimento:</b> ${esc(r.procedure_name)}<br><b>Status:</b> ${STATUS_LABEL[r.status]}</p>
       ${fields.map((f) => `<p><b>${esc(f.label)}:</b> ${esc(vals[f.id])}</p>`).join('')}
       <table><tr><th>Produto</th><th>Fabricante</th><th>Lote</th><th>Validade</th><th>Região</th><th>Lado</th><th>Qtd.</th><th>Técnica</th></tr>
       ${items.map((i) => `<tr><td>${esc(i.product_name_snapshot)}</td><td>${esc(i.manufacturer_snapshot)}</td><td>${esc(i.lot_number)}</td><td>${i.expiration_date ? format(new Date(i.expiration_date + 'T12:00:00'), 'MM/yyyy') : ''}</td><td>${esc(i.region)}</td><td>${esc(i.side)}</td><td>${esc(i.quantity)} ${esc(i.unit)}</td><td>${esc(i.technique)}</td></tr>`).join('')}</table>
@@ -460,7 +428,7 @@ function ViewDialog({ record: r, clientName, profName, receptionOnly, canEdit, o
         <DialogHeader><DialogTitle className="flex items-center gap-2">{r.procedure_name} {locked && <Lock className="h-4 w-4 text-muted-foreground" />}</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-            <span>{format(new Date(r.performed_at), 'dd/MM/yyyy HH:mm')}</span><span>{profName(r.professional_id)}</span>
+            <span>{applicationDateLabel(r.performed_at)}</span><span>{profName(r.professional_id)}</span>
             <Badge variant={statusVariant(r.status)}>{STATUS_LABEL[r.status]}</Badge>
           </div>
           {r.amendment_reason && <p className="rounded-md bg-muted p-2 text-xs">Retificação — motivo: {r.amendment_reason}</p>}

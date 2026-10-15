@@ -7776,6 +7776,17 @@ export type Database = {
         Returns: string
       }
       reverse_payable_payment: { Args: { _entry_id: string }; Returns: Json }
+      save_application_record_atomic: {
+        Args: {
+          _expected_updated_at?: string
+          _finalize?: boolean
+          _id: string
+          _items: Json
+          _record: Json
+          _values: Json
+        }
+        Returns: Json
+      }
       schedule_package_sessions_batch: {
         Args: {
           p_batch_key?: string

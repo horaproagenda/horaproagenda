@@ -1,10 +1,12 @@
 # Roadmap
 
 ## Fichas — iPhone e Motorola
-- [ ] Exibir somente balões, filtros empilhados e ações acessíveis nos celulares
-- [ ] Corrigir carregamento de datas e preenchimento com teclado móvel
-- [ ] Gravar ficha, itens e campos em transação validada no servidor
-- [ ] Executar testes e verificar telas sem alterar registros reais
+- [x] Exibir somente balões, filtros empilhados e ações acessíveis nos celulares
+- [x] Corrigir carregamento de datas e preservar fonte legível e rolagem com teclado móvel
+- [x] Gravar ficha, itens e campos em transação validada no servidor
+- [x] Executar 11 testes e verificar telas isoladas em 390px e 412px sem alterar registros reais
+- [x] Conferir proteções móveis: 48 passaram; duas falhas preexistentes (teste de 7 abas desatualizado e larguras em Contas a Pagar), fora desta correção
+- [ ] Validar gravação autenticada real e Safari no dispositivo — Supabase externo sem sessão de teste disponível
 
 ## Avulsos separados dos pacotes
 - [x] Remover vínculos por semelhança e proteger a origem oficial nas duas direções

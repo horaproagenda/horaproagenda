@@ -1,5 +1,11 @@
 # Roadmap
 
+## Fichas — iPhone e Motorola
+- [ ] Exibir somente balões, filtros empilhados e ações acessíveis nos celulares
+- [ ] Corrigir carregamento de datas e preenchimento com teclado móvel
+- [ ] Gravar ficha, itens e campos em transação validada no servidor
+- [ ] Executar testes e verificar telas sem alterar registros reais
+
 ## Avulsos separados dos pacotes
 - [x] Remover vínculos por semelhança e proteger a origem oficial nas duas direções
 - [x] Corrigir avulsos comprovados de Ana Flávia e sequência sem alterar horários ou recebimento

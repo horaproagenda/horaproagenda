@@ -67,4 +67,27 @@ describe('gravação oficial de fichas', () => {
     await waitFor(() => expect(mocks.rpc).toHaveBeenCalled());
     expect(mocks.rpc.mock.calls[0][1]).toMatchObject({ _id: 'record', _expected_updated_at: '2026-10-15T18:00:00Z', _record: { appointment_id: 'appt' } });
   });
+  it('acompanha a área visível ao abrir e fechar teclado sem perder os campos preenchidos', () => {
+    const viewport = new EventTarget();
+    Object.assign(viewport, { height: 844, offsetTop: 0 });
+    vi.stubGlobal('visualViewport', viewport);
+    const { unmount } = render(<ClientApplicationsTab clientId="client" clientName="Teste" />);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Nova ficha' }));
+      fillProcedure();
+      const editor = screen.getByRole('dialog');
+      expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('844px');
+      Object.assign(viewport, { height: 480, offsetTop: 20 });
+      fireEvent(viewport, new Event('resize'));
+      expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('480px');
+      expect(editor.style.getPropertyValue('--application-viewport-top')).toBe('20px');
+      expect(screen.getByDisplayValue('Laser')).toBeInTheDocument();
+      Object.assign(viewport, { height: 844, offsetTop: 0 });
+      fireEvent(viewport, new Event('resize'));
+      expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('844px');
+    } finally {
+      unmount();
+      vi.unstubAllGlobals();
+    }
+  });
 });

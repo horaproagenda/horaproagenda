@@ -1589,6 +1589,40 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
   }
 }
 
+/* Application editor: only fields scroll; actions stay in the visible viewport.
+   This scoped override intentionally wins over the generic mobile dialog rules. */
+[role="dialog"][data-application-editor] {
+  top: var(--application-viewport-top, 0px);
+  bottom: auto;
+  height: var(--application-viewport-height, calc(100dvh - var(--kb-inset, 0px)));
+  max-height: var(--application-viewport-height, calc(100dvh - var(--kb-inset, 0px))) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 0 !important;
+}
+.application-editor-header {
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 1rem;
+}
+.application-editor-fields {
+  padding: 1rem;
+  scroll-padding-block: 1rem;
+}
+.application-editor-actions {
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+/* Global compact table rules assume h-8 buttons are icons. Payables include
+   labelled commands, so keep their natural width and a readable row height. */
+[data-payables-desktop] tbody button {
+  width: auto !important;
+  min-width: 2rem;
+  height: 2rem !important;
+}
+[data-payables-desktop] tbody td {
+  padding-block: 0.5rem !important;
+}
+
 /* 8) Grades densas viram coluna única em telas muito estreitas. */
 @media (max-width: 359px) {
   .grid.grid-cols-2 > * {

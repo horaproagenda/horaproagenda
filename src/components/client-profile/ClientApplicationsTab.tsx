@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -215,6 +215,26 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   state: EditorState; setState: (s: EditorState | null) => void; clientId: string; templates: Template[]; professionals: any[]; isAdmin: boolean; onSaved: () => Promise<void> | void;
 }) {
   const [saving, setSaving] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const update = () => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      // visualViewport already excludes the keyboard; do not subtract kb-inset again.
+      editor.style.setProperty('--application-viewport-height', `${viewport?.height ?? window.innerHeight}px`);
+      editor.style.setProperty('--application-viewport-top', `${viewport?.offsetTop ?? 0}px`);
+    };
+    update();
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
   const { data: products = [] } = useQuery({
     queryKey: ['application_products'],
     queryFn: async () => {
@@ -293,10 +313,10 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
 
   return (
     <Sheet open onOpenChange={(o) => !o && setState(null)}>
-      <SheetContent side="right" aria-describedby={undefined} className="w-full max-w-none overflow-x-hidden overflow-y-auto sm:max-w-2xl [&_input]:min-w-0 [&_input]:max-w-full [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:text-base">
-        <SheetHeader><SheetTitle>{state.updated_at ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle></SheetHeader>
-        {state.based_on_id && <p className="mt-2 rounded-md bg-muted p-2 text-xs">Baseada em ficha anterior. Confirme produto, lote, validade e quantidade.</p>}
-        <div className="mt-4 space-y-5">
+      <SheetContent ref={editorRef} side="right" data-application-editor aria-describedby={undefined} className="application-editor w-full max-w-none sm:max-w-2xl [&_input]:min-w-0 [&_input]:max-w-full [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:text-base">
+        <SheetHeader className="application-editor-header shrink-0 border-b text-left"><SheetTitle className="pr-8">{state.updated_at ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle></SheetHeader>
+        <div data-application-fields className="application-editor-fields min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-5">
+          {state.based_on_id && <p className="rounded-md bg-muted p-2 text-xs">Baseada em ficha anterior. Confirme produto, lote, validade e quantidade.</p>}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold">Atendimento</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -385,12 +405,12 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
             <div className="space-y-1 sm:max-w-xs"><Label className="text-xs">Data sugerida de retorno</Label><Input type="date" value={state.follow_up_date} onChange={(e) => set({ follow_up_date: e.target.value })} /></div>
           </section>
 
-          <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+        </div>
+          <div data-application-actions className="application-editor-actions flex shrink-0 flex-col-reverse gap-2 border-t bg-background sm:flex-row sm:justify-end">
             {state.updated_at && <Button variant="ghost" onClick={cancelRecord} disabled={saving}>Cancelar ficha</Button>}
             <Button variant="outline" onClick={() => save(false)} disabled={saving}>Salvar rascunho</Button>
             <Button onClick={() => save(true)} disabled={saving}>Finalizar ficha</Button>
           </div>
-        </div>
       </SheetContent>
     </Sheet>
   );

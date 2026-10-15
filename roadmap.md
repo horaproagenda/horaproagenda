@@ -1,5 +1,11 @@
 # Roadmap
 
+## Final da ficha e estabilidade de A Pagar
+- [ ] Ajustar área rolável e ações da ficha ao espaço visível do iPhone
+- [ ] Estabilizar dimensões e melhorar legibilidade de A Pagar no notebook
+- [ ] Validar interações e dimensões em telas isoladas, mantendo testes de gravação e pagamentos
+- [ ] Confirmar em Safari no iPhone real — aparelho e sessão autenticada indisponíveis
+
 ## Fichas — iPhone e Motorola
 - [x] Exibir somente balões, filtros empilhados e ações acessíveis nos celulares
 - [x] Corrigir carregamento de datas e preservar fonte legível e rolagem com teclado móvel

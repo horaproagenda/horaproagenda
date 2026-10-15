@@ -47,13 +47,27 @@ export function useSignedPhotoUrl(filePath: string | null, fallbackUrl?: string 
  * Utility function to get signed URLs for multiple photos at once.
  * This is more efficient than calling the hook for each photo.
  */
+/**
+ * Resolves the storage path of a photo. Older records may have only a
+ * (public or signed) URL saved; extract the object path from it so the
+ * private bucket can still issue a fresh signed link.
+ */
+export function resolvePhotoPath(photo: { file_path: string | null; file_url: string | null }): string | null {
+  if (photo.file_path) return photo.file_path.replace(/^\/+/, '').replace(/^client-photos\//, '');
+  const url = photo.file_url || '';
+  const m = url.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/client-photos\/([^?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export async function getSignedPhotoUrls(
   photos: { file_path: string | null; file_url: string | null }[]
 ): Promise<Map<string, string>> {
   const urlMap = new Map<string, string>();
   
-  // Filter photos that have file_path
-  const photosWithPath = photos.filter(p => p.file_path);
+  // Normalize: every photo gets a resolvable storage path when possible
+  const photosWithPath = photos
+    .map(p => ({ ...p, file_path: resolvePhotoPath(p) }))
+    .filter(p => p.file_path);
   
   if (photosWithPath.length === 0) return urlMap;
 

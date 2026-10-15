@@ -37,6 +37,7 @@ import { useFinancialEntries, FinancialEntry } from '@/hooks/useFinancialEntries
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { useBanks } from '@/hooks/useBanks';
 import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
+import { payableChainState } from '@/lib/payableChain';
 
 const DEFAULT_CATEGORIES: { name: string; type: 'income' | 'expense' }[] = [
   // Receitas
@@ -425,7 +426,7 @@ export function CategoriasFinanceiras() {
 
   const getStatusBadge = (entry: FinancialEntry) => {
     if (entry.status === 'paid') {
-      const isPartial = entry.notes?.includes('Pagamento parcial');
+      const isPartial = payableChainState(entry, [...payables, ...receivables]) === 'partial';
       if (isPartial) return <Badge className="bg-yellow-100 text-yellow-700 text-[10px]">Parcial</Badge>;
       return <Badge className="bg-primary/10 text-primary text-[10px]">Pago</Badge>;
     }
@@ -1018,7 +1019,6 @@ export function CategoriasFinanceiras() {
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-4">
                         <div className="flex items-center gap-2">
-                          <Badge variant="default">Receita</Badge>
                           <span className="font-medium">{cat.name}</span>
                           <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>
@@ -1055,7 +1055,6 @@ export function CategoriasFinanceiras() {
                     <AccordionTrigger className="hover:no-underline">
                       <div className="flex items-center justify-between w-full pr-4">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary">Despesa</Badge>
                           <span className="font-medium">{cat.name}</span>
                           <span className="text-muted-foreground text-sm">({cat.groups.length})</span>
                         </div>

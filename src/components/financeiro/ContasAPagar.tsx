@@ -787,14 +787,54 @@ export function ContasAPagar() {
           </div>
         )}
 
-        <div className="w-full overflow-x-auto rounded-md border">
+        {/* Celular: cartões com o nome da conta sempre visível */}
+        <div className="space-y-2 pb-24 md:hidden">
+          {filteredPayables.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Nenhuma conta encontrada para o período selecionado</p>
+          ) : filteredPayables.map((entry) => (
+            <div key={entry.id} className="rounded-lg border bg-card p-3">
+              <div className="flex items-start gap-2">
+                {batchMode && entry.status !== 'paid' && (
+                  <Checkbox className="mt-0.5" checked={selectedEntryIds.has(entry.id)} onCheckedChange={() => toggleEntrySelection(entry.id)} />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-medium">{entry.description}</p>
+                  <p className="text-[11px] text-muted-foreground tabular-nums">Vence {format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</p>
+                </div>
+                <span className="whitespace-nowrap text-sm font-semibold text-red-600 tabular-nums">R$ {Number(entry.amount).toFixed(2)}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+                {getStatusDisplay(entry)}
+                <div className="flex gap-1">
+                  {entry.status !== 'paid' && !batchMode && (
+                    <Button variant="outline" size="sm" onClick={() => openPayDialog(entry)} className="h-8 gap-1 px-2 text-xs text-primary border-primary/30">
+                      <DollarSign className="h-3 w-3" /> Dar Baixa
+                    </Button>
+                  )}
+                  {entry.status === 'paid' && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayDialog(entry, true)} title="Editar pagamento">
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openCancelDialog(entry)} title="Cancelar baixa">
+                        <Undo2 className="h-3.5 w-3.5 text-orange-500" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden w-full overflow-x-auto rounded-md border md:block md:w-fit md:max-w-full">
           <div className="max-h-[500px] overflow-y-auto">
-          <Table className="w-full table-fixed min-w-[520px]">
+          <Table className="w-auto">
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
                 <TableHead className="text-[11px] w-[96px]">Data</TableHead>
-                <TableHead className="text-[11px]">Descrição</TableHead>
+                <TableHead className="text-[11px] min-w-[180px] max-w-[340px]">Descrição</TableHead>
                 <TableHead className="text-[11px] w-[110px]">Valor</TableHead>
                 <TableHead className="text-[11px] w-[120px]">Status</TableHead>
                 <TableHead className="text-[11px] w-[112px] text-right">Ações</TableHead>

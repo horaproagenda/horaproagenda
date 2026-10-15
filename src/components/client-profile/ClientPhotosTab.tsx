@@ -15,7 +15,7 @@ import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Downloa
 
 type StageFilter = 'all' | TreatmentStage;
 import { useUploadFile } from '@/hooks/useClientProfile';
-import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
+import { getSignedPhotoUrls, resolvePhotoPath } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -89,12 +89,27 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     };
 
     fetchSignedUrls();
+    // Signed links expire after 30 min; renew before that so open screens never break.
+    const timer = window.setInterval(fetchSignedUrls, 20 * 60 * 1000);
+    return () => window.clearInterval(timer);
   }, [photos]);
+
+  // If a link fails (expired/denied), request a fresh one once for that photo.
+  const retriedRef = useRef<Set<string>>(new Set());
+  const handleImageError = async (photo: TreatmentPhoto) => {
+    const path = resolvePhotoPath(photo);
+    if (!path || retriedRef.current.has(path)) return;
+    retriedRef.current.add(path);
+    const urls = await getSignedPhotoUrls([{ file_path: path, file_url: null }]);
+    const fresh = urls.get(path);
+    if (fresh) setSignedUrls(prev => new Map(prev).set(path, fresh));
+  };
 
   // Helper to get the display URL for a photo
   const getPhotoUrl = (photo: TreatmentPhoto): string => {
-    if (photo.file_path && signedUrls.has(photo.file_path)) {
-      return signedUrls.get(photo.file_path)!;
+    const path = resolvePhotoPath(photo);
+    if (path && signedUrls.has(path)) {
+      return signedUrls.get(path)!;
     }
     // Fallback to stored URL (may not work if bucket is private)
     return photo.file_url || '/placeholder.svg';
@@ -465,6 +480,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
               <div className="relative flex min-h-[52vh] max-h-[68vh] items-center justify-center rounded-md border bg-muted/20 overflow-hidden">
                 <img
                   src={getPhotoUrl(selectedPhoto)}
+                  onError={() => handleImageError(selectedPhoto)}
                   alt={`Foto ${stageLabels[selectedPhoto.stage]}`}
                   loading="eager"
                   className="max-h-[68vh] w-auto max-w-full object-contain"
@@ -559,6 +575,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                           >
                             <img
                               src={getPhotoUrl(photo)}
+                              onError={() => handleImageError(photo)}
                               alt={`Foto ${stageLabels[photo.stage]}`}
                               loading="lazy"
                               className="w-full h-20 object-cover rounded-lg border transition-transform group-hover:scale-105"

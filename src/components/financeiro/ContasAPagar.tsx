@@ -827,17 +827,17 @@ export function ContasAPagar() {
           ))}
         </div>
 
-        <div className="hidden w-full overflow-x-auto rounded-md border md:block md:w-fit md:max-w-full">
-          <div className="max-h-[500px] overflow-y-auto">
-          <Table className="w-auto">
+        <div data-payables-desktop className="hidden w-full min-w-0 max-w-5xl rounded-md border md:block">
+          <div className="max-h-[500px] overflow-y-auto [scrollbar-gutter:stable]">
+          <Table className="w-full table-fixed">
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                 {batchMode && <TableHead className="w-10" />}
-                <TableHead className="text-[11px] w-[96px]">Data</TableHead>
-                <TableHead className="text-[11px] min-w-[180px] max-w-[340px]">Descrição</TableHead>
-                <TableHead className="text-[11px] w-[110px]">Valor</TableHead>
-                <TableHead className="text-[11px] w-[120px]">Status</TableHead>
-                <TableHead className="text-[11px] w-[112px] text-right">Ações</TableHead>
+                <TableHead className="text-xs w-[14%]">Data</TableHead>
+                <TableHead className="text-xs">Descrição</TableHead>
+                <TableHead className="text-xs w-[16%]">Valor</TableHead>
+                <TableHead className="text-xs w-[19%]">Status</TableHead>
+                <TableHead className="text-xs w-[18%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -860,22 +860,22 @@ export function ContasAPagar() {
                         )}
                       </TableCell>
                     )}
-                    <TableCell className="text-xs py-2 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-xs py-2 truncate" title={entry.description}>{entry.description}</TableCell>
-                    <TableCell className="text-xs py-2 text-red-600 font-medium tabular-nums whitespace-nowrap">
+                    <TableCell className="text-sm py-2.5 tabular-nums whitespace-nowrap">{format(parseISO(entry.due_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-sm py-2.5 break-words" title={entry.description}>{entry.description}</TableCell>
+                    <TableCell className="text-sm py-2.5 text-red-600 font-medium tabular-nums whitespace-nowrap">
                       R$ {Number(entry.amount).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-xs py-2 whitespace-nowrap">
+                    <TableCell className="text-sm py-2.5">
                       {getStatusDisplay(entry)}
                     </TableCell>
-                    <TableCell className="text-xs py-2 text-right whitespace-nowrap">
+                    <TableCell className="text-sm py-2.5 text-right whitespace-nowrap">
                       <div className="flex justify-end gap-1">
                         {entry.status !== 'paid' && !batchMode && (
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => openPayDialog(entry)} 
-                            className="h-7 px-2 gap-1 text-[11px] text-primary border-primary/30 hover:bg-primary/10"
+                            className="h-8 px-2 gap-1 text-xs text-primary border-primary/30 hover:bg-primary/10"
                           >
                             <DollarSign className="h-3 w-3" />
                             Dar Baixa
@@ -886,7 +886,7 @@ export function ContasAPagar() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-7 w-7"
+                              className="h-8 w-8"
                               onClick={() => openPayDialog(entry, true)} 
                               title="Editar pagamento"
                             >
@@ -895,7 +895,7 @@ export function ContasAPagar() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-7 w-7"
+                              className="h-8 w-8"
                               onClick={() => openCancelDialog(entry)} 
                               title="Cancelar baixa"
                             >

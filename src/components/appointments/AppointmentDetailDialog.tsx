@@ -1303,14 +1303,21 @@ export function AppointmentDetailDialog({
       unitPrice: totalPrice,
       total: totalPrice,
     },
-    ...(appointment.additional_items || []).map((item) => ({
-      item: item.service?.name || item.product?.name || (item.item_type === 'service' ? 'Serviço adicional' : 'Produto adicional'),
-      type: item.item_type === 'service' ? 'Serviço adicional' : 'Produto',
-      quantity: Number(item.quantity || 0),
-      unitPrice: Number(item.unit_price || 0),
-      total: Number(item.total_amount || 0),
+  ].flatMap((main) => buildReceiptRows({
+    main,
+    persisted: (appointment.additional_items || []) as ReceiptExtraItem[],
+    pending: paymentAdditionalItems.map((it) => ({
+      item_type: it.item_type,
+      service_id: it.item_type === 'service' ? it.item_id : null,
+      product_id: it.item_type === 'product' ? it.item_id : null,
+      quantity: it.quantity,
+      unit_price: it.unit_price_value,
+      total_amount: it.total_amount,
     })),
-  ];
+    nameLookup: (type, id) => type === 'service'
+      ? activeServices.find((s) => s.id === id)?.name
+      : productsForSale.find((p) => p.id === id)?.name,
+  }));
 
   const normalizePdfText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 

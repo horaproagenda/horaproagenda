@@ -92,6 +92,8 @@ Legenda de cobertura:
 | 44 | Abas do perfil rolam no celular (nunca 7 colunas comprimidas) | `unit` `responsive-layout-invariants.test.ts` |
 | 45 | Nenhuma largura fixa > 64px sem contraparte fluida (`w-full` / `max-w-` / breakpoint) | `unit` `responsive-layout-invariants.test.ts` |
 | 46 | Formulários em 1 coluna no celular (`sm:grid-cols-2/3` apenas acima de 640px) | `unit` `responsive-layout-invariants.test.ts` |
+| 47 | Nova ficha acompanha a área realmente visível, preserva preenchimento após teclado e mantém último campo/ações alcançáveis | `unit` `ClientApplicationsTab.test.tsx` + `e2e` `application-payables-layout.spec.ts` (dados isolados); Safari real pendente |
+| 48 | A Pagar tem dimensões estáveis no notebook e ações inteiras, inclusive com lista longa e seleção | `e2e` `application-payables-layout.spec.ts` (dados isolados, sem baixas reais) |
 
 ## Regra de ouro
 

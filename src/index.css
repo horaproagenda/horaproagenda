@@ -1612,6 +1612,16 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
 .application-editor-actions {
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }
+/* Global compact table rules assume h-8 buttons are icons. Payables include
+   labelled commands, so keep their natural width and a readable row height. */
+[data-payables-desktop] tbody button {
+  width: auto !important;
+  min-width: 2rem;
+  height: 2rem !important;
+}
+[data-payables-desktop] tbody td {
+  padding-block: 0.5rem !important;
+}
 
 /* 8) Grades densas viram coluna única em telas muito estreitas. */
 @media (max-width: 359px) {

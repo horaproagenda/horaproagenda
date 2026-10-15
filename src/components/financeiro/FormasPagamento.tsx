@@ -592,7 +592,7 @@ export function FormasPagamento() {
 
             <Separator />
 
-            <div className="max-h-[350px] overflow-y-auto overflow-x-visible">
+            <div className="pb-24 lg:pb-0 lg:max-h-[350px] lg:overflow-y-auto overflow-x-visible">
               {(() => {
                 type BoletoGroup = (typeof filteredClientGroups)[number];
                 type BoletoInstallment = {

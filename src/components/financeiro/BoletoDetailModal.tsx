@@ -198,7 +198,7 @@ export function BoletoDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -206,8 +206,8 @@ export function BoletoDetailModal({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[75vh] pr-2">
-          <div className="space-y-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+          <div className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {/* Sale & Client Info */}
             <div className="grid grid-cols-2 gap-3">
               <Card>
@@ -543,7 +543,7 @@ export function BoletoDetailModal({
               </>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
 
       <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>

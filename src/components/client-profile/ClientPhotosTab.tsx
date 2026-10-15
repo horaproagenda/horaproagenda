@@ -15,7 +15,7 @@ import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Downloa
 
 type StageFilter = 'all' | TreatmentStage;
 import { useUploadFile } from '@/hooks/useClientProfile';
-import { getSignedPhotoUrls } from '@/hooks/useSignedPhotoUrl';
+import { getSignedPhotoUrls, resolvePhotoPath } from '@/hooks/useSignedPhotoUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';

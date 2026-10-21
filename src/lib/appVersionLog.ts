@@ -72,7 +72,7 @@ export function logVersionEvent(type: VersionEventType, detail?: Record<string, 
   writeBuffer(buf);
 
   // Console com prefixo padronizado
-  // eslint-disable-next-line no-console
+   
   console.info(`[AppVersion] ${type}`, detail ?? '');
 
   // Best-effort remote log (não bloqueia, ignora erros)

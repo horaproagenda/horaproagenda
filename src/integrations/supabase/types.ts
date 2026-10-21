@@ -7421,6 +7421,14 @@ export type Database = {
           used: number
         }[]
       }
+      get_seat_usage_report: {
+        Args: never
+        Returns: {
+          owner_user_id: string
+          seat_limit: number
+          used: number
+        }[]
+      }
       get_sensitive_business_settings: {
         Args: never
         Returns: {

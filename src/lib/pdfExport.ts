@@ -108,7 +108,7 @@ function warnIfOverflow(doc: jsPDF, widths?: Record<number, number>) {
   const sum = Object.values(widths).reduce((a, b) => a + b, 0);
   const avail = usableWidth(doc);
   if (sum > avail + 0.5) {
-    // eslint-disable-next-line no-console
+     
     console.warn(
       `[pdfExport] Soma das larguras de coluna (${sum.toFixed(1)}mm) excede a área útil (${avail.toFixed(1)}mm). Colunas podem se sobrepor.`,
     );

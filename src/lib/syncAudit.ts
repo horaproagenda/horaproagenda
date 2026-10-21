@@ -77,7 +77,7 @@ export function logSyncEvent(
   writeLog(log);
 
   const tag = result === 'error' ? '❌' : result === 'skipped' ? '⏭️' : '✅';
-  // eslint-disable-next-line no-console
+   
   console.log(`[SyncAudit] ${tag} ${event} (${entry.origin})`, details ?? '');
 
   // Expor evento no window para testes E2E e debug

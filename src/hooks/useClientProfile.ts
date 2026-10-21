@@ -785,7 +785,7 @@ export function useClientProfile(clientId: string) {
         if ((a.amount_paid || 0) <= 0) continue;
 
         const pkg = a.package_appointment?.package;
-        let packageId = pkg?.id as string | undefined;
+        const packageId = pkg?.id as string | undefined;
 
         // A retroactive appointment that already has its own retroactive sale
         // would otherwise be listed twice (once as "sale", once as

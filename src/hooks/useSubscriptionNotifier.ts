@@ -42,7 +42,7 @@ export function useSubscriptionNotifier() {
       .channel(`account-sub-notify-${user.id}`)
       .on(
         'postgres_changes',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         {
           event: 'UPDATE',
           schema: 'public',

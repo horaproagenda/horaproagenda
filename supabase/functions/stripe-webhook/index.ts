@@ -529,7 +529,7 @@ async function revokeAccessForPaymentEvent(event: Stripe.Event) {
     // deno-lint-ignore no-explicit-any
     const obj = event.data.object as any;
     let customerId: string | null = null;
-    let reason = event.type;
+    const reason = event.type;
 
     if (obj?.customer) {
       customerId = typeof obj.customer === 'string' ? obj.customer : obj.customer?.id ?? null;

@@ -178,7 +178,7 @@ describe('Integração: Fila offline → reconexão', () => {
 
     // Tenta MAX_ATTEMPTS vezes manualmente
     for (let i = 0; i < __testing__.MAX_ATTEMPTS; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
+       
       await act(async () => {
         await result.current.sync();
       });

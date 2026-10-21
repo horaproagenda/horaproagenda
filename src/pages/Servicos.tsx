@@ -244,7 +244,7 @@ const Servicos: React.FC = () => {
   const packageClients: { id: string; name: string }[] = [];
 
   const filteredServices = useMemo(() => {
-    let result = services.filter(service => {
+    const result = services.filter(service => {
       if (serviceFilters.category && service.category !== serviceFilters.category) return false;
       if (serviceFilters.professional && service.professional_id !== serviceFilters.professional) return false;
       if (serviceFilters.room && service.room_id !== serviceFilters.room) return false;
@@ -285,7 +285,7 @@ const Servicos: React.FC = () => {
   const kitServices = visibleServices.filter(isKitServiceItem);
 
   const filteredPackages = useMemo(() => {
-    let result = packages.filter(pkg => {
+    const result = packages.filter(pkg => {
       if (packageFilters.category && pkg.category !== packageFilters.category) return false;
       if (packageFilters.professional && pkg.professional_id !== packageFilters.professional) return false;
       if (packageFilters.room && pkg.room_id !== packageFilters.room) return false;

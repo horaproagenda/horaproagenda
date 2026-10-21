@@ -3,6 +3,7 @@
 - Appointment package membership is proven only by explicit session IDs; standalone origin cannot be converted by heuristics, and batch scheduling inserts the exact session link before synchronization. Display numbering is separate from immutable template step identity to preserve procedures during historical corrections.
 
 - Backend operations own definitive business transitions; frontend validation and cache are advisory only, because retries and concurrent devices must obey the same database rules.
+- Service kit steps are self-contained in services.service_components (name, duration, price, professional, room, equipment) validated by validate_kit_steps; kit appointments store price_snapshot and pricing reads appointmentBasePrice, so editing standalone services never changes kits.
 - Single-item cash sales use create_single_sale_atomic with a stable request ID and invoker RLS; sales, bookable inventory, ledger and exact stock deductions commit together so failures cannot leave partial sales.
 - Multi-item checkout uses create_multi_item_sale_atomic with invoker RLS and a basket request identity; catalog prices, payment fees, item-linked ledger, deferred installments, credit and stock commit together rather than browser compensation.
 - Package price/name guards validate only new or changed values, and application quantity guards allow incomplete drafts but reject invalid supplied amounts; unrelated edits must not rewrite legacy records or appointment times.

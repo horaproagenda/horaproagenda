@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.tg_client_document_type_from_template() FROM PUBLIC, anon, authenticated;

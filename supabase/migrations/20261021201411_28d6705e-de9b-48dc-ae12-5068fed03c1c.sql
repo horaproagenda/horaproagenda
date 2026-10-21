@@ -1,0 +1,1 @@
+REVOKE ALL ON public.package_audit_logs FROM anon;

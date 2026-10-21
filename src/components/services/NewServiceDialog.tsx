@@ -58,20 +58,6 @@ import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
 import { KitStepsEditor } from './KitStepsEditor';
 import { emptyKitStep, kitTotalPrice as sumKitPrice, serializeKitSteps, validateKitSteps, type KitStep } from '@/lib/kitSteps';
 
-function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
-  if (!comps.length) return null;
-  for (let i = 0; i < comps.length; i++) {
-    const c = comps[i];
-    if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
-    if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
-      return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
-    }
-    if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
-    if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
-  }
-  return null;
-}
-
 const serviceSchema = z.object({
   name: z.string().trim().min(2, 'Nome deve ter pelo menos 2 caracteres').max(100, 'Nome muito longo'),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
@@ -465,7 +451,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
             {/* Active switch */}
             <FormField

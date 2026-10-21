@@ -1701,7 +1701,7 @@ Até breve! ✨`;
             room_id: selectedRoom || undefined,
             notes: notes || undefined,
             repeat_count: editableServiceDates.length,
-            interval_days: serviceIntervalDays,
+            interval_days: effectiveIntervalDays,
             // Preview handled below on the client; do NOT auto-send from the hook.
             send_whatsapp: false,
             client_phone: clientData?.phone,

@@ -35,7 +35,8 @@ import { toast } from 'sonner';
 import { useWhatsapp } from '@/hooks/useWhatsapp';
 import { downloadBlob, getFileNameWithExtension, getStorageBlob } from '@/lib/storageFileAccess';
 import { isRichDocument, sanitizeRichDocumentHtml, toPrintableDocumentHtml } from '@/lib/documentRichContent';
-import { downloadRichDocumentPdf } from '@/lib/richDocumentPdf';
+import { downloadRichDocumentPdf, renderRichDocumentPdfBytes } from '@/lib/richDocumentPdf';
+import { supabase } from '@/integrations/supabase/client';
 import { htmlToPlainText } from '@/lib/documentTemplateFields';
 
 interface ClientDocumentViewDialogProps {

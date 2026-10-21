@@ -165,12 +165,12 @@ export function ClientDocumentViewDialog({
   /** Plain-text projection used for WhatsApp / e-mail bodies. */
   const contentAsText = contentIsRich ? htmlToPlainText(document.content) : (document.content || '');
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (mode: 'download' | 'bytes' = 'download'): Promise<ArrayBuffer | void> => {
     if (contentIsRich) {
       // Rich documents are rasterized so bold, colors, tables and images
       // are preserved exactly as saved.
       try {
-        await downloadRichDocumentPdf({
+        const richOpts = {
           title: document.title || 'Documento',
           bodyHtml: toPrintableDocumentHtml(document.content),
           headerLines: [
@@ -181,8 +181,11 @@ export function ClientDocumentViewDialog({
               : '',
           ],
           fileName: `${document.title} - ${client?.name || 'cliente'}`,
-        });
+        };
+        if (mode === 'bytes') return await renderRichDocumentPdfBytes(richOpts);
+        await downloadRichDocumentPdf(richOpts);
       } catch (error) {
+        if (mode === 'bytes') throw error;
         console.error('Error generating rich PDF:', error);
         toast.error('Não foi possível gerar o PDF do documento agora.');
       }
@@ -234,7 +237,36 @@ export function ClientDocumentViewDialog({
     addFooter();
 
     const fileName = `${document.title} - ${client?.name || 'cliente'}.pdf`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9 ._-]/g, '');
+    if (mode === 'bytes') return pdf.output('arraybuffer');
     pdf.save(fileName);
+  };
+
+  /** Gera o PDF, guarda no arquivo do cliente e envia o link de download pelo WhatsApp. */
+  const handleSendPdfWhatsApp = async () => {
+    const phone = phoneInput || client?.phone;
+    if (!phone) { toast.error('Informe o número de telefone do cliente'); return; }
+    if (!client?.id) { toast.error('Cliente não identificado'); return; }
+    setIsSendingWhatsapp(true);
+    try {
+      const bytes = await handleDownloadPdf('bytes');
+      if (!bytes) throw new Error('pdf');
+      const path = `${client.id}/enviados/${document.id}-${Date.now()}.pdf`;
+      const { error: upErr } = await supabase.storage.from('client-documents')
+        .upload(path, new Blob([bytes], { type: 'application/pdf' }), { contentType: 'application/pdf', upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage.from('client-documents')
+        .createSignedUrl(path, 60 * 60 * 24 * 7);
+      if (sErr || !signed?.signedUrl) throw sErr || new Error('link');
+      const firstName = (client?.name || '').split(' ')[0];
+      const message = `Olá${firstName ? `, ${firstName}` : ''}! Segue o seu documento *${document.title}* (${documentTypeLabels[document.type] || 'Documento'}) em PDF:\n\n${signed.signedUrl}\n\nO link fica disponível por 7 dias.`;
+      const result = await sendWhatsappMessage(phone, message, { client_id: client.id });
+      if (result) { setWhatsappSent(true); setTimeout(() => setWhatsappSent(false), 3000); }
+    } catch (error) {
+      console.error('Error sending PDF via WhatsApp:', error);
+      toast.error('Não foi possível enviar o PDF agora. Tente novamente.');
+    } finally {
+      setIsSendingWhatsapp(false);
+    }
   };
 
   const handleOpenGovBr = () => {
@@ -464,7 +496,7 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
             <div className="flex flex-wrap gap-2">
               {document.content && (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadPdf()}>
                     <Printer className="h-4 w-4 mr-1.5" />
                     Baixar PDF
                   </Button>
@@ -506,7 +538,18 @@ Documento gerado em ${format(new Date(document.created_at), "dd/MM/yyyy 'às' HH
                           ) : (
                             <Send className="h-4 w-4 mr-1.5" />
                           )}
-                          Enviar documento
+                          Enviar texto do documento
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleSendPdfWhatsApp}
+                          disabled={isSendingWhatsapp}
+                          aria-label="Enviar PDF pelo WhatsApp"
+                        >
+                          <FileText className="h-4 w-4 mr-1.5" />
+                          Enviar em PDF
                         </Button>
                       </div>
                     </PopoverContent>

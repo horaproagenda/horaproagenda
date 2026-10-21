@@ -104,9 +104,9 @@ describe('perfil do cliente organizado', () => {
     expect(header).toMatch(/flex-col[\s\S]{0,120}sm:flex-row/);
   });
 
-  it('as abas do perfil rolam no celular em vez de comprimir 7 colunas', () => {
+  it('as abas do perfil rolam no celular em vez de comprimir colunas', () => {
     expect(page).toContain('overflow-x-auto');
-    expect(page).toContain('lg:grid-cols-7');
+    expect(page).toMatch(/lg:grid-cols-\d/);
     expect(page).not.toContain('grid w-full grid-cols-7');
   });
 

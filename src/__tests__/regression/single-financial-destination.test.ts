@@ -10,7 +10,6 @@ const writers = [
   'hooks/useAppointments.ts',
   'hooks/useSingleSales.ts',
   'hooks/useProducts.ts',
-  'components/caixa/SaleForm.tsx',
   'components/client-profile/LegacyHistoryDialog.tsx',
   'components/financeiro/PacotesFinanceiro.tsx',
   'components/financeiro/CancelPackageDialog.tsx',
@@ -21,6 +20,12 @@ describe('destino financeiro único', () => {
     const s = read(f);
     expect(s).toMatch(/resolveFinancialDestination/);
     expect(s).not.toMatch(/from\('cash_registers'\)\s*\.select\('id'\)\s*\.(eq\('status', 'open'\)|is\('closed_at', null\))/);
+  });
+
+  it('venda do Caixa delega o destino ao servidor e não escolhe caixa sozinho', () => {
+    const s = read('components/caixa/SaleForm.tsx');
+    expect(s).toContain('submitMultiItemSale(');
+    expect(s).not.toMatch(/from\('cash_registers'\)\s*\.select\('id'\)/);
   });
 
   it('pagamento da agenda usa a mesma regra do banco', () => {

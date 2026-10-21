@@ -20,3 +20,4 @@
 - Payables desktop tables use a bounded fluid container and stable vertical scrollbar gutter, not content-sized nested horizontal scrollers, to avoid resize feedback while preserving the shared Table component.
 - Appointment payment button/label comes only from getPaymentAction in src/lib/paymentAction.ts (package linkage first, step price second) so zero-price package steps never hide the package balance.
 - Package 'paid' state and payment method come from financial_entries (resolvePackagePayment in src/lib/packageLedger.ts); session amount_paid without a ledger entry is flagged, never counted.
+- Sequential package session changes go through process_package_session_operation (row lock, idempotency key, package_audit_logs in the same transaction) and touch only the requested session; DB triggers enforce one active row per step, the contracted session limit and reason-gated reopen, so no client path can shift or duplicate sessions.

@@ -1,4 +1,5 @@
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -476,7 +477,7 @@ const Agenda = () => {
       confirmed: weekApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
       pending: weekApts.filter(a => a.status === 'scheduled').length,
       cancelled: weekApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
-      revenue: weekApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + (a.service?.price || 0), 0),
+      revenue: weekApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + appointmentBasePrice(a as any), 0),
     };
   }, [filteredByFilters, weekDays]);
 
@@ -492,7 +493,7 @@ const Agenda = () => {
       confirmed: monthApts.filter(a => a.status === 'confirmed' || a.status === 'completed').length,
       pending: monthApts.filter(a => a.status === 'scheduled').length,
       cancelled: monthApts.filter(a => a.status === 'cancelled' || a.status === 'missed').length,
-      revenue: monthApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + (a.service?.price || 0), 0),
+      revenue: monthApts.filter(a => a.payment_status === 'paid').reduce((sum, a) => sum + appointmentBasePrice(a as any), 0),
     };
   }, [filteredByFilters, monthStart]);
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
 import { useProfessionalScopeFlags } from '@/hooks/useProfessionalScopeFlags';
@@ -224,7 +225,7 @@ export function CashRegisterPanel() {
       description: `Agendamento: ${resolveAppointmentStepServiceName(apt)}`,
       client: apt.client,
       due_date: apt.start_time.split('T')[0],
-      amount: apt.service?.price || apt.package_appointment?.package?.total_price || 0,
+      amount: (apt.package_appointment ? 0 : appointmentBasePrice(apt as any)) || apt.service?.price || apt.package_appointment?.package?.total_price || 0,
       status: 'pending' as const,
     }));
 

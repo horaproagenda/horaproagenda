@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { paidPackageSaleIds } from '@/lib/packageLedger';
 import { resolveSaleAmounts, pendingAfterDiscount } from '@/lib/saleAmounts';
 import { useEffect, useMemo } from 'react';
@@ -834,7 +835,7 @@ export function useClientProfile(clientId: string) {
 
 
 
-        const servicePrice = Number(a.service?.price || 0);
+        const servicePrice = appointmentBasePrice(a as any);
         const packagePrice = Number(pkg?.total_price || 0);
         const totalPrice = isLikelyPackageSession ? (packagePrice || Number(a.amount_paid || 0)) : servicePrice;
         const amountPaid = Number(a.amount_paid || 0);

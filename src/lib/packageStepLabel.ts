@@ -108,6 +108,8 @@ export const resolveAppointmentStepServiceName = (
     return snapshotName || currentServiceName || packageName || MISSING_STEP_SERVICE_LABEL;
   }
 
+  // Etapa de kit: o nome gravado da etapa identifica o atendimento.
+  if ((appointment as any).composite_group_id && snapshotName) return snapshotName;
   return currentServiceName || snapshotName || fallback;
 };
 

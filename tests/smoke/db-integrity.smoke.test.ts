@@ -57,9 +57,15 @@ describeIfCreds('DB integrity guards', () => {
     // A RPC é obrigatória: ausência dela deve falhar, nunca pular.
     const { data, error } = await client.rpc('get_seat_usage_report' as never);
     expect(error, `get_seat_usage_report indisponível: ${error?.message}`).toBeNull();
-    const over = (data as Array<{ used: number; seat_limit: number }> | null ?? []).filter(
-      (r) => r.used > r.seat_limit,
-    );
-    expect(over, 'Contas acima do seat_limit').toEqual([]);
+    const rows = (Array.isArray(data) ? data : data ? [data] : []) as Array<{
+      owner_user_id: string;
+      used: number;
+      seat_limit: number;
+    }>;
+    const over = rows.filter((r) => Number(r.used) > Number(r.seat_limit));
+    expect(
+      over,
+      `Contas acima do seat_limit: ${over.map((o) => `${o.owner_user_id} (${o.used}/${o.seat_limit})`).join(', ')}`,
+    ).toEqual([]);
   });
 });

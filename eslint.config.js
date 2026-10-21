@@ -23,4 +23,9 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Testes usam dublês e respostas brutas do Supabase; `any` é aceito apenas aqui.
+    files: ["tests/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}", "**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 );

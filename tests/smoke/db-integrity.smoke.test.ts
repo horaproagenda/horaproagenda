@@ -54,21 +54,9 @@ describeIfCreds('DB integrity guards', () => {
   });
 
   it('nenhuma conta ultrapassa seat_limit', async () => {
+    // A RPC é obrigatória: ausência dela deve falhar, nunca pular.
     const { data, error } = await client.rpc('get_seat_usage_report' as never);
-
-    if (
-      error &&
-      (
-        error.code === 'PGRST202' ||
-        /does not exist/i.test(error.message) ||
-        /not found/i.test(error.message)
-      )
-    ) {
-      console.log('RPC not available, skipping seat_limit check');
-      return;
-    }
-
-    expect(error).toBeNull();
+    expect(error, `get_seat_usage_report indisponível: ${error?.message}`).toBeNull();
     const over = (data as Array<{ used: number; seat_limit: number }> | null ?? []).filter(
       (r) => r.used > r.seat_limit,
     );

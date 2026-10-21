@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -122,9 +123,9 @@ export function AtendimentosPorProfissional() {
         const profAppts = allAppointments.filter((a: any) => a.professional_id === prof.id && a.status === 'completed');
         const totalServices = profAppts.length;
         const totalRevenue = profAppts.reduce((s: number, a: any) =>
-          s + (Number(a.amount_paid) || Number(a.service?.price) || 0), 0);
+          s + (Number(a.amount_paid) || appointmentBasePrice(a) || 0), 0);
         const totalCommission = profAppts.reduce((s: number, a: any) => {
-          const amt = Number(a.amount_paid) || Number(a.service?.price) || 0;
+          const amt = Number(a.amount_paid) || appointmentBasePrice(a) || 0;
           const pct = Number(a.service?.commission_percentage || prof.commission_percentage || 0);
           return s + (amt * pct / 100);
         }, 0);
@@ -414,9 +415,9 @@ export function AtendimentosPorProfissional() {
                 {monthlyBreakdown.map(month => {
                   const prof = selectedProf;
                   const monthRevenue = month.appointments.reduce((s: number, a: any) =>
-                    s + (Number(a.amount_paid) || Number(a.service?.price) || 0), 0);
+                    s + (Number(a.amount_paid) || appointmentBasePrice(a) || 0), 0);
                   const monthCommission = month.appointments.reduce((s: number, a: any) => {
-                    const amt = Number(a.amount_paid) || Number(a.service?.price) || 0;
+                    const amt = Number(a.amount_paid) || appointmentBasePrice(a) || 0;
                     const pct = Number(a.service?.commission_percentage || prof?.commission_percentage || 0);
                     return s + (amt * pct / 100);
                   }, 0);
@@ -448,7 +449,7 @@ export function AtendimentosPorProfissional() {
                           </TableHeader>
                           <TableBody>
                             {month.appointments.map((apt: any) => {
-                              const amt = Number(apt.amount_paid) || Number(apt.service?.price) || 0;
+                              const amt = Number(apt.amount_paid) || appointmentBasePrice(apt) || 0;
                               const pct = Number(apt.service?.commission_percentage || prof?.commission_percentage || 0);
                               const comm = amt * pct / 100;
                               return (

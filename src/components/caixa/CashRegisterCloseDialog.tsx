@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -223,7 +224,7 @@ export function CashRegisterCloseDialog({
     });
     
     const appointmentTotal = pendingAppointments.reduce((sum, apt) => {
-      return sum + (apt.service?.price || apt.package_appointment?.package?.total_price || 0);
+      return sum + ((apt.package_appointment ? 0 : appointmentBasePrice(apt as any)) || apt.service?.price || apt.package_appointment?.package?.total_price || 0);
     }, 0);
     
     // Pending financial entries

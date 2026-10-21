@@ -143,61 +143,6 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
     }
   };
 
-  // Auto-shift following package sessions away from conflicts (next available day, same time)
-  const autoResolveConflicts = async (packageId: string) => {
-    try {
-      const { data: paList } = await supabase
-        .from('package_appointments')
-        .select('id, appointment_id, session_number, appointment:appointments!package_appointments_appointment_id_fkey(id, start_time, end_time, status, professional_id, room_id, equipment_id)')
-        .eq('package_id', packageId)
-        .order('sequence_order', { ascending: true })
-        .order('session_number', { ascending: true });
-
-      let shifted = 0;
-      for (const pa of paList || []) {
-        const apt: any = (pa as any).appointment;
-        if (!apt || ['completed', 'missed', 'cancelled'].includes(apt.status)) continue;
-        if (apt.id === appointment!.id) continue;
-
-        // Verificação ÚNICA de disponibilidade (regra do banco): desloca +1 dia
-        // até encontrar horário livre (máx. 14 tentativas).
-        let attempts = 0;
-        let curStart = new Date(apt.start_time);
-        let curEnd = new Date(apt.end_time);
-
-        while (attempts < 14) {
-          const reason = await checkAvailabilitySlot({
-            id: apt.id,
-            professionalId: apt.professional_id ?? appointment!.professional_id ?? null,
-            roomId: apt.room_id ?? null,
-            equipmentId: apt.equipment_id ?? null,
-            start: curStart,
-            end: curEnd,
-            status: apt.status,
-          });
-
-          if (!reason) break;
-
-          // Shift +1 day
-          curStart = new Date(curStart.getTime() + 24 * 60 * 60 * 1000);
-          curEnd = new Date(curEnd.getTime() + 24 * 60 * 60 * 1000);
-          attempts++;
-        }
-
-        if (attempts > 0 && attempts < 14) {
-          await rescheduleAppointment({ appointmentId: apt.id, start: curStart, end: curEnd });
-          shifted++;
-          toast.warning(`Sessão #${pa.session_number}: choque detectado, reagendada para ${format(curStart, "dd/MM/yyyy 'às' HH:mm")}.`);
-        }
-      }
-      if (shifted > 0) {
-        toast.success(`${shifted} sessão(ões) reagendadas automaticamente para o próximo dia livre.`);
-      }
-    } catch (e) {
-      console.warn('[autoResolveConflicts] failed:', e);
-    }
-  };
-
   const performSave = async (propagate: boolean) => {
     if (!appointment) return;
     const dayError = nonWorkingDayMessage(new Date(`${date}T12:00:00`), settings);

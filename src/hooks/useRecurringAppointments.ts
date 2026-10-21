@@ -553,7 +553,10 @@ Até breve! ✨`;
 
         // Get following appointments (excluding the current one which will be updated separately)
         appointmentsToUpdate = seriesAppointments.slice(originalIndex + 1);
-      } else if (params.propagate_type === 'package' && params.package_id) {
+      } else if (params.propagate_type === 'package') {
+        // Datas de sessões de pacote são definitivas: nunca recalcular em cascata.
+        throw new Error('As datas das outras sessões do pacote não podem ser alteradas automaticamente. Remarque cada sessão separadamente.');
+      } else if (false as boolean && params.package_id) {
         // Fetch all package sessions with their per-step interval_after_days
         const { data: pkgSessions, error: pkgErr } = await supabase
           .from('package_appointments')

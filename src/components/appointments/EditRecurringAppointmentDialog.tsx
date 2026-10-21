@@ -299,21 +299,8 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
           expectedVersion: appointment.version,
         });
 
-        // Then propagate to the following sessions of the package,
-        // preserving the original interval between sessions
-        if (rescheduleFollowing) {
-          await propagateSeriesDates.mutateAsync({
-            appointment_id: appointment.id,
-            new_start_time: newStartTime,
-            new_end_time: newEndTime,
-            propagate_type: 'package',
-            package_id: packageId,
-            interval_days: (appointment as any)?.package_appointment?.package?.interval_days || undefined,
-            time_only:
-              new Date(appointment.start_time).toDateString() === newStartTime.toDateString(),
-          });
-          toast.success('Datas dos próximos agendamentos do pacote ajustadas!');
-        }
+        // Pacote: somente esta sessão muda. Datas das demais sessões são
+        // definitivas e nunca são recalculadas automaticamente.
         if (packageOutcomeMode) await savePackageOutcome(packageOutcomeMode);
       }
 
@@ -643,6 +630,7 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                   </p>
                 </div>
               </div>
+              {!isPackageAppointment && (
               <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
                 <RadioGroupItem value="following" id="following" className="mt-1" />
                 <div className="flex-1">
@@ -654,16 +642,15 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
                   </p>
                 </div>
               </div>
+              )}
             </RadioGroup>
-
-            {rescheduleFollowing && appointment && date && startTime && !isRecurringSeries && isPackageAppointment && packageId && (
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">
-                  As próximas sessões do pacote serão recalculadas pelo intervalo de cada etapa, pelo horário de funcionamento e pela regra do pacote. Confira as novas datas na agenda depois de salvar.
-                </p>
-              </div>
+            {isPackageAppointment && (
+              <p className="text-xs text-muted-foreground">
+                Somente esta sessão será remarcada. As datas das outras sessões do pacote continuam exatamente como estão.
+              </p>
             )}
-            {rescheduleFollowing && appointment && date && startTime && !(!isRecurringSeries && isPackageAppointment && packageId) && (() => {
+
+            {rescheduleFollowing && !isPackageAppointment && appointment && date && startTime && (() => {
               let rows: ReturnType<typeof withIntervals> = [];
               try {
                 const ns = clinicDateTime(date, startTime, tz);

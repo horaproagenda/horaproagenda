@@ -55,7 +55,8 @@ import { X, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
-import { withoutKitServices } from '@/lib/serviceKind';
+import { KitStepsEditor } from './KitStepsEditor';
+import { emptyKitStep, kitTotalPrice as sumKitPrice, serializeKitSteps, validateKitSteps, type KitStep } from '@/lib/kitSteps';
 
 function validateComponents(comps: { service_id: string; interval_days: number; price: number }[]): string | null {
   if (!comps.length) return null;
@@ -113,8 +114,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
   const isAdminOrReceptionist = hasRole('admin') || hasRole('receptionist');
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
-  type CompositeComponent = { service_id: string; interval_days: number; price: number };
-  const [components, setComponents] = useState<CompositeComponent[]>([]);
+  const [components, setComponents] = useState<KitStep[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -140,15 +140,13 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
   React.useEffect(() => {
     if (!open) return;
     if (lockType === 'kit') {
-      setComponents((prev) => (prev.length > 0 ? prev : [{ service_id: '', interval_days: 0, price: 0 }]));
+      setComponents((prev) => (prev.length > 0 ? prev : [emptyKitStep(true)]));
     } else if (lockType === 'service') {
       setComponents([]);
     }
   }, [open, lockType]);
 
   const isKit = lockType === 'kit' || components.length > 0;
-  // Etapas de kit só aceitam serviços simples (kits/pacotes têm cobrança e agendamento próprios).
-  const kitStepServices = withoutKitServices(activeServices, components.map(c => c.service_id));
 
   // Preenchimento automático quando existe apenas um profissional ou uma sala ativa.
   const activeProfessionalsList = professionals.filter(p => p.is_active);
@@ -162,15 +160,15 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
       form.setValue('room_id', activeRoomsList[0].id);
     }
   }, [open, activeProfessionalsList, activeRoomsList, form]);
-  const kitTotalDuration = components.reduce((sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0), 0);
-  const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
+  const kitTotalDuration = components.reduce((sum, c) => sum + (Number(c.duration_minutes) || 0), 0);
+  const kitTotalPrice = sumKitPrice(components);
 
   const onSubmit = async (data: ServiceFormData) => {
     if (lockType === 'kit' && components.length === 0) {
       toast.error('Adicione pelo menos uma etapa ao kit.');
       return;
     }
-    const compError = validateComponents(components);
+    const compError = isKit ? validateKitSteps(components, activeRoomsList.length > 0) : null;
     if (compError) {
       toast.error(compError);
       return;
@@ -196,8 +194,8 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
         return_days: isKit ? null : (data.return_days || null),
         is_active: data.is_active,
         ...recordVis.visibilityField,
-        component_service_ids: components.map(c => c.service_id),
-        service_components: components,
+        component_service_ids: [],
+        service_components: isKit ? serializeKitSteps(components) : [],
       } as any).select('id').single();
 
       if (error) throw error;
@@ -283,14 +281,8 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
 
             {/* Duration, Price, Return */}
             {isKit ? (
-              <div className="rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">Kit de serviços ativo</p>
-                <p>Duração, valor e retorno são calculados automaticamente a partir das etapas:</p>
-                <ul className="grid grid-cols-3 gap-1 pt-1">
-                  <li><span className="block text-[10px] uppercase">Duração total</span><span className="text-sm font-semibold text-foreground">{kitTotalDuration} min</span></li>
-                  <li><span className="block text-[10px] uppercase">Valor total</span><span className="text-sm font-semibold text-foreground">R$ {kitTotalPrice.toFixed(2)}</span></li>
-                  <li><span className="block text-[10px] uppercase">Retorno</span><span className="text-sm font-semibold text-foreground">por etapa</span></li>
-                </ul>
+              <div className="rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                Valor total do kit (soma das etapas): <span className="font-semibold text-foreground">R$ {kitTotalPrice.toFixed(2)}</span>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
@@ -426,151 +418,24 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
               )}
             />
 
-            {/* Kit composto: sequência de serviços (igual pacote sequencial), com valor por etapa */}
-            {lockType !== 'service' && (
-            <div className="space-y-2 rounded-md border p-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Kit de serviços (sequencial)</Label>
-                <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs"
-                  onClick={() => setComponents(prev => [...prev, {
-                    service_id: '',
-                    interval_days: prev.length === 0 ? 0 : 7,
-                    price: 0,
-                  }])}>
-                  <Plus className="h-3 w-3" /> Etapa
+            {lockType !== 'service' && (isKit || lockType === undefined) && (
+              isKit ? (
+                <KitStepsEditor
+                  steps={components}
+                  onChange={setComponents}
+                  professionals={activeProfessionalsList}
+                  rooms={activeRoomsList}
+                  equipment={equipment.filter(e => e.is_active)}
+                />
+              ) : (
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setComponents([emptyKitStep(true)])}>
+                  Transformar em kit de serviços
                 </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                Defina a sequência de serviços (pode repetir o mesmo serviço). Para cada etapa, informe quantos dias após a etapa anterior ela deve ocorrer. A primeira etapa é sempre o início (0 dias).
-              </p>
-              {components.length > 0 && (() => {
-                const colorMap = buildSequentialServiceColorMap(components.map(c => c.service_id));
-                const counts = new Map<string, { name: string; count: number }>();
-                components.forEach(c => {
-                  if (!c.service_id) return;
-                  const svc = activeServices.find(s => s.id === c.service_id);
-                  const name = svc?.name || 'Serviço';
-                  const cur = counts.get(c.service_id);
-                  counts.set(c.service_id, { name, count: (cur?.count || 0) + 1 });
-                });
-                return (
-                <div className="space-y-1.5">
-                  {components.map((c, idx) => {
-                    const color = getSequentialServiceColor(c.service_id, colorMap);
-                    return (
-                    <div key={idx} className={`rounded border p-1.5 space-y-1 ${color.bg} ${color.border}`}>
-                      <div className="flex items-center gap-1">
-                        <Badge variant="secondary" className={`text-[10px] h-5 ${color.text}`}>
-                          <span className={`mr-1 inline-block h-2 w-2 rounded-full ${color.dot}`} />
-                          {idx + 1}
-                        </Badge>
-                        <div className="flex-1">
-                          <Select
-                            value={c.service_id || '_none'}
-                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
-                            ))}
-                          >
-                            <SelectTrigger className="h-7 text-xs bg-background">
-                              <SelectValue placeholder="Selecione o serviço" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="_none" className="text-xs">Selecione</SelectItem>
-                              {kitStepServices.map(s => (
-                                <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
-                          disabled={idx === 0}
-                          onClick={() => setComponents(prev => {
-                            const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
-                            arr[0] = { ...arr[0], interval_days: 0 };
-                            return arr;
-                          })}>
-                          <ArrowUp className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6"
-                          disabled={idx === components.length - 1}
-                          onClick={() => setComponents(prev => {
-                            const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
-                            arr[0] = { ...arr[0], interval_days: 0 };
-                            return arr;
-                          })}>
-                          <ArrowDown className="h-3 w-3" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive"
-                          disabled={lockType === 'kit' && components.length === 1}
-                          onClick={() => setComponents(prev => {
-                            const arr = prev.filter((_, i) => i !== idx);
-                            if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
-                            return arr;
-                          })}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-muted-foreground">
-                            {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
-                          </Label>
-                          <NumberInput
-                            min={0}
-                            max={365}
-                            emptyValue={0}
-                            value={c.interval_days}
-                            disabled={idx === 0}
-                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, interval_days: v ?? 0 } : it
-                            ))}
-                            className="h-7 text-xs bg-background"
-                          />
-                        </div>
-                        <div className="space-y-0.5">
-                          <Label className="text-[10px] text-muted-foreground">Valor desta etapa</Label>
-                          <CurrencyInput
-                            value={c.price}
-                            onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                              i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
-                            ))}
-                            className="h-7 text-xs bg-background"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    );
-                  })}
-                  {counts.size > 0 && (
-                    <div className="rounded border bg-muted/40 p-1.5 space-y-1">
-                      <div className="text-[10px] uppercase text-muted-foreground">Resumo do kit</div>
-                      <div className="flex flex-wrap gap-1">
-                        {Array.from(counts.entries()).map(([sid, info]) => {
-                          const color = getSequentialServiceColor(sid, colorMap);
-                          return (
-                            <span key={sid} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${color.bg} ${color.text} ${color.border}`}>
-                              <span className={`inline-block h-2 w-2 rounded-full ${color.dot}`} />
-                              {info.name} × {info.count}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  <div className="text-[10px] text-muted-foreground text-right">
-                    Total do kit: R$ {components.reduce((sum, c) => sum + Number(c.price || 0), 0).toFixed(2)}
-                  </div>
-                </div>
-                );
-              })()}
-
-            </div>
+              )
             )}
 
-
-
             {/* Equipment */}
-            <div className="space-y-1.5">
+            {!isKit && <div className="space-y-1.5">
               <Label className="text-xs">Equipamentos</Label>
               <div className="border rounded-md p-2 max-h-24 overflow-y-auto">
                 {equipment.filter(e => e.is_active).length === 0 ? (

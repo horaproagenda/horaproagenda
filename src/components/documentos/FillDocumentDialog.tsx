@@ -43,6 +43,8 @@ import { fillDocumentHtml, isRichDocument, sanitizeRichDocumentHtml } from '@/li
 import { RichTextEditor } from './RichTextEditor';
 import { parseBrazilianCurrency, formatCurrency } from '@/lib/utils';
 import { SignaturePad } from './SignaturePad';
+import { GenerateLinkDialog } from './GenerateLinkDialog';
+import { MessageCircle } from 'lucide-react';
 
 const formatBRL = (n: number | string | null | undefined): string => {
   const v = typeof n === 'number' ? n : parseBrazilianCurrency(n);
@@ -106,6 +108,7 @@ export function FillDocumentDialog({
   const [filledContent, setFilledContent] = useState('');
   const [customVariables, setCustomVariables] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('content');
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [signedBy, setSignedBy] = useState('');
@@ -474,7 +477,7 @@ export function FillDocumentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[950px] h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="w-[100vw] max-w-[100vw] sm:max-w-[950px] h-[100dvh] sm:h-[90dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-lg flex items-center gap-2">
             <FileSignature className="h-5 w-5 text-primary" />
@@ -482,9 +485,9 @@ export function FillDocumentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
           {/* Left Panel - Client & Variables */}
-          <ScrollArea className="w-full min-w-0 sm:w-[300px] border-r">
+          <ScrollArea className="w-full min-w-0 md:w-[300px] shrink-0 border-b md:border-b-0 md:border-r max-h-none md:max-h-full">
             <div className="p-4 space-y-4">
               {!preSelectedClientId && (
                 <div>
@@ -606,7 +609,7 @@ export function FillDocumentDialog({
           </ScrollArea>
 
           {/* Right Panel - Content & Signature */}
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col min-h-[70dvh] md:min-h-0 md:overflow-hidden min-w-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
               <div className="px-4 pt-3 pb-2 border-b bg-muted/20 shrink-0">
                 <TabsList className="h-8">
@@ -733,11 +736,11 @@ export function FillDocumentDialog({
               <Button 
                 variant="outline"
                 size="sm" 
-                onClick={() => handleSaveToClient(false)}
-                disabled={saving || !selectedClientId}
+                onClick={() => setWhatsappOpen(true)}
+                disabled={!selectedClientId}
               >
-                <Save className="h-4 w-4 mr-1.5" />
-                Adicionar sem assinar e preencher
+                <MessageCircle className="h-4 w-4 mr-1.5" />
+                Enviar para preenchimento no WhatsApp
               </Button>
               <Button 
                 size="sm" 
@@ -751,6 +754,13 @@ export function FillDocumentDialog({
           </div>
         </div>
       </DialogContent>
+      <GenerateLinkDialog
+        open={whatsappOpen}
+        onOpenChange={setWhatsappOpen}
+        template={template ? { id: template.id, title: template.title } : null}
+        preSelectedClientId={selectedClientId || undefined}
+        preSelectedClient={selectedClient ? { id: selectedClient.id, name: selectedClient.name, cpf: selectedClient.cpf, phone: selectedClient.phone, birthdate: selectedClient.birthdate } : undefined}
+      />
     </Dialog>
   );
 }

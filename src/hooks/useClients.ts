@@ -29,6 +29,11 @@ export function useClients() {
       toast.success('Cliente excluído com sucesso!');
     },
     onError: (error: any) => {
+      const msg = String(error?.message || '');
+      if (/APPLICATION_LOCKED/.test(msg)) {
+        toast.error('Este cliente tem fichas finalizadas. Use "Excluir cliente e TODOS os registros".');
+        return;
+      }
       toast.error(error.message || 'Erro ao excluir cliente');
     },
   });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClientApplicationsTab } from './ClientApplicationsTab';
 
@@ -78,12 +78,12 @@ describe('gravação oficial de fichas', () => {
       const editor = screen.getByRole('dialog');
       expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('844px');
       Object.assign(viewport, { height: 480, offsetTop: 20 });
-      fireEvent(viewport, new Event('resize'));
+      act(() => { viewport.dispatchEvent(new Event("resize")); });
       expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('480px');
       expect(editor.style.getPropertyValue('--application-viewport-top')).toBe('20px');
       expect(screen.getByDisplayValue('Laser')).toBeInTheDocument();
       Object.assign(viewport, { height: 844, offsetTop: 0 });
-      fireEvent(viewport, new Event('resize'));
+      act(() => { viewport.dispatchEvent(new Event("resize")); });
       expect(editor.style.getPropertyValue('--application-viewport-height')).toBe('844px');
     } finally {
       unmount();

@@ -269,10 +269,6 @@ const Documentos = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleFill(template); }}>
-                                    <UserPlus className="h-4 w-4 mr-2" />
-                                    Preencher p/ Cliente
-                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleGenerateLink(template); }}>
                                     <Link2 className="h-4 w-4 mr-2" />
                                     Enviar Link p/ Cliente

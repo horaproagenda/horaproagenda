@@ -106,6 +106,8 @@ Legenda de cobertura:
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.
 Nenhuma correção validada pode existir sem teste que a proteja.
 
+- Smoke: modelos exigem profissional, snapshots omitidos são normalizados sem ocultar falhas, e Realtime aguarda assinatura autenticada e INSERT do ID exato. Cobertura: `smoke-integrity-helpers.test.ts` e os três testes de fumaça correspondentes.
+
 ## Assinatura Asaas — criação, liberação e idempotência
 
 - A assinatura é criada no Asaas com `externalReference = user:<owner>|seats:<n>|months:<m>`; o webhook usa essa chave para identificar a conta e liberar o acesso.

@@ -80,9 +80,11 @@ export function useDocumentFillLinks(templateId?: string) {
       // Bloqueio: só permitir um link ativo (pendente e não vencido) por modelo+cliente.
       // Se houver um link vigente, retorna o existente em vez de gerar outro.
       if (options?.clientId) {
+        // A coluna do código do link é protegida: lemos só os dados públicos
+        // e buscamos o código pela função segura do servidor.
         const { data: existing, error: existingError } = await supabase
           .from('document_fill_links')
-          .select('id, token, status, expires_at, filled_at')
+          .select('id, status, expires_at, filled_at')
           .eq('template_id', templateId)
           .eq('client_id', options.clientId)
           .eq('status', 'pending')
@@ -98,11 +100,14 @@ export function useDocumentFillLinks(templateId?: string) {
         });
 
         if (active) {
-          const baseUrl = window.location.origin.includes('lovable') ? 'https://horaproagenda.app' : window.location.origin;
-          const friendlySlug = buildFriendlyDocumentSlug(options?.clientName, options?.documentTitle);
-          const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${active.token}`;
-          toast.info('Já existe um link ativo para este documento e cliente. Reutilizando o link atual. Para gerar outro, apague o link existente ou aguarde o vencimento.');
-          return { url, token: active.token, reused: true };
+          const { data: activeToken } = await supabase.rpc('get_document_fill_link_token' as any, { _link_id: active.id });
+          if (typeof activeToken === 'string' && activeToken) {
+            const baseUrl = window.location.origin.includes('lovable') ? 'https://horaproagenda.app' : window.location.origin;
+            const friendlySlug = buildFriendlyDocumentSlug(options?.clientName, options?.documentTitle);
+            const url = `${baseUrl}/preencher-documento/${friendlySlug}?token=${activeToken}`;
+            toast.info('Já existe um link ativo para este documento e cliente. Reutilizando o link atual.');
+            return { url, token: activeToken, reused: true };
+          }
         }
       }
 

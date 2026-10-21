@@ -3498,6 +3498,74 @@ export type Database = {
           },
         ]
       }
+      package_audit_logs: {
+        Row: {
+          account_owner_id: string
+          action: string
+          actor_id: string | null
+          appointment_id: string | null
+          code_version: string
+          created_at: string
+          id: number
+          idempotency_key: string
+          new_state: Json
+          origin: string
+          package_appointment_id: string | null
+          package_id: string
+          previous_state: Json
+          reason: string
+          request_id: string
+          result: Json
+          session_number: number | null
+        }
+        Insert: {
+          account_owner_id: string
+          action: string
+          actor_id?: string | null
+          appointment_id?: string | null
+          code_version?: string
+          created_at?: string
+          id?: never
+          idempotency_key: string
+          new_state?: Json
+          origin: string
+          package_appointment_id?: string | null
+          package_id: string
+          previous_state?: Json
+          reason: string
+          request_id: string
+          result?: Json
+          session_number?: number | null
+        }
+        Update: {
+          account_owner_id?: string
+          action?: string
+          actor_id?: string | null
+          appointment_id?: string | null
+          code_version?: string
+          created_at?: string
+          id?: never
+          idempotency_key?: string
+          new_state?: Json
+          origin?: string
+          package_appointment_id?: string | null
+          package_id?: string
+          previous_state?: Json
+          reason?: string
+          request_id?: string
+          result?: Json
+          session_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_audit_logs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "service_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_template_products: {
         Row: {
           account_owner_id: string
@@ -3568,34 +3636,64 @@ export type Database = {
         Row: {
           account_owner_id: string
           created_at: string
+          default_equipment: string[]
+          default_professional_id: string | null
+          default_room_id: string | null
+          duration_minutes: number | null
           id: string
           interval_after_days: number
           sequence_order: number
-          service_id: string
+          service_id: string | null
+          step_name: string | null
           template_id: string
           updated_at: string
         }
         Insert: {
           account_owner_id?: string
           created_at?: string
+          default_equipment?: string[]
+          default_professional_id?: string | null
+          default_room_id?: string | null
+          duration_minutes?: number | null
           id?: string
           interval_after_days?: number
           sequence_order: number
-          service_id: string
+          service_id?: string | null
+          step_name?: string | null
           template_id: string
           updated_at?: string
         }
         Update: {
           account_owner_id?: string
           created_at?: string
+          default_equipment?: string[]
+          default_professional_id?: string | null
+          default_room_id?: string | null
+          duration_minutes?: number | null
           id?: string
           interval_after_days?: number
           sequence_order?: number
-          service_id?: string
+          service_id?: string | null
+          step_name?: string | null
           template_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "package_template_steps_default_professional_id_fkey"
+            columns: ["default_professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_template_steps_default_room_id_fkey"
+            columns: ["default_room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       package_templates: {
         Row: {
@@ -7536,6 +7634,21 @@ export type Database = {
       perm_scope: { Args: { _module: string }; Returns: string }
       preview_package_appointment_cascade: {
         Args: { _appointment_id: string; _new_start: string }
+        Returns: Json
+      }
+      process_package_session_operation: {
+        Args: {
+          p_action: string
+          p_code_version?: string
+          p_end_time?: string
+          p_idempotency_key: string
+          p_origin?: string
+          p_package_id: string
+          p_reason: string
+          p_request_id: string
+          p_session_number: number
+          p_start_time?: string
+        }
         Returns: Json
       }
       process_payment_low: {

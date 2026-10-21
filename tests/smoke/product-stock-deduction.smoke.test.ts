@@ -118,22 +118,6 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     start.setHours(10, 0, 0, 0);
     const end = new Date(start.getTime() + 30 * 60_000);
 
-    const { data: appt, error: e7 } = await c
-      .from('appointments')
-      .insert({
-        client_id: ctx.clientId,
-        professional_id: ctx.professionalId,
-        service_id: stepSvc.id,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        status: 'scheduled',
-        payment_status: 'pending',
-      })
-      .select('id')
-      .single();
-    if (e7) throw e7;
-    extraIds.appointmentId = appt.id;
-
     const { data: pkg, error: e8 } = await c
       .from('service_packages')
       .insert({
@@ -156,7 +140,6 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
       .from('package_appointments')
       .insert({
         package_id: pkg.id,
-        appointment_id: appt.id,
         service_id: stepSvc.id,
         session_number: 1,
         original_session_number: 1,
@@ -168,6 +151,23 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
       .single();
     if (e9) throw e9;
     extraIds.packageApptId = pa.id;
+
+    const { data: appt, error: e7 } = await c.from('appointments').insert({
+      client_id: ctx.clientId,
+      professional_id: ctx.professionalId,
+      service_id: stepSvc.id,
+      package_appointment_id: pa.id,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      status: 'scheduled',
+      payment_status: 'pending',
+    }).select('id, package_appointment_id').single();
+    if (e7) throw e7;
+    extraIds.appointmentId = appt.id;
+    expect(appt.package_appointment_id).toBe(pa.id);
+    const { error: linkError } = await c.from('package_appointments')
+      .update({ appointment_id: appt.id }).eq('id', pa.id);
+    if (linkError) throw linkError;
   });
 
   afterAll(async () => {

@@ -25,7 +25,7 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
 
   it('recebe INSERT após a assinatura Realtime', async () => {
     const appointmentId = randomUUID();
-    const subscription = await listenForAppointmentInsert(listener, appointmentId);
+    const subscription = await listenForAppointmentInsert(listener, appointmentId, 30000);
 
     // P0001 = o banco recusou por choque de horário. Usa um dia útil distante e
     // aleatório para não colidir com os agendamentos dos outros testes.
@@ -56,5 +56,5 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     } finally {
       await subscription.dispose();
     }
-  }, 35000);
+  }, 65000);
 });

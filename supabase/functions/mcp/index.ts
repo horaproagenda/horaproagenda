@@ -7,7 +7,7 @@ import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/whoami.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
-var whoami_default = defineTool({
+const whoami_default = defineTool({
   name: "whoami",
   title: "Quem sou eu",
   description: "Retorna o usu\xE1rio autenticado que est\xE1 conectado via MCP (id e e-mail).",
@@ -39,7 +39,7 @@ function supabaseForUser(ctx) {
     }
   );
 }
-var list_clients_default = defineTool2({
+const list_clients_default = defineTool2({
   name: "list_clients",
   title: "Listar clientes",
   description: "Lista clientes da conta do usu\xE1rio autenticado, opcionalmente filtrando por nome (busca parcial). Respeita o isolamento por tenant do Hora Pro.",
@@ -80,8 +80,8 @@ function supabaseForUser2(ctx) {
     }
   );
 }
-var DateSchema = z2.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato YYYY-MM-DD");
-var list_appointments_default = defineTool3({
+const DateSchema = z2.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato YYYY-MM-DD");
+const list_appointments_default = defineTool3({
   name: "list_appointments",
   title: "Listar agendamentos",
   description: "Lista agendamentos da conta do usu\xE1rio autenticado num intervalo de datas (YYYY-MM-DD). Se n\xE3o informar datas, retorna os do dia atual. Respeita o isolamento por tenant.",
@@ -113,8 +113,8 @@ var list_appointments_default = defineTool3({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "nsgcllrbswodjoadybsj";
-var mcp_default = defineMcp({
+const projectRef = "nsgcllrbswodjoadybsj";
+const mcp_default = defineMcp({
   name: "hora-pro-mcp",
   title: "Hora Pro",
   version: "0.1.0",

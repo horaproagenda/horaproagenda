@@ -37,7 +37,7 @@ function warnOnce(key: string, message: string, cooldownMs = 30_000) {
   const prev = warned.get(key) ?? 0;
   if (now - prev < cooldownMs) return;
   warned.set(key, now);
-  // eslint-disable-next-line no-console
+   
   console.warn(`[perf] ${message}`);
 }
 
@@ -143,11 +143,11 @@ if (typeof window !== 'undefined') {
       return { ok: true, reset: true };
     }
     const snap = snapshot();
-    // eslint-disable-next-line no-console
+     
     console.table(snap.topRefetches);
-    // eslint-disable-next-line no-console
+     
     console.table(snap.slowestQueries);
-    // eslint-disable-next-line no-console
+     
     console.table(snap.slowestRenders);
     return snap;
   };

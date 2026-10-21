@@ -28,7 +28,7 @@ for (const deviceName of ['iPhone 14 Pro', 'Pixel 7']) {
   test.describe(`Sidebar navigation on ${deviceName}`, () => {
     test.skip(!authInjected, 'Requires managed Supabase session');
     // defaultBrowserType não pode ser trocado dentro de describe; todos rodam no Chromium.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { defaultBrowserType, ...device } = devices[deviceName];
     test.use(device);
 

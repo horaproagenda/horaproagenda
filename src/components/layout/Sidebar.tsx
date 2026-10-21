@@ -108,7 +108,7 @@ export function Sidebar({ onNewAppointment, isCollapsed, onToggleCollapse, mobil
     if (authLoading || !user) return;
     const adminItem = navigation.find(n => n.adminOnly);
     if (adminItem && !hasRole('admin')) {
-      // eslint-disable-next-line no-console
+       
       console.debug('[Sidebar] Painel do Administrador oculto', {
         userId: user.id,
         email: user.email,

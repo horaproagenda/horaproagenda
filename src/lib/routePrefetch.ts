@@ -47,7 +47,7 @@ export function prefetchRoute(href: string): void {
     })
     .catch((err) => {
       // Falha silenciosa: o próximo clique dispara o import de novo.
-      // eslint-disable-next-line no-console
+       
       console.warn(`[routePrefetch] falha em ${href}:`, err);
     })
     .finally(() => {

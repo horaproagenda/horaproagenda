@@ -92,7 +92,7 @@ describe('offlineQueue', () => {
     enqueue({ type: 'a', payload: 'fail' });
 
     for (let i = 0; i < __testing__.MAX_ATTEMPTS; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
+       
       await processQueue(async () => {
         throw new Error('boom');
       });

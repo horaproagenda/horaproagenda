@@ -1042,7 +1042,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
       // DD/MM/YYYY or DD-MM-YYYY
       const dmy = cleaned.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
       if (dmy) {
-        let [, d, m, y] = dmy;
+        const [, d, m, y] = dmy;
         let yy = parseInt(y); if (yy < 100) yy += 2000;
         const dd = parseInt(d), mm = parseInt(m);
         if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
@@ -1177,7 +1177,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
 
           const times = [...line.matchAll(timeRe)].map((m) => parseTime(m[1])).filter(Boolean) as string[];
           const time = times[0];
-          let endTime = times[1];
+          const endTime = times[1];
           if (!time) continue;
 
           // Descarta linhas que parecem "Data de emissão: dd/mm/aaaa as hh:mm" (só 1 horário e sem status/serviço)
@@ -1186,7 +1186,7 @@ export function LegacyHistoryDialog({ open, onOpenChange, clientId, clientName }
           if (!sMatch && times.length < 2 && /emiss[aã]o|gerado|impress[aã]o/i.test(line)) continue;
 
           // Service = the remaining text with dates/times/status/money stripped out
-          let service = line
+          const service = line
             .replace(dateRe, ' ')
             .replace(timeRe, ' ')
             .replace(statusRe, ' ')

@@ -35,7 +35,7 @@ export function useProductConsumption(startDate?: Date, endDate?: Date) {
   const { data: consumptionRecords = [], isLoading, refetch } = useQuery({
     queryKey: ['appointment_product_consumption', startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('appointment_product_consumption')
         .select(`
           *,

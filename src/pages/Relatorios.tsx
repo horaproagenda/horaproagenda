@@ -81,7 +81,7 @@ const Relatorios = () => {
       .map(client => {
         const birthDate = parseISO(client.birthdate!);
         const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        let daysUntil = differenceInDays(thisYearBirthday, today);
+        const daysUntil = differenceInDays(thisYearBirthday, today);
         const isToday = birthDate.getDate() === currentDay && birthDate.getMonth() === currentMonth;
         const isPast = birthDate.getDate() < currentDay;
         return { 
@@ -103,7 +103,7 @@ const Relatorios = () => {
       .map(prof => {
         const birthDate = parseISO(prof.birthdate!);
         const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        let daysUntil = differenceInDays(thisYearBirthday, today);
+        const daysUntil = differenceInDays(thisYearBirthday, today);
         const isToday = birthDate.getDate() === currentDay && birthDate.getMonth() === currentMonth;
         const isPast = birthDate.getDate() < currentDay;
         return { 

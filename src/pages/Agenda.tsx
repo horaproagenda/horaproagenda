@@ -446,7 +446,7 @@ const Agenda = () => {
     const packageData = apt.package_appointment?.package;
     const isPackage = Boolean(packageData);
     return {
-      title: isPackage ? packageData?.name || apt.service?.name || 'Pacote' : apt.service?.name || 'Serviço',
+      title: isPackage ? packageData?.name || apt.service?.name || 'Pacote' : ((apt as any).composite_group_id && (apt as any).service_name_snapshot ? `${apt.service?.name ? apt.service.name + ' · ' : ''}${(apt as any).service_name_snapshot}` : apt.service?.name || 'Serviço'),
       applicationLabel: isPackage ? getAppointmentPackageApplicationLabel(apt, packageSequenceMap.get(apt.id)) : null,
     };
   }, [packageSequenceMap]);

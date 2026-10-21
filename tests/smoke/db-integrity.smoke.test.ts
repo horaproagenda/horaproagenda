@@ -11,9 +11,10 @@
  * Cada teste é somente-leitura. Falhas indicam regressão que deve ser
  * investigada antes de deploy.
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { it, expect, beforeAll } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { authedClient, describeIfCreds } from './setup';
+import { missingAppointmentSnapshots } from './integrityHelpers';
 
 describeIfCreds('DB integrity guards', () => {
   let client: SupabaseClient;
@@ -49,8 +50,8 @@ describeIfCreds('DB integrity guards', () => {
       .gte('start_time', since)
       .limit(500);
     expect(error).toBeNull();
-    const missing = (data ?? []).filter((a) => !a.service_name_snapshot);
-    expect(missing, `Snapshots ausentes: ${missing.length}`).toEqual([]);
+    const missing = missingAppointmentSnapshots(data ?? []);
+    expect(missing, `Snapshots ausentes: ${missing.map((a) => a.id).join(', ')}`).toEqual([]);
   });
 
   it('nenhuma conta ultrapassa seat_limit', async () => {

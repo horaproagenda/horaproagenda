@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { authedClient, describeIfCreds, tag } from './setup';
 import { bootstrap, SmokeContext } from './fixtures';
+import { packageTemplateFixture } from './integrityHelpers';
 
 /**
  * Smoke E2E do gatilho `decrease_product_stock_on_appointment_complete`:
  * cobre vínculos por serviço direto, por template de pacote e pela etapa
- * do pacote, além do modo estimado (com conversão de unidade).
+ * do pacote; modo estimado não baixa estoque por atendimento.
  *
  * Requer SMOKE_TEST_EMAIL / SMOKE_TEST_PASSWORD.
  */
@@ -47,7 +48,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     if (e1) throw e1;
     extraIds.productExactId = pExact.id;
 
-    // Produto modo estimado (kg) — recipiente em ml, cross-family densidade 1
+    // Produto estimado: baixa ocorre no ciclo, nunca por atendimento ou densidade presumida.
     const { data: pEst, error: e2 } = await c
       .from('products')
       .insert({
@@ -94,11 +95,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     // Template de pacote com um vínculo ESTIMADO ao produto em kg
     const { data: tpl, error: e5 } = await c
       .from('package_templates')
-      .insert({
-        name: tag('Template Smoke'),
-        total_sessions: 1,
-        price: 100, // package_templates usa `price` (não existe `total_price`)
-      })
+      .insert(packageTemplateFixture(tag('Template Smoke'), ctx.professionalId))
       .select('id')
       .single();
     if (e5) throw e5;
@@ -111,7 +108,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
       tracking_method: 'estimated',
       container_amount: 100, // 100 ml
       container_unit: 'ml',
-      estimated_appointments: 10, // → 10 ml/uso → 0.01 kg
+      estimated_appointments: 10, // Não converter ml em kg nem baixar por atendimento.
     });
     if (e6) throw e6;
 
@@ -225,8 +222,8 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     const byProd = Object.fromEntries((cons ?? []).map((r) => [r.product_id, Number(r.quantity_used)]));
     // Serviço: 20 ml
     expect(byProd[extraIds.productExactId]).toBe(20);
-    // Template estimado: 100 ml / 10 → 10 ml → 0.01 kg
-    expect(byProd[extraIds.productEstimatedId]).toBeCloseTo(0.01, 6);
+    // Estimado pertence ao ciclo; não gera consumo por atendimento.
+    expect(byProd[extraIds.productEstimatedId]).toBeUndefined();
 
     // Confere baixa de estoque
     const { data: after } = await c
@@ -236,14 +233,15 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     const afterMap = Object.fromEntries((after ?? []).map((p) => [p.id, Number(p.current_stock)]));
 
     expect(afterMap[extraIds.productExactId]).toBe(beforeMap[extraIds.productExactId] - 20);
-    expect(afterMap[extraIds.productEstimatedId]).toBeCloseTo(beforeMap[extraIds.productEstimatedId] - 0.01, 6);
+    expect(afterMap[extraIds.productEstimatedId]).toBe(beforeMap[extraIds.productEstimatedId]);
 
     // Confere consumo diário registrado
     const { data: daily } = await c
       .from('product_daily_consumption')
       .select('product_id, quantity_used')
       .eq('appointment_id', extraIds.appointmentId);
-    expect((daily ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((daily ?? []).some((row) => row.product_id === extraIds.productExactId && Number(row.quantity_used) === 20)).toBe(true);
+    expect((daily ?? []).some((row) => row.product_id === extraIds.productEstimatedId)).toBe(false);
   });
 
   it('ao reabrir o atendimento, devolve estoque e limpa consumo', async () => {
@@ -274,6 +272,6 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
     const afterMap = Object.fromEntries((after ?? []).map((p) => [p.id, Number(p.current_stock)]));
 
     expect(afterMap[extraIds.productExactId]).toBe(beforeMap[extraIds.productExactId] + 20);
-    expect(afterMap[extraIds.productEstimatedId]).toBeCloseTo(beforeMap[extraIds.productEstimatedId] + 0.01, 6);
+    expect(afterMap[extraIds.productEstimatedId]).toBe(beforeMap[extraIds.productEstimatedId]);
   });
 });

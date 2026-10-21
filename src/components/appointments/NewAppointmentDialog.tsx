@@ -744,11 +744,8 @@ export function NewAppointmentDialog({
   // nunca para 1 dia (causa do bug "29/08 → 30/08").
   const autoScheduleIntervals = useMemo(() => {
     const packageData = existingClientPackage || selectedPackageData;
-    const manualOverride = parseInt(customIntervalDays, 10);
-    const hasManualOverride = !isNaN(manualOverride) && manualOverride > 0;
-    const packageInterval = hasManualOverride && packageSequenceSteps.length === 0
-      ? manualOverride
-      : Number(packageData?.interval_days || 0);
+    // Intervalo vem SEMPRE do cadastro do pacote; não há mais ajuste manual.
+    const packageInterval = Number(packageData?.interval_days || 0);
 
     const intervals: number[] = [];
     for (let i = 1; i < autoScheduleTotalSessions; i++) {
@@ -842,9 +839,12 @@ export function NewAppointmentDialog({
 
   // Calculate preview dates for recurring service appointments
   // Memoize the interval to prevent recalculation loops
+  // O intervalo vem SEMPRE do cadastro do serviço (retorno em dias); não é
+  // editável no agendamento.
   const effectiveIntervalDays = useMemo(() => {
-    return serviceIntervalDays || selectedServiceData?.return_days || 7;
-  }, [serviceIntervalDays, selectedServiceData?.return_days]);
+    const v = Number(selectedServiceData?.return_days);
+    return Number.isFinite(v) && v > 0 ? Math.floor(v) : 7;
+  }, [selectedServiceData?.return_days]);
 
   const calculateServicePreviewDates = useMemo(() => {
     if (!appointmentTimes || !repeatServiceEnabled || serviceType !== 'service') return [];
@@ -1701,7 +1701,7 @@ Até breve! ✨`;
             room_id: selectedRoom || undefined,
             notes: notes || undefined,
             repeat_count: editableServiceDates.length,
-            interval_days: serviceIntervalDays,
+            interval_days: effectiveIntervalDays,
             // Preview handled below on the client; do NOT auto-send from the hook.
             send_whatsapp: false,
             client_phone: clientData?.phone,
@@ -2643,19 +2643,9 @@ Até breve! ✨`;
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Intervalo (dias)</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={365}
-                                className="h-8 text-xs"
-                                value={serviceIntervalDays}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value);
-                                  if (!isNaN(v) && v >= 1 && v <= 365) setServiceIntervalDays(v);
-                                  else if (e.target.value === '') setServiceIntervalDays(1);
-                                }}
-                                placeholder="Ex.: 7, 14, 21..."
-                              />
+                              <div className="h-8 flex items-center px-2 rounded-md border bg-muted/40 text-xs text-muted-foreground">
+                                {effectiveIntervalDays} dias (cadastro do serviço)
+                              </div>
                             </div>
                           </div>
 
@@ -2959,26 +2949,12 @@ Até breve! ✨`;
                               </AlertDescription>
                             </Alert>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <Label className="text-xs whitespace-nowrap">Intervalo (dias):</Label>
-                              <Input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={2}
-                                className="h-8 w-16 text-xs text-center tabular-nums"
-                                placeholder={String(existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7)}
-                                value={customIntervalDays}
-                                onChange={(e) => {
-                                  const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                                  setCustomIntervalDays(v);
-                                }}
-                              />
-                              <span className="text-xs text-muted-foreground">
-                                {customIntervalDays
-                                  ? `a cada ${customIntervalDays} dia${Number(customIntervalDays) === 1 ? '' : 's'}`
-                                  : `padrão: a cada ${existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias`}
-                              </span>
-                            </div>
+                            <Alert className="py-2">
+                              <Info className="h-3 w-3" />
+                              <AlertDescription className="text-xs">
+                                Intervalo do cadastro do pacote: a cada {existingClientPackage?.interval_days || selectedPackageData?.interval_days || 7} dias.
+                              </AlertDescription>
+                            </Alert>
                           )}
 
                           {/* Preview of scheduled dates with edit capability */}

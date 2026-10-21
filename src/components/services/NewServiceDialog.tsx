@@ -1,3 +1,4 @@
+import { validateServiceRequiredFields } from '@/lib/serviceRequiredFields';
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -154,7 +155,12 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
       toast.error('Adicione pelo menos uma etapa ao kit.');
       return;
     }
-    const compError = isKit ? validateKitSteps(components, activeRoomsList.length > 0) : null;
+    const compError = isKit
+      ? validateKitSteps(components, activeRoomsList.length > 0)
+      : validateServiceRequiredFields(
+          { ...data, professional_id: isAdminOrReceptionist ? data.professional_id : professionalId },
+          activeRoomsList.length > 0,
+        );
     if (compError) {
       toast.error(compError);
       return;

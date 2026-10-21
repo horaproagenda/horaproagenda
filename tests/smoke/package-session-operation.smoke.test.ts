@@ -112,7 +112,7 @@ describeIfCreds('Smoke: pacote sequencial — operação única', () => {
   const futureAt = (days: number, h: number, m = 0) => {
     const d = new Date(Date.now() + (baseOffset + days) * day);
     d.setUTCHours(h, m, 0, 0);
-    while (d.getUTCDay() === 0 || usedSlots.has(d.toISOString())) d.setTime(d.getTime() + day);
+    while (new Date(d.getTime() - 3 * 3600000).getUTCDay() === 0 || usedSlots.has(d.toISOString())) d.setTime(d.getTime() + day);
     usedSlots.add(d.toISOString());
     return d;
   };

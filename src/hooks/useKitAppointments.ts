@@ -10,6 +10,7 @@ export interface KitItemInput {
   service_id: string | null;
   professional_id?: string | null;
   room_id?: string | null;
+  price?: number | null;
   equipment_id?: string | null;
   start_time: string;
   end_time: string;

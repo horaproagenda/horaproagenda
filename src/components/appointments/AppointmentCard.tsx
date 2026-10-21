@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Appointment, Professional } from '@/types';
 import { cn } from '@/lib/utils';
@@ -268,9 +269,9 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
               </>
             )}
           </div>
-          {!isPackageAppointment && typeof appointment.service?.price === 'number' && (
+          {!isPackageAppointment && (typeof appointment.service?.price === 'number' || (appointment as any).price_snapshot != null) && (
             <span className="text-xs font-medium text-foreground/70">
-              R$ {appointment.service.price.toFixed(2)}
+              R$ {appointmentBasePrice(appointment as any).toFixed(2)}
             </span>
           )}
         </div>

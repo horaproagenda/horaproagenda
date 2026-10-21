@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { toast } from 'sonner';
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { formatCurrency } from '@/lib/utils';
@@ -59,7 +60,7 @@ export function useAppointmentPaymentHandler(appointments: Appointment[]) {
     // For package appointments, use the FULL package price, not per session
     const baseTotalPrice = isPackageAppointment 
       ? resolvedPackageTotal
-      : (appointment.service?.price || 0);
+      : appointmentBasePrice(appointment as any);
     const existingAdditionalTotal = (appointment.additional_items || []).reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
     const newAdditionalTotal = additionalItems.reduce((sum, item) => sum + Number(item.total_amount || 0), 0);
     const totalPrice = baseTotalPrice + existingAdditionalTotal + newAdditionalTotal;

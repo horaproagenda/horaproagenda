@@ -1,4 +1,5 @@
 import { buildReceiptRows, type ReceiptExtraItem } from "@/lib/receiptRows";
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { getPaymentAction } from '@/lib/paymentAction';
 import { cardFeePercentage } from '@/lib/cardBrandVariants';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
@@ -1216,7 +1217,7 @@ export function AppointmentDetailDialog({
   // Calculate prices based on appointment type
   // IMPORTANT: For package appointments, the total price to pay is the FULL PACKAGE PRICE, not per session
   // Packages must be paid in full, regardless of how many sessions are scheduled
-  const servicePrice = appointment.service?.price || 0;
+  const servicePrice = appointmentBasePrice(appointment as any);
   const packagePrice = packageData?.total_price || 0;
   // Desconto persistido reduz o valor a receber (não gera saída no caixa/financeiro)
   const appointmentDiscount = Number((appointment as any)?.discount_amount || 0);

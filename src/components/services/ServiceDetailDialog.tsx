@@ -65,7 +65,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
-import { withoutKitServices } from '@/lib/serviceKind';
+import { KitStepsEditor } from './KitStepsEditor';
+import { normalizeKitSteps, serializeKitSteps, validateKitSteps, kitTotalPrice as sumKitPrice, type KitStep } from '@/lib/kitSteps';
 
 interface ServiceAppointment {
   id: string;
@@ -119,25 +120,10 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   const queryClient = useQueryClient();
   const [commissionOverride, setCommissionOverride] = useState<CommissionOverride>(defaultCommissionOverride);
   const recordVis = useRecordVisibility('servicos', (service as any).visibility ?? undefined);
-  type CompositeComponent = { service_id: string; interval_days: number; price: number };
-  const [components, setComponents] = useState<CompositeComponent[]>([]);
+  const [components, setComponents] = useState<KitStep[]>([]);
   const [componentPicker, setComponentPicker] = useState<string>('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-  function validateComponents(comps: CompositeComponent[]): string | null {
-    if (!comps.length) return null;
-    for (let i = 0; i < comps.length; i++) {
-      const c = comps[i];
-      if (!c.service_id) return `Etapa ${i + 1}: selecione um serviço.`;
-      if (c.service_id === service.id) return `Etapa ${i + 1}: o serviço não pode incluir a si mesmo no kit.`;
-      if (!Number.isFinite(c.interval_days) || c.interval_days < 0 || c.interval_days > 365) {
-        return `Etapa ${i + 1}: intervalo inválido (0 a 365 dias).`;
-      }
-      if (i === 0 && c.interval_days !== 0) return 'A primeira etapa do kit deve ter intervalo 0 (início).';
-      if (!Number.isFinite(c.price) || c.price < 0) return `Etapa ${i + 1}: valor inválido.`;
-    }
-    return null;
-  }
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
@@ -171,22 +157,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
         is_active: service.is_active,
       });
       // Hydrate composite kit components
-      const sc = (service as any).service_components;
-      if (Array.isArray(sc) && sc.length > 0) {
-        setComponents(sc.map((c: any) => ({
-          service_id: String(c.service_id),
-          interval_days: Number(c.interval_days) || 0,
-          price: Number(c.price) || 0,
-        })));
-      } else if (Array.isArray((service as any).component_service_ids) && (service as any).component_service_ids.length > 0) {
-        setComponents(((service as any).component_service_ids as string[]).map((id, i) => ({
-          service_id: id,
-          interval_days: i === 0 ? 0 : 7,
-          price: 0,
-        })));
-      } else {
-        setComponents([]);
-      }
+      setComponents(normalizeKitSteps((service as any).service_components));
       recordVis.setVisibility(((service as any).visibility as DataVisibility | null) ?? DEFAULT_RECORD_VISIBILITY);
       setIsEditing(false);
     }
@@ -288,7 +259,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   };
 
   const onSubmit = async (data: ServiceFormData) => {
-    const compError = validateComponents(components);
+    const compError = components.length > 0 ? validateKitSteps(components, rooms.some(r => r.is_active)) : null;
     if (compError) {
       toast.error(compError);
       return;
@@ -296,11 +267,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
     setIsSaving(true);
     try {
       const isKitEdit = components.length > 0;
-      const kitTotalPrice = components.reduce((sum, c) => sum + Number(c.price || 0), 0);
-      const kitTotalDuration = components.reduce(
-        (sum, c) => sum + (Number(activeServices.find(s => s.id === c.service_id)?.duration) || 0),
-        0,
-      );
+      const kitTotalPrice = sumKitPrice(components);
+      const kitTotalDuration = components.reduce((sum, c) => sum + (Number(c.duration_minutes) || 0), 0);
       const { error } = await supabase
         .from('services')
         .update({
@@ -315,8 +283,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
           ...recordVis.visibilityField,
-          component_service_ids: components.map(c => c.service_id),
-          service_components: components as any,
+          component_service_ids: [],
+          service_components: (isKitEdit ? serializeKitSteps(components) : []) as any,
         } as any)
         .eq('id', service.id);
 
@@ -506,13 +474,13 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
+                  {components.length === 0 && (<div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                     <Clock className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Duração</p>
                       <p className="font-semibold">{service.duration} min</p>
                     </div>
-                  </div>
+                  </div>)}
 
                   {service.return_days && (
                     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
@@ -568,11 +536,17 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   </div>
                   <div className="space-y-1.5">
                     {components.map((c, idx) => {
-                      const svc = activeServices.find(s => s.id === c.service_id);
+                      const prof = professionals.find(p => p.id === c.professional_id);
+                      const room = rooms.find(r => r.id === c.room_id);
                       return (
-                        <div key={`view-${c.service_id}-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
+                        <div key={`view-${idx}`} className="flex items-center gap-2 text-xs bg-background rounded border p-2">
                           <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
-                          <span className="flex-1 truncate font-medium">{svc?.name ?? 'Serviço removido'}</span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block truncate font-medium">{c.step_name || 'Etapa sem nome'}</span>
+                            <span className="block truncate text-[10px] text-muted-foreground">
+                              {c.duration_minutes ? `${c.duration_minutes} min` : 'sem duração'} · {prof?.name ?? 'sem profissional'}{room ? ` · ${room.name}` : ''}
+                            </span>
+                          </span>
                           <span className="text-muted-foreground text-[11px]">
                             {idx === 0 ? 'Início do kit (dia 0)' : `+${c.interval_days}d após a etapa ${idx}`}
                           </span>
@@ -582,7 +556,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     })}
                   </div>
                   <div className="text-xs text-muted-foreground text-right pt-1 border-t">
-                    Total do kit: <span className="font-semibold text-foreground">{formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}</span>
+                    Total do kit: <span className="font-semibold text-foreground">{formatCurrency(sumKitPrice(components))}</span>
                   </div>
                 </div>
               )}
@@ -672,7 +646,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     )}
                   />
 
-                  <FormField
+                  {components.length === 0 && (<FormField
                     control={form.control}
                     name="duration"
                     render={({ field }) => (
@@ -689,10 +663,10 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  />)}
                 </div>
 
-                <FormField
+                {components.length === 0 && (<FormField
                   control={form.control}
                   name="return_days"
                   render={({ field }) => (
@@ -709,9 +683,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />)}
 
-                <FormField
+                {components.length === 0 && (<FormField
                   control={form.control}
                   name="room_id"
                   render={({ field }) => (
@@ -735,7 +709,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />)}
 
                 <FormField
                   control={form.control}
@@ -773,7 +747,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   />
                 )}
 
-                {allEquipment.filter(e => e.is_active).length > 0 && (
+                {components.length === 0 && allEquipment.filter(e => e.is_active).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Equipamentos</Label>
                     <div className="border rounded-md p-3 max-h-32 overflow-y-auto">
@@ -801,112 +775,15 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   </div>
                 )}
 
-                {/* Kit composto: exibido apenas para serviços que já são kits. Novos kits são criados em formulário próprio. */}
-                {(Array.isArray((service as any).service_components) && (service as any).service_components.length > 0) ||
-                 (Array.isArray((service as any).component_service_ids) && (service as any).component_service_ids.length > 0) ? (
-                <div className="space-y-2 rounded-md border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Kit de serviços (sequencial)</Label>
-                    <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs"
-                      onClick={() => setComponents(prev => [...prev, {
-                        service_id: '',
-                        interval_days: prev.length === 0 ? 0 : 7,
-                        price: 0,
-                      }])}>
-                      <Plus className="h-3 w-3" /> Etapa
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Defina a sequência de serviços (pode repetir o mesmo serviço). Cada etapa gera um agendamento próprio, respeitando o intervalo, e é cobrada separadamente.
-                  </p>
-                  {components.length > 0 && (
-                    <div className="space-y-2">
-                      {components.map((c, idx) => (
-                        <div key={idx} className="rounded border bg-muted/40 p-2 space-y-1.5">
-                          <div className="flex items-center gap-1">
-                            <Badge variant="secondary" className="text-xs">{idx + 1}</Badge>
-                            <div className="flex-1">
-                              <Select
-                                value={c.service_id || '_none'}
-                                onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, service_id: v === '_none' ? '' : v, price: Number(activeServices.find(s => s.id === v)?.price ?? it.price ?? 0) } : it
-                                ))}
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue placeholder="Selecione o serviço" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="_none">Selecione</SelectItem>
-                                  {withoutKitServices(activeServices, components.map(c => c.service_id)).filter(s => s.id !== service.id).map(s => (
-                                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
-                              disabled={idx === 0}
-                              onClick={() => setComponents(prev => {
-                                const arr = [...prev]; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
-                                arr[0] = { ...arr[0], interval_days: 0 };
-                                return arr;
-                              })}>
-                              <ArrowUp className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7"
-                              disabled={idx === components.length - 1}
-                              onClick={() => setComponents(prev => {
-                                const arr = [...prev]; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
-                                arr[0] = { ...arr[0], interval_days: 0 };
-                                return arr;
-                              })}>
-                              <ArrowDown className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                              onClick={() => setComponents(prev => {
-                                const arr = prev.filter((_, i) => i !== idx);
-                                if (arr.length > 0) arr[0] = { ...arr[0], interval_days: 0 };
-                                return arr;
-                              })}>
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">
-                                {idx === 0 ? 'Início do kit (dia 0)' : `Intervalo após a etapa ${idx} (dias)`}
-                              </Label>
-                              <NumberInput
-                                min={0}
-                                max={365}
-                                emptyValue={0}
-                                value={c.interval_days}
-                                disabled={idx === 0}
-                                onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, interval_days: v ?? 0 } : it
-                                ))}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">Valor desta etapa</Label>
-                              <CurrencyInput
-                                value={c.price}
-                                onValueChange={(v) => setComponents(prev => prev.map((it, i) =>
-                                  i === idx ? { ...it, price: Math.max(0, Number(v) || 0) } : it
-                                ))}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="text-xs text-muted-foreground text-right">
-                        Total do kit: {formatCurrency(components.reduce((sum, c) => sum + Number(c.price || 0), 0))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                ) : null}
+                {components.length > 0 && (
+                  <KitStepsEditor
+                    steps={components}
+                    onChange={setComponents}
+                    professionals={professionals.filter(p => p.is_active)}
+                    rooms={rooms.filter(r => r.is_active)}
+                    equipment={allEquipment.filter(e => e.is_active)}
+                  />
+                )}
 
 
 

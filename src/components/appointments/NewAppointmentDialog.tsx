@@ -573,17 +573,23 @@ export function NewAppointmentDialog({
     const raw = (selectedServiceData as any)?.service_components;
     if (!Array.isArray(raw) || raw.length === 0) return [];
     return raw.map((component: any, index: number) => {
-      const stepService = services.find((service) => service.id === component.service_id);
-      const basePrice = Number(stepService?.price ?? 0);
-      const stepPrice = Number(component.price ?? basePrice);
+      // Etapas independentes: nome, duração, valor, profissional e sala vêm da própria etapa.
+      const stepService = component.service_id ? services.find((service) => service.id === component.service_id) : undefined;
+      const stepPrice = Number(component.price ?? stepService?.price ?? 0);
+      const duration = Number(component.duration_minutes) > 0
+        ? Number(component.duration_minutes)
+        : (Number(stepService?.duration) > 0 ? Number(stepService?.duration) : 60);
       return {
         index,
-        service_id: String(component.service_id),
-        service_name: stepService?.name || 'Serviço removido',
+        service_id: String((selectedServiceData as any)?.id),
+        service_name: String(component.step_name || stepService?.name || `Etapa ${index + 1}`),
         interval_days: Math.max(0, Number(component.interval_days) || 0),
-        duration: Number(stepService?.duration) > 0 ? Number(stepService?.duration) : 60,
+        duration,
         price: stepPrice,
-        discount_amount: stepPrice < basePrice ? Math.max(0, basePrice - stepPrice) : 0,
+        professional_id: component.professional_id ? String(component.professional_id) : '',
+        room_id: component.room_id ? String(component.room_id) : '',
+        equipment_id: Array.isArray(component.equipment) && component.equipment[0] ? String(component.equipment[0]) : '',
+        discount_amount: 0,
       };
     });
   }, [selectedServiceData, serviceType, services]);
@@ -1750,9 +1756,10 @@ Até breve! ✨`;
             }
             return {
               service_id: component.service_id,
-              professional_id: selectedProfessional || null,
-              room_id: selectedRoom || null,
-              equipment_id: selectedEquipment[0] || null,
+              professional_id: component.professional_id || selectedProfessional || null,
+              room_id: component.room_id || selectedRoom || null,
+              equipment_id: component.equipment_id || selectedEquipment[0] || null,
+              price: component.price,
               start_time: stepStart.toISOString(),
               end_time: stepEnd.toISOString(),
               notes: notes || null,

@@ -259,7 +259,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
   };
 
   const onSubmit = async (data: ServiceFormData) => {
-    const compError = components.length > 0 ? validateKitSteps(components, rooms.some(r => r.is_active)) : null;
+    const compError = components.length > 0
+      ? validateKitSteps(components, rooms.some(r => r.is_active))
+      : validateServiceRequiredFields(data, rooms.some(r => r.is_active));
     if (compError) {
       toast.error(compError);
       return;

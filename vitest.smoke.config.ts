@@ -9,7 +9,9 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    // As suítes compartilham conta e profissional; Vitest 4 removeu singleFork.
+    fileParallelism: false,
+    maxWorkers: 1,
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },

@@ -1,5 +1,8 @@
 # Architecture Rules
 
+- Smoke integrity fixtures and Realtime subscription checks share test-only helpers under tests/smoke, with local behavioral regression coverage so CI failures cannot be hidden by skipped or normalized assertions.
+- Run smoke files sequentially with Vitest's supported worker settings because their fixtures share the test account and professional, making parallel database operations interfere with Realtime checks.
+
 - Appointment package membership is proven only by explicit session IDs; standalone origin cannot be converted by heuristics, and batch scheduling inserts the exact session link before synchronization. Display numbering is separate from immutable template step identity to preserve procedures during historical corrections.
 
 - Backend operations own definitive business transitions; frontend validation and cache are advisory only, because retries and concurrent devices must obey the same database rules.

@@ -1,58 +1,31 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { authedClient, describeIfCreds, makeClient } from './setup';
+import { randomUUID } from 'node:crypto';
+import { authedClient, describeIfCreds } from './setup';
 import { bootstrap, SmokeContext } from './fixtures';
+import { listenForAppointmentInsert } from './integrityHelpers';
 
 describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
   let writer: Awaited<ReturnType<typeof authedClient>>;
-  let listener: ReturnType<typeof makeClient>;
+  let listener: Awaited<ReturnType<typeof authedClient>>;
   let ctx: SmokeContext;
 
   beforeAll(async () => {
     writer = await authedClient();
-    listener = makeClient();
-    const { error } = await listener.auth.signInWithPassword({
-      email: process.env.SMOKE_TEST_EMAIL!,
-      password: process.env.SMOKE_TEST_PASSWORD!,
-    });
-    if (error) throw new Error(`Falha no login do listener Realtime: ${error.message}`);
+    listener = await authedClient();
+    const { data, error } = await listener.auth.getSession();
+    if (error || !data.session) throw new Error('Listener Realtime sem sessão autenticada.');
+    await listener.realtime.setAuth(data.session.access_token);
     ctx = await bootstrap(writer);
   });
 
   afterAll(async () => {
-    await ctx?.cleanup();
     await listener?.removeAllChannels();
+    await ctx?.cleanup();
   });
 
   it('recebe INSERT após a assinatura Realtime', async () => {
-    let resolveReceived!: (ok: boolean) => void;
-    const received = new Promise<boolean>((resolve) => {
-      resolveReceived = resolve;
-    });
-
-    const ch = listener
-      .channel(`smoke-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'appointments' },
-        (payload: any) => {
-          if (payload.new?.client_id === ctx.clientId) resolveReceived(true);
-        },
-      );
-
-    // Aguarda a confirmação explícita de SUBSCRIBED antes de inserir,
-    // evitando falso negativo por corrida de assinatura.
-    await new Promise<void>((resolve, reject) => {
-      const subTimer = setTimeout(() => reject(new Error('Realtime subscribe timeout')), 15000);
-      ch.subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          clearTimeout(subTimer);
-          resolve();
-        }
-      });
-    });
-
-    // O prazo de entrega começa somente depois que o servidor confirmou a assinatura.
-    const timer = setTimeout(() => resolveReceived(false), 15000);
+    const appointmentId = randomUUID();
+    const subscription = await listenForAppointmentInsert(listener, appointmentId, 30000);
 
     // P0001 = o banco recusou por choque de horário. Usa um dia útil distante e
     // aleatório para não colidir com os agendamentos dos outros testes.
@@ -61,7 +34,12 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     start.setHours(10 + Math.floor(Math.random() * 6), 0, 0, 0);
     const end = new Date(start.getTime() + 30 * 60_000);
 
+    try {
+    // Confirma que a mesma identidade consegue ler pela API antes da escrita.
+    const { error: accessError } = await listener.from('appointments').select('id').limit(1);
+    expect(accessError).toBeNull();
     const { error: insertError } = await writer.from('appointments').insert({
+      id: appointmentId,
       client_id: ctx.clientId,
       professional_id: ctx.professionalId,
       service_id: ctx.serviceId,
@@ -71,15 +49,15 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
       payment_status: 'pending',
     });
 
-    if (insertError) {
-      clearTimeout(timer);
-      console.error('Insert error details:', insertError);
-      throw insertError;
-    }
+    if (insertError) throw insertError;
     expect(insertError).toBeNull();
 
-    const ok = await received;
-    clearTimeout(timer);
-    expect(ok).toBe(true);
-  }, 35000);
+    const { data: saved, error: readError } = await listener.from('appointments').select('id').eq('id', appointmentId).single();
+    expect(readError).toBeNull();
+    expect(saved?.id).toBe(appointmentId);
+    expect(await subscription.received).toBe(appointmentId);
+    } finally {
+      await subscription.dispose();
+    }
+  }, 65000);
 });

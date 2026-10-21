@@ -1,5 +1,11 @@
 # Roadmap
 
+## Testes de fumaça — estoque, snapshots e Realtime
+- [x] Atribuir profissional válido no modelo de pacote usado pelo teste
+- [x] Distinguir campo de snapshot ausente de snapshot realmente vazio
+- [x] Autenticar a assinatura e conferir o INSERT exato em tempo real
+- [x] Executar regressões locais e testes de fumaça com conta exclusiva de testes
+
 ## Final da ficha e estabilidade de A Pagar
 - [ ] Ajustar área rolável e ações da ficha ao espaço visível do iPhone
 - [ ] Estabilizar dimensões e melhorar legibilidade de A Pagar no notebook

@@ -474,12 +474,12 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
+                  {components.length === 0 && (<div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                     <Clock className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Duração</p>
                       <p className="font-semibold">{service.duration} min</p>
-                    </div>
+                    </div>)}
                   </div>
 
                   {service.return_days && (
@@ -646,7 +646,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     )}
                   />
 
-                  <FormField
+                  {components.length === 0 && (<FormField
                     control={form.control}
                     name="duration"
                     render={({ field }) => (
@@ -663,10 +663,10 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  />)}
                 </div>
 
-                <FormField
+                {components.length === 0 && (<FormField
                   control={form.control}
                   name="return_days"
                   render={({ field }) => (
@@ -683,9 +683,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />)}
 
-                <FormField
+                {components.length === 0 && (<FormField
                   control={form.control}
                   name="room_id"
                   render={({ field }) => (
@@ -709,7 +709,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />)}
 
                 <FormField
                   control={form.control}
@@ -747,7 +747,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   />
                 )}
 
-                {allEquipment.filter(e => e.is_active).length > 0 && (
+                {components.length === 0 && allEquipment.filter(e => e.is_active).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Equipamentos</Label>
                     <div className="border rounded-md p-3 max-h-32 overflow-y-auto">

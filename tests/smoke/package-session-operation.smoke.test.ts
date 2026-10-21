@@ -105,10 +105,21 @@ describeIfCreds('Smoke: pacote sequencial — operação única', () => {
   const startOf = async (apptId: string) =>
     new Date((await c.from('appointments').select('start_time').eq('id', apptId).single()).data!.start_time).getTime();
 
+  // Base aleatória distante evita colisão com agendamentos reais/execuções anteriores.
+  const baseOffset = 400 + Math.floor(Math.random() * 300);
+  const usedSlots = new Set<string>();
+  /** Horário único, nunca em domingo (clínica fechada). */
   const futureAt = (days: number, h: number, m = 0) => {
-    const d = new Date(Date.now() + days * day);
+    const d = new Date(Date.now() + (baseOffset + days) * day);
     d.setUTCHours(h, m, 0, 0);
+    while (new Date(d.getTime() - 3 * 3600000).getUTCDay() === 0 || usedSlots.has(d.toISOString())) d.setTime(d.getTime() + day);
+    usedSlots.add(d.toISOString());
     return d;
+  };
+  const expectOk = async (p: PromiseLike<{ error: unknown }>) => {
+    const r = await p;
+    expect(r.error).toBeNull();
+    return r;
   };
 
   it('1. pacote novo: exatamente N sessões pendentes, sem agendamento', async () => {
@@ -144,8 +155,8 @@ describeIfCreds('Smoke: pacote sequencial — operação única', () => {
     const s = [futureAt(10, 13), futureAt(20, 13), futureAt(30, 13)];
     const p = await makePackage(3, s);
     const ns = futureAt(12, 18);
-    await op({ p_package_id: p.id, p_session_number: 1, p_action: 'reschedule',
-      p_start_time: ns.toISOString(), p_end_time: new Date(ns.getTime() + 30 * 60000).toISOString() });
+    await expectOk(op({ p_package_id: p.id, p_session_number: 1, p_action: 'reschedule',
+      p_start_time: ns.toISOString(), p_end_time: new Date(ns.getTime() + 30 * 60000).toISOString() }));
     expect(await startOf(p.sessions[1].appointmentId!)).toBe(s[1].getTime());
     expect(await startOf(p.sessions[2].appointmentId!)).toBe(s[2].getTime());
   });
@@ -192,19 +203,20 @@ describeIfCreds('Smoke: pacote sequencial — operação única', () => {
   });
 
   it('9. virada de mês preserva o dia exato', async () => {
-    const y = new Date().getUTCFullYear() + 1;
-    const end = new Date(Date.UTC(y, 0, 31, 15, 0)); // 31/jan 12h em SP
-    const p = await makePackage(2, [futureAt(5, 13), new Date(Date.UTC(y, 0, 20, 15))]);
-    await op({ p_package_id: p.id, p_session_number: 2, p_action: 'reschedule',
-      p_start_time: end.toISOString(), p_end_time: new Date(end.getTime() + 30 * 60000).toISOString() });
+    const ref = futureAt(60, 14);
+    let end = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 0, 15, 0)); // último dia do mês, 12h SP
+    while (end.getUTCDay() === 0) end = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 2, 0, 15, 0));
+    const p = await makePackage(2, [futureAt(5, 13), futureAt(20, 16)]);
+    await expectOk(op({ p_package_id: p.id, p_session_number: 2, p_action: 'reschedule',
+      p_start_time: end.toISOString(), p_end_time: new Date(end.getTime() + 30 * 60000).toISOString() }));
     expect(await startOf(p.sessions[1].appointmentId!)).toBe(end.getTime());
   });
 
   it('10. perto da meia-noite: horário gravado sem deslocamento', async () => {
     const late = futureAt(9, 2, 30); // 23h30 em SP (UTC-3)
     const p = await makePackage(1, [futureAt(8, 13)]);
-    await op({ p_package_id: p.id, p_session_number: 1, p_action: 'reschedule',
-      p_start_time: late.toISOString(), p_end_time: new Date(late.getTime() + 20 * 60000).toISOString() });
+    await expectOk(op({ p_package_id: p.id, p_session_number: 1, p_action: 'reschedule',
+      p_start_time: late.toISOString(), p_end_time: new Date(late.getTime() + 20 * 60000).toISOString() }));
     expect(await startOf(p.sessions[0].appointmentId!)).toBe(late.getTime());
   });
 

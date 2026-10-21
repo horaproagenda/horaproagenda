@@ -294,7 +294,7 @@ serve(async (req) => {
     // For packages: use full package price. For services: use service price
     const baseRequiredAmount = isPackageAppointment 
       ? (packageData?.total_price || 0)
-      : (appointment.service?.price || 0);
+      : (appointment.price_snapshot != null ? Number(appointment.price_snapshot) : (appointment.service?.price || 0));
     // CRITICAL: discount must be subtracted from the required total so paid+discount=full triggers 'paid' status.
     // Honor whatever discount the client sends (including lowering or clearing it). Only fall back to the
     // persisted discount when the body omits the field entirely — never silently clamp it upward.

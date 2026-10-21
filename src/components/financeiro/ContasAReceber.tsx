@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
+import { appointmentBasePrice } from '@/lib/kitSteps';
 import { format, parseISO, isAfter } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,7 +96,7 @@ export function ContasAReceber() {
         const paymentPending = apt.payment_status === 'pending' || apt.payment_status === 'partial';
         const statusExcluded = excludedStatuses.includes(apt.status);
         
-        const servicePrice = apt.service?.price || 0;
+        const servicePrice = appointmentBasePrice(apt as any);
         const isZeroValueService = servicePrice === 0;
         
         const packagePrice = apt.package_appointment?.package?.total_price || 0;
@@ -126,7 +127,7 @@ export function ContasAReceber() {
         const packagePrice = packageData?.total_price || 0;
         if (isPackageAppointment && packagePrice === 0) return null;
         
-        const servicePrice = apt.service?.price || 0;
+        const servicePrice = appointmentBasePrice(apt as any);
         const totalAmount = isPackageAppointment ? packagePrice : servicePrice;
         
         if (totalAmount === 0) return null;

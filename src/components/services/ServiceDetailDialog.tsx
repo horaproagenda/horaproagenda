@@ -479,8 +479,8 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                     <div>
                       <p className="text-xs text-muted-foreground">Duração</p>
                       <p className="font-semibold">{service.duration} min</p>
-                    </div>)}
-                  </div>
+                    </div>
+                  </div>)}
 
                   {service.return_days && (
                     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">

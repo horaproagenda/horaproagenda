@@ -782,6 +782,7 @@ export type Database = {
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
+          price_snapshot: number | null
           professional_id: string | null
           recurring_group_id: string | null
           room_id: string | null
@@ -817,6 +818,7 @@ export type Database = {
           payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
+          price_snapshot?: number | null
           professional_id?: string | null
           recurring_group_id?: string | null
           room_id?: string | null
@@ -852,6 +854,7 @@ export type Database = {
           payment_date?: string | null
           payment_methods?: string[] | null
           payment_status?: string | null
+          price_snapshot?: number | null
           professional_id?: string | null
           recurring_group_id?: string | null
           room_id?: string | null
@@ -7794,6 +7797,7 @@ export type Database = {
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
+          price_snapshot: number | null
           professional_id: string | null
           recurring_group_id: string | null
           room_id: string | null
@@ -7853,6 +7857,7 @@ export type Database = {
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
+          price_snapshot: number | null
           professional_id: string | null
           recurring_group_id: string | null
           room_id: string | null
@@ -7949,6 +7954,7 @@ export type Database = {
           payment_date: string | null
           payment_methods: string[] | null
           payment_status: string | null
+          price_snapshot: number | null
           professional_id: string | null
           recurring_group_id: string | null
           room_id: string | null

@@ -114,6 +114,7 @@ describeIfCreds('Smoke: estoque baixa por serviço + template + etapa de pacote'
 
     // service_package + package_appointment ligado a um appointment
     const start = new Date(Date.now() + 4 * 86400_000);
+    while (start.getDay() === 0 || start.getDay() === 6) start.setDate(start.getDate() + 1);
     start.setHours(10, 0, 0, 0);
     const end = new Date(start.getTime() + 30 * 60_000);
 

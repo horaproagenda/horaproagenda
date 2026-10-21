@@ -1,4 +1,4 @@
-import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export function packageTemplateFixture(name: string, professionalId: string) {
   if (!professionalId.trim()) throw new Error('O modelo de teste exige um profissional responsável.');
@@ -20,7 +20,6 @@ export async function listenForAppointmentInsert(
   appointmentId: string,
   timeoutMs = 15000,
 ) {
-  let channel: RealtimeChannel | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let resolveEvent: (id: string) => void = () => undefined;
   let rejectEvent: (error: Error) => void = () => undefined;
@@ -32,10 +31,10 @@ export async function listenForAppointmentInsert(
   void received.catch(() => undefined);
   const dispose = async () => {
     clearTimeout(timer);
-    if (channel) await client.removeChannel(channel);
+    await client.removeChannel(channel);
   };
 
-  channel = client.channel(`smoke-insert-${appointmentId}`).on(
+  const channel = client.channel(`smoke-insert-${appointmentId}`).on(
     'postgres_changes',
     { event: 'INSERT', schema: 'public', table: 'appointments', filter: `id=eq.${appointmentId}` },
     (payload) => {

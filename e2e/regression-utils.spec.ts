@@ -52,8 +52,9 @@ test('monta conteúdo preenchido preservando respostas por linha', () => {
   const content = buildFilledDocumentContent({
     content: 'Nome: {nome}\nPossui alergia? ( ) Sim ( ) Não\nObservações: [TEXTO_LIVRE]',
     formData: { nome: 'Maria' },
-    yesNoAnswers: { question_1: 'sim' },
-    additionalInfo: { texto_livre_2_0: 'Nenhuma' },
+    // Chaves estáveis por tipo de campo (não mais por posição de linha).
+    yesNoAnswers: { question_0: 'sim' },
+    additionalInfo: { texto_livre_0: 'Nenhuma' },
   });
 
   expect(content).toContain('Nome: Maria');

@@ -51,7 +51,7 @@ export function useDocumentFillLinks(templateId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('document_fill_links')
-        .select('*')
+        .select('id, template_id, client_id, professional_id, status, expires_at, filled_at, filled_variables, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (templateId) {

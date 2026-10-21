@@ -144,6 +144,24 @@ export function FillDocumentDialog({
   }, [selectedClientId]);
 
   // Auto-fill variables based on selected client + clinic + offering
+  const offeringSignature = (() => {
+    if (selectedOfferingId.startsWith('svc:')) {
+      const s = activeServices.find(x => x.id === selectedOfferingId.slice(4));
+      return s ? `${s.id}|${s.name}|${s.price}` : '';
+    }
+    if (selectedOfferingId.startsWith('pkg:')) {
+      const p = clientPackages.find(x => x.id === selectedOfferingId.slice(4));
+      return p ? `${p.id}|${p.name}|${p.total_price}` : '';
+    }
+    return '';
+  })();
+  const fillSignature = JSON.stringify([
+    template?.id, template?.content,
+    selectedClient ? [selectedClient.id, selectedClient.name, selectedClient.email, selectedClient.phone, selectedClient.cpf, selectedClient.birthdate, (selectedClient as any).address_city, buildClientAddress(selectedClient), (selectedClient as any).assigned_professional?.name] : null,
+    customVariables,
+    businessSettings ? [businessSettings.clinic_name, businessSettings.clinic_address, businessSettings.clinic_phone, businessSettings.clinic_email, businessSettings.clinic_cnpj] : null,
+    selectedOfferingId, offeringSignature,
+  ]);
   useEffect(() => {
     if (!template?.content) return;
 
@@ -262,7 +280,10 @@ export function FillDocumentDialog({
     }
 
     setFilledContent(content);
-  }, [template, selectedClient, customVariables, businessSettings, selectedOfferingId, activeServices, clientPackages]);
+    // Dependências por valor (não por referência): atualizações em segundo plano
+    // das listas não podem reescrever o documento enquanto a pessoa digita.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillSignature]);
 
   useEffect(() => {
     if (preSelectedClientId) {

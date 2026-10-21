@@ -35,6 +35,9 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     const end = new Date(start.getTime() + 30 * 60_000);
 
     try {
+    // Confirma que a mesma identidade consegue ler pela API antes da escrita.
+    const { error: accessError } = await listener.from('appointments').select('id').limit(1);
+    expect(accessError).toBeNull();
     const { error: insertError } = await writer.from('appointments').insert({
       id: appointmentId,
       client_id: ctx.clientId,
@@ -49,10 +52,10 @@ describeIfCreds('Smoke: realtime postgres_changes em appointments', () => {
     if (insertError) throw insertError;
     expect(insertError).toBeNull();
 
-    expect(await subscription.received).toBe(appointmentId);
     const { data: saved, error: readError } = await listener.from('appointments').select('id').eq('id', appointmentId).single();
     expect(readError).toBeNull();
     expect(saved?.id).toBe(appointmentId);
+    expect(await subscription.received).toBe(appointmentId);
     } finally {
       await subscription.dispose();
     }

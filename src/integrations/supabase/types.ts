@@ -3638,6 +3638,8 @@ export type Database = {
       package_template_steps: {
         Row: {
           account_owner_id: string
+          commission_type: string | null
+          commission_value: number | null
           created_at: string
           default_equipment: string[]
           default_professional_id: string | null
@@ -3653,6 +3655,8 @@ export type Database = {
         }
         Insert: {
           account_owner_id?: string
+          commission_type?: string | null
+          commission_value?: number | null
           created_at?: string
           default_equipment?: string[]
           default_professional_id?: string | null
@@ -3668,6 +3672,8 @@ export type Database = {
         }
         Update: {
           account_owner_id?: string
+          commission_type?: string | null
+          commission_value?: number | null
           created_at?: string
           default_equipment?: string[]
           default_professional_id?: string | null

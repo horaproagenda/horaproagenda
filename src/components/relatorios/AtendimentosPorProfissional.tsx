@@ -1,3 +1,4 @@
+import { stepCommissionAmount } from '@/lib/stepCommission';
 import { useMemo, useState, useEffect } from 'react';
 import { appointmentBasePrice } from '@/lib/kitSteps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,7 +68,7 @@ export function AtendimentosPorProfissional() {
         .from('appointments')
         .select(`
           id, start_time, amount_paid, payment_status, status,
-          professional_id,
+          professional_id, commission_type_snapshot, commission_value_snapshot,
           client:clients(id, name),
           service:services(id, name, price)
         `)
@@ -126,6 +127,8 @@ export function AtendimentosPorProfissional() {
           s + (Number(a.amount_paid) || appointmentBasePrice(a) || 0), 0);
         const totalCommission = profAppts.reduce((s: number, a: any) => {
           const amt = Number(a.amount_paid) || appointmentBasePrice(a) || 0;
+          const step = stepCommissionAmount(a, amt);
+          if (step != null) return s + step;
           const pct = Number(a.service?.commission_percentage || prof.commission_percentage || 0);
           return s + (amt * pct / 100);
         }, 0);
@@ -418,6 +421,8 @@ export function AtendimentosPorProfissional() {
                     s + (Number(a.amount_paid) || appointmentBasePrice(a) || 0), 0);
                   const monthCommission = month.appointments.reduce((s: number, a: any) => {
                     const amt = Number(a.amount_paid) || appointmentBasePrice(a) || 0;
+                    const step = stepCommissionAmount(a, amt);
+                    if (step != null) return s + step;
                     const pct = Number(a.service?.commission_percentage || prof?.commission_percentage || 0);
                     return s + (amt * pct / 100);
                   }, 0);
@@ -451,7 +456,7 @@ export function AtendimentosPorProfissional() {
                             {month.appointments.map((apt: any) => {
                               const amt = Number(apt.amount_paid) || appointmentBasePrice(apt) || 0;
                               const pct = Number(apt.service?.commission_percentage || prof?.commission_percentage || 0);
-                              const comm = amt * pct / 100;
+                              const comm = stepCommissionAmount(apt, amt) ?? (amt * pct / 100);
                               return (
                                 <TableRow key={apt.id} className="hover:bg-muted/40 transition-colors">
                                   <TableCell className="text-xs py-2 tabular-nums text-muted-foreground">

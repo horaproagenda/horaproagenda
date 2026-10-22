@@ -515,7 +515,6 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                       rooms={rooms.filter(r => r.is_active || sequentialSteps.some(s => s.room_id === r.id)).map(r => ({ id: r.id, name: r.name }))}
                       equipment={equipment.filter(e => e.is_active || sequentialSteps.some(s => s.equipment.includes(e.id))).map(e => ({ id: e.id, name: e.name }))}
                     />
-                    </div>
 
                     <FormField
                       control={form.control}

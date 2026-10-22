@@ -1,4 +1,5 @@
-import { Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { StepCommissionField, nextStepIntervalLabel } from './StepCommissionField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,11 +27,6 @@ export function KitStepsEditor({ steps, onChange, professionals, rooms, equipmen
   const update = (idx: number, patch: Partial<KitStep>) =>
     onChange(steps.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   const fixFirst = (arr: KitStep[]) => (arr.length ? [{ ...arr[0], interval_days: 0 }, ...arr.slice(1)] : arr);
-  const move = (idx: number, dir: -1 | 1) => {
-    const arr = [...steps];
-    [arr[idx], arr[idx + dir]] = [arr[idx + dir], arr[idx]];
-    onChange(fixFirst(arr));
-  };
 
   return (
     <div className="space-y-2 rounded-md border p-2">
@@ -56,12 +52,6 @@ export function KitStepsEditor({ steps, onChange, professionals, rooms, equipmen
               className="h-8 flex-1 text-base sm:text-sm"
               maxLength={100}
             />
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => move(idx, -1)} aria-label="Subir etapa">
-              <ArrowUp className="h-3 w-3" />
-            </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={idx === steps.length - 1} onClick={() => move(idx, 1)} aria-label="Descer etapa">
-              <ArrowDown className="h-3 w-3" />
-            </Button>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" disabled={steps.length === 1}
               onClick={() => onChange(fixFirst(steps.filter((_, i) => i !== idx)))} aria-label="Remover etapa">
               <X className="h-3 w-3" />
@@ -79,10 +69,11 @@ export function KitStepsEditor({ steps, onChange, professionals, rooms, equipmen
             </div>
             <div className="space-y-0.5">
               <Label className="text-[10px] text-muted-foreground">
-                {idx === 0 ? 'Início (dia 0)' : `Dias após a etapa ${idx}`}
+                {idx === steps.length - 1 ? 'Última etapa (sem etapa seguinte)' : nextStepIntervalLabel(idx)}
               </Label>
-              <NumberInput min={0} max={365} emptyValue={0} value={idx === 0 ? 0 : s.interval_days} disabled={idx === 0}
-                onValueChange={(v) => update(idx, { interval_days: v ?? 0 })} className="h-8 text-sm" />
+              <NumberInput min={0} max={365} emptyValue={0} value={idx === steps.length - 1 ? 0 : steps[idx + 1].interval_days}
+                disabled={idx === steps.length - 1}
+                onValueChange={(v) => update(idx + 1, { interval_days: v ?? 0 })} className="h-8 text-sm" />
             </div>
           </div>
 
@@ -109,9 +100,12 @@ export function KitStepsEditor({ steps, onChange, professionals, rooms, equipmen
             )}
           </div>
 
-          {equipment.length > 0 && (
-            <div className="space-y-0.5">
+          <StepCommissionField type={s.commission_type ?? 'default'} value={s.commission_value ?? 0} disabled={!s.professional_id}
+            onChange={(patch) => update(idx, patch)} />
+
+          <div className="space-y-0.5">
               <Label className="text-[10px] text-muted-foreground">Equipamento</Label>
+              {equipment.length === 0 && <p className="text-[10px] text-muted-foreground">Nenhum equipamento cadastrado.</p>}
               <div className="flex flex-wrap gap-2">
                 {equipment.map((eq) => (
                   <label key={eq.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -125,7 +119,6 @@ export function KitStepsEditor({ steps, onChange, professionals, rooms, equipmen
                 ))}
               </div>
             </div>
-          )}
         </div>
       ))}
 

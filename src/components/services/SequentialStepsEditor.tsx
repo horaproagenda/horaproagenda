@@ -1,4 +1,5 @@
-import { Plus, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { StepCommissionField, nextStepIntervalLabel, type StepCommissionType } from './StepCommissionField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +16,15 @@ export interface SequentialStepDraft {
   equipment: string[];
   /** Dias até a próxima etapa (última etapa = 0). */
   interval_after_days: number;
+  commission_type: StepCommissionType;
+  commission_value: number;
 }
 
 interface Option { id: string; name: string }
 
 export const emptySequentialStep = (): SequentialStepDraft => ({
   step_name: '', duration_minutes: 60, professional_id: '', room_id: '', equipment: [], interval_after_days: 7,
+  commission_type: 'default', commission_value: 0,
 });
 
 /** Validação das etapas independentes do pacote sequencial. Retorna mensagem ou null. */
@@ -33,8 +37,9 @@ export function validateSequentialSteps(steps: SequentialStepDraft[], hasRooms: 
     if (!s.duration_minutes || s.duration_minutes < 5) return `Informe a duração da etapa ${n}.`;
     if (!s.professional_id) return `Selecione o profissional da etapa ${n}.`;
     if (hasRooms && !s.room_id) return `Selecione a sala da etapa ${n}.`;
+    if (s.commission_type === 'percentage' && (s.commission_value < 0 || s.commission_value > 100)) return `Comissão inválida na etapa ${n}.`;
     if (i < steps.length - 1 && (!s.interval_after_days || s.interval_after_days < 1)) {
-      return `Informe o intervalo (mínimo 1 dia) após a etapa ${n}.`;
+      return `Informe o intervalo de dias para etapa seguinte nº ${n + 1}.`;
     }
   }
   return null;
@@ -52,6 +57,8 @@ export function serializeSequentialSteps(templateId: string, steps: SequentialSt
     default_equipment: s.equipment,
     sequence_order: i + 1,
     interval_after_days: i === steps.length - 1 ? 0 : s.interval_after_days,
+    commission_type: s.commission_type === 'default' ? null : s.commission_type,
+    commission_value: s.commission_type === 'default' ? null : s.commission_value,
   }));
 }
 
@@ -68,11 +75,6 @@ export function SequentialStepsEditor({ steps, onChange, professionals, rooms, e
   const hasRooms = rooms.length > 0;
   const update = (idx: number, patch: Partial<SequentialStepDraft>) =>
     onChange(steps.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
-  const move = (idx: number, dir: -1 | 1) => {
-    const arr = [...steps];
-    [arr[idx], arr[idx + dir]] = [arr[idx + dir], arr[idx]];
-    onChange(arr);
-  };
 
   return (
     <div className="space-y-2 rounded-md border p-2">
@@ -95,12 +97,6 @@ export function SequentialStepsEditor({ steps, onChange, professionals, rooms, e
               <Badge variant="secondary" className="text-[10px] h-5">{idx + 1}</Badge>
               <Input value={s.step_name} onChange={(e) => update(idx, { step_name: e.target.value })}
                 placeholder="Nome da etapa *" className="h-8 flex-1 text-base sm:text-sm" maxLength={100} />
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => move(idx, -1)} aria-label="Subir etapa">
-                <ArrowUp className="h-3 w-3" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={isLast} onClick={() => move(idx, 1)} aria-label="Descer etapa">
-                <ArrowDown className="h-3 w-3" />
-              </Button>
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" disabled={steps.length === 1}
                 onClick={() => onChange(steps.filter((_, i) => i !== idx))} aria-label="Remover etapa">
                 <X className="h-3 w-3" />
@@ -114,7 +110,7 @@ export function SequentialStepsEditor({ steps, onChange, professionals, rooms, e
               </div>
               <div className="space-y-0.5">
                 <Label className="text-[10px] text-muted-foreground">
-                  {isLast ? 'Última etapa' : 'Dias até a próxima etapa *'}
+                  {isLast ? 'Última etapa (sem etapa seguinte)' : `${nextStepIntervalLabel(idx)} *`}
                 </Label>
                 <NumberInput min={isLast ? 0 : 1} max={365} emptyValue={0} value={isLast ? 0 : s.interval_after_days} disabled={isLast}
                   onValueChange={(v) => update(idx, { interval_after_days: v ?? 0 })} className="h-8 text-sm" />
@@ -144,9 +140,12 @@ export function SequentialStepsEditor({ steps, onChange, professionals, rooms, e
               )}
             </div>
 
-            {equipment.length > 0 && (
-              <div className="space-y-0.5">
+            <StepCommissionField type={s.commission_type} value={s.commission_value} disabled={!s.professional_id}
+              onChange={(patch) => update(idx, patch)} />
+
+            <div className="space-y-0.5">
                 <Label className="text-[10px] text-muted-foreground">Equipamento</Label>
+                {equipment.length === 0 && <p className="text-[10px] text-muted-foreground">Nenhum equipamento cadastrado.</p>}
                 <div className="flex flex-wrap gap-2">
                   {equipment.map((eq) => (
                     <label key={eq.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -159,7 +158,6 @@ export function SequentialStepsEditor({ steps, onChange, professionals, rooms, e
                   ))}
                 </div>
               </div>
-            )}
           </div>
         );
       })}

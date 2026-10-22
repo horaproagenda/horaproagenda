@@ -66,9 +66,10 @@ describeIfCreds('Public document submission and saved download', () => {
       expect(docs?.[0].content).toBe(args.p_filled_content);
       expect(docs?.[0].type).toBe(category);
       expect(docs?.[0].signed_at).toBeNull();
-      const { data: audit } = await staff.from('audit_logs').select('account_owner_id').eq('record_id', saved.document_id).eq('action', 'INSERT');
+      const { data: audit } = await staff.from('document_events').select('account_owner_id,payload').eq('link_id', link.id).eq('event_type', 'document_finalized');
       expect(audit?.length).toBeGreaterThan(0);
       expect(audit?.[0].account_owner_id).toBe(docs?.[0].account_owner_id);
+      expect(audit?.[0].payload.document_id).toBe(saved.document_id);
       const reopened = await visitor.rpc('get_document_fill_link_by_token', { p_token: token });
       expect(reopened.data.status).toBe('filled');
       expect(reopened.data.filled_content).toBeNull();

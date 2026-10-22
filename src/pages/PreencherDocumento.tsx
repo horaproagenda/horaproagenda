@@ -356,6 +356,8 @@ export default function PreencherDocumento() {
       setFormData(initialFormData);
 
       if (linkData.status === 'filled') {
+        setFilledContentForPdf(linkData.filled_content || '');
+        setShowPdfDownload(!!linkData.filled_content?.trim());
         setSubmitted(true);
       }
     } catch (err) {
@@ -566,13 +568,18 @@ export default function PreencherDocumento() {
   const handleDownloadPdf = () => {
     if (!template) return;
 
-    const content = filledContentForPdf || buildFilledContent();
+    const content = filledContentForPdf;
+    if (!content.trim()) {
+      toast.error('O documento preenchido não está disponível para download. Peça um novo link ao profissional.');
+      return;
+    }
+    const filledAt = documentLink?.filled_at ? parseISO(documentLink.filled_at) : new Date();
     if (isRichDocument(content)) {
       void downloadRichDocumentPdf({
         title: template.title,
         bodyHtml: content,
         headerLines: [
-          `Data de preenchimento: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+          `Data de preenchimento: ${format(filledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
           client?.name ? `Cliente: ${client.name}` : '',
           client?.cpf ? `CPF: ${client.cpf}` : '',
         ],
@@ -595,7 +602,7 @@ export default function PreencherDocumento() {
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(removeAccents(`Data de preenchimento: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
+    doc.text(removeAccents(`Data de preenchimento: ${format(filledAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`), margin, y);
     y += 8;
 
     if (client?.name) {
@@ -816,13 +823,13 @@ export default function PreencherDocumento() {
     );
   }
 
-  if (submitted) {
+  if (submitted && (!documentLink?.requires_cpf || authenticated)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="py-8 text-center space-y-4">
             <ShieldCheck className="h-16 w-16 mx-auto text-primary mb-2" />
-            <h2 className="text-xl font-semibold">Documento Assinado!</h2>
+            <h2 className="text-xl font-semibold">Documento enviado!</h2>
             <p className="text-muted-foreground text-sm">
               Suas respostas foram salvas com sucesso. Este documento não pode mais ser alterado.
             </p>

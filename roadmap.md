@@ -1,5 +1,10 @@
 # Roadmap
 
+## Documentos públicos — envio e PDF
+- [ ] Corrigir identificação da clínica na gravação sem sessão, preservando CPF e auditoria
+- [ ] Restaurar PDF salvo ao reabrir o link, após confirmação do CPF
+- [ ] Testar envio, repetição e download com documentos exclusivos da conta de testes
+
 ## Testes de fumaça — estoque, snapshots e Realtime
 - [x] Atribuir profissional válido no modelo de pacote usado pelo teste
 - [x] Distinguir campo de snapshot ausente de snapshot realmente vazio

@@ -242,7 +242,7 @@ export function ClientDocumentViewDialog({
     pdf.save(fileName);
   };
 
-  /** Gera o PDF, guarda no arquivo do cliente e envia o link de download pelo WhatsApp. */
+  /** Gera o PDF, guarda no arquivo do cliente e envia o arquivo PDF anexado pelo WhatsApp. */
   const handleSendPdfWhatsApp = async () => {
     const phone = phoneInput || client?.phone;
     if (!phone) { toast.error('Informe o número de telefone do cliente'); return; }
@@ -259,8 +259,12 @@ export function ClientDocumentViewDialog({
         .createSignedUrl(path, 60 * 60 * 24 * 7);
       if (sErr || !signed?.signedUrl) throw sErr || new Error('link');
       const firstName = (client?.name || '').split(' ')[0];
-      const message = `Olá${firstName ? `, ${firstName}` : ''}! Segue o seu documento *${document.title}* (${documentTypeLabels[document.type] || 'Documento'}) em PDF:\n\n${signed.signedUrl}\n\nO link fica disponível por 7 dias.`;
-      const result = await sendWhatsappMessage(phone, message, { client_id: client.id });
+      const message = `Olá${firstName ? `, ${firstName}` : ''}! Segue o seu documento *${document.title}* (${documentTypeLabels[document.type] || 'Documento'}) em PDF.`;
+      const fileName = `${document.title || 'Documento'}.pdf`.replace(/[\\/:*?"<>|]/g, '').slice(0, 150);
+      const result = await sendWhatsappMessage(phone, message, {
+        client_id: client.id,
+        document: { url: signed.signedUrl, file_name: fileName },
+      });
       if (result) { setWhatsappSent(true); setTimeout(() => setWhatsappSent(false), 3000); }
     } catch (error) {
       console.error('Error sending PDF via WhatsApp:', error);

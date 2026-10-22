@@ -442,7 +442,29 @@ function AgendaMockup() {
 // Landing
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * A página pública precisa sempre rolar. Uma trava de rolagem deixada pelo
+ * app (menu lateral, janela ou painel aberto ao sair da conta) ficava presa
+ * no <body>/<html> e impedia a rolagem no notebook. Ao abrir a página,
+ * removemos qualquer trava remanescente.
+ */
+export function releaseStaleScrollLocks(doc: Document = document) {
+  for (const el of [doc.documentElement, doc.body]) {
+    if (!el) continue;
+    el.style.removeProperty('overflow');
+    el.style.removeProperty('overflow-y');
+    el.style.removeProperty('pointer-events');
+    el.style.removeProperty('position');
+    el.style.removeProperty('padding-right');
+    el.style.removeProperty('margin-right');
+    el.removeAttribute('data-scroll-locked');
+  }
+}
+
 export default function Landing() {
+  useEffect(() => {
+    releaseStaleScrollLocks();
+  }, []);
   return (
     <>
       <Helmet>

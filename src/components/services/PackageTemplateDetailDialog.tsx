@@ -49,7 +49,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
-import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
+import { SequentialStepsEditor, emptySequentialStep, validateSequentialSteps, serializeSequentialSteps, type SequentialStepDraft } from './SequentialStepsEditor';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY, type DataVisibility } from '@/lib/permissions';
 import { withoutKitServices } from '@/lib/serviceKind';
@@ -93,21 +93,13 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isSequential = pkg.package_type === 'sequential';
-  const [sequentialSteps, setSequentialSteps] = useState<Array<{ service_id: string; interval_after_days: number }>>([]);
+  const [sequentialSteps, setSequentialSteps] = useState<SequentialStepDraft[]>([]);
   const recordVis = useRecordVisibility('servicos', (pkg as any).visibility ?? undefined);
 
   const { rooms } = useRooms();
   const { professionals } = useProfessionals();
   const { equipment } = useEquipment();
   const { services, activeServices } = useServices();
-  // Use full list for step options so previously-selected inactive services still match.
-  // Kits de serviço não podem compor pacotes (agendamento e cobrança diferentes).
-  const stepServiceOptions = React.useMemo(
-    () => withoutKitServices(services || [], sequentialSteps.map(s => s.service_id))
-      .map((s: any) => ({ value: s.id, label: s.name, sublabel: s.category || undefined })),
-    [services, sequentialSteps]
-  );
-
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
     defaultValues: {
@@ -192,15 +184,23 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         if (isSequential) {
           const { data: stepsData } = await (supabase as any)
             .from('package_template_steps')
-            .select('service_id, sequence_order, interval_after_days')
+            .select('service_id, sequence_order, interval_after_days, step_name, duration_minutes, default_professional_id, default_room_id, default_equipment')
             .eq('template_id', pkg.id)
             .order('sequence_order', { ascending: true });
 
-          const loaded = (stepsData || []).map((row: any, idx: number, arr: any[]) => ({
-            service_id: row.service_id || '',
-            interval_after_days: idx === arr.length - 1 ? 0 : (Number(row.interval_after_days) || 0),
-          }));
-          setSequentialSteps(loaded.length > 0 ? loaded : [{ service_id: '', interval_after_days: 7 }]);
+          // Etapas antigas sem dados próprios recebem uma cópia única para edição.
+          const loaded: SequentialStepDraft[] = (stepsData || []).map((row: any, idx: number, arr: any[]) => {
+            const legacy = row.service_id ? (services || []).find((sv: any) => sv.id === row.service_id) as any : null;
+            return {
+              step_name: row.step_name || legacy?.name || '',
+              duration_minutes: Number(row.duration_minutes) || Number(legacy?.duration) || 60,
+              professional_id: row.default_professional_id || legacy?.professional_id || pkg.professional_id || '',
+              room_id: row.default_room_id || legacy?.room_id || '',
+              equipment: Array.isArray(row.default_equipment) ? row.default_equipment : [],
+              interval_after_days: idx === arr.length - 1 ? 0 : (Number(row.interval_after_days) || 0),
+            };
+          });
+          setSequentialSteps(loaded.length > 0 ? loaded : [emptySequentialStep()]);
         }
     } catch (error) {
       console.error('Error fetching package stats:', error);
@@ -215,24 +215,12 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
       let totalSessions = data.total_sessions;
       let duration = data.duration;
       let intervalDays = data.interval_days;
-      let expandedSteps: Array<{ service_id: string; interval_after_days: number }> = [];
-
       if (isSequential) {
-        if (sequentialSteps.some(s => !s.service_id)) {
-          toast.error('Selecione um serviço para cada etapa.');
-          setIsSaving(false);
-          return;
-        }
-        expandedSteps = sequentialSteps.map(step => ({
-          service_id: step.service_id,
-          interval_after_days: Number(step.interval_after_days) || 0,
-        }));
-        totalSessions = expandedSteps.length;
-        intervalDays = expandedSteps[0]?.interval_after_days || intervalDays;
-        duration = expandedSteps.reduce((sum, s) => {
-          const svc = services.find(a => a.id === s.service_id);
-          return sum + (svc?.duration || 0);
-        }, 0) || duration;
+        const stepError = validateSequentialSteps(sequentialSteps, rooms.some(r => r.is_active));
+        if (stepError) { toast.error(stepError); setIsSaving(false); return; }
+        totalSessions = sequentialSteps.length;
+        intervalDays = sequentialSteps[0]?.interval_after_days || intervalDays;
+        duration = Math.max(15, ...sequentialSteps.map(st => st.duration_minutes || 0));
       }
 
       const { error } = await (supabase as any)
@@ -259,12 +247,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         await (supabase as any).from('package_template_steps').delete().eq('template_id', pkg.id);
         const { error: stepsError } = await (supabase as any)
           .from('package_template_steps')
-          .insert(expandedSteps.map((step, index) => ({
-            template_id: pkg.id,
-            service_id: step.service_id,
-            sequence_order: index + 1,
-            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
-          })));
+          .insert(serializeSequentialSteps(pkg.id, sequentialSteps));
         if (stepsError) throw stepsError;
       }
 
@@ -279,27 +262,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
     }
   };
 
-  const addSeqStep = () => setSequentialSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
-  const removeSeqStep = (idx: number) => setSequentialSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
-  const updateSeqStep = (idx: number, updates: Partial<{ service_id: string; interval_after_days: number }>) => {
-    setSequentialSteps(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
-  };
 
-  // interval range for display
-  const intervalRange = (() => {
-    if (!isSequential || sequentialSteps.length === 0) return null;
-    const vals = sequentialSteps
-      .slice(0, sequentialSteps.length > 1 ? -1 : sequentialSteps.length)
-      .map(s => Number(s.interval_after_days) || 0)
-      .filter(v => v > 0);
-    if (vals.length === 0) return null;
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
-    return min === max ? `${min} dias` : `de ${min} a ${max} dias`;
-  })();
-
-  // Cores por serviço — apoia a leitura visual da sequência.
-  const seqColorMap = buildSequentialServiceColorMap(sequentialSteps.map(s => s.service_id));
 
   const handleDelete = async () => {
     try {
@@ -383,7 +346,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                       <p className="font-semibold">{pkg.total_sessions}</p>
                     </div>
                   </div>
-
+                  {!isSequential && (<>
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                     <Clock className="h-5 w-5 text-primary" />
                     <div>
@@ -396,9 +359,30 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     <Timer className="h-5 w-5 text-orange-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Intervalo</p>
-                      <p className="font-semibold">{isSequential && intervalRange ? intervalRange : `${pkg.interval_days || 7} dias`}</p>
+                      <p className="font-semibold">{`${pkg.interval_days || 7} dias`}</p>
                     </div>
                   </div>
+                  </>)}
+
+                  {isSequential && sequentialSteps.length > 0 && (
+                    <div className="col-span-2 space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">Etapas</p>
+                      {sequentialSteps.map((s, i) => (
+                        <div key={i} className="rounded-lg border bg-muted/30 p-2 text-xs space-y-0.5">
+                          <p className="font-semibold text-sm">{i + 1}. {s.step_name || 'Etapa sem nome'}</p>
+                          <p className="text-muted-foreground">
+                            {s.duration_minutes} min
+                            {' · '}{professionals.find(p => p.id === s.professional_id)?.name || 'Sem profissional'}
+                            {s.room_id ? ` · ${rooms.find(r => r.id === s.room_id)?.name || 'Sala'}` : ''}
+                            {s.equipment.length > 0 ? ` · ${s.equipment.map(id => equipment.find(e => e.id === id)?.name).filter(Boolean).join(', ')}` : ''}
+                          </p>
+                          {i < sequentialSteps.length - 1 && (
+                            <p className="text-muted-foreground">Próxima etapa após {s.interval_after_days} dia(s)</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 col-span-2">
                     <DollarSign className="h-5 w-5 text-accent" />
@@ -524,70 +508,13 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
 
                 {isSequential ? (
                   <>
-                    <div className="space-y-2 rounded-lg border p-3">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium">Sequência de serviços</Label>
-                        <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={addSeqStep}>
-                          <Plus className="h-3 w-3" /> Etapa
-                        </Button>
-                      </div>
-                      {sequentialSteps.map((step, index) => {
-                        const color = getSequentialServiceColor(step.service_id, seqColorMap);
-                        return (
-                          <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
-                            <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
-                            <div className="min-w-0">
-                              <Label className="text-[10px]">{index + 1}º serviço</Label>
-                              <SearchableSelect
-                                className="h-8 text-xs"
-                                value={step.service_id}
-                                onChange={(value) => updateSeqStep(index, { service_id: value })}
-                                options={stepServiceOptions}
-                                placeholder="Selecione o serviço"
-                                searchPlaceholder="Buscar serviço..."
-                                emptyMessage="Nenhum serviço encontrado."
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-[10px]">Após (dias)</Label>
-                              <NumberInput min={0} max={365} className="h-8 text-xs" disabled={index === sequentialSteps.length - 1} emptyValue={0} value={index === sequentialSteps.length - 1 ? 0 : step.interval_after_days} onValueChange={(v) => updateSeqStep(index, { interval_after_days: v ?? 0 })} />
-                            </div>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={sequentialSteps.length === 1} onClick={() => removeSeqStep(index)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                      <p className="text-[10px] text-muted-foreground pt-1">
-                        Total de aplicações: <span className="font-medium text-foreground">{sequentialSteps.length}</span>
-                      </p>
-                      {(() => {
-                        const counts = sequentialSteps.reduce<Record<string, number>>((acc, s) => {
-                          if (s.service_id) acc[s.service_id] = (acc[s.service_id] || 0) + 1;
-                          return acc;
-                        }, {});
-                        const entries = Object.entries(counts);
-                        if (entries.length === 0) return null;
-                        return (
-                          <div className="rounded-md border bg-muted/30 p-2 mt-1">
-                            <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {entries.map(([sid, qty]) => {
-                                const svc = services.find((s: any) => s.id === sid) as any;
-                                const c = getSequentialServiceColor(sid, seqColorMap);
-                                return (
-                                  <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>
-                                    <span className={`h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
-                                    <span className="font-medium text-foreground">{svc?.name || 'Serviço'}</span>
-                                    <span className="text-muted-foreground">×{qty}</span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
+                    <SequentialStepsEditor
+                      steps={sequentialSteps}
+                      onChange={setSequentialSteps}
+                      professionals={professionals.filter(p => p.is_active || sequentialSteps.some(s => s.professional_id === p.id)).map(p => ({ id: p.id, name: p.name }))}
+                      rooms={rooms.filter(r => r.is_active || sequentialSteps.some(s => s.room_id === r.id)).map(r => ({ id: r.id, name: r.name }))}
+                      equipment={equipment.filter(e => e.is_active || sequentialSteps.some(s => s.equipment.includes(e.id))).map(e => ({ id: e.id, name: e.name }))}
+                    />
 
                     <FormField
                       control={form.control}

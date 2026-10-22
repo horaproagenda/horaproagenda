@@ -26,7 +26,7 @@ export function usePackageTemplates() {
 
       const { data: steps, error: stepsError } = await (supabase as any)
         .from('package_template_steps')
-        .select('id, template_id, service_id, sequence_order, interval_after_days')
+        .select('id, template_id, service_id, sequence_order, interval_after_days, step_name, duration_minutes, default_professional_id, default_room_id, default_equipment')
         .in('template_id', templateIds)
         .order('sequence_order', { ascending: true });
 

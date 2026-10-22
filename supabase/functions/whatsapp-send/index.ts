@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { normalizeBrPhone } from "../_shared/phone.ts";
-import { resolveWhatsapp, whatsappSendText } from "../_shared/whatsappProvider.ts";
+import { resolveWhatsapp, whatsappSendText, whatsappSendDocument } from "../_shared/whatsappProvider.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,9 +46,21 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { phone, message, client_id, professional_id } = body as {
+    const { phone, message, client_id, professional_id, document: doc } = body as {
       phone: string; message: string; client_id?: string; professional_id?: string;
+      document?: { url: string; file_name: string };
     };
+    // Anexo: só aceita link assinado do próprio armazenamento de documentos.
+    if (doc) {
+      const allowed = `${supabaseUrl}/storage/v1/object/sign/client-documents/`;
+      if (typeof doc.url !== 'string' || !doc.url.startsWith(allowed) || !client_id
+        || !doc.url.slice(allowed.length).startsWith(`${client_id}/`)) {
+        throw new Error('Arquivo inválido para envio.');
+      }
+      if (typeof doc.file_name !== 'string' || !doc.file_name || doc.file_name.length > 200) {
+        throw new Error('Nome do arquivo inválido.');
+      }
+    }
 
     if (!phone || !message) throw new Error('phone e message são obrigatórios');
     if (phone.length > 20 || message.length > 4096) throw new Error('Comprimento inválido');
@@ -94,7 +106,9 @@ serve(async (req) => {
       throw new Error('Conecte o WhatsApp próprio do seu login em Configurações → WhatsApp.');
     }
 
-    const result = await whatsappSendText(resolved, { to: phone, body: message });
+    const result = doc
+      ? await whatsappSendDocument(resolved, { to: phone, url: doc.url, fileName: doc.file_name, caption: message })
+      : await whatsappSendText(resolved, { to: phone, body: message });
     return new Response(JSON.stringify({
       success: true,
       provider: resolved.provider,

@@ -367,6 +367,31 @@ export async function evolutionSendText(
   }, override);
 }
 
+/** Envia um arquivo (ex.: PDF) como documento anexo, não como link. */
+export async function evolutionSendDocument(
+  opts: { to: string; url: string; fileName: string; caption?: string; mimetype?: string },
+  override?: EvolutionCreds | null,
+) {
+  const cfg = getEvolutionConfig(override);
+  if (!cfg.configured) throw new Error('Evolution API não configurada.');
+  const st = await evolutionStatus(override);
+  if (!st.connected) {
+    throw new Error(`WhatsApp não conectado (estado: ${st.state || 'desconhecido'}). Conecte por QR Code em Configurações → WhatsApp.`);
+  }
+  return evolutionFetch(`/message/sendMedia/${encodeURIComponent(cfg.instance)}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      number: normalizeEvolutionPhone(opts.to),
+      mediatype: 'document',
+      mimetype: opts.mimetype || 'application/pdf',
+      media: opts.url,
+      fileName: opts.fileName,
+      caption: opts.caption || '',
+      delay: 1200,
+    }),
+  }, override);
+}
+
 /**
  * Garante que a instância está com o webhook (evento de mensagens) registrado.
  * Instâncias conectadas antes desta versão podiam ficar sem `MESSAGES_UPSERT`,

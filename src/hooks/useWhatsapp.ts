@@ -30,6 +30,8 @@ interface SendMessageOptions {
   client_id?: string;
   professional_id?: string;
   test?: boolean;
+  /** Anexa um arquivo (PDF) à mensagem; o texto vira a legenda. */
+  document?: { url: string; file_name: string };
 }
 
 /**

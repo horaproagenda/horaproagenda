@@ -49,3 +49,9 @@ describe('resolveSessionServiceLabel — Visualização das Sessões', () => {
     expect(resolveSessionServiceLabel({ index: 2, steps, services: [], pkg })).toBe('Serviço da etapa não encontrado');
   });
 });
+
+describe('etapa independente do pacote sequencial', () => {
+  it('usa o nome próprio da etapa, sem depender de serviço cadastrado', () => {
+    expect(resolveSessionServiceLabel({ index: 0, steps: [{ service_id: null, step_name: 'Avaliação inicial' }], services: [], pkg: null })).toBe('Avaliação inicial');
+  });
+});

@@ -6,6 +6,8 @@
 
 export interface StepLike {
   service_id?: string | null;
+  /** Nome próprio da etapa (pacotes sequenciais independentes). */
+  step_name?: string | null;
 }
 
 export interface ServiceLike {
@@ -42,6 +44,8 @@ export function resolveSessionServiceLabel({
   nextStepService,
   fallbackService,
 }: ResolveArgs): string {
+  const ownName = cleanLabel(steps[index]?.step_name);
+  if (ownName) return ownName;
   const stepId = steps[index]?.service_id;
   const step = stepId ? services.find((s) => s.id === stepId) : null;
   if (step?.name) return step.name;

@@ -551,6 +551,8 @@ export function NewAppointmentDialog({
 
     if (packageData.package_type === 'sequential') {
       const absoluteIndex = stepIndexAt(relativeIndex);
+      const ownDuration = Number((packageSequenceSteps[absoluteIndex] as any)?.duration_minutes);
+      if (ownDuration > 0) return ownDuration;
       const stepServiceId = packageSequenceSteps[absoluteIndex]?.service_id
         || (relativeIndex === 0 ? (nextPackageStepService as any)?.id : null)
         || (packageData as any)?.service_id;

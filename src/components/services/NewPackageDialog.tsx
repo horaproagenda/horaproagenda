@@ -22,7 +22,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -38,14 +37,11 @@ import { useProfessionals } from '@/hooks/useProfessionals';
 import { useCurrentProfessional } from '@/hooks/useCurrentProfessional';
 import { useRooms } from '@/hooks/useRooms';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useServices } from '@/hooks/useServices';
-import { isServiceCompatibleWithPackage } from '@/lib/packageScheduling';
 import { formatCurrency } from '@/lib/utils';
-import { buildSequentialServiceColorMap, getSequentialServiceColor } from '@/lib/sequentialPackageColors';
 import { NewCategoryDialog } from './NewCategoryDialog';
+import { SequentialStepsEditor, emptySequentialStep, validateSequentialSteps, serializeSequentialSteps, type SequentialStepDraft } from './SequentialStepsEditor';
 import { VisibilitySelect, useRecordVisibility } from '@/components/shared/VisibilitySelect';
 import { DEFAULT_RECORD_VISIBILITY } from '@/lib/permissions';
-import { withoutKitServices } from '@/lib/serviceKind';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { suggestedServiceCategories } from '@/lib/segmentTemplates';
 
@@ -65,10 +61,6 @@ const packageSchema = z.object({
 
 type PackageFormData = z.infer<typeof packageSchema>;
 
-interface SequentialStep {
-  service_id: string;
-  interval_after_days: number;
-}
 
 interface NewPackageDialogProps {
   onPackageCreated?: () => void;
@@ -91,14 +83,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const est = useEstablishment();
   const categories = Array.from(new Set([...(suggestedServiceCategories(est.type) ?? DEFAULT_CATEGORIES), ...customCategories]));
-  const { activeServices } = useServices();
   const [packageType, setPackageType] = useState<'standard' | 'sequential'>(initialType);
   useEffect(() => { if (open) setPackageType(initialType); }, [open, initialType]);
-  const [steps, setSteps] = useState<SequentialStep[]>([
-    { service_id: '', interval_after_days: 7 },
-    { service_id: '', interval_after_days: 7 },
-  ]);
-  const [priceManuallyEdited, setPriceManuallyEdited] = useState(false);
+  const [steps, setSteps] = useState<SequentialStepDraft[]>([emptySequentialStep(), emptySequentialStep()]);
 
   const form = useForm<PackageFormData>({
     resolver: zodResolver(packageSchema),
@@ -145,72 +132,16 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const watchRoomId = form.watch('room_id');
   const effectiveSessions = packageType === 'sequential' ? steps.length : watchTotalSessions;
   const pricePerSession = effectiveSessions > 0 ? watchPrice / effectiveSessions : 0;
-  const packageScope = {
-    professional_id: watchProfessionalId && watchProfessionalId !== '_none' ? watchProfessionalId : null,
-    room_id: watchRoomId && watchRoomId !== '_none' ? watchRoomId : null,
-  };
-  // Kits de serviço não entram em pacotes: são outra forma de agendamento e cobrança.
-  const compatibleServices = withoutKitServices(activeServices, steps.map(s => s.service_id))
-    .filter(service => isServiceCompatibleWithPackage(service, packageScope));
-
-  const sequentialTotalPrice = steps.reduce((total, step) => {
-    const service = activeServices.find(s => s.id === step.service_id) as any;
-    return total + (Number(service?.price) || 0);
-  }, 0);
-
-  // Só recalcula o valor sugerido enquanto o profissional não tiver ajustado
-  // manualmente. Assim o valor do pacote sequencial pode ser editado.
-  useEffect(() => {
-    if (packageType === 'sequential' && !priceManuallyEdited) {
-      form.setValue('price', sequentialTotalPrice, { shouldValidate: false });
-    }
-  }, [packageType, sequentialTotalPrice, priceManuallyEdited, form]);
-
-  // Agrupamento por serviço para exibir a contagem final (ex.: Axila).
-  const stepServiceIds = steps.map(s => s.service_id).filter(Boolean);
-  const colorMap = buildSequentialServiceColorMap(stepServiceIds);
-
-  const addStep = () => setSteps(prev => [...prev, { service_id: '', interval_after_days: 7 }]);
-  const removeStep = (index: number) => setSteps(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
-  const updateStep = (index: number, updates: Partial<SequentialStep>) => {
-    setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));
-  };
-
   const onSubmit = async (data: PackageFormData) => {
     setIsLoading(true);
     try {
-      if (packageType === 'sequential' && steps.some(step => !step.service_id)) {
-        toast.error('Selecione um serviço para cada etapa do pacote sequencial.');
-        setIsLoading(false);
-        return;
+      if (packageType === 'sequential') {
+        const stepError = validateSequentialSteps(steps, activeRoomsList.length > 0);
+        if (stepError) { toast.error(stepError); setIsLoading(false); return; }
       }
-
-      if (packageType === 'sequential' && steps.slice(0, -1).some(step => !step.interval_after_days || step.interval_after_days < 1)) {
-        toast.error('Informe intervalo de pelo menos 1 dia entre todas as etapas do pacote.');
-        setIsLoading(false);
-        return;
-      }
-
-      const incompatibleStep = steps.find(step => {
-        const service = activeServices.find(item => item.id === step.service_id);
-        return packageType === 'sequential' && !isServiceCompatibleWithPackage(service, packageScope);
-      });
-
-      if (incompatibleStep) {
-        toast.error('Há etapa com serviço incompatível com o profissional ou sala do pacote.');
-        setIsLoading(false);
-        return;
-      }
-
-      const expandedSteps = packageType === 'sequential'
-        ? steps.map(step => ({
-            service_id: step.service_id,
-            interval_after_days: step.interval_after_days,
-          }))
-        : [];
-
+      const expandedSteps = packageType === 'sequential' ? steps : [];
       const sequentialDuration = packageType === 'sequential'
-        ? expandedSteps.reduce((total, step) => total + (activeServices.find(service => service.id === step.service_id)?.duration || data.duration), 0)
+        ? Math.max(15, Math.max(...steps.map(st => st.duration_minutes || 0)))
         : data.duration;
 
       // Create in package_templates (like services catalog)
@@ -239,12 +170,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       if (packageType === 'sequential' && template) {
         const { error: stepsError } = await (supabase as any)
           .from('package_template_steps')
-          .insert(expandedSteps.map((step, index) => ({
-            template_id: template.id,
-            service_id: step.service_id,
-            sequence_order: index + 1,
-            interval_after_days: index === expandedSteps.length - 1 ? 0 : step.interval_after_days,
-          })));
+          .insert(serializeSequentialSteps(template.id, expandedSteps));
 
         if (stepsError) throw stepsError;
       }
@@ -253,8 +179,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
       form.reset();
       setPackageType(initialType);
       recordVis.setVisibility(DEFAULT_RECORD_VISIBILITY);
-      setSteps([{ service_id: '', interval_after_days: 7 }, { service_id: '', interval_after_days: 7 }]);
-      setPriceManuallyEdited(false);
+      setSteps([emptySequentialStep(), emptySequentialStep()]);
       setOpen(false);
       onPackageCreated?.();
     } catch (error: any) {
@@ -396,7 +321,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
               </div>
             ) : (
               <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-                No pacote sequencial, <span className="font-medium text-foreground">a duração e o intervalo</span> de cada etapa vêm do próprio serviço cadastrado. O <span className="font-medium text-foreground">valor total é sugerido pela soma das etapas</span> e pode ser editado manualmente abaixo.
+                No pacote sequencial, cada etapa é preenchida à mão, com nome, duração, profissional, sala, equipamento e intervalo próprios — sem vínculo com os serviços cadastrados.
               </div>
             )}
 
@@ -509,7 +434,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                     <FormControl>
                       <CurrencyInput
                         value={field.value}
-                        onValueChange={(v) => { setPriceManuallyEdited(true); field.onChange(v); }}
+                        onValueChange={(v) => field.onChange(v)}
                         className="h-8 text-sm"
                       />
                     </FormControl>

@@ -215,7 +215,7 @@ export function CommissionsReport({
           (sc: any) => sc.professional_id === prof.id && sc.service_id === serviceId
         ) : null;
 
-        const stepValue = stepCommissionAmount(apt as any, amount);
+        const stepValue = stepCommissionAmount(apt as { commission_type_snapshot?: string | null; commission_value_snapshot?: number | null }, amount);
         if (stepValue != null) {
           totalCommission += stepValue;
         } else if (override) {

@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClipboardList, Plus, Trash2, Copy, Printer, Lock, Settings2 } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Copy, Printer, Lock, Settings2, X } from 'lucide-react';
 import {
   ApplicationItemDraft, BASE_FIELDS, GUIDANCE_FIELDS, SIDE_OPTIONS, STATUS_LABEL, TemplateField, UNIT_OPTIONS,
   buildReferenceItems, emptyItem, parseQuantity, validateCompletion, REFERENCE_COPY_FIELD_PREFIXES,
@@ -314,7 +314,14 @@ function EditorSheet({ state, setState, clientId, templates, professionals, isAd
   return (
     <Sheet open onOpenChange={(o) => !o && setState(null)}>
       <SheetContent ref={setEditorEl} side="right" data-application-editor aria-describedby={undefined} className="application-editor w-full max-w-none sm:max-w-2xl [&_input]:min-w-0 [&_input]:max-w-full [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:text-base">
-        <SheetHeader className="application-editor-header shrink-0 border-b text-left"><SheetTitle className="pr-8">{state.updated_at ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle></SheetHeader>
+        <SheetHeader className="application-editor-header shrink-0 border-b text-left">
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle>{state.updated_at ? 'Editar ficha de aplicação' : 'Nova ficha de aplicação'}</SheetTitle>
+            <Button type="button" variant="ghost" size="icon" aria-label="Fechar ficha" className="h-11 w-11 shrink-0" onClick={() => setState(null)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </SheetHeader>
         <div data-application-fields className="application-editor-fields min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-5">
           {state.based_on_id && <p className="rounded-md bg-muted p-2 text-xs">Baseada em ficha anterior. Confirme produto, lote, validade e quantidade.</p>}
           <section className="space-y-3">

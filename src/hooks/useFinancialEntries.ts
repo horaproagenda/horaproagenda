@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { syncAfter } from '@/lib/domainSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -158,16 +157,10 @@ export function useFinancialEntries() {
   const pendingReceivables = receivables.filter(e => e.status === 'pending' || e.status === 'overdue');
   const pendingPayables = payables.filter(e => e.status === 'pending' || e.status === 'overdue');
 
-  // Filter payables for current month only
-  const currentMonthStart = startOfMonth(new Date());
-  const currentMonthEnd = endOfMonth(new Date());
-  const currentMonthPayables = pendingPayables.filter(e => {
-    const dueDate = parseISO(e.due_date);
-    return isWithinInterval(dueDate, { start: currentMonthStart, end: currentMonthEnd });
-  });
-
+  // Totais somam TODOS os lançamentos em aberto (não só o mês atual), igual
+  // a "A Receber"; filtrar por mês fazia o resumo aparecer zerado.
   const totalReceivables = pendingReceivables.reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalPayables = currentMonthPayables.reduce((sum, e) => sum + Number(e.amount), 0);
+  const totalPayables = pendingPayables.reduce((sum, e) => sum + Number(e.amount), 0);
 
   return {
     entries,

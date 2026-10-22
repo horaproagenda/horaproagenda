@@ -1878,3 +1878,5 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
   .mobile-card-table tr.bg-muted\/30 td[data-label] { flex-basis: 100%; }
   .mobile-card-table tr.bg-muted\/30 td[colspan] { padding: 0 !important; }
 }
+/* A ficha tem seu próprio X visível no cabeçalho; esconde o X padrão. */
+[role="dialog"][data-application-editor] > button.absolute.right-4.top-4 { display: none; }

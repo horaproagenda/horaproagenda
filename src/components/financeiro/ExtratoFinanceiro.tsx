@@ -40,7 +40,7 @@ export function ExtratoFinanceiro() {
   const { entries } = useFinancialEntries();
   const { transactions } = useCashTransactions();
   const queryClient = useQueryClient();
-  const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('month');
+  const [dateFilterType, setDateFilterType] = useState<'all' | 'today' | 'month'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'financial' | 'cash' | 'commission' | 'product'>('all');
   const [searchTerm, setSearchTerm] = useState('');

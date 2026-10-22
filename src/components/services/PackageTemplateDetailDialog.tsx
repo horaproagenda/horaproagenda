@@ -184,7 +184,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
         if (isSequential) {
           const { data: stepsData } = await (supabase as any)
             .from('package_template_steps')
-            .select('service_id, sequence_order, interval_after_days, step_name, duration_minutes, default_professional_id, default_room_id, default_equipment')
+            .select('service_id, sequence_order, interval_after_days, step_name, duration_minutes, default_professional_id, default_room_id, default_equipment, commission_type, commission_value')
             .eq('template_id', pkg.id)
             .order('sequence_order', { ascending: true });
 
@@ -198,6 +198,8 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
               room_id: row.default_room_id || legacy?.room_id || '',
               equipment: Array.isArray(row.default_equipment) ? row.default_equipment : [],
               interval_after_days: idx === arr.length - 1 ? 0 : (Number(row.interval_after_days) || 0),
+              commission_type: row.commission_type === 'percentage' || row.commission_type === 'fixed' ? row.commission_type : 'default',
+              commission_value: Number(row.commission_value) || 0,
             };
           });
           setSequentialSteps(loaded.length > 0 ? loaded : [emptySequentialStep()]);
@@ -233,9 +235,9 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           price: data.price,
           duration,
           interval_days: intervalDays,
-          room_id: data.room_id || null,
-          professional_id: data.professional_id || null,
-          equipment: data.equipment || [],
+          room_id: isSequential ? null : (data.room_id || null),
+          professional_id: isSequential ? (sequentialSteps[0]?.professional_id || null) : (data.professional_id || null),
+          equipment: isSequential ? [] : (data.equipment || []),
           is_active: data.is_active,
           ...recordVis.visibilityField,
         })
@@ -395,7 +397,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
               </div>
 
               {/* Additional Info */}
-              {(roomName || professionalName || equipmentNames.length > 0) && (
+              {!isSequential && (roomName || professionalName || equipmentNames.length > 0) && (
                 <>
                   <Separator />
                   <div className="space-y-3">
@@ -600,6 +602,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                   </>
                 )}
 
+                {!isSequential && <>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
@@ -678,6 +681,8 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
                     </div>
                   </div>
                 )}
+
+                </>}
 
                 <VisibilitySelect
                   module="servicos"

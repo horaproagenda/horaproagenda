@@ -168,7 +168,9 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
     setIsLoading(true);
     try {
       let assignedProfessionalId: string | null = null;
-      if (isAdminOrReceptionist) {
+      if (isKit) {
+        assignedProfessionalId = components[0]?.professional_id || (isAdminOrReceptionist ? null : professionalId);
+      } else if (isAdminOrReceptionist) {
         assignedProfessionalId = data.professional_id || null;
       } else {
         assignedProfessionalId = professionalId;
@@ -180,9 +182,9 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
         duration: isKit ? Math.max(5, kitTotalDuration) : data.duration,
         price: isKit ? kitTotalPrice : data.price,
         category: data.category,
-        room_id: data.room_id || null,
+        room_id: isKit ? null : (data.room_id || null),
         professional_id: assignedProfessionalId,
-        equipment: data.equipment || [],
+        equipment: isKit ? [] : (data.equipment || []),
         return_days: isKit ? null : (data.return_days || null),
         is_active: data.is_active,
         ...recordVis.visibilityField,
@@ -193,7 +195,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
       if (error) throw error;
 
       // Save per-service commission override if defined
-      if (assignedProfessionalId && created?.id && commissionOverride.enabled) {
+      if (!isKit && assignedProfessionalId && created?.id && commissionOverride.enabled) {
         try {
           await saveCommissionOverride(assignedProfessionalId, created.id, commissionOverride);
           queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
@@ -332,7 +334,8 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
               </div>
             )}
 
-            {/* Professional & Room */}
+            {/* Professional & Room (kit: preenchidos em cada etapa) */}
+            {!isKit && <>
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
@@ -390,6 +393,7 @@ export function NewServiceDialog({ onServiceCreated, children, lockType }: NewSe
                 onChange={setCommissionOverride}
               />
             )}
+            </>}
 
             {/* Description */}
             <FormField

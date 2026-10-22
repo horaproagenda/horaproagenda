@@ -54,7 +54,7 @@ const packageSchema = z.object({
   // Para sequencial, "duration" é a soma das etapas (pode ultrapassar 8h).
   duration: z.coerce.number().min(15, 'Mínimo 15 minutos').max(48000, 'Duração total muito longa'),
   price: z.coerce.number().min(0, 'Preço deve ser positivo').max(1000000, 'Preço muito alto'),
-  professional_id: z.string().min(1, 'Selecione o profissional').refine(v => v && v !== '_none', 'Selecione o profissional responsável'),
+  professional_id: z.string().optional(),
   room_id: z.string().optional(),
   equipment: z.array(z.string()).optional(),
 });
@@ -135,6 +135,9 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
   const onSubmit = async (data: PackageFormData) => {
     setIsLoading(true);
     try {
+      if (packageType === 'standard' && (!data.professional_id || data.professional_id === '_none')) {
+        toast.error('Selecione o profissional responsável.'); setIsLoading(false); return;
+      }
       if (packageType === 'sequential') {
         const stepError = validateSequentialSteps(steps, activeRoomsList.length > 0);
         if (stepError) { toast.error(stepError); setIsLoading(false); return; }
@@ -156,9 +159,11 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
           duration: sequentialDuration,
           price: data.price,
           package_type: packageType,
-          professional_id: data.professional_id && data.professional_id !== '_none' ? data.professional_id : null,
-          room_id: data.room_id && data.room_id !== '_none' ? data.room_id : null,
-          equipment: data.equipment && data.equipment.length > 0 ? data.equipment : null,
+          professional_id: packageType === 'sequential'
+            ? (steps[0]?.professional_id || null)
+            : (data.professional_id && data.professional_id !== '_none' ? data.professional_id : null),
+          room_id: packageType === 'sequential' ? null : (data.room_id && data.room_id !== '_none' ? data.room_id : null),
+          equipment: packageType === 'sequential' ? null : (data.equipment && data.equipment.length > 0 ? data.equipment : null),
           is_active: true,
           ...recordVis.visibilityField,
         })
@@ -335,7 +340,8 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
               />
             )}
 
-            {/* Professional & Room */}
+            {/* Professional & Room (pacote sequencial: preenchidos em cada etapa) */}
+            {packageType === 'standard' && <>
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
@@ -403,6 +409,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                 </div>
               );
             })()}
+            </>}
 
             {/* Price */}
             {packageType === 'standard' ? (
@@ -465,7 +472,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             />
 
             {/* Equipment */}
-            <FormField
+            {packageType === 'standard' && <FormField
               control={form.control}
               name="equipment"
               render={({ field }) => (
@@ -496,7 +503,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                   <FormMessage className="text-[10px]" />
                 </FormItem>
               )}
-            />
+            />}
 
             <VisibilitySelect
               module="servicos"

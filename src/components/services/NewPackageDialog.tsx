@@ -401,77 +401,13 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
             )}
 
             {packageType === 'sequential' && (
-              <div className="space-y-2 rounded-lg border p-3">
-                <div className="flex items-center justify-between">
-                  <FormLabel className="text-xs">Sequência de serviços</FormLabel>
-                  <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={addStep}>
-                    <Plus className="h-3 w-3" /> Etapa
-                  </Button>
-                </div>
-                {steps.map((step, index) => {
-                  const color = getSequentialServiceColor(step.service_id, colorMap);
-                  return (
-                    <div key={index} className={`grid grid-cols-[16px_minmax(180px,1fr)_66px_28px] gap-2 items-end rounded-md px-1 py-1 ${step.service_id ? color.bg : ''}`}>
-                      <span className={`h-3 w-3 rounded-full mb-2 ${step.service_id ? color.dot : 'bg-muted'}`} aria-hidden />
-                      <div className="min-w-0">
-                        <FormLabel className="text-[10px]">{index + 1}º serviço</FormLabel>
-                        <SearchableSelect
-                          className="h-8 text-xs"
-                          value={step.service_id}
-                          onChange={(value) => updateStep(index, { service_id: value })}
-                          options={compatibleServices.map((service: any) => ({
-                            value: service.id,
-                            label: service.name,
-                            sublabel: service.category || undefined,
-                          }))}
-                          placeholder="Selecione o serviço"
-                          searchPlaceholder="Buscar serviço..."
-                          emptyMessage="Nenhum serviço encontrado."
-                        />
-                      </div>
-                      <div>
-                        <FormLabel className="text-[10px]">Após (dias)</FormLabel>
-                        <NumberInput min={0} max={365} className="h-8 text-xs" disabled={index === steps.length - 1} emptyValue={0} value={index === steps.length - 1 ? 0 : step.interval_after_days} onValueChange={(v) => updateStep(index, { interval_after_days: v ?? 0 })} />
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" disabled={steps.length === 1} onClick={() => removeStep(index)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  );
-                })}
-                {(() => {
-                  const counts = steps.reduce<Record<string, number>>((acc, s) => {
-                    if (s.service_id) acc[s.service_id] = (acc[s.service_id] || 0) + 1;
-                    return acc;
-                  }, {});
-                  const entries = Object.entries(counts);
-                  return (
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[10px] text-muted-foreground">
-                        Total de aplicações: <span className="font-medium text-foreground">{steps.length}</span>
-                      </p>
-                      {entries.length > 0 && (
-                        <div className="rounded-md border bg-muted/30 p-2">
-                          <p className="text-[10px] font-medium text-muted-foreground mb-1">Repetições por serviço</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {entries.map(([sid, qty]) => {
-                              const svc = activeServices.find((s: any) => s.id === sid) as any;
-                              const c = getSequentialServiceColor(sid, colorMap);
-                              return (
-                                <span key={sid} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${c.bg}`}>
-                                  <span className={`h-2 w-2 rounded-full ${c.dot}`} aria-hidden />
-                                  <span className="font-medium text-foreground">{svc?.name || 'Serviço'}</span>
-                                  <span className="text-muted-foreground">×{qty}</span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
+              <SequentialStepsEditor
+                steps={steps}
+                onChange={setSteps}
+                professionals={activeProfessionalsList.map(p => ({ id: p.id, name: p.name }))}
+                rooms={activeRoomsList.map(r => ({ id: r.id, name: r.name }))}
+                equipment={equipment.filter(e => e.is_active).map(e => ({ id: e.id, name: e.name }))}
+              />
             )}
 
             {/* Professional & Room */}
@@ -577,20 +513,7 @@ export function NewPackageDialog({ onPackageCreated, children, initialType = 'st
                         className="h-8 text-sm"
                       />
                     </FormControl>
-                    <div className="flex items-center justify-between gap-2 pt-0.5">
-                      <p className="text-[10px] text-muted-foreground">
-                        Sugerido (soma das etapas): <span className="font-medium text-foreground">{formatCurrency(sequentialTotalPrice)}</span>
-                      </p>
-                      {priceManuallyEdited && (
-                        <button
-                          type="button"
-                          className="text-[10px] text-primary underline underline-offset-2"
-                          onClick={() => { setPriceManuallyEdited(false); form.setValue('price', sequentialTotalPrice); }}
-                        >
-                          Usar valor sugerido
-                        </button>
-                      )}
-                    </div>
+                    {packageType === 'sequential' && <p className="text-[10px] text-muted-foreground pt-0.5">Informe o valor cobrado pelo pacote completo.</p>}
                     <FormMessage className="text-[10px]" />
                   </FormItem>
                 )}

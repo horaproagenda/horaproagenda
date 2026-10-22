@@ -1856,7 +1856,6 @@ Até breve! ✨`;
     kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
-    setPackagePaymentMethodId('');
     setPreferredDayOfWeek(null);
     setPreferredTime('');
     setShowPreview(false);

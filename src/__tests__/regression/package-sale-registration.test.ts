@@ -13,11 +13,11 @@ describe('venda do pacote registrada no Financeiro', () => {
     expect(src).toMatch(/if \(saleError\)[\s\S]{0,400}service_packages'\)\.delete\(\)/);
   });
 
-  it('formulário da agenda repassa o pagamento do pacote', () => {
+  it('novo agendamento nunca marca o pacote como pago (só a baixa registra)', () => {
     const src = read('src/components/appointments/NewAppointmentDialog.tsx');
-    expect(src).toContain('packageAlreadyPaid');
-    expect(src).toContain('packagePaymentMethodId');
-    expect(src).toMatch(/payment:\s*\{/);
+    expect(src).not.toContain('packageAlreadyPaid');
+    expect(src).not.toContain('Nenhum valor entra no caixa por aqui');
+    expect(src).toMatch(/payment:\s*\{\s*isPaid:\s*false/);
   });
 
   it('verificação automática regulariza e nunca apaga pacote sem venda', () => {

@@ -162,8 +162,6 @@ export function NewAppointmentDialog({
   // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
   const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
   // Pagamento do pacote (novo pacote do cliente): pendente por padrão
-  const [packageAlreadyPaid, setPackageAlreadyPaid] = useState(false);
-  const [packagePaymentMethodId, setPackagePaymentMethodId] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
@@ -1495,12 +1493,11 @@ export function NewAppointmentDialog({
             autoSchedule: autoScheduleEnabled,
             preferredDayOfWeek: preferredDayOfWeek ?? undefined,
             preferredTime: preferredTime || time,
+            // Somente agendamento: a venda nasce pendente; recebimento só na baixa.
             payment: {
-              isPaid: packageAlreadyPaid,
-              paymentMethodId: packageAlreadyPaid ? (packagePaymentMethodId || null) : null,
-              paymentMethodName: packageAlreadyPaid
-                ? (activePaymentMethods.find((m) => m.id === packagePaymentMethodId)?.name || null)
-                : null,
+              isPaid: false,
+              paymentMethodId: null,
+              paymentMethodName: null,
               saleDate: (date ?? new Date()).toISOString().slice(0, 10),
             },
           });
@@ -1554,7 +1551,7 @@ export function NewAppointmentDialog({
 
         const isPackagePaid = existingClientPackage
           ? !!(isClientPackageSelected && existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0)
-          : packageAlreadyPaid;
+          : false;
 
         // Datas exatamente como o profissional escolheu — nenhuma é empurrada.
         // Ordem cronológica obrigatória: a data mais cedo sempre fica com a
@@ -1859,8 +1856,6 @@ Até breve! ✨`;
     kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
-    setPackageAlreadyPaid(false);
-    setPackagePaymentMethodId('');
     setPreferredDayOfWeek(null);
     setPreferredTime('');
     setShowPreview(false);
@@ -2824,45 +2819,8 @@ Até breve! ✨`;
                     {selectedPackageData.total_sessions} sessões • 
                     Valor: R$ {Number(selectedPackageData.total_price).toFixed(2)}
                   </p>
-                  {/* Pagamento do pacote — só para pacote novo do cliente.
-                      O registro da venda é criado junto com o pacote, para que ele
-                      apareça em Financeiro > Pacotes. */}
-                  {selectedClient && !existingClientPackage && (
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="space-y-0.5">
-                          <Label className="text-sm font-medium">Pagamento do pacote</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {packageAlreadyPaid
-                              ? 'Registrado como pago. Nenhum valor entra no caixa por aqui.'
-                              : 'Fica pendente: aparece no Financeiro aguardando o recebimento.'}
-                          </p>
-                        </div>
-                        <Switch
-                          checked={packageAlreadyPaid}
-                          onCheckedChange={(v) => {
-                            setPackageAlreadyPaid(v);
-                            if (!v) setPackagePaymentMethodId('');
-                          }}
-                        />
-                      </div>
-                      {packageAlreadyPaid && (
-                        <div className="space-y-1 pt-2 border-t">
-                          <Label className="text-xs">Forma de pagamento</Label>
-                          <Select value={packagePaymentMethodId} onValueChange={setPackagePaymentMethodId}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {activePaymentMethods.map((m) => (
-                                <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Agendamento não registra pagamento: a venda do pacote fica
+                      pendente e só é quitada em "Dar baixa no pagamento". */}
                   {selectedPackageData?.package_type === 'sequential' && nextPackageStepService && (
                     <div className="flex items-center gap-2 text-xs">
                       <Badge variant="secondary" className="text-[10px]">Próxima aplicação</Badge>

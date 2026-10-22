@@ -7,6 +7,7 @@ import {
   evolutionGetQrCode,
   evolutionStatus,
   evolutionSendText,
+  evolutionSendDocument,
   evolutionLogout,
   evolutionEnsureConnected,
   evolutionSetSettings,
@@ -127,4 +128,11 @@ export async function whatsappSendText(resolved: ResolvedWhatsapp, opts: { to: s
 export async function whatsappDisconnect(resolved: ResolvedWhatsapp) {
   if (resolved.evolution) return evolutionLogout(resolved.evolution);
   return null;
+}
+
+export async function whatsappSendDocument(
+  resolved: ResolvedWhatsapp,
+  opts: { to: string; url: string; fileName: string; caption?: string },
+) {
+  return evolutionSendDocument(opts, resolved.evolution ?? null);
 }

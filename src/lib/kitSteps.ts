@@ -12,6 +12,8 @@ export interface KitStep {
   room_id: string;
   equipment: string[];
   interval_days: number;
+  commission_type?: 'default' | 'percentage' | 'fixed';
+  commission_value?: number;
   /** Legado: serviço avulso usado antes das etapas independentes. */
   service_id?: string;
 }
@@ -25,6 +27,8 @@ export function emptyKitStep(isFirst: boolean): KitStep {
     room_id: '',
     equipment: [],
     interval_days: isFirst ? 0 : 7,
+    commission_type: 'default',
+    commission_value: 0,
   };
 }
 
@@ -38,6 +42,8 @@ export function normalizeKitSteps(raw: unknown): KitStep[] {
     room_id: c?.room_id ? String(c.room_id) : '',
     equipment: Array.isArray(c?.equipment) ? c.equipment.map(String) : [],
     interval_days: i === 0 ? 0 : Math.max(0, Number(c?.interval_days) || 0),
+    commission_type: c?.commission_type === 'percentage' || c?.commission_type === 'fixed' ? c.commission_type : 'default',
+    commission_value: Number(c?.commission_value) || 0,
     ...(c?.service_id ? { service_id: String(c.service_id) } : {}),
   }));
 }
@@ -75,6 +81,8 @@ export function serializeKitSteps(steps: KitStep[]) {
     room_id: s.room_id || null,
     equipment: s.equipment,
     interval_days: i === 0 ? 0 : s.interval_days,
+    commission_type: s.commission_type && s.commission_type !== 'default' ? s.commission_type : null,
+    commission_value: s.commission_type && s.commission_type !== 'default' ? Number(s.commission_value) || 0 : null,
   }));
 }
 

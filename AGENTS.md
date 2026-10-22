@@ -1,5 +1,7 @@
 # Architecture Rules
 
+- Public document submissions derive account ownership from the validated locked link, never browser identity; CPF-protected saved content is returned only by the CPF authentication RPC and PDFs use that persisted content on reopen.
+
 - Smoke integrity fixtures and Realtime subscription checks share test-only helpers under tests/smoke, with local behavioral regression coverage so CI failures cannot be hidden by skipped or normalized assertions.
 - Run smoke files sequentially with Vitest's supported worker settings because their fixtures share the test account and professional, making parallel database operations interfere with Realtime checks.
 

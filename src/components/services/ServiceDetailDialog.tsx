@@ -280,9 +280,9 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           duration: isKitEdit ? Math.max(5, kitTotalDuration) : data.duration,
           price: isKitEdit ? kitTotalPrice : data.price,
           category: data.category,
-          room_id: data.room_id || null,
-          professional_id: data.professional_id || null,
-          equipment: data.equipment || [],
+          room_id: isKitEdit ? null : (data.room_id || null),
+          professional_id: isKitEdit ? (components[0]?.professional_id || null) : (data.professional_id || null),
+          equipment: isKitEdit ? [] : (data.equipment || []),
           return_days: isKitEdit ? null : (data.return_days || null),
           is_active: data.is_active,
           ...recordVis.visibilityField,
@@ -294,7 +294,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       if (error) throw error;
 
       // Persist per-service commission override (synced realtime via postgres_changes)
-      if (data.professional_id) {
+      if (!isKitEdit && data.professional_id) {
         try {
           await saveCommissionOverride(data.professional_id, service.id, commissionOverride);
           queryClient.invalidateQueries({ queryKey: ['professional_service_commissions_all'] });
@@ -714,7 +714,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                   )}
                 />)}
 
-                <FormField
+                {components.length === 0 && <FormField
                   control={form.control}
                   name="professional_id"
                   render={({ field }) => (
@@ -738,10 +738,10 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />}
 
                 {/* Per-service commission override */}
-                {form.watch('professional_id') && (
+                {components.length === 0 && form.watch('professional_id') && (
                   <ProfessionalCommissionField
                     professionalId={form.watch('professional_id')}
                     serviceId={service.id}

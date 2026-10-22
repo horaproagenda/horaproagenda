@@ -1,3 +1,4 @@
+import { stepCommissionAmount } from '@/lib/stepCommission';
 import { useMemo, useState, useEffect } from 'react';
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -214,7 +215,10 @@ export function CommissionsReport({
           (sc: any) => sc.professional_id === prof.id && sc.service_id === serviceId
         ) : null;
 
-        if (override) {
+        const stepValue = stepCommissionAmount(apt as { commission_type_snapshot?: string | null; commission_value_snapshot?: number | null }, amount);
+        if (stepValue != null) {
+          totalCommission += stepValue;
+        } else if (override) {
           if (override.commission_type === 'fixed') {
             totalCommission += Number(override.commission_fixed_value) || 0;
           } else {

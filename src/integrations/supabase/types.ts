@@ -763,6 +763,8 @@ export type Database = {
           amount_paid: number | null
           booking_origin: string | null
           client_id: string
+          commission_type_snapshot: string | null
+          commission_value_snapshot: number | null
           composite_group_id: string | null
           composite_sequence_order: number | null
           confirmation_responded_at: string | null
@@ -799,6 +801,8 @@ export type Database = {
           amount_paid?: number | null
           booking_origin?: string | null
           client_id: string
+          commission_type_snapshot?: string | null
+          commission_value_snapshot?: number | null
           composite_group_id?: string | null
           composite_sequence_order?: number | null
           confirmation_responded_at?: string | null
@@ -835,6 +839,8 @@ export type Database = {
           amount_paid?: number | null
           booking_origin?: string | null
           client_id?: string
+          commission_type_snapshot?: string | null
+          commission_value_snapshot?: number | null
           composite_group_id?: string | null
           composite_sequence_order?: number | null
           confirmation_responded_at?: string | null
@@ -7792,6 +7798,8 @@ export type Database = {
           amount_paid: number | null
           booking_origin: string | null
           client_id: string
+          commission_type_snapshot: string | null
+          commission_value_snapshot: number | null
           composite_group_id: string | null
           composite_sequence_order: number | null
           confirmation_responded_at: string | null
@@ -7852,6 +7860,8 @@ export type Database = {
           amount_paid: number | null
           booking_origin: string | null
           client_id: string
+          commission_type_snapshot: string | null
+          commission_value_snapshot: number | null
           composite_group_id: string | null
           composite_sequence_order: number | null
           confirmation_responded_at: string | null
@@ -7949,6 +7959,8 @@ export type Database = {
           amount_paid: number | null
           booking_origin: string | null
           client_id: string
+          commission_type_snapshot: string | null
+          commission_value_snapshot: number | null
           composite_group_id: string | null
           composite_sequence_order: number | null
           confirmation_responded_at: string | null

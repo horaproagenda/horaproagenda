@@ -49,6 +49,8 @@ Legenda de cobertura:
 
 ## Operação (agenda, financeiro, produtos, documentos)
 
+- Documentos públicos: envio sem login identifica a clínica pelo link, mantém tipo/auditoria e não duplica documentos; respostas salvas e PDF reaberto exigem CPF correto. Cobertura: `document-fill.smoke.test.ts` e verificação de download pelo navegador com registros exclusivos de teste.
+
 | # | Comportamento protegido | Cobertura |
 | - | ----------------------- | --------- |
 | 20 | Agenda: nenhum agendamento em dia não trabalhado (trigger + UI) | `smoke` `appointments.smoke.test.ts` |

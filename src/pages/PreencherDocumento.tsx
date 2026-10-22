@@ -184,7 +184,7 @@ export default function PreencherDocumento() {
         p_cpf: provided,
       } as any);
       if (rpcError) throw rpcError;
-      const payload = data as { ok?: boolean; error?: string; client?: any; professional?: any } | null;
+      const payload = data as { ok?: boolean; error?: string; client?: any; professional?: any; filled_content?: string | null; filled_at?: string | null } | null;
       if (!payload?.ok) {
         setCpfAttempts((n) => n + 1);
         setCpfError(payload?.error === 'CPF_MISMATCH'
@@ -235,6 +235,10 @@ export default function PreencherDocumento() {
       });
 
       setCpfError(null);
+      if (documentLink?.status === 'filled') {
+        setFilledContentForPdf(payload.filled_content || '');
+        setShowPdfDownload(!!payload.filled_content?.trim());
+      }
       setAuthenticated(true);
     } catch (err) {
       console.error('CPF auth error:', err);

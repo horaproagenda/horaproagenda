@@ -162,8 +162,6 @@ export function NewAppointmentDialog({
   // Permite o usuário sobrescrever manualmente o intervalo (em dias) entre as sessões do pacote
   const [customIntervalDays, setCustomIntervalDays] = useState<string>('');
   // Pagamento do pacote (novo pacote do cliente): pendente por padrão
-  const [packageAlreadyPaid, setPackageAlreadyPaid] = useState(false);
-  const [packagePaymentMethodId, setPackagePaymentMethodId] = useState<string>('');
   
   // Recurring service settings (for regular services, not packages)
   const [repeatServiceEnabled, setRepeatServiceEnabled] = useState(false);
@@ -1553,7 +1551,7 @@ export function NewAppointmentDialog({
 
         const isPackagePaid = existingClientPackage
           ? !!(isClientPackageSelected && existingClientPackage.payment_methods && existingClientPackage.payment_methods.length > 0)
-          : packageAlreadyPaid;
+          : false;
 
         // Datas exatamente como o profissional escolheu — nenhuma é empurrada.
         // Ordem cronológica obrigatória: a data mais cedo sempre fica com a
@@ -1858,7 +1856,6 @@ Até breve! ✨`;
     kitGroupIdRef.current = null;
 
     setAutoScheduleEnabled(false);
-    setPackageAlreadyPaid(false);
     setPackagePaymentMethodId('');
     setPreferredDayOfWeek(null);
     setPreferredTime('');

@@ -87,6 +87,7 @@ import {
   autohealPackageSchedule,
   type PackageBatchItem,
 } from '@/lib/packageBatchScheduling';
+import { resolveStepBookingResources } from '@/lib/packageStepDefaults';
 import {
   ProfessionalCommissionField,
   saveCommissionOverride,

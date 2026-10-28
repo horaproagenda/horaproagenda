@@ -561,6 +561,21 @@ export function NewAppointmentDialog({
     return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);
   }, [existingClientPackage, manualDuration, stepIndexAt, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
 
+  // Pacote sequencial: o formulário mostra o profissional, a sala e o
+  // equipamento da próxima etapa a agendar (cada etapa tem os seus).
+  useEffect(() => {
+    if (serviceType !== 'package') return;
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type !== 'sequential') return;
+    const step = packageSequenceSteps[stepIndexAt(0)] as any;
+    if (!step) return;
+    if (step.default_professional_id) setSelectedProfessional(step.default_professional_id);
+    if (step.default_room_id) setSelectedRoom(step.default_room_id);
+    if (Array.isArray(step.default_equipment) && step.default_equipment.length > 0) {
+      setSelectedEquipment(step.default_equipment);
+    }
+  }, [serviceType, existingClientPackage, selectedPackageData, packageSequenceSteps, stepIndexAt]);
+
   const currentAppointmentDuration = serviceType === 'service'
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
     : getPackageStepDuration(0);

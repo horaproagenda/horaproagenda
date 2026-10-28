@@ -87,6 +87,7 @@ import {
   autohealPackageSchedule,
   type PackageBatchItem,
 } from '@/lib/packageBatchScheduling';
+import { resolveStepBookingResources } from '@/lib/packageStepDefaults';
 import {
   ProfessionalCommissionField,
   saveCommissionOverride,
@@ -560,6 +561,21 @@ export function NewAppointmentDialog({
 
     return getSchedulingDurationMinutes(packageData as any, services as any, manualDuration || 60);
   }, [existingClientPackage, manualDuration, stepIndexAt, nextPackageStepService, packageSequenceSteps, selectedPackageData, services]);
+
+  // Pacote sequencial: o formulário mostra o profissional, a sala e o
+  // equipamento da próxima etapa a agendar (cada etapa tem os seus).
+  useEffect(() => {
+    if (serviceType !== 'package') return;
+    const packageData = existingClientPackage || selectedPackageData;
+    if (packageData?.package_type !== 'sequential') return;
+    const step = packageSequenceSteps[stepIndexAt(0)] as any;
+    if (!step) return;
+    if (step.default_professional_id) setSelectedProfessional(step.default_professional_id);
+    if (step.default_room_id) setSelectedRoom(step.default_room_id);
+    if (Array.isArray(step.default_equipment) && step.default_equipment.length > 0) {
+      setSelectedEquipment(step.default_equipment);
+    }
+  }, [serviceType, existingClientPackage, selectedPackageData, packageSequenceSteps, stepIndexAt]);
 
   const currentAppointmentDuration = serviceType === 'service'
     ? getSchedulingDurationMinutes(selectedServiceData as any, services as any, manualDuration || 60)
@@ -1582,11 +1598,23 @@ export function NewAppointmentDialog({
               services,
               pkg: packageData || selectedPackageData || null,
             });
+            // Cada etapa manda no seu profissional, sala e equipamento; o
+            // formulário e o pacote só entram como reserva.
+            const stepResources = resolveStepBookingResources(
+              packageSequenceSteps[stepIndex] as any,
+              {
+                professionalId: selectedProfessional || null,
+                roomId: selectedRoom || null,
+                equipmentId: selectedEquipment?.[0] || null,
+              },
+              packageData || selectedPackageData || null,
+            );
             return {
               packageAppointmentId: targetStep.id,
               serviceId: stepServiceId,
-              professionalId: selectedProfessional || packageData?.professional_id || null,
-              roomId: selectedRoom || packageData?.room_id || null,
+              professionalId: stepResources.professionalId,
+              roomId: stepResources.roomId,
+              equipmentId: stepResources.equipmentId,
               start: stepStart,
               end: new Date(stepStart.getTime() + stepDuration * 60000),
               notes: `${stepLabel ? stepLabel + ' — ' : ''}${packageData?.name || selectedPackageData?.name || 'Pacote'}${notes ? ' - ' + notes : ''}`,

@@ -142,3 +142,8 @@ Nenhuma correção validada pode existir sem teste que a proteja.
   diagnóstico: `get_sequential_package_integrity_report`.
 - Verificação automática no app: `useSequentialPackageIntegrityAutoCheck` (ligada em `App.tsx`).
 - Teste: `src/__tests__/regression/sequential-package-step-immutability.test.ts`.
+- Pacote sequencial: ao agendar, cada aplicação usa o profissional, a sala e o
+  equipamento da própria etapa (`default_professional_id` / `default_room_id` /
+  `default_equipment`); o formulário e o pacote só entram como reserva.
+  Regra em `src/lib/packageStepDefaults.ts`; teste:
+  `src/lib/__tests__/packageStepDefaults.test.ts`.

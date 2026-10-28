@@ -1582,11 +1582,23 @@ export function NewAppointmentDialog({
               services,
               pkg: packageData || selectedPackageData || null,
             });
+            // Cada etapa manda no seu profissional, sala e equipamento; o
+            // formulário e o pacote só entram como reserva.
+            const stepResources = resolveStepBookingResources(
+              packageSequenceSteps[stepIndex] as any,
+              {
+                professionalId: selectedProfessional || null,
+                roomId: selectedRoom || null,
+                equipmentId: selectedEquipment?.[0] || null,
+              },
+              packageData || selectedPackageData || null,
+            );
             return {
               packageAppointmentId: targetStep.id,
               serviceId: stepServiceId,
-              professionalId: selectedProfessional || packageData?.professional_id || null,
-              roomId: selectedRoom || packageData?.room_id || null,
+              professionalId: stepResources.professionalId,
+              roomId: stepResources.roomId,
+              equipmentId: stepResources.equipmentId,
               start: stepStart,
               end: new Date(stepStart.getTime() + stepDuration * 60000),
               notes: `${stepLabel ? stepLabel + ' — ' : ''}${packageData?.name || selectedPackageData?.name || 'Pacote'}${notes ? ' - ' + notes : ''}`,

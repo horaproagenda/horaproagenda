@@ -1470,6 +1470,12 @@ export function ProductDetailDialog({
                       </div>
                     </div>
                   )}
+                  {usageStats.byService.length === 0 && usageStats.totalAppointments > 0 && (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-xs tabular-nums">
+                      <h5 className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Uso geral no período</h5>
+                      <span>{usageStats.totalAppointments} atend. — média {usageStats.avgPerAppointment.toFixed(2)} {PRODUCT_UNITS.find(u => u.value === product.unit)?.label}/atend.</span>
+                    </div>
+                  )}
                     </div>
                     <ProductUsageHistory productId={product.id} canEdit={canEdit} />
                     {product.started_using_at && (

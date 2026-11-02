@@ -181,9 +181,10 @@ export function Header({ title, subtitle, onMenuClick }: HeaderProps) {
               <p>{uploading ? 'Enviando...' : 'Alterar foto de perfil'}</p>
             </TooltipContent>
           </Tooltip>
-          <div className="hidden lg:block max-w-[180px]">
-            <p className="text-sm font-medium truncate">{displayName}</p>
-            <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+          {/* E-mail sempre visível para deixar claro em qual conta se está. */}
+          <div className="min-w-0 max-w-[110px] sm:max-w-[180px]" title={displayEmail}>
+            <p className="hidden lg:block text-sm font-medium truncate">{displayName}</p>
+            <p className="text-xs text-muted-foreground truncate" data-testid="header-account-email">{displayEmail}</p>
           </div>
         </div>
       </div>

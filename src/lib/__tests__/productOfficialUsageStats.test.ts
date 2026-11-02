@@ -17,4 +17,11 @@ describe('consumo oficial persistido', () => {
     ], 'ml', id => id);
     expect(result.byService).toEqual([]);
   });
+  it('produto sem vínculo (consumo sem serviço) não aparece em consumo por serviço', () => {
+    const result = productOfficialUsageStats([{ status: 'completed', stock_quantity: 300, appointments_counted: 21 }], [
+      { cycle_key: 'c', service_id: null, appointment_id: 'a', quantity_used: 14.29, unit: 'un' },
+    ], 'un', id => id);
+    expect(result.byService).toEqual([]);
+    expect(result.totalAppointments).toBe(21);
+  });
 });

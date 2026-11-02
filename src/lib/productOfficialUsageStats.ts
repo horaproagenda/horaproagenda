@@ -7,6 +7,7 @@ export function productOfficialUsageStats(cycles: Cycle[], consumptions: Consump
   const totalUsed = completed.reduce((sum, c) => sum + Number(c.stock_quantity || 0), 0);
   const groups = new Map<string, { ids: Set<string>; total: number }>();
   for (const row of consumptions) {
+    // Rows without a service are general usage (unlinked products) and must never be shown per service.
     if (row.cancelled_at || !row.cycle_key || !row.service_id || !row.appointment_id) continue;
     const factors: Record<string, [string, number]> = { mg: ['mass', .001], g: ['mass', 1], kg: ['mass', 1000], ml: ['volume', 1], l: ['volume', 1000], un: ['count', 1], other: ['other', 1] };
     const from = factors[row.unit]; const to = factors[unit];

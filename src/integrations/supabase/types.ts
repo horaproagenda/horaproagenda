@@ -7287,6 +7287,7 @@ export type Database = {
         Returns: Json
       }
       delete_product_purchase: { Args: { p_id: string }; Returns: Json }
+      delete_product_safe: { Args: { p_id: string }; Returns: Json }
       enforce_temp_password_column_privileges: {
         Args: never
         Returns: undefined

@@ -217,16 +217,16 @@ export function useProducts() {
 
   const deleteProduct = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-
+      const { data, error } = await (supabase as any).rpc('delete_product_safe', { p_id: id });
       if (error) throw error;
+      return (data as { result?: string } | null)?.result ?? 'deleted';
     },
-    onSuccess: () => {
+    onSuccess: (result: string) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('Produto excluído com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['product-purchases'] });
+      toast.success(result === 'archived'
+        ? 'Produto desativado: ele possui histórico de uso, que foi preservado.'
+        : 'Produto excluído com sucesso!');
     },
     onError: (error: unknown) => {
       toast.error('Erro ao excluir produto: ' + (error instanceof Error ? error.message : ''));

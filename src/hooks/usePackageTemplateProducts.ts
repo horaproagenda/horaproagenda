@@ -55,7 +55,7 @@ export function usePackageTemplateProducts(templateId?: string) {
   // vinculados ao template forem alterados em qualquer sessão.
   useEffect(() => {
     const ch = supabase
-      .channel('package-template-products-rt')
+      .channel(`package-template-products-rt-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'package_template_products' }, () => {
         queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
       })
@@ -98,7 +98,7 @@ export function usePackageTemplateProducts(templateId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['package_template_products'] });
-      toast.success('Produto vinculado ao template de pacote!');
+
     },
     onError: (error: any) => {
       toast.error('Erro ao vincular produto: ' + error.message);

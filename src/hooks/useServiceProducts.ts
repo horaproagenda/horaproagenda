@@ -53,7 +53,7 @@ export function useServiceProducts(serviceId?: string) {
   // Invalidação imediata quando agendamentos mudam (criados, concluídos, cancelados, faltou, excluídos)
   useEffect(() => {
     const ch = supabase
-      .channel('service-products-apt-sync')
+      .channel(`service-products-apt-sync-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
         queryClient.invalidateQueries({ queryKey: ['service_products'] });
         queryClient.invalidateQueries({ queryKey: ['appointment_product_consumption'] });
@@ -66,7 +66,7 @@ export function useServiceProducts(serviceId?: string) {
   // produtos vinculados em qualquer sessão.
   useEffect(() => {
     const ch = supabase
-      .channel('service-products-rt')
+      .channel(`service-products-rt-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_products' }, () => {
         queryClient.invalidateQueries({ queryKey: ['service_products'] });
       })
@@ -109,7 +109,7 @@ export function useServiceProducts(serviceId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service_products'] });
-      toast.success('Produto vinculado ao serviço!');
+      
     },
     onError: (error: any) => {
       toast.error('Erro ao vincular produto: ' + error.message);

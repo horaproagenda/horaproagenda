@@ -61,6 +61,10 @@ import {
   validateUsage,
   type UsageCalcMode,
 } from '@/lib/productUsageCalc';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { findMissingLinks } from '@/lib/productLinkVerification';
+import { Loader2 } from 'lucide-react';
 import { useProductUsageRecords } from '@/hooks/useProductUsageRecords';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -101,6 +105,8 @@ export function ServiceProductsDialog() {
   const canEdit = hasRole('admin') || hasRole('receptionist');
   const canDelete = hasRole('admin');
 
+  const queryClient = useQueryClient();
+  const [isLinking, setIsLinking] = useState(false);
   const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
@@ -283,6 +289,41 @@ export function ServiceProductsDialog() {
   };
 
 
+  /** Relê o banco para confirmar o vínculo, atualiza a tela e libera o formulário. */
+  const finalizeLinks = async (kind: 'service' | 'template', targetIds: string[], catalog: any[]) => {
+    const table = kind === 'service' ? 'service_products' : 'package_template_products';
+    const col = kind === 'service' ? 'service_id' : 'template_id';
+    const { data, error } = await (supabase as any)
+      .from(table).select(col).eq('product_id', selectedProduct).in(col, targetIds);
+    const missing = error ? targetIds : findMissingLinks(targetIds, (data || []).map((r: any) => r[col]));
+    const linkedCount = targetIds.length - missing.length;
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['service_products'] }),
+      queryClient.invalidateQueries({ queryKey: ['package_template_products'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+    ]);
+
+    if (linkedCount > 0) {
+      try {
+        await saveUsageRecord({});
+        await openCycleIfOngoing();
+      } catch {
+        toast.warning('Vínculo salvo, mas o registro de uso não foi gravado. Registre o uso pelo produto.');
+      }
+    }
+
+    const label = kind === 'service' ? 'serviço(s)' : 'pacote(s)';
+    if (missing.length === 0) {
+      toast.success(`Vínculo confirmado: produto vinculado a ${linkedCount} ${label}.`);
+      resetForm();
+    } else {
+      const names = missing.map(id => catalog.find(c => c.id === id)?.name).filter(Boolean).join(', ');
+      toast.error(`Não foi possível confirmar o vínculo com: ${names || 'itens selecionados'}. Tente novamente.`);
+      if (kind === 'service') setSelectedServices(missing); else setSelectedTemplates(missing);
+    }
+  };
+
   const handleAddToService = async () => {
     if (!selectedProduct || !selectedProductData || !usage) return;
 
@@ -305,7 +346,9 @@ export function ServiceProductsDialog() {
     }
     if (servicesToLink.length === 0) return;
 
-    await Promise.all(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
+    setIsLinking(true);
+    try {
+    await Promise.allSettled(servicesToLink.map(serviceId => createServiceProduct.mutateAsync({
       service_id: serviceId,
       product_id: selectedProduct,
       quantity_per_use: perUseInStockUnit,
@@ -322,11 +365,10 @@ export function ServiceProductsDialog() {
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
-    await saveUsageRecord({});
-    await openCycleIfOngoing();
-
-    toast.success(`Produto vinculado a ${servicesToLink.length} serviço(s).`);
-    resetForm();
+    await finalizeLinks('service', servicesToLink, services as any[]);
+    } finally {
+      setIsLinking(false);
+    }
   };
 
   const handleAddToTemplate = async () => {
@@ -351,7 +393,9 @@ export function ServiceProductsDialog() {
     }
     if (templatesToLink.length === 0) return;
 
-    await Promise.all(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
+    setIsLinking(true);
+    try {
+    await Promise.allSettled(templatesToLink.map(templateId => createTemplateProduct.mutateAsync({
       template_id: templateId,
       product_id: selectedProduct,
       quantity_per_use: perUseInStockUnit,
@@ -368,11 +412,10 @@ export function ServiceProductsDialog() {
         : `Consumo informado: ${formatQuantity(usage.perAppointment, containerUnit || selectedProductData.unit)} por atendimento.`,
     })));
 
-    await saveUsageRecord({});
-    await openCycleIfOngoing();
-
-    toast.success(`Produto vinculado a ${templatesToLink.length} pacote(s).`);
-    resetForm();
+    await finalizeLinks('template', templatesToLink, packageTemplates as any[]);
+    } finally {
+      setIsLinking(false);
+    }
   };
 
 
@@ -844,11 +887,11 @@ export function ServiceProductsDialog() {
 
         <Button 
           onClick={isForTemplate ? handleAddToTemplate : handleAddToService}
-          disabled={isDisabled || !selectedProduct || validationErrors.length > 0 || (isForTemplate ? createTemplateProduct.isPending : createServiceProduct.isPending)}
+          disabled={isDisabled || !selectedProduct || validationErrors.length > 0 || isLinking}
           className="w-full"
         >
-          <Plus className="h-4 w-4 mr-1" />
-          Vincular Produto ao {isForTemplate ? 'Modelo de Pacote' : 'Serviço'}
+          {isLinking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+          {isLinking ? 'Vinculando e conferindo...' : 'Vincular'}{isLinking ? null : <> {' '}Produto ao {isForTemplate ? 'Modelo de Pacote' : 'Serviço'}</>}
         </Button>
 
       </div>

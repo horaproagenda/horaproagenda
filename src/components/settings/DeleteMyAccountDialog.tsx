@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { TRIAL_DAYS } from '@/lib/plans';
 import { toast } from 'sonner';
 
 const CONFIRMATION = 'EXCLUIR MINHA CONTA';
@@ -68,7 +69,7 @@ export function DeleteMyAccountDialog() {
               permanentemente.
             </span>
             <span className="block rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-2 text-amber-700 dark:text-amber-300">
-              ⚠️ Após a exclusão, você <strong>não poderá usar o período gratuito</strong> de 7 dias
+              ⚠️ Após a exclusão, você <strong>não poderá usar o período gratuito</strong> de {TRIAL_DAYS} dias
               novamente pelos próximos <strong>6 meses</strong> com os mesmos dados (e-mail, CPF, CNPJ
               ou telefone). Para voltar a usar antes desse prazo, será necessário contratar um plano
               pago.

@@ -11,9 +11,6 @@ const corsHeaders = {
 // Seats permitidos (mantém sincronizado com src/lib/plans.ts).
 const ALLOWED_SEATS = new Set<number>([1, 3, 6, 10, 15, 20, 25, 30]);
 
-/** Dias de teste gratuito para quem nunca usou o teste nem pagou. */
-const TRIAL_DAYS = 30;
-
 // Os price IDs NÃO são fixos em código: são resolvidos no Stripe pelas
 // lookup keys (horapro_seat_monthly / _semiannual / _annual). Para mudar o
 // valor, cria-se um preço novo no Stripe transferindo a lookup key.

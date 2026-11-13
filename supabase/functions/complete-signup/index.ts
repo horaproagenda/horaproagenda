@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { normalizeVerificationEmail, sha256 } from "../_shared/verification.ts";
+import { TRIAL_DAYS } from "../_shared/billingPlans.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -317,7 +318,7 @@ serve(async (req) => {
       user_id: userId,
       subscription_status: "trial",
       trial_started_at: nowIso,
-      trial_ended_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      trial_ended_at: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
       email_verified_at: nowIso,
       phone_verified_at: phoneE164 ? nowIso : null,
     }, { onConflict: "email" });

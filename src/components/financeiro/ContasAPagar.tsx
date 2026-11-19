@@ -1,6 +1,6 @@
 import { useActionGuard } from '@/hooks/useActionGuard';
 import { useState, useMemo } from 'react';
-import { format, parseISO, isAfter, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, parseISO, isAfter, addDays } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +58,7 @@ import { calculateRecurringValues } from '@/lib/recurringEntryCalculation';
 import { useQueryClient } from '@tanstack/react-query';
 import { isClientCreditPaymentMethod } from '@/lib/clientCreditPayment';
 import { payableChainState, chainOf, chainPaidTotal } from '@/lib/payableChain';
+import { filterPayables } from '@/lib/payableFilters';
 
 export function ContasAPagar() {
   const { payables, createEntry, updateEntry, deleteEntry } = useFinancialEntries();
@@ -81,6 +82,7 @@ export function ContasAPagar() {
     date: ['month'],
     status: ['all'],
   });
+  const [specificMonth, setSpecificMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [entryToPay, setEntryToPay] = useState<any>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
@@ -131,6 +133,7 @@ export function ContasAPagar() {
       options: [
         { value: 'month', label: 'Este mês' },
         { value: 'today', label: 'Hoje' },
+        { value: 'specific', label: 'Mês específico' },
         { value: 'all', label: 'Todos os meses' },
       ],
       multiSelect: false,
@@ -142,6 +145,7 @@ export function ContasAPagar() {
         { value: 'all', label: 'Todos' },
         { value: 'pending', label: 'Pendentes' },
         { value: 'paid', label: 'Pagas' },
+        { value: 'overdue_previous', label: 'Vencidas de meses anteriores' },
       ],
       multiSelect: false,
     },
@@ -153,31 +157,15 @@ export function ContasAPagar() {
 
   // Filter payables based on date and status
   const filteredPayables = useMemo(() => {
-    const today = new Date();
-    const dateFilter = selectedFilters.date || ['all'];
-    const statusFilter = selectedFilters.status || ['all'];
-
-    const filtered = payables.filter((entry) => {
-      if (!statusFilter.includes('all')) {
-        if (statusFilter.includes('pending') && entry.status === 'paid') return false;
-        if (statusFilter.includes('paid') && entry.status !== 'paid') return false;
-      }
-
-      if (!dateFilter.includes('all')) {
-        if (dateFilter.includes('today')) {
-          const dueDate = parseISO(entry.due_date);
-          return isWithinInterval(dueDate, { start: startOfDay(today), end: endOfDay(today) });
-        } else if (dateFilter.includes('month')) {
-          const dueDate = parseISO(entry.due_date);
-          return isWithinInterval(dueDate, { start: startOfMonth(today), end: endOfMonth(today) });
-        }
-      }
-      return true;
+    const filtered = filterPayables(payables, {
+      dateFilter: selectedFilters.date || ['all'],
+      statusFilter: selectedFilters.status || ['all'],
+      specificMonth,
     });
 
     // Sort by earliest due date first (overdue / próximos vencimentos no topo)
     return filtered.sort((a, b) => a.due_date.localeCompare(b.due_date));
-  }, [payables, selectedFilters]);
+  }, [payables, selectedFilters, specificMonth]);
 
   const pendingFiltered = useMemo(() => filteredPayables.filter(e => e.status !== 'paid'), [filteredPayables]);
 
@@ -583,6 +571,15 @@ export function ContasAPagar() {
             selectedFilters={selectedFilters}
             onFilterChange={handleFilterChange}
           />
+          {(selectedFilters.date || []).includes('specific') && (
+            <Input
+              type="month"
+              value={specificMonth}
+              onChange={(e) => setSpecificMonth(e.target.value)}
+              className="h-7 w-[130px] text-[11px]"
+              aria-label="Escolher mês específico"
+            />
+          )}
           <Button
             variant={batchMode ? 'default' : 'outline'}
             size="sm"

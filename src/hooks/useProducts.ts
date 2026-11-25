@@ -228,9 +228,10 @@ export function useProducts() {
     onSuccess: (result: string) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product-purchases'] });
-      toast.success(result === 'archived'
-        ? 'Produto desativado: ele possui histórico de uso, que foi preservado.'
-        : 'Produto excluído com sucesso!');
+      void result;
+      queryClient.invalidateQueries({ queryKey: ['product-usage-records'] });
+      queryClient.invalidateQueries({ queryKey: ['service-products'] });
+      toast.success('Produto e histórico excluídos.');
     },
     onError: (error: unknown) => {
       toast.error('Erro ao excluir produto: ' + (error instanceof Error ? error.message : ''));

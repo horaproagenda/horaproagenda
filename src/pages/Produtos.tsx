@@ -1010,7 +1010,7 @@ export default function Produtos() {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
-                                      <AlertDialogDescription>Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                      <AlertDialogDescription>Excluir "{product.name}" e todo o histórico dele (compras, ciclos de uso, consumo e vínculos com serviços e pacotes)? Atendimentos e pagamentos antigos continuam, sem o vínculo com o produto. Esta ação não pode ser desfeita.</AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>

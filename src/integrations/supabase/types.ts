@@ -7048,6 +7048,7 @@ export type Database = {
         Args: { _rec_id: string }
         Returns: boolean
       }
+      can_see_all_appointments: { Args: never; Returns: boolean }
       can_see_appointment_row: {
         Args: { _professional_id: string }
         Returns: boolean

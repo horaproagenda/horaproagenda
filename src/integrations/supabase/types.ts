@@ -4811,6 +4811,7 @@ export type Database = {
           push_appointment_confirmed: boolean
           push_appointment_new: boolean
           push_enabled: boolean
+          push_products: boolean
           push_reminders: boolean
           quiet_hours_end: number | null
           quiet_hours_start: number | null
@@ -4854,6 +4855,7 @@ export type Database = {
           push_appointment_confirmed?: boolean
           push_appointment_new?: boolean
           push_enabled?: boolean
+          push_products?: boolean
           push_reminders?: boolean
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null
@@ -4897,6 +4899,7 @@ export type Database = {
           push_appointment_confirmed?: boolean
           push_appointment_new?: boolean
           push_enabled?: boolean
+          push_products?: boolean
           push_reminders?: boolean
           quiet_hours_end?: number | null
           quiet_hours_start?: number | null

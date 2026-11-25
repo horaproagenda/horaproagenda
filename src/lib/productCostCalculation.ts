@@ -40,43 +40,61 @@ export interface ProductLink {
  *   convertido para unidade de estoque, multiplicado pelo preço por unidade
  *   de estoque do produto. Se faltar dado, cai para o modo exact.
  */
-export function calculateProductLinkCostPerUse(link: ProductLink): number {
-  const product = link.product;
-  if (!product) return 0;
+export type ProductCostIssue = 'no_product' | 'no_price' | 'missing_estimate' | 'no_quantity' | null;
 
-  const stockUnit = product.unit || 'un';
-  // Preço por unidade de estoque (ex.: por ml, por g, por un).
-  // Damos preferência a total_price/quantity_purchased pois unit_price
-  // pode ter sido salvo como preço total — quando ambos divergem usamos
-  // o cálculo mais seguro.
+export interface ProductLinkCostDetail {
+  cost: number;
+  pricePerStockUnit: number;
+  quantityPerUse: number;
+  stockUnit: string;
+  issue: ProductCostIssue;
+}
+
+/** Preço por unidade de estoque: compra mais recente > total/quantidade do cadastro > unit_price. */
+export function resolvePricePerStockUnit(
+  product: NonNullable<ProductLink['product']>,
+  latestPurchaseUnitPrice?: number | null,
+): number {
+  const latest = Number(latestPurchaseUnitPrice || 0);
+  if (latest > 0) return latest;
   const totalPrice = Number(product.total_price || 0);
   const qtyPurchased = Number(product.quantity_purchased || 0);
   const fromTotal = qtyPurchased > 0 ? totalPrice / qtyPurchased : 0;
-  const unitPriceField = Number(product.unit_price || 0);
-  const pricePerStockUnit = fromTotal > 0 ? fromTotal : unitPriceField;
+  if (fromTotal > 0) return fromTotal;
+  return Number(product.unit_price || 0);
+}
 
-  if (pricePerStockUnit <= 0) return 0;
+export function getProductLinkCostDetail(
+  link: ProductLink,
+  latestPurchaseUnitPrice?: number | null,
+): ProductLinkCostDetail {
+  const product = link.product;
+  const stockUnit = product?.unit || 'un';
+  if (!product) return { cost: 0, pricePerStockUnit: 0, quantityPerUse: 0, stockUnit, issue: 'no_product' };
 
-  const tracking = link.tracking_method || 'exact';
+  const pricePerStockUnit = resolvePricePerStockUnit(product, latestPurchaseUnitPrice);
+  const storedQty = Number(link.quantity_per_use || 0);
+  let qty = storedQty;
 
-  if (tracking === 'estimated') {
+  if ((link.tracking_method || 'exact') === 'estimated') {
     const containerAmount = Number(link.container_amount || 0);
-    const containerUnit = link.container_unit || stockUnit;
     const estimatedApps = Number(link.estimated_appointments || 0);
-
     if (containerAmount > 0 && estimatedApps > 0) {
-      // Converte o recipiente para a unidade de estoque
-      const containerInStock = convertQuantity(containerAmount, containerUnit, stockUnit);
-      if (containerInStock === null) return 0;
-      const consumptionPerUse = containerInStock / estimatedApps;
-      return consumptionPerUse * pricePerStockUnit;
+      const containerInStock = convertQuantity(containerAmount, (link.container_unit || stockUnit) as any, stockUnit as any);
+      // Sem conversão possível (ex.: ml → kg), usa a quantidade já salva na unidade de estoque.
+      qty = containerInStock !== null ? containerInStock / estimatedApps : storedQty;
+    } else if (storedQty <= 0) {
+      return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'missing_estimate' };
     }
-    // Sem dados de estimativa, cai para exact
   }
 
-  // Exact mode (ou fallback): quantity_per_use já está na unidade de estoque
-  const qty = Number(link.quantity_per_use || 0);
-  return qty * pricePerStockUnit;
+  if (qty <= 0) return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'no_quantity' };
+  if (pricePerStockUnit <= 0) return { cost: 0, pricePerStockUnit: 0, quantityPerUse: qty, stockUnit, issue: 'no_price' };
+  return { cost: qty * pricePerStockUnit, pricePerStockUnit, quantityPerUse: qty, stockUnit, issue: null };
+}
+
+export function calculateProductLinkCostPerUse(link: ProductLink, latestPurchaseUnitPrice?: number | null): number {
+  return getProductLinkCostDetail(link, latestPurchaseUnitPrice).cost;
 }
 
 /**

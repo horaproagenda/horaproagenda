@@ -47,7 +47,16 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
-import { calculateProductLinkCostPerUse } from '@/lib/productCostCalculation';
+import { getProductLinkCostDetail, calculateProductLinkCostPerUse, type ProductCostIssue } from '@/lib/productCostCalculation';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+const COST_ISSUE_LABEL: Record<Exclude<ProductCostIssue, null>, string> = {
+  no_product: 'Produto não encontrado',
+  no_price: 'Sem preço de compra cadastrado',
+  missing_estimate: 'Informe quantos atendimentos o recipiente rende',
+  no_quantity: 'Informe a quantidade por uso',
+};
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -68,6 +77,27 @@ export function PrecificacaoServicos() {
   const { templateProducts } = usePackageTemplateProducts();
   const { payables } = useFinancialEntries();
   const { expenseCategories } = useFinancialCategories();
+  const { data: latestPurchasePrices = {} } = useQuery({
+    queryKey: ['pricing_latest_purchase_prices'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_purchases')
+        .select('product_id, unit_price, total_price, quantity, purchase_date, created_at')
+        .order('purchase_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of data || []) {
+        if (map[row.product_id] !== undefined) continue;
+        const qty = Number(row.quantity || 0);
+        const price = qty > 0 && Number(row.total_price) > 0 ? Number(row.total_price) / qty : Number(row.unit_price || 0);
+        if (price > 0) map[row.product_id] = price;
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
 
   const [calculationType, setCalculationType] = useState<CalculationType>('service');
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -110,20 +140,22 @@ export function PrecificacaoServicos() {
       if (!product) return {
         ...sp,
         costPerUse: 0,
+        detail: null,
         productName: 'Produto não encontrado',
         productUnit: 'un',
       };
 
-      const costPerUse = calculateProductLinkCostPerUse(sp as any);
+      const detail = getProductLinkCostDetail(sp as any, latestPurchasePrices[sp.product_id]);
 
       return {
         ...sp,
-        costPerUse,
+        costPerUse: detail.cost,
+        detail,
         productName: product.name,
         productUnit: product.unit,
       };
     });
-  }, [linkedProducts]);
+  }, [linkedProducts, latestPurchasePrices]);
 
   // For packages, multiply product costs by total sessions
   const totalProductCost = useMemo(() => {
@@ -250,9 +282,7 @@ export function PrecificacaoServicos() {
       const serviceLinkedProducts = serviceProducts.filter(sp => sp.service_id === service.id);
       
       const productCost = serviceLinkedProducts.reduce((sum, sp) => {
-        const product = sp.product;
-        if (!product) return sum;
-        return sum + (product.unit_price * sp.quantity_per_use);
+        return sum + calculateProductLinkCostPerUse(sp as any, latestPurchasePrices[sp.product_id]);
       }, 0);
 
       const fixedCostShare = totalRegisteredItems > 0 ? monthlyFixedCosts / totalRegisteredItems : 0;
@@ -275,7 +305,7 @@ export function PrecificacaoServicos() {
         isProfitable: profit > 0,
       };
     }).sort((a, b) => a.margin - b.margin);
-  }, [activeServices, serviceProducts, monthlyFixedCosts, servicesPerMonth, workingHoursPerMonth]);
+  }, [activeServices, serviceProducts, latestPurchasePrices, monthlyFixedCosts, servicesPerMonth, workingHoursPerMonth]);
 
   return (
     <div className="space-y-4">
@@ -525,7 +555,17 @@ export function PrecificacaoServicos() {
                           <div className="space-y-1">
                             {productCosts.map((pc, i) => (
                               <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs">
-                                <span>{pc.productName} ({pc.quantity_per_use} {pc.productUnit})</span>
+                                <span className="min-w-0">
+                                  <span className="block">{pc.productName}</span>
+                                  {pc.detail && !pc.detail.issue && (
+                                    <span className="block text-[10px] text-muted-foreground">
+                                      {Number(pc.detail.quantityPerUse.toFixed(4))} {pc.detail.stockUnit} × R$ {pc.detail.pricePerStockUnit.toFixed(4)}/{pc.detail.stockUnit}
+                                    </span>
+                                  )}
+                                  {pc.detail?.issue && (
+                                    <span className="block text-[10px] text-destructive">{COST_ISSUE_LABEL[pc.detail.issue]}</span>
+                                  )}
+                                </span>
                                 <span className="font-medium">R$ {pc.costPerUse.toFixed(2)}</span>
                               </div>
                             ))}

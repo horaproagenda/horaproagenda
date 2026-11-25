@@ -1,3 +1,4 @@
+import { isServerDown } from '@/lib/serverStatus';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logSyncEvent } from '@/lib/syncAudit';
@@ -23,6 +24,7 @@ export function useSaleFlowIntegrityAutoCheck() {
 
   useEffect(() => {
     const run = async (trigger: string) => {
+      if (isServerDown()) return;
       if (runningRef.current) return;
       const now = Date.now();
       if (now - lastRunRef.current < MIN_INTERVAL_MS) return;

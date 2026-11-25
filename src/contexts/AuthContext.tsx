@@ -1,4 +1,5 @@
 import { mustClearOnIdentity, getPersistedOwner, setPersistedOwner, wipePersistedCache } from '@/lib/queryPersistence';
+import { withTimeout, setServerDown, saveAuthCache, readAuthCache } from '@/lib/serverStatus';
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isCurrentSessionResponse, sessionIdentityChanged } from '@/lib/sessionAuthority';
@@ -103,7 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
+    // Sessão vem do armazenamento local; mesmo assim limitamos a espera para nunca travar a abertura.
+    const bootGuard = setTimeout(() => { if (!authEventSeen) { setServerDown(true); setLoading(false); } }, 10000);
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(bootGuard);
       if (authEventSeen) return;
       currentIdentity.current = session?.user.id ?? null;
       setSession(session);
@@ -121,17 +125,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUserData = async (userId: string) => {
     try {
       // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      // Fetch roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+      let profileData: any = null;
+      let rolesData: { role: string }[] | null = null;
+      try {
+        const [p, r] = await withTimeout(Promise.all([
+          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+          supabase.from('user_roles').select('role').eq('user_id', userId),
+        ]), 10000);
+        profileData = p.data;
+        rolesData = r.data;
+        setServerDown(false);
+        if (profileData) saveAuthCache(userId, profileData, (rolesData ?? []).map(x => x.role));
+      } catch (e) {
+        // Servidor sem resposta: abre com o último perfil guardado no aparelho.
+        setServerDown(true);
+        const cached = readAuthCache(userId);
+        if (!isCurrentSessionResponse(userId, currentIdentity.current)) return;
+        if (cached) {
+          setProfile(cached.profile as Profile);
+          setRoles(cached.roles as AppRole[]);
+        }
+        return;
+      }
 
       if (!isCurrentSessionResponse(userId, currentIdentity.current)) return;
       setProfile(profileData ? profileData as Profile : null);

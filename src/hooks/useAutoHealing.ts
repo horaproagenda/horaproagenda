@@ -1,3 +1,4 @@
+import { isServerDown } from '@/lib/serverStatus';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { runSystemHealthCheck, autoRepair, type HealthReport } from '@/lib/systemHealthCheck';
@@ -87,7 +88,7 @@ export function useAutoHealing() {
   }, []);
 
   const runCycle = useCallback(async (trigger: string) => {
-    if (runningRef.current) return;
+    if (runningRef.current || isServerDown()) return;
     const cfg = configRef.current;
     if (!cfg.enabled) return;
     runningRef.current = true;

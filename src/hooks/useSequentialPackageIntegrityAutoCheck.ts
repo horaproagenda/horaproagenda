@@ -1,3 +1,4 @@
+import { isServerDown } from '@/lib/serverStatus';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,7 @@ export function useSequentialPackageIntegrityAutoCheck() {
 
   useEffect(() => {
     const runCheck = async (trigger: string) => {
+      if (isServerDown()) return;
       if (runningRef.current) return;
       const now = Date.now();
       if (now - lastRunRef.current < MIN_INTERVAL_MS) return;

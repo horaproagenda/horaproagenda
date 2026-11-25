@@ -1,3 +1,4 @@
+import { isServerDown } from '@/lib/serverStatus';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,7 @@ export function usePostUpdateDataHeal() {
     ranRef.current = true;
 
     const run = async () => {
+      if (isServerDown()) return;
       try {
         const lastHealed = localStorage.getItem(STORAGE_KEY);
         if (lastHealed === APP_BUILD_TIME) return; // already healed this build

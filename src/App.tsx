@@ -1,3 +1,4 @@
+import { ServerStatusBanner } from "@/components/ServerStatusBanner";
 import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -187,6 +188,7 @@ const App = () => {
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: PERSIST_MAX_AGE, buster: PERSIST_BUSTER, dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery } }}>
       <AuthProvider>
+        <ServerStatusBanner />
         <RealtimeSyncProvider>
           <TooltipProvider>
             <Toaster />

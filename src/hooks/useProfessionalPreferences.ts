@@ -32,6 +32,7 @@ export interface ProfessionalPreferences {
   push_appointment_confirmed: boolean | null;
   push_appointment_cancelled: boolean | null;
   push_reminders: boolean | null;
+  push_products: boolean | null;
 }
 
 export interface EffectiveBusinessSettings {

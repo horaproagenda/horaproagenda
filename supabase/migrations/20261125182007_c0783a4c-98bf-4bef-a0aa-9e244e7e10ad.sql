@@ -1,0 +1,1 @@
+ALTER TABLE public.professional_preferences ADD COLUMN IF NOT EXISTS push_products boolean NOT NULL DEFAULT true;

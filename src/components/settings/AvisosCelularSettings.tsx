@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BellRing, CalendarPlus, CheckCircle2, XCircle, ListChecks, Smartphone } from 'lucide-react';
+import { BellRing, CalendarPlus, CheckCircle2, XCircle, ListChecks, Package, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProfessionalPreferences } from '@/hooks/useProfessionalPreferences';
 import {
@@ -38,6 +38,7 @@ export function AvisosCelularSettings() {
     { key: 'push_appointment_confirmed', icon: CheckCircle2, title: 'Confirmações', desc: 'Quando o cliente confirmar o horário' },
     { key: 'push_appointment_cancelled', icon: XCircle, title: 'Cancelamentos', desc: 'Quando um horário seu for desmarcado' },
     { key: 'push_reminders', icon: ListChecks, title: 'Lembretes', desc: 'Na hora dos lembretes que você criou' },
+    { key: 'push_products', icon: Package, title: 'Produtos', desc: 'Estoque acabando, produto em uso acabando, perto do vencimento e vencido' },
   ] as const;
 
   const handleToggleDevice = async (on: boolean) => {

@@ -4,6 +4,7 @@
 //  - { event: 'appointment_new' | 'appointment_confirmed' | 'appointment_cancelled', appointment_id }
 //    chamado automaticamente pela agenda (trigger no banco), em tempo real.
 //  - { mode: 'reminders' }  -> varredura dos lembretes que venceram (cron).
+//  - { mode: 'products' }   -> varredura diária: estoque acabando, vencimento e produto em uso acabando (cron).
 //  - { mode: 'test' }       -> aviso de teste para o próprio usuário (precisa de sessão).
 //  - { mode: 'config' }     -> devolve a chave pública usada pelo navegador.
 //
@@ -11,6 +12,7 @@
 // se a chave já existe, nada é enviado de novo.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { readVapidConfig, sendWebPush } from '../_shared/webpush.ts';
+import { productAlerts } from '../_shared/productAlerts.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +34,8 @@ type PrefKey =
   | 'push_appointment_new'
   | 'push_appointment_confirmed'
   | 'push_appointment_cancelled'
-  | 'push_reminders';
+  | 'push_reminders'
+  | 'push_products';
 
 const EVENT_PREF: Record<string, PrefKey> = {
   appointment_new: 'push_appointment_new',
@@ -219,6 +222,45 @@ async function handleReminders() {
   return json({ mode: 'reminders', considered, sent });
 }
 
+async function handleProducts() {
+  const spNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const today = `${spNow.getFullYear()}-${String(spNow.getMonth() + 1).padStart(2, '0')}-${String(spNow.getDate()).padStart(2, '0')}`;
+  const { data: products } = await admin
+    .from('products')
+    .select('id, name, unit, current_stock, min_stock_alert, expiry_date, expected_duration_days, account_owner_id, owner_professional_id')
+    .eq('is_active', true);
+  const list = products ?? [];
+  const ids = list.map(p => p.id);
+  const cycles: any[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await admin.from('product_usage_records')
+      .select('id, product_id, status, start_date, end_date')
+      .in('product_id', ids.slice(i, i + 200)).in('status', ['in_use', 'completed']);
+    cycles.push(...(data ?? []));
+  }
+  const profIds = [...new Set(list.map(p => p.owner_professional_id).filter(Boolean))];
+  const profUser = new Map<string, string>();
+  if (profIds.length) {
+    const { data } = await admin.from('professionals').select('id, user_id').in('id', profIds);
+    for (const r of data ?? []) if (r.user_id) profUser.set(r.id, r.user_id);
+  }
+  let sent = 0, alerts = 0;
+  for (const p of list) {
+    const recipients = new Set<string>();
+    if (p.account_owner_id) recipients.add(p.account_owner_id);
+    const pu = p.owner_professional_id ? profUser.get(p.owner_professional_id) : undefined;
+    if (pu) recipients.add(pu);
+    for (const a of productAlerts(p as any, cycles, today)) {
+      alerts++;
+      for (const userId of recipients) {
+        const r = await deliver({ userId, dedupeKey: `product:${a.key}`, type: 'product', title: a.title, body: a.body, url: `/produtos?product=${p.id}` }, 'push_products');
+        sent += r.sent;
+      }
+    }
+  }
+  return json({ mode: 'products', products: list.length, alerts, sent });
+}
+
 async function handleTest(authHeader: string | null) {
   if (!authHeader) return json({ error: 'sem_sessao' }, 401);
   const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -261,6 +303,13 @@ Deno.serve(async (req) => {
       const provided = req.headers.get('x-cron-secret');
       if (accepted.length && !accepted.includes(provided || '')) return json({ error: 'nao_autorizado' }, 401);
       return await handleReminders();
+    }
+
+    if (mode === 'products') {
+      const accepted = [Deno.env.get('PUSH_CRON_SECRET'), Deno.env.get('CRON_SECRET')].filter(Boolean);
+      const provided = req.headers.get('x-cron-secret');
+      if (accepted.length && !accepted.includes(provided || '')) return json({ error: 'nao_autorizado' }, 401);
+      return await handleProducts();
     }
 
     if (mode === 'test') {

@@ -56,7 +56,7 @@ export function useOfflineSync() {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     if (getQueue().length === 0) {
       // Sem fila: apenas reidrata dados
-      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'all' });
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
       return;
     }
 
@@ -65,7 +65,7 @@ export function useOfflineSync() {
     try {
       const result = await processQueue(dispatch);
       // Reidrata caches após processar mutações
-      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'all' });
+      await queryClient.invalidateQueries({ predicate: () => true, refetchType: 'active' });
       toast.dismiss(toastId);
 
       if (result.processed > 0) {

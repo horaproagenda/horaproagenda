@@ -724,7 +724,7 @@ export function AppointmentDetailDialog({
           .from('appointments')
           .update({ ...request.otherUpdates, updated_at: new Date().toISOString() })
           .eq('id', appointment.id);
-        await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        void queryClient.invalidateQueries({ queryKey: ['appointments'] });
       }
       setKitScopeDialog(null);
       setIsEditing(false);

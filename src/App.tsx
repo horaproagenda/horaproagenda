@@ -2,7 +2,9 @@ import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider, keepPreviousData } from "@tanstack/react-query";
+import { QueryClient, keepPreviousData } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { queryPersister, shouldPersistQuery, PERSIST_MAX_AGE, PERSIST_BUSTER } from "@/lib/queryPersistence";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ForcePasswordChangeGate } from "@/components/auth/ForcePasswordChangeGate";
@@ -101,13 +103,13 @@ const createQueryClient = () => {
     defaultOptions: {
       queries: {
         staleTime,
-        gcTime: 1000 * 60 * 15,
+        gcTime: PERSIST_MAX_AGE,
         placeholderData: keepPreviousData,
         // Em mobile, focus/reconnect disparam refetch em cascata e
         // congelam a interface. O Realtime já mantém tudo sincronizado.
         refetchOnWindowFocus: !mobile,
         refetchOnReconnect: mobile ? true : 'always',
-        refetchOnMount: false,
+        refetchOnMount: true, // mostra o cache na hora e revalida em segundo plano se estiver velho
         retry: mobile ? 2 : 1,
         structuralSharing: true,
         networkMode: mobile ? 'offlineFirst' : 'online',
@@ -183,7 +185,7 @@ const App = () => {
   useLayoutWatchdog();
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister, maxAge: PERSIST_MAX_AGE, buster: PERSIST_BUSTER, dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery } }}>
       <AuthProvider>
         <RealtimeSyncProvider>
           <TooltipProvider>
@@ -239,7 +241,7 @@ const App = () => {
           </TooltipProvider>
         </RealtimeSyncProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 

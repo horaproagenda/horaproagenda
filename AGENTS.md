@@ -28,3 +28,4 @@
 - Package 'paid' state and payment method come from financial_entries (resolvePackagePayment in src/lib/packageLedger.ts); session amount_paid without a ledger entry is flagged, never counted.
 - Sequential package session changes go through process_package_session_operation (row lock, idempotency key, package_audit_logs in the same transaction) and touch only the requested session; DB triggers enforce one active row per step, the contracted session limit and reason-gated reopen, so no client path can shift or duplicate sessions.
 - RLS policies wrap row-independent permission helpers in (SELECT fn()) so Postgres evaluates them once per query instead of once per row; keep this pattern in new policies.
+- React Query cache persists to IndexedDB per user (src/lib/queryPersistence.ts) and is wiped on identity change; pages render cached data first and revalidate in background. Realtime invalidations are batched in a 250ms window.

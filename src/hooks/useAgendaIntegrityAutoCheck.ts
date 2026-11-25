@@ -83,7 +83,7 @@ export function useAgendaIntegrityAutoCheck() {
     });
 
     // Boot: tenta uma vez após 3s caso já exista sessão
-    const boot = window.setTimeout(() => { void runCheck('boot'); }, 3000);
+    const boot = window.setTimeout(() => { void runCheck('boot'); }, 15000); // espera a página carregar antes de checar integridade
 
     // Helper global para DevTools
     (window as unknown as Record<string, unknown>).__agendaIntegrityCheck = () => runCheck('manual');

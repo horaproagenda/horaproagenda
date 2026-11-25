@@ -97,7 +97,7 @@ export function useSequentialPackageIntegrityAutoCheck() {
       }
     });
 
-    const boot = window.setTimeout(() => { void runCheck('boot'); }, 5000);
+    const boot = window.setTimeout(() => { void runCheck('boot'); }, 25000); // espera a página carregar antes de checar integridade
 
     (window as unknown as Record<string, unknown>).__sequentialPackageIntegrityCheck = () => runCheck('manual');
 

@@ -1,3 +1,4 @@
+import { mustClearOnIdentity, getPersistedOwner, setPersistedOwner, wipePersistedCache } from '@/lib/queryPersistence';
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { isCurrentSessionResponse, sessionIdentityChanged } from '@/lib/sessionAuthority';
@@ -64,9 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authEventSeen = true;
         const nextIdentity = session?.user.id ?? null;
         if (sessionIdentityChanged(currentIdentity.current, nextIdentity)) {
+          const keepRestored = !mustClearOnIdentity(currentIdentity.current, nextIdentity, getPersistedOwner());
           currentIdentity.current = nextIdentity;
-          void queryClient.cancelQueries();
-          queryClient.clear();
+          if (!keepRestored) {
+            void queryClient.cancelQueries();
+            queryClient.clear();
+            void wipePersistedCache();
+          }
+          setPersistedOwner(nextIdentity);
           clearQueue();
           setProfile(null);
           setRoles([]);

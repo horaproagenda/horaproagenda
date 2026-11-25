@@ -576,7 +576,7 @@ export function ContasAPagar() {
               type="month"
               value={specificMonth}
               onChange={(e) => setSpecificMonth(e.target.value)}
-              className="h-7 w-[130px] text-[11px]"
+              className="h-7 w-full sm:w-[130px] text-[11px]"
               aria-label="Escolher mês específico"
             />
           )}

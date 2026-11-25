@@ -180,7 +180,7 @@ export function useAutoHealing() {
     window.addEventListener('sync-audit', onSyncError as EventListener);
 
     // Roda uma vez logo no boot (com pequeno delay)
-    const boot = window.setTimeout(() => { void runCycle('boot'); }, 4000);
+    const boot = window.setTimeout(() => { void runCycle('boot'); }, 20000); // espera a página carregar antes de checar integridade
 
     return () => {
       window.clearInterval(interval);

@@ -81,7 +81,7 @@ export function usePaymentIntegrityAutoCheck() {
       }
     });
 
-    const boot = window.setTimeout(() => { void run('boot'); }, 5000);
+    const boot = window.setTimeout(() => { void run('boot'); }, 25000); // espera a página carregar antes de checar integridade
 
     return () => {
       document.removeEventListener('visibilitychange', onVisible);

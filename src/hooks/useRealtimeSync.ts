@@ -35,7 +35,9 @@ export function useRealtimeSync() {
     const scheduleFlush = () => {
       if (flushScheduled) return;
       flushScheduled = true;
-      queueMicrotask(() => {
+      // Janela curta (250ms) agrupa a cascata de triggers de um único
+      // salvamento em uma só rodada de refetch, sem travar a tela.
+      window.setTimeout(() => {
         flushScheduled = false;
         if (pending.size === 0) return;
         const keys = Array.from(pending);
@@ -47,7 +49,7 @@ export function useRealtimeSync() {
             refetchType: 'active',
           });
         });
-      });
+      }, 250);
     };
     const invalidateKeys = (keys: readonly string[]) => {
       for (const k of keys) {

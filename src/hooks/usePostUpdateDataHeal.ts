@@ -72,7 +72,7 @@ export function usePostUpdateDataHeal() {
     };
 
     // Pequeno delay para não competir com o boot
-    const t = window.setTimeout(run, 3000);
+    const t = window.setTimeout(run, 15000);
     return () => window.clearTimeout(t);
   }, [queryClient]);
 }

@@ -1400,8 +1400,7 @@ export function NewAppointmentDialog({
     // server never has to reject sessions after the fact.
     if ((repeatServiceEnabled && editableServiceDates.length > 1) || (autoScheduleEnabled && editablePreviewDates.length > 1)) {
       try {
-        await queryClient.invalidateQueries({ queryKey: ['appointments'] });
-        await queryClient.refetchQueries({ queryKey: ['appointments'] });
+        await queryClient.refetchQueries({ queryKey: ['appointments'], type: 'active' });
       } catch (err) {
         console.warn('Falha ao revalidar agenda antes de salvar:', err);
       }

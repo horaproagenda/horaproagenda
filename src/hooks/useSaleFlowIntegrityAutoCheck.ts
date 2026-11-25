@@ -79,7 +79,7 @@ export function useSaleFlowIntegrityAutoCheck() {
       }
     });
 
-    const boot = window.setTimeout(() => { void run('boot'); }, 4000);
+    const boot = window.setTimeout(() => { void run('boot'); }, 20000); // espera a página carregar antes de checar integridade
 
     return () => {
       document.removeEventListener('visibilitychange', onVisible);

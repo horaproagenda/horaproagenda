@@ -4595,6 +4595,7 @@ export type Database = {
           cycle_quantity: number | null
           cycle_unit: string | null
           description: string | null
+          expected_duration_days: number | null
           expiry_date: string | null
           finished_at: string | null
           id: string
@@ -4616,6 +4617,7 @@ export type Database = {
           unit_price: number
           updated_at: string
           updated_by: string | null
+          usage_scope: string
           visibility: Database["public"]["Enums"]["data_visibility"] | null
         }
         Insert: {
@@ -4628,6 +4630,7 @@ export type Database = {
           cycle_quantity?: number | null
           cycle_unit?: string | null
           description?: string | null
+          expected_duration_days?: number | null
           expiry_date?: string | null
           finished_at?: string | null
           id?: string
@@ -4649,6 +4652,7 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
+          usage_scope?: string
           visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Update: {
@@ -4661,6 +4665,7 @@ export type Database = {
           cycle_quantity?: number | null
           cycle_unit?: string | null
           description?: string | null
+          expected_duration_days?: number | null
           expiry_date?: string | null
           finished_at?: string | null
           id?: string
@@ -4682,6 +4687,7 @@ export type Database = {
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
+          usage_scope?: string
           visibility?: Database["public"]["Enums"]["data_visibility"] | null
         }
         Relationships: [

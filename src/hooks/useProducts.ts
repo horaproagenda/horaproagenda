@@ -73,6 +73,10 @@ export interface Product {
   notes: string | null;
   is_active: boolean;
   is_for_sale: boolean;
+  /** 'appointments' = usado em atendimentos; 'general' = uso geral (limpeza, café...). */
+  usage_scope?: 'appointments' | 'general' | null;
+  /** Duração média informada (dias) para produtos de uso geral. */
+  expected_duration_days?: number | null;
   sale_price: number;
   created_at: string;
   updated_at: string;

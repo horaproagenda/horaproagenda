@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { effectiveDurationDays, forecastEndDate } from '@/lib/generalUsageForecast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -324,6 +325,11 @@ export function ProductDetailDialog({
   const cycleSaving = useRef(false);
   const activeUsage = usageRecords.find(record => record.status === 'in_use');
   const latestUsage = activeUsage ?? usageRecords.find(record => record.status === 'completed');
+  const isGeneralUse = rawProduct?.usage_scope === 'general';
+  const generalDuration = useMemo(() => effectiveDurationDays(
+    rawProduct?.expected_duration_days,
+    usageRecords.filter(r => r.status === 'completed').map(r => ({ started_at: r.start_date, finished_at: r.end_date })),
+  ), [rawProduct?.expected_duration_days, usageRecords]);
   const product = useMemo(() => rawProduct && latestUsage ? {
     ...rawProduct, started_using_at: latestUsage.start_date, finished_at: latestUsage.end_date,
     cycle_quantity: activeUsage?.stock_quantity ?? null, cycle_unit: activeUsage?.container_unit ?? null,
@@ -766,6 +772,8 @@ export function ProductDetailDialog({
       notes: product.notes,
       is_active: product.is_active,
       is_for_sale: product.is_for_sale,
+      usage_scope: rawProduct?.usage_scope ?? 'appointments',
+      expected_duration_days: rawProduct?.expected_duration_days ?? null,
       sale_price: product.sale_price,
       expiry_date: product.expiry_date,
     });
@@ -977,6 +985,30 @@ export function ProductDetailDialog({
                       </Select>
                     </div>
                     <div>
+                      <Label>Como o produto é usado?</Label>
+                      <Select
+                        value={(editForm.usage_scope as string) ?? 'appointments'}
+                        onValueChange={(v) => setEditForm({ ...editForm, usage_scope: v as 'appointments' | 'general' })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="appointments">Usado em atendimentos</SelectItem>
+                          <SelectItem value="general">Uso geral (limpeza, café, copos...)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editForm.usage_scope === 'general' && (
+                      <div>
+                        <Label>Duração média em dias (opcional)</Label>
+                        <Input
+                          type="number" min={1} max={3650} inputMode="numeric"
+                          placeholder="Em branco: o app calcula"
+                          value={editForm.expected_duration_days ?? ''}
+                          onChange={(e) => setEditForm({ ...editForm, expected_duration_days: e.target.value ? Math.round(Number(e.target.value)) : null })}
+                        />
+                      </div>
+                    )}
+                    <div>
                       <Label>Alerta Estoque Mínimo</Label>
                       <Input
                         type="number"
@@ -1131,10 +1163,25 @@ export function ProductDetailDialog({
                         <Badge variant="destructive" className="mt-1">Estoque Baixo</Badge>
                       )}
                     </div>
+                    {isGeneralUse ? (
+                      <div className="p-4 rounded-lg border bg-card">
+                        <div className="text-sm text-muted-foreground">Duração média (uso geral)</div>
+                        <div className="text-2xl font-bold">{generalDuration ? `${generalDuration.days} dias` : '—'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {generalDuration
+                            ? (generalDuration.source === 'informed' ? 'Informada no cadastro' : 'Calculada pelos ciclos anteriores')
+                            : 'Será calculada ao encerrar o primeiro ciclo'}
+                          {generalDuration && activeUsage?.start_date && (
+                            <> · Previsão de término: {forecastEndDate(activeUsage.start_date, generalDuration.days).split('-').reverse().join('/')}</>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
                     <div className="p-4 rounded-lg border bg-card">
                       <div className="text-sm text-muted-foreground">Atendimentos Realizados</div>
                       <div className="text-2xl font-bold">{usageStats.totalAppointments + (cycleSummary?.isCycleActive ? cycleSummary.currentAppointments : 0)}</div>
                     </div>
+                    )}
                     <div className="p-4 rounded-lg border bg-card">
                       <div className="text-sm text-muted-foreground">Tipo</div>
                       <div className="text-lg font-medium flex items-center gap-2">
@@ -1446,7 +1493,7 @@ export function ProductDetailDialog({
 
 
                   {/* Per-service usage breakdown within the usage window */}
-                  {usageStats.byService.length > 0 && (
+                  {!isGeneralUse && usageStats.byService.length > 0 && (
                     <div className="rounded-lg border bg-muted/30 p-3">
                       <h5 className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
                         Consumo por serviço {product.started_using_at ? '(no período de uso)' : ''}

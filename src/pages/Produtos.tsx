@@ -143,6 +143,7 @@ interface ProductFilters {
   type: string;
   status: string;
   forSale: string;
+  usageScope: string;
   lowStock: boolean;
 }
 
@@ -150,6 +151,7 @@ const defaultFilters: ProductFilters = {
   type: 'all',
   status: 'all',
   forSale: 'all',
+  usageScope: 'all',
   lowStock: false,
 };
 
@@ -164,6 +166,8 @@ const createEmptyProductForm = () => ({
   supplier_id: '',
   is_for_sale: false,
   sale_price: 0,
+  usage_scope: 'appointments' as 'appointments' | 'general',
+  expected_duration_days: '' as string,
 });
 
 const createEmptyPurchaseForm = () => ({
@@ -269,6 +273,7 @@ export default function Produtos() {
       if (filters.status === 'inactive' && p.is_active) return false;
       if (filters.forSale === 'yes' && !p.is_for_sale) return false;
       if (filters.forSale === 'no' && p.is_for_sale) return false;
+      if (filters.usageScope !== 'all' && (p.usage_scope ?? 'appointments') !== filters.usageScope) return false;
       if (filters.lowStock && !(p.current_stock <= (p.min_stock_alert || 0) && p.is_active)) return false;
       return true;
     });
@@ -327,6 +332,8 @@ export default function Produtos() {
         notes: null,
         is_active: true,
         is_for_sale: productForm.is_for_sale,
+        usage_scope: productForm.usage_scope,
+        expected_duration_days: productForm.usage_scope === 'general' && Number(productForm.expected_duration_days) > 0 ? Math.round(Number(productForm.expected_duration_days)) : null,
         sale_price: normalizeBrazilianCurrency(productForm.sale_price),
         ...productVis.visibilityField,
       });
@@ -523,6 +530,17 @@ export default function Produtos() {
                         <SelectItem value="all" className="text-xs">Todos</SelectItem>
                         <SelectItem value="yes" className="text-xs">Sim</SelectItem>
                         <SelectItem value="no" className="text-xs">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] text-muted-foreground">Tipo de uso</Label>
+                    <Select value={filters.usageScope} onValueChange={(v) => setFilters({...filters, usageScope: v})}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="text-xs">Todos</SelectItem>
+                        <SelectItem value="appointments" className="text-xs">Usado em atendimentos</SelectItem>
+                        <SelectItem value="general" className="text-xs">Uso geral</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -772,6 +790,22 @@ export default function Produtos() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <Label className="text-xs">Como o produto é usado? *</Label>
+                      <Select value={productForm.usage_scope} onValueChange={(v: 'appointments' | 'general') => setProductForm({ ...productForm, usage_scope: v })}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="appointments" className="text-sm">Usado em atendimentos</SelectItem>
+                          <SelectItem value="general" className="text-sm">Uso geral (limpeza, café, copos...)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {productForm.usage_scope === 'general' && (
+                      <div>
+                        <Label className="text-xs">Duração média em dias (opcional)</Label>
+                        <Input type="number" min={1} max={3650} inputMode="numeric" value={productForm.expected_duration_days} onChange={(e) => setProductForm({ ...productForm, expected_duration_days: e.target.value })} placeholder="Deixe em branco para o app calcular" className="h-7 text-xs" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div>
                         <Label className="text-xs">Para Venda</Label>
@@ -920,7 +954,7 @@ export default function Produtos() {
                         >
                           <TableCell className="py-1">
                             <div>
-                              <p className="font-medium text-[11px] leading-tight">{product.name}</p>
+                              <p className="font-medium text-[11px] leading-tight">{product.name}{product.usage_scope === 'general' && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal">Uso geral</Badge>}</p>
                               <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-0.5">
                                 {product.brand && <span className="truncate max-w-[70px]">{product.brand}</span>}
                                 {product.category && <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 leading-none font-normal">{product.category}</Badge>}

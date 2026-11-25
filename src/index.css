@@ -1880,3 +1880,16 @@ input:focus, textarea:focus, select:focus, [contenteditable]:focus {
 }
 /* A ficha tem seu próprio X visível no cabeçalho; esconde o X padrão. */
 [role="dialog"][data-application-editor] > button.absolute.right-4.top-4 { display: none; }
+
+/* Nitidez em todos os aparelhos: o iOS borra textos de cabeçalhos fixos com
+   backdrop-filter (camada composta rasterizada em baixa resolução). Em telas
+   de toque, desliga o desfoque e garante fundo sólido; texto sempre nítido. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+@media (hover: none), (pointer: coarse) {
+  header, [data-app-header-safe], .sticky, table thead th {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  header.sticky, .sticky.top-0 { background-color: hsl(var(--background)); }
+}
+img { image-rendering: auto; }

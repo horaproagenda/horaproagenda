@@ -96,7 +96,7 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
         "pl-0 md:pl-[72px]",
         !isSidebarCollapsed && "md:pl-64"
       )}>
-        <div data-app-header-safe className="flex-shrink-0 pt-safe pl-safe pr-safe">
+        <div data-app-header-safe className="flex-shrink-0 pt-safe pl-safe pr-safe bg-background">
           <SaveToPhoneBanner />
 
           <Header 

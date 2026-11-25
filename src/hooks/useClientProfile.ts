@@ -904,7 +904,9 @@ export function useClientProfile(clientId: string) {
     quotes,
     clientSales,
     paymentHistory,
-    isLoading: clientLoading || appointmentsLoading || documentsLoading || photosLoading || quotesLoading || salesLoading,
+    // Só bloqueia a tela pelo cadastro e atendimentos; abas secundárias carregam em paralelo.
+    isLoading: clientLoading || (appointmentsLoading && !!clientId),
+    isLoadingSecondary: documentsLoading || photosLoading || quotesLoading || salesLoading,
     updateClient,
     addDocument,
     addPhoto,

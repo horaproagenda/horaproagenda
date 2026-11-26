@@ -227,10 +227,10 @@ export function useProducts() {
     },
     onSuccess: (result: string) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['product-purchases'] });
       void result;
-      queryClient.invalidateQueries({ queryKey: ['product-usage-records'] });
-      queryClient.invalidateQueries({ queryKey: ['service-products'] });
+      for (const key of ['product_purchases', 'product_usage_records', 'product_daily_consumption', 'service_products', 'package_template_products', 'product-cycle-history', 'product-active-cycles']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       toast.success('Produto e histórico excluídos.');
     },
     onError: (error: unknown) => {

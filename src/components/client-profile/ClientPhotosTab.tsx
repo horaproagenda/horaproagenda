@@ -124,17 +124,16 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     setDeletingId(photoId);
     try {
       // Delete from storage if path exists
-      if (filePath) {
-        await supabase.storage.from('client-photos').remove([filePath]);
-      }
-      
-      // Delete from database
       const { error } = await supabase
         .from('treatment_photos')
         .delete()
         .eq('id', photoId);
-
       if (error) throw error;
+      // Arquivo sai do armazenamento junto com o registro.
+      if (filePath) {
+        const { error: storageError } = await supabase.storage.from('client-photos').remove([filePath]);
+        if (storageError) throw storageError;
+      }
       
       queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
       setSelectedPhotoIndex(null);

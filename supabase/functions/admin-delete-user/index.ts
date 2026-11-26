@@ -64,17 +64,7 @@ serve(async (req) => {
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    // Audit
-    await admin.rpc("log_access", {
-      p_module: "admin_users",
-      p_action: "delete",
-      p_target_type: "auth_user",
-      p_target_id: user_id,
-      p_fields_viewed: [],
-      p_fields_changed: ["account_deleted"],
-      p_metadata: {},
-    });
-
+    // Exclusão definitiva: nenhum registro de auditoria é mantido (decisão da proprietária).
     const { error: delErr } = await admin.auth.admin.deleteUser(user_id);
     if (delErr) {
       return new Response(JSON.stringify({ error: delErr.message }),

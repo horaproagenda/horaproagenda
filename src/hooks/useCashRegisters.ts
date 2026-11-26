@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteCashRegisterDefinitively } from '@/lib/deletionCleanup';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -255,21 +256,7 @@ export function useCashRegisters() {
 
   const deleteCashRegister = useMutation({
     mutationFn: async (id: string) => {
-      // First delete related cash_transactions
-      const { error: transactionsError } = await supabase
-        .from('cash_transactions')
-        .delete()
-        .eq('cash_register_id', id);
-
-      if (transactionsError) throw transactionsError;
-
-      // Then delete the cash register
-      const { error } = await supabase
-        .from('cash_registers')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await deleteCashRegisterDefinitively(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });

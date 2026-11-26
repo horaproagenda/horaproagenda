@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { deleteCashRegisterDefinitively } from '@/lib/deletionCleanup';
 import { appointmentBasePrice } from '@/lib/kitSteps';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
@@ -384,17 +385,8 @@ export function CashRegisterPanel() {
     if (!currentOpenRegister) return;
 
     try {
-      // Delete all transactions first
-      await supabase
-        .from('cash_transactions')
-        .delete()
-        .eq('cash_register_id', currentOpenRegister.id);
-
-      // Delete the register
-      await supabase
-        .from('cash_registers')
-        .delete()
-        .eq('id', currentOpenRegister.id);
+      // Exclusão definitiva e atômica do caixa e de suas movimentações.
+      await deleteCashRegisterDefinitively(currentOpenRegister.id);
 
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
       queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });

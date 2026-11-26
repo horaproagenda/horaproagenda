@@ -121,7 +121,9 @@ export function useSingleSales() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['single_sales'] });
+      for (const key of ['single_sales', 'client-sales', 'financial_entries', 'cash_transactions', 'boleto_installments', 'client_services']) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
       toast.success('Venda excluída com sucesso!');
     },
     onError: (error: any) => {

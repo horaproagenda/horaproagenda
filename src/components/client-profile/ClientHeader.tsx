@@ -160,7 +160,8 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
       const path = typeof parsed.avatar_path === 'string' ? parsed.avatar_path : null;
 
       if (path) {
-        await supabase.storage.from('client-photos').remove([path]);
+        const { error: storageError } = await supabase.storage.from('client-photos').remove([path]);
+        if (storageError) throw storageError;
       }
       delete parsed.avatar_path;
       const nextValue = Object.keys(parsed).length > 0 ? JSON.stringify(parsed) : null;

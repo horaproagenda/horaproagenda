@@ -184,6 +184,8 @@ export function BulkDeleteDialog() {
       console.error('Erro na exclusão:', error);
       console.log('Tabelas excluídas antes do erro:', deletedTables);
       toast.error(error.message || 'Erro ao excluir dados');
+      // Parte pode ter sido apagada antes do erro: atualiza as telas mesmo assim.
+      queryClient.invalidateQueries();
     } finally {
       setIsDeleting(false);
     }

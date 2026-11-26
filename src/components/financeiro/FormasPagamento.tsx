@@ -267,23 +267,20 @@ export function FormasPagamento() {
       const saleIds = Array.from(new Set(standaloneInstallments.map(b => b.sale_id).filter(Boolean)));
       const skippedPackageCount = new Set(packageInstallments.map(b => b.sale_id)).size;
 
-      // 1) Apaga apenas as parcelas standalone
-      if (standaloneIds.length > 0) {
-        const { error: delInstError } = await supabase
-          .from('boleto_installments')
-          .delete()
-          .in('id', standaloneIds);
+      // Cada venda avulsa é apagada de forma atômica (parcelas, caixa, financeiro, venda).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb: any = supabase;
+      for (const saleId of saleIds) {
+        const { error: purgeError } = await sb.rpc('purge_single_sale_cascade', { _sale_id: saleId });
+        if (purgeError) throw purgeError;
+      }
+      // Parcelas avulsas sem venda vinculada
+      const orphanIds = standaloneInstallments.filter(b => !b.sale_id).map(b => b.id);
+      if (orphanIds.length > 0) {
+        const { error: delInstError } = await supabase.from('boleto_installments').delete().in('id', orphanIds);
         if (delInstError) throw delInstError;
       }
-
-      // 2) Apaga as vendas standalone (single_sales) e registros vinculados
-      if (saleIds.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sb: any = supabase;
-        await sb.from('cash_transactions').delete().eq('reference_type', 'single_sale').in('reference_id', saleIds);
-        await sb.from('client_services').delete().in('sale_id', saleIds);
-        await sb.from('single_sales').delete().in('id', saleIds);
-      }
+      void standaloneIds;
 
       // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)
       queryClient.invalidateQueries();

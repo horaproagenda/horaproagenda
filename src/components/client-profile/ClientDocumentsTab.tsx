@@ -187,12 +187,19 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
 
     try {
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from('client_documents')
         .delete()
-        .eq('id', docId);
+        .eq('id', docId)
+        .select('file_path');
 
       if (error) throw error;
+      if (!deleted || deleted.length === 0) throw new Error('Documento não encontrado ou sem permissão');
+      const filePath = deleted[0]?.file_path;
+      if (filePath) {
+        const { error: storageError } = await supabase.storage.from('client-documents').remove([filePath]);
+        if (storageError) throw storageError;
+      }
 
       toast.success('Documento excluído!');
       onRefresh?.();

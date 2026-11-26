@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { purgeStorageFolders } from "../_shared/storagePurge.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -83,6 +84,18 @@ serve(async (req) => {
     if (blockError) {
       console.error("delete-my-account block error:", blockError);
       return json({ error: "Não foi possível registrar o bloqueio. Tente novamente." }, 500);
+    }
+
+    // Arquivos do armazenamento (fotos e documentos ficam em pastas por cliente)
+    try {
+      const { data: ownedClients } = await admin.from("clients").select("id").eq("account_owner_id", userId);
+      const folders = (ownedClients || []).map((c: { id: string }) => c.id);
+      await purgeStorageFolders(admin, "client-photos", folders);
+      await purgeStorageFolders(admin, "client-documents", folders);
+      await purgeStorageFolders(admin, "avatars", [userId]);
+    } catch (storageError) {
+      console.error("delete-my-account storage purge error:", storageError);
+      return json({ error: "Não foi possível apagar os arquivos. Tente novamente." }, 500);
     }
 
     // Tabelas espelho (a maioria dos dados é apagada em cascata pelas FKs)

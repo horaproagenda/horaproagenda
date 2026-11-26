@@ -697,17 +697,19 @@ export function useAppointments() {
 
       if (appointmentIds.length > 0) {
         // Delete related financial entries
-        await supabase
+        const { error: finError } = await supabase
           .from('financial_entries')
           .delete()
           .in('appointment_id', appointmentIds);
+        if (finError) throw finError;
 
         // Delete related cash transactions
-        await supabase
+        const { error: cashError } = await supabase
           .from('cash_transactions')
           .delete()
           .in('reference_id', appointmentIds)
           .eq('reference_type', 'appointment');
+        if (cashError) throw cashError;
 
         // Delete the appointments
         const { error: deleteError } = await supabase

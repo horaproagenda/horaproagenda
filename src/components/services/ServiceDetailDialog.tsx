@@ -245,10 +245,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
 
   const handleDeleteAppointment = async (appointmentId: string) => {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', appointmentId);
+      const { error } = await (supabase as any).rpc('delete_appointment_cascade', { _appointment_id: appointmentId });
       
       if (error) throw error;
       
@@ -338,10 +335,11 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
       
       if (serviceProducts && serviceProducts.length > 0) {
         // Delete service products first
-        await supabase
+        const { error: linkError } = await supabase
           .from('service_products')
           .delete()
           .eq('service_id', service.id);
+        if (linkError) throw linkError;
       }
 
       const { error } = await supabase

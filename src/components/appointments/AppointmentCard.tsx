@@ -76,10 +76,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', appointment.id);
+      const { error } = await (supabase as any).rpc('delete_appointment_cascade', { _appointment_id: appointment.id });
       
       if (error) throw error;
       

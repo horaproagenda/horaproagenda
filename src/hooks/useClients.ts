@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Client } from '@/types';
 import { toast } from 'sonner';
+import { collectClientFilePaths, removeClientFiles, invalidateAfterPurge } from '@/lib/deletionCleanup';
 
 export function useClients() {
   const queryClient = useQueryClient();
@@ -21,11 +22,13 @@ export function useClients() {
 
   const deleteClient = useMutation({
     mutationFn: async (clientId: string) => {
+      const files = await collectClientFilePaths(clientId);
       const { error } = await supabase.rpc('delete_client_registration_only' as any, { _client_id: clientId });
       if (error) throw error;
+      await removeClientFiles(files);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      invalidateAfterPurge(queryClient);
       toast.success('Cliente excluído com sucesso!');
     },
     onError: (error: any) => {
@@ -40,14 +43,13 @@ export function useClients() {
 
   const forceDeleteClient = useMutation({
     mutationFn: async (clientId: string) => {
+      const files = await collectClientFilePaths(clientId);
       const { error } = await supabase.rpc('force_delete_client' as any, { _client_id: clientId });
       if (error) throw error;
+      await removeClientFiles(files);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['service_packages'] });
-      queryClient.invalidateQueries({ queryKey: ['financial_entries'] });
+      invalidateAfterPurge(queryClient);
       toast.success('Cliente e todos os registros excluídos com sucesso!');
     },
     onError: (error: any) => {

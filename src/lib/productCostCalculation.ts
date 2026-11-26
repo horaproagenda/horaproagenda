@@ -136,7 +136,7 @@ export function getProductLinkCostDetail(
   if (qty <= 0 && cycleAverage) useCycles();
   if (qty <= 0) return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'no_quantity' };
   if (pricePerStockUnit <= 0) return { cost: 0, pricePerStockUnit: 0, quantityPerUse: qty, stockUnit, issue: 'no_price' };
-  const extra = source === 'cycles' ? { cycles: cycleAverage!.cycles, cycleAppointments: cycleAverage!.appointments } : {};
+  const extra = (source as ProductLinkCostDetail['source']) === 'cycles' ? { cycles: cycleAverage!.cycles, cycleAppointments: cycleAverage!.appointments } : {};
   return { cost: qty * pricePerStockUnit, pricePerStockUnit, quantityPerUse: qty, stockUnit, issue: null, source, ...extra };
 }
 

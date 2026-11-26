@@ -47,14 +47,14 @@ import { usePackageTemplates } from '@/hooks/usePackageTemplates';
 import { usePackageTemplateProducts } from '@/hooks/usePackageTemplateProducts';
 import { useFinancialEntries } from '@/hooks/useFinancialEntries';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
-import { getProductLinkCostDetail, calculateProductLinkCostPerUse, type ProductCostIssue } from '@/lib/productCostCalculation';
+import { getProductLinkCostDetail, calculateProductLinkCostPerUse, aggregateCycleAverage, type ProductCostIssue, type CycleAverage } from '@/lib/productCostCalculation';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const COST_ISSUE_LABEL: Record<Exclude<ProductCostIssue, null>, string> = {
   no_product: 'Produto não encontrado',
   no_price: 'Sem preço de compra cadastrado',
-  missing_estimate: 'Informe quantos atendimentos o recipiente rende',
+  missing_estimate: 'Ainda sem ciclo encerrado para calcular a média',
   no_quantity: 'Informe a quantidade por uso',
 };
 import { cn } from '@/lib/utils';
@@ -98,6 +98,27 @@ export function PrecificacaoServicos() {
     },
     staleTime: 60_000,
   });
+
+  const { data: cycleRows = [] } = useQuery({
+    queryKey: ['pricing_completed_usage_cycles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_usage_records')
+        .select('product_id, status, total_consumed, appointments_counted, container_unit')
+        .eq('status', 'completed')
+        .limit(5000);
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
+  const cycleAverages = useMemo(() => {
+    const byProduct: Record<string, any[]> = {};
+    for (const r of cycleRows as any[]) (byProduct[r.product_id] ||= []).push(r);
+    const map: Record<string, CycleAverage | null> = {};
+    for (const p of products) map[p.id] = aggregateCycleAverage(byProduct[p.id] || [], p.unit || 'un');
+    return map;
+  }, [cycleRows, products]);
 
   const [calculationType, setCalculationType] = useState<CalculationType>('service');
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -145,7 +166,7 @@ export function PrecificacaoServicos() {
         productUnit: 'un',
       };
 
-      const detail = getProductLinkCostDetail(sp as any, latestPurchasePrices[sp.product_id]);
+      const detail = getProductLinkCostDetail(sp as any, latestPurchasePrices[sp.product_id], cycleAverages[sp.product_id]);
 
       return {
         ...sp,
@@ -155,7 +176,7 @@ export function PrecificacaoServicos() {
         productUnit: product.unit,
       };
     });
-  }, [linkedProducts, latestPurchasePrices]);
+  }, [linkedProducts, latestPurchasePrices, cycleAverages]);
 
   // For packages, multiply product costs by total sessions
   const totalProductCost = useMemo(() => {
@@ -282,7 +303,7 @@ export function PrecificacaoServicos() {
       const serviceLinkedProducts = serviceProducts.filter(sp => sp.service_id === service.id);
       
       const productCost = serviceLinkedProducts.reduce((sum, sp) => {
-        return sum + calculateProductLinkCostPerUse(sp as any, latestPurchasePrices[sp.product_id]);
+        return sum + calculateProductLinkCostPerUse(sp as any, latestPurchasePrices[sp.product_id], cycleAverages[sp.product_id]);
       }, 0);
 
       const fixedCostShare = totalRegisteredItems > 0 ? monthlyFixedCosts / totalRegisteredItems : 0;
@@ -305,7 +326,7 @@ export function PrecificacaoServicos() {
         isProfitable: profit > 0,
       };
     }).sort((a, b) => a.margin - b.margin);
-  }, [activeServices, serviceProducts, latestPurchasePrices, monthlyFixedCosts, servicesPerMonth, workingHoursPerMonth]);
+  }, [activeServices, serviceProducts, latestPurchasePrices, cycleAverages, monthlyFixedCosts, servicesPerMonth, workingHoursPerMonth]);
 
   return (
     <div className="space-y-4">
@@ -560,6 +581,7 @@ export function PrecificacaoServicos() {
                                   {pc.detail && !pc.detail.issue && (
                                     <span className="block text-[10px] text-muted-foreground">
                                       {Number(pc.detail.quantityPerUse.toFixed(4))} {pc.detail.stockUnit} × R$ {pc.detail.pricePerStockUnit.toFixed(4)}/{pc.detail.stockUnit}
+                                      {pc.detail.source === 'cycles' && ` · Média de ${pc.detail.cycles} ${pc.detail.cycles === 1 ? 'ciclo' : 'ciclos'} (${pc.detail.cycleAppointments} atendimentos)`}
                                     </span>
                                   )}
                                   {pc.detail?.issue && (

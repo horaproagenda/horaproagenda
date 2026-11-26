@@ -48,6 +48,42 @@ export interface ProductLinkCostDetail {
   quantityPerUse: number;
   stockUnit: string;
   issue: ProductCostIssue;
+  source?: 'link' | 'estimate' | 'cycles';
+  cycles?: number;
+  cycleAppointments?: number;
+}
+
+/** Média dos ciclos encerrados em Produtos, já na unidade de estoque. */
+export interface CycleAverage {
+  quantityPerAppointment: number;
+  cycles: number;
+  appointments: number;
+}
+
+export interface UsageCycleRow {
+  status?: string | null;
+  total_consumed?: number | string | null;
+  appointments_counted?: number | string | null;
+  container_unit?: string | null;
+}
+
+/**
+ * Soma os ciclos encerrados (total gasto ÷ total de atendimentos), convertendo
+ * a unidade do ciclo para a de estoque. Ignora ciclos em andamento/cancelados.
+ */
+export function aggregateCycleAverage(rows: UsageCycleRow[], stockUnit: string): CycleAverage | null {
+  let total = 0; let apps = 0; let cycles = 0;
+  for (const r of rows) {
+    if (r.status !== 'completed') continue;
+    const n = Number(r.appointments_counted || 0);
+    const consumed = Number(r.total_consumed || 0);
+    if (n <= 0 || consumed <= 0) continue;
+    const conv = convertQuantity(consumed, (r.container_unit || stockUnit) as any, stockUnit as any);
+    if (conv === null) continue;
+    total += conv; apps += n; cycles += 1;
+  }
+  if (apps <= 0) return null;
+  return { quantityPerAppointment: total / apps, cycles, appointments: apps };
 }
 
 /** Preço por unidade de estoque: compra mais recente > total/quantidade do cadastro > unit_price. */
@@ -67,6 +103,7 @@ export function resolvePricePerStockUnit(
 export function getProductLinkCostDetail(
   link: ProductLink,
   latestPurchaseUnitPrice?: number | null,
+  cycleAverage?: CycleAverage | null,
 ): ProductLinkCostDetail {
   const product = link.product;
   const stockUnit = product?.unit || 'un';
@@ -75,6 +112,11 @@ export function getProductLinkCostDetail(
   const pricePerStockUnit = resolvePricePerStockUnit(product, latestPurchaseUnitPrice);
   const storedQty = Number(link.quantity_per_use || 0);
   let qty = storedQty;
+  let source: ProductLinkCostDetail['source'] = 'link';
+  const useCycles = () => {
+    qty = cycleAverage!.quantityPerAppointment;
+    source = 'cycles';
+  };
 
   if ((link.tracking_method || 'exact') === 'estimated') {
     const containerAmount = Number(link.container_amount || 0);
@@ -83,18 +125,23 @@ export function getProductLinkCostDetail(
       const containerInStock = convertQuantity(containerAmount, (link.container_unit || stockUnit) as any, stockUnit as any);
       // Sem conversão possível (ex.: ml → kg), usa a quantidade já salva na unidade de estoque.
       qty = containerInStock !== null ? containerInStock / estimatedApps : storedQty;
+      source = 'estimate';
+    } else if (storedQty <= 0 && cycleAverage) {
+      useCycles();
     } else if (storedQty <= 0) {
       return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'missing_estimate' };
     }
   }
 
+  if (qty <= 0 && cycleAverage) useCycles();
   if (qty <= 0) return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'no_quantity' };
   if (pricePerStockUnit <= 0) return { cost: 0, pricePerStockUnit: 0, quantityPerUse: qty, stockUnit, issue: 'no_price' };
-  return { cost: qty * pricePerStockUnit, pricePerStockUnit, quantityPerUse: qty, stockUnit, issue: null };
+  const extra = source === 'cycles' ? { cycles: cycleAverage!.cycles, cycleAppointments: cycleAverage!.appointments } : {};
+  return { cost: qty * pricePerStockUnit, pricePerStockUnit, quantityPerUse: qty, stockUnit, issue: null, source, ...extra };
 }
 
-export function calculateProductLinkCostPerUse(link: ProductLink, latestPurchaseUnitPrice?: number | null): number {
-  return getProductLinkCostDetail(link, latestPurchaseUnitPrice).cost;
+export function calculateProductLinkCostPerUse(link: ProductLink, latestPurchaseUnitPrice?: number | null, cycleAverage?: CycleAverage | null): number {
+  return getProductLinkCostDetail(link, latestPurchaseUnitPrice, cycleAverage).cost;
 }
 
 /**

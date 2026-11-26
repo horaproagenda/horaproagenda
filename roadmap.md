@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Exclusões definitivas — revisão de todos os módulos
+- [ ] Aplicar pendências no banco e verificar exclusão de produtos autenticada — em 26/11/2026, duas tentativas de leitura falharam por indisponibilidade do pooler; as seis verificações locais de produtos passaram, mas não comprovam o estado do banco
 - [x] Levantar botões de exclusão, arquivos órfãos, erros ignorados e chaves de cache
 - [ ] Validar/aplicar operações atômicas de caixa, boletos, serviços, agenda e exclusão em massa — Supabase indisponível
 - [ ] Aplicar exclusão de consumo manual, etapas de kit e auditoria correspondente — Supabase indisponível

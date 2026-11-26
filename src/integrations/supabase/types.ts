@@ -561,6 +561,7 @@ export type Database = {
           item_type: string
           notes: string | null
           product_id: string | null
+          product_name_snapshot: string | null
           professional_id: string | null
           quantity: number
           service_id: string | null
@@ -577,6 +578,7 @@ export type Database = {
           item_type: string
           notes?: string | null
           product_id?: string | null
+          product_name_snapshot?: string | null
           professional_id?: string | null
           quantity?: number
           service_id?: string | null
@@ -593,6 +595,7 @@ export type Database = {
           item_type?: string
           notes?: string | null
           product_id?: string | null
+          product_name_snapshot?: string | null
           professional_id?: string | null
           quantity?: number
           service_id?: string | null

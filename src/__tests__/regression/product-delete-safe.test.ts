@@ -22,4 +22,9 @@ describe('product deletion', () => {
     expect(sql).toContain("has_role(v_uid,'admin')");
     expect(sql).toContain('current_account_owner_id()');
   });
+  it('item extra vendido não bloqueia a exclusão e guarda o nome', () => {
+    expect(sql).toContain('product_name_snapshot = COALESCE(product_name_snapshot, v_name)');
+    const all = readdirSync(dir).sort().map(f => readFileSync(`${dir}/${f}`, 'utf8')).filter(s => s.includes('appointment_additional_items_item_ref_check')).pop() ?? '';
+    expect(all).toContain('product_id IS NOT NULL OR product_name_snapshot IS NOT NULL');
+  });
 });

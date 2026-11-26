@@ -1893,3 +1893,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; text-rendering: o
   header.sticky, .sticky.top-0 { background-color: hsl(var(--background)); }
 }
 img { image-rendering: auto; }
+
+/* Faixa sólida do relógio/bateria: impede que o Safari embace o conteúdo
+   que passa por baixo da área segura do topo. */
+@media (hover: none), (pointer: coarse) {
+  body::before {
+    content: ""; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483000;
+    height: env(safe-area-inset-top, 0px); background-color: hsl(var(--background));
+    pointer-events: none;
+  }
+}

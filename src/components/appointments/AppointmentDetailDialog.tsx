@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { buildReceiptRows, type ReceiptExtraItem } from "@/lib/receiptRows";
 import { appointmentBasePrice } from '@/lib/kitSteps';
 import { getPaymentAction } from '@/lib/paymentAction';
@@ -2815,6 +2816,7 @@ export function AppointmentDetailDialog({
         open={!!kitScopeDialog}
         onOpenChange={(isOpen) => { if (!isOpen) setKitScopeDialog(null); }}
         mode={kitScopeDialog?.mode || 'save'}
+        itemName={`${appointment.client?.name || 'Cliente'} — ${appointment.service?.name || 'Kit de serviços'}`}
         onConfirm={handleKitScopeConfirm}
         pending={rescheduleKit.isPending || deleteKit.isPending}
       />
@@ -2919,10 +2921,11 @@ export function AppointmentDetailDialog({
                   </p>
                 ) : (
                   <>
-                    <p>
-                      Tem certeza que deseja excluir este agendamento de <strong>{appointment.client?.name}</strong>
-                      {appointment.service?.name ? ` para ${appointment.service.name}` : packageData?.name ? ` (Pacote: ${packageData.name})` : ''}? 
-                    </p>
+                    <DeletionSummary itemName={`${appointment.client?.name || 'Cliente'} — ${appointment.service?.name || packageData?.name || 'Atendimento'}`}
+                      removed={[isRecurringSeries && recurringDeleteType !== 'single' ? 'Agendamentos do alcance selecionado na série' : 'Agendamento selecionado', 'Consumo de produtos e registros exclusivos dos agendamentos removidos']}
+                      preserved={['Cadastro do cliente e agendamentos fora da seleção', ...(isPackageAppointment ? ['Pagamento do pacote e demais aplicações'] : [])]}
+                      details={['Os efeitos sobre caixa e financeiro, quando houver pagamento, estão detalhados abaixo.']}
+                    />
                     
                     {/* Recurring series options */}
                     {isRecurringSeries && (

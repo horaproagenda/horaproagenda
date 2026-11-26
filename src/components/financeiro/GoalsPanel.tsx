@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -387,8 +388,7 @@ export function GoalsPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir meta</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a meta "{goalToDelete?.name}"? 
-              Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={goalToDelete?.name || 'Meta selecionada'} removed={['Meta e suas configurações de acompanhamento']} preserved={['Atendimentos, vendas e lançamentos usados no cálculo da meta']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

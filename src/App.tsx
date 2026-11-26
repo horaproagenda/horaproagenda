@@ -1,4 +1,5 @@
 import { ServerStatusBanner } from "@/components/ServerStatusBanner";
+import { DeletionConfirmationDialog } from "@/components/DeletionConfirmationDialog";
 import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -195,6 +196,7 @@ const App = () => {
             <Sonner />
             <ForcePasswordChangeGate>
             <BrowserRouter>
+              <DeletionConfirmationDialog />
               <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />

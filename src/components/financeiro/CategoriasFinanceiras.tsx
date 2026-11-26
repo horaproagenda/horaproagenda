@@ -1,3 +1,4 @@
+import { confirmDeletion, withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import { useState, useEffect } from 'react';
 import { useActionGuard } from '@/hooks/useActionGuard';
 import { format, parseISO } from 'date-fns';
@@ -394,7 +395,7 @@ export function CategoriasFinanceiras() {
       toast.error('Nenhuma conta encontrada para o escopo selecionado');
       return;
     }
-    if (!window.confirm(`Excluir ${targets.length} conta(s)? Esta ação não pode ser desfeita.`)) return;
+    if (!await confirmDeletion({ itemName: `${editingEntry.description} — ${targets.length} conta(s)`, removed: targets.map(entry => `${entry.description} — ${entry.due_date} — R$ ${Number(entry.amount).toFixed(2)}`), preserved: ['Contas fora da seleção e a categoria financeira'] })) return;
 
     for (const entry of targets) {
       await deleteEntry.mutateAsync(entry.id);
@@ -1030,7 +1031,7 @@ export function CategoriasFinanceiras() {
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(cat); }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteCategory.mutate(cat.id); }}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void withDeletionConfirmation({ itemName: cat.name, removed: ['Cadastro da categoria e sua associação aos lançamentos'], preserved: ['Lançamentos financeiros e pagamentos'], details: ['Referências que impeçam a exclusão serão verificadas pelo sistema.'] }, () => deleteCategory.mutateAsync(cat.id)).catch(() => {}); }}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -1066,7 +1067,7 @@ export function CategoriasFinanceiras() {
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(cat); }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteCategory.mutate(cat.id); }}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void withDeletionConfirmation({ itemName: cat.name, removed: ['Cadastro da categoria e sua associação aos lançamentos'], preserved: ['Lançamentos financeiros e pagamentos'], details: ['Referências que impeçam a exclusão serão verificadas pelo sistema.'] }, () => deleteCategory.mutateAsync(cat.id)).catch(() => {}); }}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>

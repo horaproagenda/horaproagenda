@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,7 +115,7 @@ export function ManagePackageTemplatesDialog() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este modelo?')) return;
+    if (!await confirmDeletion({ itemName: templates.find(template => template.id === id)?.name || 'Modelo de pacote selecionado', removed: ['Modelo do pacote e suas etapas', 'Vínculos de produtos do modelo'], preserved: ['Dados de clientes e atendimentos já registrados'], details: ['A exclusão depende das referências e permissões verificadas pelo sistema.'] })) return;
     
     const { error } = await supabase
       .from('package_templates')

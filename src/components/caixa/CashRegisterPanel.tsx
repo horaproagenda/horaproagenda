@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { deleteCashRegisterDefinitively } from '@/lib/deletionCleanup';
 import { appointmentBasePrice } from '@/lib/kitSteps';
@@ -631,7 +632,7 @@ export function CashRegisterPanel() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Excluir Caixa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Todas as transações deste caixa serão excluídas.
+                    <DeletionSummary itemName={`Caixa de ${currentOpenRegister ? format(parseISO(currentOpenRegister.opened_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : ''}`} removed={['Caixa selecionado', 'Todas as transações deste caixa e lançamentos financeiros vinculados']} preserved={['Outros caixas e cadastros de clientes']} />
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

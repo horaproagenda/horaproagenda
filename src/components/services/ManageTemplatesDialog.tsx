@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -120,6 +121,7 @@ export function ManageTemplatesDialog({ children, onTemplateCreated }: ManageTem
   };
 
   const handleDelete = async (id: string) => {
+    if (!await confirmDeletion({ itemName: templates.find(template => template.id === id)?.title || 'Modelo de documento', removed: ['Modelo, texto e campos de preenchimento'], preserved: ['Documentos já salvos no perfil dos clientes'] })) return;
     try {
       const { error } = await supabase.from('document_templates').delete().eq('id', id);
       if (error) throw error;

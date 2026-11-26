@@ -1,5 +1,9 @@
 # Roadmap
 
+## Confirmações antes da exclusão
+- [x] Revisar ações de exclusão e mostrar item, dependências removidas e informações preservadas
+- [x] Validar cancelamento e confirmação em celular e computador com operação simulada, sem excluir registros reais; 1.092 testes locais passaram
+
 ## Exclusões definitivas — revisão de todos os módulos
 - [ ] Aplicar pendências no banco e verificar exclusão de produtos autenticada — em 26/11/2026, duas tentativas de leitura falharam por indisponibilidade do pooler; as seis verificações locais de produtos passaram, mas não comprovam o estado do banco
 - [x] Levantar botões de exclusão, arquivos órfãos, erros ignorados e chaves de cache

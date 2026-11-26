@@ -1,3 +1,4 @@
+import { withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { syncAfter } from '@/lib/domainSync';
@@ -737,9 +738,7 @@ export function ClientReportTab({ appointments, clientName, clientId, paymentHis
                           onClick={() => {
                             // Exclusão unificada: mesma janela da Agenda (trata pacote, série e kit).
                             if (onOpenAppointment) { onOpenAppointment(appointment); return; }
-                            if (window.confirm('Deseja apagar este agendamento? Esta ação não pode ser desfeita.')) {
-                              deleteAppointment.mutate(appointment.id);
-                            }
+                            void withDeletionConfirmation({ itemName: `${appointment.client?.name || 'Cliente'} — ${appointment.service?.name || 'Atendimento'} — ${appointment.start_time}`, removed: ['Agendamento e consumo de produtos vinculado', 'Lançamentos financeiros exclusivos deste agendamento, quando aplicável'], preserved: ['Cadastro do cliente, outras aplicações e pagamentos de pacotes ou boletos'] }, () => deleteAppointment.mutateAsync(appointment.id)).catch(() => {});
                           }}
                           disabled={deleteAppointment.isPending || updateAppointment.isPending}
                         >

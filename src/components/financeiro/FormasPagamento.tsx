@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import type { BoletoInstallment } from '@/hooks/useBoletoInstallments';
@@ -1035,7 +1036,7 @@ export function FormasPagamento() {
           <AlertDialogHeader>
             <AlertDialogTitle>{pendingDelete?.kind === 'brand' ? 'Excluir bandeira?' : 'Excluir forma de pagamento?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "<strong>{pendingDelete?.name}</strong>"? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={pendingDelete?.name || 'Forma de pagamento selecionada'} removed={pendingDelete?.kind === 'brand' ? ['Bandeira e suas regras de taxas por parcela'] : ['Cadastro da forma de pagamento e suas configurações']} preserved={['Vendas e pagamentos registrados']} details={['Referências que impeçam a exclusão serão verificadas pelo sistema.']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1092,13 +1093,11 @@ export function FormasPagamento() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm">
-                <p>Esta ação apaga <strong>permanentemente</strong>:</p>
-                <ul className="list-disc ml-5 text-xs text-muted-foreground space-y-0.5">
-                  <li>{allBoletoInstallments.length} parcela(s) de boleto</li>
-                  <li>Todas as vendas (single_sales) vinculadas aos boletos</li>
-                  <li>Lançamentos de caixa e serviços vendidos correspondentes</li>
-                </ul>
-                <p className="text-xs text-destructive">A ação é irreversível e sincroniza automaticamente com Financeiro, Caixa e Agenda.</p>
+                <DeletionSummary itemName="Boletos avulsos desta conta"
+                  removed={['Parcelas de boletos avulsos', 'Vendas avulsas vinculadas, movimentações de caixa e lançamentos financeiros correspondentes', ...allBoletoInstallments.filter(b => !b.sale?.package_id).map(b => `${b.sale?.client?.name || 'Cliente não informado'} — parcela ${b.installment_number}/${b.total_installments}`)]}
+                  preserved={['Boletos vinculados a pacotes e os próprios pacotes', 'Clientes e dados que não pertençam às vendas avulsas excluídas']}
+                  details={['Pacotes devem ser cancelados individualmente, com o registro da devolução quando aplicável.']}
+                />
                 <div>
                   <Label className="text-xs">Para confirmar, digite <strong className="text-destructive">EXCLUIR TODOS</strong>:</Label>
                   <Input

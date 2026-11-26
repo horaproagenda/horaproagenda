@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -561,11 +562,11 @@ export function BoletoDetailModal({
             <AlertDialogDescription>
               {confirmAction?.kind === 'pay' && `Tem certeza que deseja dar baixa na ${confirmAction.label}? Esta ação registrará o pagamento.`}
               {confirmAction?.kind === 'cancel' && `Tem certeza que deseja cancelar a ${confirmAction.label}? O registro permanecerá no histórico marcado como cancelado.`}
-              {confirmAction?.kind === 'delete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE a ${confirmAction.label}? Esta ação remove o registro do banco de dados e não pode ser desfeita.`}
+              {confirmAction?.kind === 'delete' && <DeletionSummary itemName={`Boleto de ${clientName}`} removed={sorted.filter(inst => [confirmAction.id].includes(inst.id)).map(inst => `Parcela ${inst.installment_number}/${inst.total_installments} — R$ ${Number(inst.amount).toFixed(2)}`)} preserved={['Cliente e parcelas não selecionadas']} details={['Lançamentos de caixa e financeiro exclusivos das parcelas serão removidos. Ao excluir a última parcela de uma venda avulsa, a venda e seus registros exclusivos também podem ser removidos.']} />}
               {confirmAction?.kind === 'edit' && `Tem certeza que deseja salvar as alterações da ${confirmAction.label}?`}
               {confirmAction?.kind === 'batchPay' && `Confirmar baixa de ${confirmAction.ids.length} parcela(s) — total R$ ${confirmAction.total.toFixed(2)}?`}
-              {confirmAction?.kind === 'batchDelete' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE ${confirmAction.ids.length} parcela(s) selecionada(s)? Esta ação não pode ser desfeita.`}
-              {confirmAction?.kind === 'deleteAll' && `Tem certeza que deseja EXCLUIR PERMANENTEMENTE todas as ${confirmAction.ids.length} parcela(s) deste boleto? Esta ação não pode ser desfeita.`}
+              {confirmAction?.kind === 'batchDelete' && <DeletionSummary itemName={`Boleto de ${clientName}`} removed={sorted.filter(inst => confirmAction.ids.includes(inst.id)).map(inst => `Parcela ${inst.installment_number}/${inst.total_installments} — R$ ${Number(inst.amount).toFixed(2)}`)} preserved={['Cliente e parcelas não selecionadas']} details={['Lançamentos de caixa e financeiro exclusivos das parcelas serão removidos. Ao excluir a última parcela de uma venda avulsa, a venda e seus registros exclusivos também podem ser removidos.']} />}
+              {confirmAction?.kind === 'deleteAll' && <DeletionSummary itemName={`Boleto de ${clientName}`} removed={sorted.filter(inst => confirmAction.ids.includes(inst.id)).map(inst => `Parcela ${inst.installment_number}/${inst.total_installments} — R$ ${Number(inst.amount).toFixed(2)}`)} preserved={['Cliente e parcelas não selecionadas']} details={['Lançamentos de caixa e financeiro exclusivos das parcelas serão removidos. Ao excluir a última parcela de uma venda avulsa, a venda e seus registros exclusivos também podem ser removidos.']} />}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

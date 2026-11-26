@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -131,7 +132,7 @@ export function ManageEquipmentDialog({ children }: ManageEquipmentDialogProps) 
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este equipamento?')) return;
+    if (!await confirmDeletion({ itemName: equipment.find(item => item.id === id)?.name || 'Equipamento selecionado', removed: ['Cadastro do equipamento'], preserved: ['Serviços, etapas de kits e pacotes e atendimentos'], details: ['Se houver referências que impeçam a exclusão, nada será apagado.'] })) return;
     
     try {
       const { error } = await supabase

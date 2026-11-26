@@ -1,5 +1,7 @@
 # Architecture Rules
 
+- Deletion confirmations use explicit item names and removal/preservation summaries at the UI action; the shared confirmation gate cancels on navigation or identity change and never replaces server permissions or deletion guards.
+
 - Public document submissions derive account ownership from the validated locked link, never browser identity; CPF-protected saved content is returned only by the CPF authentication RPC and PDFs use that persisted content on reopen.
 
 - Smoke integrity fixtures and Realtime subscription checks share test-only helpers under tests/smoke, with local behavioral regression coverage so CI failures cannot be hidden by skipped or normalized assertions.

@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useEffect, useState } from 'react';
 import { useEstablishment, adaptClinicText } from '@/hooks/useEstablishment';
 import { useNavigate } from 'react-router-dom';
@@ -441,8 +442,6 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover este profissional?')) return;
-
     // Check for linked data to warn the user before forcing
     const [{ count: svcCount }, { count: apptCount }, { count: pkgCount }, { count: finCount }] = await Promise.all([
       supabase.from('services').select('id', { count: 'exact', head: true }).eq('professional_id', id),
@@ -451,18 +450,12 @@ export function ManageProfessionalsDialog({ children }: ManageProfessionalsDialo
       supabase.from('financial_entries').select('id', { count: 'exact', head: true }).eq('professional_id', id),
     ]);
 
-    const total = (svcCount || 0) + (apptCount || 0) + (pkgCount || 0) + (finCount || 0);
-    if (total > 0) {
-      const ok = confirm(
-        `Este profissional possui dados vinculados:\n` +
-        `• ${svcCount || 0} serviço(s)\n` +
-        `• ${apptCount || 0} agendamento(s)\n` +
-        `• ${pkgCount || 0} pacote(s)\n` +
-        `• ${finCount || 0} lançamento(s) financeiro(s)\n\n` +
-        `Os registros não serão apagados, apenas desvinculados do profissional. Deseja continuar?`
-      );
-      if (!ok) return;
-    }
+    if (!await confirmDeletion({
+      itemName: professionals.find(prof => prof.id === id)?.name || 'Profissional selecionado',
+      removed: ['Cadastro do profissional, permissões e vínculos profissionais'],
+      preserved: ['Serviços, agendamentos, pacotes e lançamentos financeiros, desvinculados deste profissional'],
+      details: [`Referências encontradas: ${svcCount ?? 'não disponível'} serviço(s), ${apptCount ?? 'não disponível'} agendamento(s), ${pkgCount ?? 'não disponível'} pacote(s) e ${finCount ?? 'não disponível'} lançamento(s).`],
+    })) return;
 
     try {
       const { error } = await supabase.rpc('force_delete_professional' as any, { _professional_id: id });

@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 const CONFIRMATION = 'EXCLUIR MINHA CONTA';
 
 export function DeleteMyAccountDialog() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,8 +64,8 @@ export function DeleteMyAccountDialog() {
           </DialogTitle>
           <DialogDescription className="text-xs space-y-2 pt-2">
             <span className="block">
-              Esta ação é <strong>irreversível</strong>. Todos os seus dados (clientes,
-              agendamentos, pacotes, financeiro, documentos e configurações) serão apagados
+              Excluir a conta <strong>{user?.email}</strong>. Esta ação é <strong>irreversível</strong>. Todos os seus dados (clientes,
+              agendamentos, serviços, kits, pacotes, produtos, caixa, financeiro, fotos, documentos e configurações) serão apagados
               permanentemente.
             </span>
             <span className="block rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-2 text-amber-700 dark:text-amber-300">

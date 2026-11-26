@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1087,7 +1088,7 @@ export function ServiceProductsDialog() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Remover Vínculo</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Tem certeza que deseja remover o vínculo entre "{sp.product?.name}" e "{sp.service?.name}"?
+                                      <DeletionSummary itemName={`${sp.product?.name || 'Produto'} — ${sp.service?.name || 'Serviço'}`} removed={['Vínculo produto/serviço e parâmetros de consumo deste vínculo']} preserved={['Produto, serviço, compras e consumo já registrado']} />
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -1251,7 +1252,7 @@ export function ServiceProductsDialog() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Remover Vínculo</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Tem certeza que deseja remover o vínculo entre "{tp.product?.name}" e "{tp.template?.name}"?
+                                      <DeletionSummary itemName={`${tp.product?.name || 'Produto'} — ${tp.template?.name || 'Modelo de pacote'}`} removed={['Vínculo produto/pacote e parâmetros de consumo deste vínculo']} preserved={['Produto, pacote, compras e consumo já registrado']} />
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>

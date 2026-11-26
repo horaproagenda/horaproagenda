@@ -1,3 +1,4 @@
+import { withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import { groupCycleHistoryByDay } from '@/lib/groupCycleHistory';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ProductUsageHistory } from './ProductUsageHistory';
@@ -1821,7 +1822,7 @@ export function ProductDetailDialog({
                                     size="icon"
                                     className="h-9 w-9 text-destructive"
                                     aria-label="Apagar compra"
-                                    onClick={() => onDeletePurchase(purchase.id)}
+                                    onClick={() => { void withDeletionConfirmation({ itemName: `${product.name} — compra de ${purchase.purchase_date}`, removed: ['Compra selecionada e lançamentos financeiros vinculados'], preserved: ['Produto e outras compras'], details: ['A quantidade desta compra será retirada do estoque. Compras já em uso não podem ser excluídas.'] }, () => onDeletePurchase(purchase.id)).catch(() => {}); }}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -2130,7 +2131,7 @@ export function ProductDetailDialog({
                                   size="icon"
                                   className="h-9 w-9 text-destructive"
                                   aria-label="Remover vínculo"
-                                  onClick={() => onDeleteServiceLink(sp.id)}
+                                  onClick={() => { void withDeletionConfirmation({ itemName: `${product.name} — ${services.find(service => service.id === sp.service_id)?.name || 'Serviço'}`, removed: ['Vínculo do produto com este serviço e parâmetros de consumo do vínculo'], preserved: ['Produto, serviço, compras e consumo já registrado'] }, () => onDeleteServiceLink(sp.id)).catch(() => {}); }}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -2432,7 +2433,7 @@ export function ProductDetailDialog({
                                   size="icon"
                                   className="h-9 w-9 text-destructive"
                                   aria-label="Remover vínculo"
-                                  onClick={() => deleteTemplateProduct.mutate(tp.id)}
+                                  onClick={() => { void withDeletionConfirmation({ itemName: `${product.name} — ${template?.name || 'Modelo de pacote'}`, removed: ['Vínculo do produto com este modelo e parâmetros de consumo do vínculo'], preserved: ['Produto, pacote e consumo já registrado'] }, () => deleteTemplateProduct.mutateAsync(tp.id)).catch(() => {}); }}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

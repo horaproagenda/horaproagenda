@@ -1,3 +1,4 @@
+import { withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -654,7 +655,7 @@ export function PrecificacaoServicos() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-5 w-5 text-destructive"
-                                  onClick={() => removeManualCost(cost.id)}
+                                  onClick={() => { void withDeletionConfirmation({ itemName: cost.description, removed: ['Custo manual da composição de preço'], preserved: ['Serviço, produtos, compras e preços salvos'] }, () => removeManualCost(cost.id)).catch(() => {}); }}
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>

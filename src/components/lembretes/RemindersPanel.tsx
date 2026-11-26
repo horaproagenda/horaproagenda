@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { format, parseISO, isToday, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -256,7 +257,7 @@ export function RemindersPanel() {
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-base">Excluir Lembrete</AlertDialogTitle>
                       <AlertDialogDescription className="text-sm">
-                        Tem certeza que deseja excluir este lembrete?
+                        <DeletionSummary itemName={reminder.title} removed={['Lembrete, descrição, data e configuração de repetição']} preserved={['Outros lembretes e agendamentos']} />
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

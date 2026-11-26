@@ -1,3 +1,4 @@
+import { withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { useWaitlist, WaitlistEntry } from '@/hooks/useWaitlist';
@@ -183,7 +184,7 @@ export function WaitlistPanel({ onScheduleFromWaitlist }: WaitlistPanelProps) {
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => removeFromWaitlist.mutate(entry.id)}
+                          onClick={() => { void withDeletionConfirmation({ itemName: `${entry.client?.name || 'Cliente'} — lista de espera`, removed: ['Entrada na lista de espera, preferências e observações'], preserved: ['Cadastro do cliente e agendamentos'] }, () => removeFromWaitlist.mutateAsync(entry.id)).catch(() => {}); }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

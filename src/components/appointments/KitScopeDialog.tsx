@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import {
   AlertDialog,
@@ -17,6 +18,7 @@ interface KitScopeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'save' | 'delete';
+  itemName: string;
   onConfirm: (scope: KitScope) => void;
   pending?: boolean;
 }
@@ -39,7 +41,7 @@ const OPTIONS: Array<{ value: KitScope; label: (mode: 'save' | 'delete') => stri
   },
 ];
 
-export function KitScopeDialog({ open, onOpenChange, mode, onConfirm, pending }: KitScopeDialogProps) {
+export function KitScopeDialog({ open, onOpenChange, mode, itemName, onConfirm, pending }: KitScopeDialogProps) {
   const [scope, setScope] = useState<KitScope>('single');
 
   return (
@@ -50,7 +52,7 @@ export function KitScopeDialog({ open, onOpenChange, mode, onConfirm, pending }:
             {mode === 'save' ? 'Alterar serviços do kit' : 'Apagar serviços do kit'}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Este atendimento faz parte de um kit de serviços. Escolha o que fazer:
+            {mode === 'save' ? 'Este atendimento faz parte de um kit de serviços. Escolha o que fazer:' : <DeletionSummary itemName={itemName} removed={[scope === 'single' ? 'Somente o agendamento desta etapa e seus registros exclusivos' : scope === 'future' ? 'Esta etapa e as etapas futuras selecionadas, com seus registros exclusivos' : 'Todos os agendamentos deste kit e seus registros exclusivos']} preserved={['Cadastro do cliente, modelo do kit e atendimentos fora da seleção']} details={['Etapas concluídas não podem ser excluídas. Confira abaixo o alcance escolhido.']} />}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

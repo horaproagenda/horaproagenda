@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState } from 'react';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { 
@@ -133,7 +134,7 @@ const Documentos = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este modelo?')) {
+    if (await confirmDeletion({ itemName: templates.find(template => template.id === id)?.title || 'Modelo de documento', removed: ['Modelo, conteúdo e campos de preenchimento'], preserved: ['Documentos já salvos no perfil dos clientes'], details: ['Links que dependam deste modelo podem deixar de funcionar.'] })) {
       await deleteTemplate(id);
     }
   };

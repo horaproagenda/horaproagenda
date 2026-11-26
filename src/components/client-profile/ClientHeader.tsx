@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
@@ -155,6 +156,7 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
   };
 
   const handleRemovePhoto = async () => {
+    if (!await confirmDeletion({ itemName: `Foto de perfil de ${client.name}`, removed: ['Arquivo da foto e sua referência no cadastro'], preserved: ['Cadastro do cliente e fotos de tratamento'] })) return;
     try {
       const parsed = safeParseInfo(client.complementary_info);
       const path = typeof parsed.avatar_path === 'string' ? parsed.avatar_path : null;
@@ -325,7 +327,7 @@ export function ClientHeader({ client, onEdit, onUpdate }: ClientHeaderProps) {
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
                     Apaga o cliente, agendamentos (incluindo agenda), pacotes, vendas, pagamentos,
-                    documentos, fotos, orçamentos e lançamentos financeiros. Esta ação é <strong>irreversível</strong>.
+                    fichas de atendimento, documentos, fotos, orçamentos e lançamentos financeiros. Esta ação é <strong>irreversível</strong>.
                   </div>
                 </button>
               </div>

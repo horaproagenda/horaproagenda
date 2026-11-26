@@ -192,7 +192,7 @@ export function ClientCard({ client }: ClientCardProps) {
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
                 Apaga o cliente, agendamentos (incluindo agenda), pacotes, vendas, pagamentos,
-                documentos, fotos, orçamentos e lançamentos financeiros. Esta ação é <strong>irreversível</strong>.
+                fichas de atendimento, documentos, fotos, orçamentos e lançamentos financeiros. Esta ação é <strong>irreversível</strong>.
               </div>
             </button>
           </div>

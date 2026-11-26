@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -134,7 +135,7 @@ export function ManageRoomsDialog({ children }: ManageRoomsDialogProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta sala?')) return;
+    if (!await confirmDeletion({ itemName: rooms.find(room => room.id === id)?.name || 'Sala selecionada', removed: ['Cadastro da sala'], preserved: ['Serviços e atendimentos'], details: ['Salas com serviços ou atendimentos vinculados não podem ser excluídas.'] })) return;
     
     try {
       const { data: services } = await supabase

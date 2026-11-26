@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -231,7 +232,7 @@ export function ManageBanksDialog() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este banco? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={banks.find(bank => bank.id === deleteConfirm)?.name || 'Banco selecionado'} removed={['Cadastro do banco']} preserved={['Caixas, pagamentos e lançamentos financeiros']} details={['Referências que impeçam a exclusão serão verificadas pelo sistema.']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

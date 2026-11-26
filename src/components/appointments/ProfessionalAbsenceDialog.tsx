@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, addWeeks, addMonths, isBefore, isEqual } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -619,7 +620,7 @@ export function ProfessionalAbsenceDialog({
               Excluir Ausência
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta ausência? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={`${editingAbsence?.professional?.name || professionals.find(prof => prof.id === editingAbsence?.professional_id)?.name || 'Profissional'} — ${editingAbsence?.reason || 'Ausência'}`} removed={[deleteType === 'single' ? 'Ausência selecionada, bloqueio do período e observações' : deleteType === 'following' ? 'Ausência selecionada e futuras do mesmo profissional e motivo' : 'Todas as ausências do mesmo profissional e motivo']} preserved={['Profissional e agendamentos']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           

@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useMemo, useEffect } from 'react';
 import { useEstablishment } from '@/hooks/useEstablishment';
 import { useSearchParams } from 'react-router-dom';
@@ -983,7 +984,7 @@ export default function Produtos() {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
-                                      <AlertDialogDescription>Excluir "{product.name}" e todo o histórico dele (compras, ciclos de uso, consumo e vínculos com serviços e pacotes)? Atendimentos e pagamentos antigos continuam, sem o vínculo com o produto. Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                      <AlertDialogDescription><DeletionSummary itemName={product.name} removed={['Cadastro do produto e estoque', 'Compras, ciclos de uso e registros de consumo', 'Vínculos com serviços e pacotes']} preserved={['Atendimentos e fichas, sem o vínculo com o produto']} details={['Lançamentos financeiros exclusivos das compras também podem ser removidos. Os serviços e pacotes não serão excluídos.']} /></AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>Cancelar</AlertDialogCancel>

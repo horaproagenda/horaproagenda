@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useEffect, useState } from 'react';
 import { 
   Dialog, 
@@ -292,8 +293,8 @@ export function ClientDocumentViewDialog({
     }
   };
 
-  const handleDelete = () => {
-    if (window.confirm('Tem certeza que deseja excluir este documento?')) {
+  const handleDelete = async () => {
+    if (await confirmDeletion({ itemName: document.title, removed: ['Documento preenchido, conteúdo salvo e arquivo anexado'], preserved: ['Cadastro do cliente e demais documentos'] })) {
       onDelete?.(document.id);
       onOpenChange(false);
     }

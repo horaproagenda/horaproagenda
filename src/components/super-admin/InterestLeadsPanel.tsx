@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,7 +69,7 @@ export function InterestLeadsPanel() {
   };
 
   const removeLead = async (row: LeadRow) => {
-    if (!confirm(`Excluir o lead de ${row.name ?? row.email}?`)) return;
+    if (!await confirmDeletion({ itemName: row.name || row.email || 'Contato interessado', removed: ['Cadastro do contato', 'Telefone, e-mail, mensagem e marcação de contato deste cadastro'], preserved: ['Contas de usuários e dados de clientes'] })) return;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('interest_leads').delete().eq('id', row.id);

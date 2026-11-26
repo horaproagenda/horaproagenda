@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Plus, Edit2, Trash2, Save, X, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -200,8 +201,8 @@ export function WhatsappTemplatesSettings() {
     setFormData(initialForm);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este template?')) {
+  const handleDelete = async (id: string) => {
+    if (await confirmDeletion({ itemName: allTemplates.find(template => template.id === id)?.name || 'Modelo de mensagem', removed: ['Modelo de mensagem e suas opções de envio'], preserved: ['Agendamentos e mensagens já enviadas'] })) {
       deleteTemplate.mutate(id);
     }
   };

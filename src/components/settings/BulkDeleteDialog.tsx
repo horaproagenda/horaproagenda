@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +32,17 @@ interface DeleteOption {
 
 // IMPORTANT: Tables are ordered to respect foreign key constraints
 // Delete child tables before parent tables
+const deletionLabels: Record<string, string> = {
+  financial_entries: 'Lançamentos financeiros', cash_transactions: 'Movimentações de caixa',
+  single_sales: 'Vendas', client_services: 'Serviços adquiridos por clientes',
+  appointment_product_consumption: 'Consumo de produtos vinculado a atendimentos',
+  package_appointments: 'Aplicações de pacotes', appointments: 'Agendamentos',
+  service_packages: 'Pacotes de clientes', quotes: 'Orçamentos', treatment_photos: 'Fotos de tratamento',
+  client_documents: 'Documentos de clientes', clients: 'Cadastros de clientes',
+  service_products: 'Vínculos de produtos com serviços', goals: 'Metas', services: 'Serviços e kits',
+  package_template_products: 'Vínculos de produtos com modelos de pacotes', package_templates: 'Modelos e etapas de pacotes',
+  product_purchases: 'Compras de produtos', products: 'Cadastros de produtos e seus históricos',
+};
 const deleteOptions: DeleteOption[] = [
   {
     type: 'clients',
@@ -248,16 +260,12 @@ export function BulkDeleteDialog() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Você está prestes a excluir <strong>TODOS</strong> os {selectedOption?.label.toLowerCase()}.
-                  Esta ação é <strong>permanente e irreversível</strong>.
-                </p>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    <strong>Importante:</strong> Todos os registros relacionados (agendamentos, financeiro, etc.) 
-                    também serão excluídos para manter a integridade do sistema.
-                  </p>
-                </div>
+                {selectedOption && <DeletionSummary
+                  itemName={`Todos os registros de ${selectedOption.label.toLowerCase()} desta conta`}
+                  removed={selectedOption.tables.map(table => deletionLabels[table])}
+                  preserved={['Dados de outras contas e informações fora dos grupos listados']}
+                  details={['A exclusão em lote alcança todos os registros dos grupos acima aos quais sua conta tem acesso, não apenas os itens visíveis no filtro.']}
+                />}
                 <div className="space-y-2">
                   <Label>Para confirmar, digite: <strong className="text-destructive">{selectedOption?.confirmText}</strong></Label>
                   <Input

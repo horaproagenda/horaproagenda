@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useMemo, useEffect, useRef, useState } from 'react';
 import { appointmentBasePrice } from '@/lib/kitSteps';
 import { format, parseISO, isAfter } from 'date-fns';
@@ -291,9 +292,7 @@ export function ContasAReceber() {
 
   const handleDelete = async (item: typeof allReceivables[0]) => {
     if (item.type !== 'financial_entry') return;
-    const ok = window.confirm(
-      `Excluir este lançamento a receber (R$ ${item.amount.toFixed(2)})?\n\nEsta ação remove apenas este lançamento. Vendas de pacote devem ser canceladas em "Relatório".`
-    );
+    const ok = await confirmDeletion({ itemName: `${item.description} — ${item.clientName} — R$ ${item.amount.toFixed(2)}`, removed: ['Lançamento a receber selecionado e seu vínculo financeiro'], preserved: ['Cadastro do cliente e vendas de pacotes'], details: ['Vendas de pacote devem ser canceladas em Relatório.'] });
     if (!ok) return;
     await deleteEntry.mutate(item.id);
   };

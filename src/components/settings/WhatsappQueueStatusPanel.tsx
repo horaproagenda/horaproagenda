@@ -1,3 +1,4 @@
+import { withDeletionConfirmation } from '@/lib/deletionConfirmation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ListChecks, RotateCw, Trash2 } from 'lucide-react';
@@ -30,7 +31,7 @@ export function WhatsappQueueStatusPanel() {
             </Button>
           )}
           {snapshot.done > 0 && (
-            <Button size="sm" variant="ghost" onClick={clearDone} className="h-7 px-2 text-[11px]">
+            <Button size="sm" variant="ghost" onClick={() => { void withDeletionConfirmation({ itemName: `${snapshot.done} mensagens concluídas da fila`, removed: ['Registros locais de mensagens concluídas'], preserved: ['Mensagens no WhatsApp, envios pendentes e tentativas com falha'] }, clearDone).catch(() => {}); }} className="h-7 px-2 text-[11px]">
               <Trash2 className="h-3 w-3 mr-1" /> Limpar concluídas
             </Button>
           )}

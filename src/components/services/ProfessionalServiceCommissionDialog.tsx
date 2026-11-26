@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { useState, useEffect } from 'react';
 import { Settings2, Plus, Trash2, Percent, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,7 @@ export function ProfessionalServiceCommissionDialog({ professionalId, profession
   };
 
   const handleDelete = async (id: string) => {
+    if (!await confirmDeletion({ itemName: `${professionalName} — ${getServiceName(commissions.find(comm => comm.id === id)?.service_id || '')}`, removed: ['Configuração de comissão deste profissional neste serviço'], preserved: ['Profissional, serviço e atendimentos já registrados'] })) return;
     const { error } = await supabase.from('professional_service_commissions' as any).delete().eq('id', id);
     if (error) {
       toast.error('Erro ao remover: ' + error.message);

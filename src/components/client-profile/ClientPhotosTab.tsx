@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { TreatmentPhoto, TreatmentStage } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -515,7 +516,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
-                          <AlertDialogDescription>Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          <AlertDialogDescription><DeletionSummary itemName={`Foto de tratamento — ${selectedPhoto.taken_at || selectedPhoto.created_at}`} removed={['Arquivo da foto selecionada e registro no perfil']} preserved={['Cliente, atendimentos e demais fotos']} /></AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -591,7 +592,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Excluir Foto</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.
+                                      <DeletionSummary itemName={`Foto de tratamento — ${photo.taken_at || photo.created_at}`} removed={['Arquivo da foto selecionada e registro no perfil']} preserved={['Cliente, atendimentos e demais fotos']} />
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>

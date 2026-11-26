@@ -1,3 +1,4 @@
+import { confirmDeletion } from '@/lib/deletionConfirmation';
 import { isRichDocument, toPrintableDocumentHtml } from '@/lib/documentRichContent';
 import { renderRichDocumentPdfBytes } from '@/lib/richDocumentPdf';
 import { deleteClientAsset } from '@/lib/deletionCleanup';
@@ -623,8 +624,8 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
                             variant="ghost" 
                             size="icon" 
                             className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                            onClick={() => {
-                              if (window.confirm('Excluir este documento?')) {
+                            onClick={async () => {
+                              if (await confirmDeletion({ itemName: doc.title, removed: ['Documento preenchido e arquivo anexado'], preserved: ['Cliente, outros documentos e atendimentos'] })) {
                                 handleDeleteDocument(doc.id);
                               }
                             }}

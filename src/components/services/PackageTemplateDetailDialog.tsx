@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -727,7 +728,7 @@ export function PackageTemplateDetailDialog({ pkg, open, onOpenChange, onPackage
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Pacote</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o pacote "{pkg.name}"? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={pkg.name} removed={['Modelo do pacote, etapas e vínculos de produtos do modelo']} preserved={['Clientes e atendimentos já registrados']} details={['Referências que impeçam a exclusão serão verificadas pelo sistema.']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

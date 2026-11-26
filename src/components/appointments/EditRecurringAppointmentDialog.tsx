@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -732,11 +733,11 @@ Em caso de dúvidas ou para reagendar, entre em contato conosco.`;
               Excluir Agendamento
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isSeriesLike
-                ? (isPackageAppointment
-                    ? 'Este agendamento faz parte de um pacote. Como deseja excluir?'
-                    : 'Este agendamento faz parte de uma série recorrente. Como deseja excluir?')
-                : 'Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.'}
+              <DeletionSummary itemName={`${appointment?.client?.name || 'Cliente'} — ${appointment?.service?.name || 'Atendimento'}`}
+                removed={[deleteType === 'single' ? 'Somente este agendamento e registros exclusivos' : deleteType === 'following' ? 'Este agendamento e os seguintes selecionados, com seus registros exclusivos' : 'Todos os agendamentos da série selecionada e seus registros exclusivos']}
+                preserved={['Cadastro do cliente e agendamentos fora da seleção', ...(isPackageAppointment ? ['Pagamento do pacote'] : [])]}
+                details={['Confira o alcance selecionado abaixo. Pagamentos de boletos são ajustados na página de Boletos.']}
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           

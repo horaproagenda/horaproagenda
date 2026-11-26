@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { Users, Shield, Plus, Trash2, UserX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -137,7 +138,7 @@ export default function UserManagement() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Remover permissão?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Deseja remover a permissão de {roleLabels[role]?.label} de {user.full_name}?
+                                    <DeletionSummary itemName={`${user.full_name} — ${roleLabels[role]?.label}`} removed={['Permissão selecionada para este usuário']} preserved={['Cadastro do usuário, outras permissões e registros operacionais']} />
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

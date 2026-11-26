@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -136,7 +137,7 @@ export function ManageSuppliersDialog() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir Fornecedor</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Tem certeza que deseja excluir "{supplier.name}"? Esta ação não pode ser desfeita.
+                                  <DeletionSummary itemName={supplier.name} removed={['Cadastro do fornecedor e dados de contato']} preserved={['Produtos e compras já registrados']} />
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

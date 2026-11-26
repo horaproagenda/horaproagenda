@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { appointmentBasePrice } from '@/lib/kitSteps';
 import { Clock, User, CheckCircle, AlertCircle, DollarSign, MoreVertical, Pencil, Trash2 } from 'lucide-react';
@@ -279,8 +280,7 @@ export function AppointmentCard({ appointment, compact = false, professionals = 
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base">Excluir Agendamento</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              Excluir agendamento de "{appointment.client?.name}"? 
-              Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={`${appointment.client?.name || 'Cliente'} — ${appointment.service?.name || 'Atendimento'} — ${timeStr}`} removed={['Agendamento selecionado e consumo vinculado', 'Registros financeiros exclusivos deste atendimento, quando aplicável']} preserved={['Cliente, outras aplicações e pagamentos de pacotes ou boletos']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { validateServiceRequiredFields } from '@/lib/serviceRequiredFields';
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -828,7 +829,7 @@ export function ServiceDetailDialog({ service, open, onOpenChange, categories, o
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "{service.name}"? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={service.name} removed={['Cadastro do serviço, composição do kit e vínculos de produtos deste serviço']} preserved={['Produtos e atendimentos registrados']} details={['Serviços com agendamentos vinculados não podem ser excluídos.']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

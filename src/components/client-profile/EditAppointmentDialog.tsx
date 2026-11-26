@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { rescheduleAppointment } from '@/lib/rescheduleAppointment';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -388,7 +389,7 @@ export function EditAppointmentDialog({ appointment, open, onOpenChange }: EditA
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir este agendamento? Esta ação não pode ser desfeita.
+              <DeletionSummary itemName={`${appointment?.client?.name || 'Cliente'} — ${appointment?.service?.name || 'Atendimento'} — ${appointment?.start_time || ''}`} removed={['Agendamento selecionado e consumo de produtos vinculado', 'Registros financeiros exclusivos deste atendimento, quando aplicável']} preserved={['Cliente, outras aplicações e pagamentos de pacotes ou boletos']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

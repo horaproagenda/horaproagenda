@@ -1,3 +1,4 @@
+import { DeletionSummary } from '@/components/DeletionConfirmationDialog';
 import { useState } from 'react';
 import { Clock, DollarSign, MoreVertical, Pencil, Trash2, Sparkles } from 'lucide-react';
 import { Service } from '@/types';
@@ -180,10 +181,7 @@ export function ServiceCard({ service, onEdit, onDelete }: ServiceCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Serviço</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o serviço "{service.name}"? Esta ação não pode ser desfeita.
-              <br />
-              <br />
-              <strong className="text-destructive">Atenção:</strong> Serviços com agendamentos vinculados não podem ser excluídos.
+              <DeletionSummary itemName={service.name} removed={['Cadastro do serviço, composição do kit e vínculos de produtos deste serviço']} preserved={['Produtos e atendimentos registrados']} details={['Serviços com agendamentos vinculados não podem ser excluídos.']} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

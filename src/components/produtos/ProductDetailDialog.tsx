@@ -828,7 +828,8 @@ export function ProductDetailDialog({
           notes: null,
         });
       } else {
-        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit);
+        if (normalizedQty === null) { toast.error('Medida incompatível com o estoque do produto'); return; }
         await onCreateServiceLink({
           service_id: serviceId,
           product_id: product.id,
@@ -864,7 +865,8 @@ export function ProductDetailDialog({
           notes: null,
         });
       } else {
-        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit) ?? quantityPerUse;
+        const normalizedQty = convertQuantity(quantityPerUse, quantityPerUseUnit, product.unit);
+        if (normalizedQty === null) { toast.error('Medida incompatível com o estoque do produto'); return; }
         await createTemplateProduct.mutateAsync({
           template_id: templateId,
           product_id: product.id,

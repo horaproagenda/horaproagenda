@@ -32,3 +32,21 @@ describe('média dos ciclos na precificação', () => {
     expect(d.issue).toBe('missing_estimate');
   });
 });
+
+import { convertQuantityForCost as convertQuantity } from '../productStock';
+describe('conversões de medida', () => {
+  it('converte entre famílias com densidade 1', () => {
+    expect(convertQuantity(500, 'ml', 'kg')).toBeCloseTo(0.5);
+    expect(convertQuantity(250, 'g', 'l')).toBeCloseTo(0.25);
+    expect(convertQuantity(500, 'ml', 'l')).toBeCloseTo(0.5);
+    expect(convertQuantity(1, 'un', 'ml')).toBeNull();
+  });
+  it('Gel: 500 ml rende 7, R$ 20/kg', () => {
+    const d = getProductLinkCostDetail({ product_id: 'g', quantity_per_use: 0, tracking_method: 'estimated', container_amount: 500, container_unit: 'ml', estimated_appointments: 7, product: { unit: 'kg', unit_price: 20 } });
+    expect(d.cost).toBeCloseTo((0.5 / 7) * 20, 6);
+  });
+  it('medida incompatível gera aviso', () => {
+    const d = getProductLinkCostDetail({ product_id: 'x', quantity_per_use: 0.5, tracking_method: 'estimated', container_amount: 10, container_unit: 'un', estimated_appointments: 2, product: { unit: 'ml', unit_price: 1 } });
+    expect(d.issue).toBe('incompatible_unit');
+  });
+});

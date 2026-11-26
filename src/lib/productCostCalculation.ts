@@ -11,7 +11,7 @@
  *  - Relatórios de custo de material
  */
 
-import { convertQuantity } from './productStock';
+import { convertQuantityForCost as convertQuantity } from './productStock';
 
 export interface ProductLink {
   product_id: string;
@@ -40,7 +40,7 @@ export interface ProductLink {
  *   convertido para unidade de estoque, multiplicado pelo preço por unidade
  *   de estoque do produto. Se faltar dado, cai para o modo exact.
  */
-export type ProductCostIssue = 'no_product' | 'no_price' | 'missing_estimate' | 'no_quantity' | null;
+export type ProductCostIssue = 'no_product' | 'no_price' | 'missing_estimate' | 'no_quantity' | 'incompatible_unit' | null;
 
 export interface ProductLinkCostDetail {
   cost: number;
@@ -123,8 +123,8 @@ export function getProductLinkCostDetail(
     const estimatedApps = Number(link.estimated_appointments || 0);
     if (containerAmount > 0 && estimatedApps > 0) {
       const containerInStock = convertQuantity(containerAmount, (link.container_unit || stockUnit) as any, stockUnit as any);
-      // Sem conversão possível (ex.: ml → kg), usa a quantidade já salva na unidade de estoque.
-      qty = containerInStock !== null ? containerInStock / estimatedApps : storedQty;
+      if (containerInStock === null) return { cost: 0, pricePerStockUnit, quantityPerUse: 0, stockUnit, issue: 'incompatible_unit' };
+      qty = containerInStock / estimatedApps;
       source = 'estimate';
     } else if (storedQty <= 0 && cycleAverage) {
       useCycles();

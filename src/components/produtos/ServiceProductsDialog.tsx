@@ -437,7 +437,8 @@ export function ServiceProductsDialog() {
     
     if (isEstimated) {
       const product = products.find(p => p.id === sp.product_id);
-      const normalizedContainer = product ? (convertQuantity(sp.container_amount || 1, sp.container_unit, product.unit) ?? (sp.container_amount || 1)) : (sp.container_amount || 1);
+      const normalizedContainer = product ? convertQuantity(sp.container_amount || 1, sp.container_unit, product.unit) : (sp.container_amount || 1);
+      if (normalizedContainer === null) { toast.error('Medida incompatível com o estoque do produto'); return; }
       const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateServiceProduct.mutateAsync({
         id,
@@ -458,7 +459,8 @@ export function ServiceProductsDialog() {
     
     if (isEstimated) {
       const product = products.find(p => p.id === tp.product_id);
-      const normalizedContainer = product ? (convertQuantity(tp.container_amount || 1, tp.container_unit, product.unit) ?? (tp.container_amount || 1)) : (tp.container_amount || 1);
+      const normalizedContainer = product ? convertQuantity(tp.container_amount || 1, tp.container_unit, product.unit) : (tp.container_amount || 1);
+      if (normalizedContainer === null) { toast.error('Medida incompatível com o estoque do produto'); return; }
       const calculatedQuantityPerUse = normalizedContainer / editEstimatedAppointments;
       await updateTemplateProduct.mutateAsync({
         id,
@@ -525,7 +527,8 @@ export function ServiceProductsDialog() {
     const isEstimated = sp.tracking_method === 'estimated';
     
     if (isEstimated && sp.estimated_appointments && sp.container_amount) {
-      const normalizedContainer = convertQuantity(sp.container_amount, sp.container_unit, product.unit) ?? sp.container_amount;
+      const normalizedContainer = convertQuantity(sp.container_amount, sp.container_unit, product.unit);
+      if (!normalizedContainer) return 0;
       const containersRemaining = product.current_stock / normalizedContainer;
       return Math.floor(containersRemaining * sp.estimated_appointments);
     }

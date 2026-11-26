@@ -56,6 +56,7 @@ const COST_ISSUE_LABEL: Record<Exclude<ProductCostIssue, null>, string> = {
   no_price: 'Sem preço de compra cadastrado',
   missing_estimate: 'Ainda sem ciclo encerrado para calcular a média',
   no_quantity: 'Informe a quantidade por uso',
+  incompatible_unit: 'Medida incompatível com o estoque',
 };
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

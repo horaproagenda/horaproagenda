@@ -131,7 +131,7 @@ describe('Custo por uso de vínculos serviço → produto / template → produto
     expect(cost).toBe(5); // 5 ml * R$1 = R$5
   });
 
-  it('bloqueia custo estimado com grandezas incompatíveis', () => {
+  it('precificação converte ml → kg com densidade 1 (100 ml / 10 = 0,01 kg × R$ 40)', () => {
     const cost = calculateProductLinkCostPerUse({
       product_id: 'p2',
       quantity_per_use: 0,
@@ -145,7 +145,7 @@ describe('Custo por uso de vínculos serviço → produto / template → produto
         quantity_purchased: 25, // R$ 40 por kg
       },
     });
-    expect(cost).toBe(0);
+    expect(cost).toBeCloseTo(0.4, 6);
   });
 
   it('estimado sem dados cai em fallback exact', () => {

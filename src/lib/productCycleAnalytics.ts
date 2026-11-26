@@ -107,8 +107,9 @@ export function toStockUnit(
   value: number,
   fromUnit: StockUnit | null | undefined,
   stockUnit: StockUnit | null | undefined,
-): number {
-  return convertQuantity(value, fromUnit, stockUnit) ?? value;
+): number | null {
+  // Medidas incompatíveis (ex.: un ↔ ml) retornam null — nunca usar o número cru.
+  return convertQuantity(value, fromUnit, stockUnit);
 }
 
 export function formatCycleQuantity(value: number): string {

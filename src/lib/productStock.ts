@@ -14,10 +14,11 @@ const CONVERSIONS: Record<string, Record<string, number>> = {
 // atendimento — a baixa do estoque precisa ser 0,5 kg, não 500 kg.
 // fator = (valor em fromUnit) * fator → valor em toUnit.
 const CROSS_FAMILY_DENSITY_1: Record<string, Record<string, number>> = {
-  ml: { g: 1, kg: 1 / 1000 },
-  l: { g: 1000, kg: 1 },
+  ml: { g: 1, kg: 1 / 1000, mg: 1000 },
+  l: { g: 1000, kg: 1, mg: 1_000_000 },
   g: { ml: 1, l: 1 / 1000 },
   kg: { ml: 1000, l: 1 },
+  mg: { ml: 1 / 1000, l: 1 / 1_000_000 },
 };
 
 export function areUnitsCrossFamily(
@@ -41,6 +42,22 @@ export function convertQuantity(
   if (direct !== undefined) return value * direct;
 
   return null;
+}
+
+/**
+ * Somente para CUSTO/precificação: converte também entre volume e massa
+ * assumindo densidade ≈ 1 (1 ml = 1 g). A baixa de estoque continua usando
+ * `convertQuantity`, que espelha o SQL e bloqueia grandezas diferentes.
+ */
+export function convertQuantityForCost(
+  value: number,
+  fromUnit: StockUnit | null | undefined,
+  toUnit: StockUnit | null | undefined,
+): number | null {
+  const same = convertQuantity(value, fromUnit, toUnit);
+  if (same !== null) return same;
+  const cross = fromUnit && toUnit ? CROSS_FAMILY_DENSITY_1[fromUnit]?.[toUnit] : undefined;
+  return cross !== undefined && Number.isFinite(value) ? value * cross : null;
 }
 
 export function calculateUnitPrice(quantity: number, totalPrice: number): number {

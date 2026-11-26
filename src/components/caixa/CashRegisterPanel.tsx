@@ -385,7 +385,7 @@ export function CashRegisterPanel() {
     if (!currentOpenRegister) return;
 
     try {
-      // Exclusão definitiva e atômica do caixa e de suas movimentações.
+      // Caminho legado com todas as respostas verificadas; transação no banco pendente.
       await deleteCashRegisterDefinitively(currentOpenRegister.id);
 
       queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
@@ -393,6 +393,9 @@ export function CashRegisterPanel() {
       toast.success('Caixa excluído com sucesso!');
     } catch (error: any) {
       toast.error('Erro ao excluir caixa: ' + error.message);
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
     }
   };
 

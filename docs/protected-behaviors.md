@@ -108,6 +108,8 @@ Legenda de cobertura:
 Ao corrigir um novo erro: **adicione uma linha nesta tabela e um teste**.
 Nenhuma correção validada pode existir sem teste que a proteja.
 
+- Exclusões de arquivos conferem a linha realmente apagada antes de remover o arquivo; falhas de armazenamento ou caixa nunca contam como sucesso. A paginação da limpeza enumera os arquivos antes de apagá-los para não saltar itens. Testes: `src/lib/__tests__/deletionCleanup.test.ts` e `storagePurge.test.ts`.
+
 - Smoke: modelos exigem profissional, snapshots omitidos são normalizados sem ocultar falhas, e Realtime aguarda assinatura autenticada e INSERT do ID exato. Cobertura: `smoke-integrity-helpers.test.ts` e os três testes de fumaça correspondentes.
 
 ## Assinatura Asaas — criação, liberação e idempotência

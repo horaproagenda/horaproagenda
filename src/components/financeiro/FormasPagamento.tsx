@@ -263,7 +263,6 @@ export function FormasPagamento() {
       const all = allBoletoInstallments as BoletoRow[];
       const packageInstallments = all.filter(b => b.sale?.package_id);
       const standaloneInstallments = all.filter(b => !b.sale?.package_id);
-      const standaloneIds = standaloneInstallments.map(b => b.id);
       const saleIds = Array.from(new Set(standaloneInstallments.map(b => b.sale_id).filter(Boolean)));
       const skippedPackageCount = new Set(packageInstallments.map(b => b.sale_id)).size;
 
@@ -280,7 +279,6 @@ export function FormasPagamento() {
         const { error: delInstError } = await supabase.from('boleto_installments').delete().in('id', orphanIds);
         if (delInstError) throw delInstError;
       }
-      void standaloneIds;
 
       // 3) Invalida todos os caches relevantes (financeiro, caixa, agenda)
       queryClient.invalidateQueries();

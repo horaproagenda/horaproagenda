@@ -1,5 +1,14 @@
 # Roadmap
 
+## Exclusões definitivas — revisão de todos os módulos
+- [x] Levantar botões de exclusão, arquivos órfãos, erros ignorados e chaves de cache
+- [ ] Validar/aplicar operações atômicas de caixa, boletos, serviços, agenda e exclusão em massa — Supabase indisponível
+- [ ] Aplicar exclusão de consumo manual, etapas de kit e auditoria correspondente — Supabase indisponível
+- [ ] Concluir limpeza durável de arquivos de clientes/contas, referências compartilhadas e reconciliação diária — exige banco disponível
+- [ ] Testar exclusões autenticadas com dados descartáveis e sincronização entre aparelhos — exige banco de teste disponível
+- [x] Corrigir respostas ignoradas, atalhos da agenda, exclusão de boletos avulsos e chaves de cache
+- [x] Adicionar regressões de respostas, arquivos e atualização das listas; suíte completa com 1.087 testes passou antes do teste adicional de cache
+
 ## Documentos públicos — envio e PDF
 - [x] Corrigir identificação da clínica na gravação sem sessão, preservando CPF e auditoria
 - [x] Restaurar PDF salvo ao reabrir o link, após confirmação do CPF

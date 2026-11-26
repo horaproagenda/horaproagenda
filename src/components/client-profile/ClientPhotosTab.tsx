@@ -16,7 +16,7 @@ import { Plus, Image, Upload, Filter, Trash2, ChevronLeft, ChevronRight, Downloa
 type StageFilter = 'all' | TreatmentStage;
 import { useUploadFile } from '@/hooks/useClientProfile';
 import { getSignedPhotoUrls, resolvePhotoPath } from '@/hooks/useSignedPhotoUrl';
-import { supabase } from '@/integrations/supabase/client';
+import { deleteClientAsset } from '@/lib/deletionCleanup';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -115,7 +115,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
     return photo.file_url || '/placeholder.svg';
   };
 
-  const handleDeletePhoto = async (photoId: string, filePath: string | null) => {
+  const handleDeletePhoto = async (photoId: string) => {
     if (!canDeletePhotos) {
       toast.error('Apenas administradores podem apagar fotos.');
       return;
@@ -123,17 +123,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
 
     setDeletingId(photoId);
     try {
-      // Delete from storage if path exists
-      const { error } = await supabase
-        .from('treatment_photos')
-        .delete()
-        .eq('id', photoId);
-      if (error) throw error;
-      // Arquivo sai do armazenamento junto com o registro.
-      if (filePath) {
-        const { error: storageError } = await supabase.storage.from('client-photos').remove([filePath]);
-        if (storageError) throw storageError;
-      }
+      await deleteClientAsset('treatment_photos', photoId);
       
       queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
       setSelectedPhotoIndex(null);
@@ -142,6 +132,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
       console.error('Error deleting photo:', error);
       toast.error('Erro ao excluir foto');
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['client-photos', clientId] });
       setDeletingId(null);
     }
   };
@@ -528,7 +519,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id, selectedPhoto.file_path)} className="bg-destructive hover:bg-destructive/90">
+                          <AlertDialogAction onClick={() => handleDeletePhoto(selectedPhoto.id)} className="bg-destructive hover:bg-destructive/90">
                             Excluir
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -606,7 +597,7 @@ export function ClientPhotosTab({ photos, clientId, onAddPhoto }: ClientPhotosTa
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                     <AlertDialogAction 
-                                      onClick={() => handleDeletePhoto(photo.id, photo.file_path)}
+                                      onClick={() => handleDeletePhoto(photo.id)}
                                       className="bg-destructive hover:bg-destructive/90"
                                     >
                                       Excluir

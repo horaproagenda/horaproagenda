@@ -1,5 +1,6 @@
 import { isRichDocument, toPrintableDocumentHtml } from '@/lib/documentRichContent';
 import { renderRichDocumentPdfBytes } from '@/lib/richDocumentPdf';
+import { deleteClientAsset } from '@/lib/deletionCleanup';
 import { useState, useRef, useEffect } from 'react';
 import { ClientDocument, DocumentType, Client, DocumentTemplate } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -187,25 +188,14 @@ export function ClientDocumentsTab({ documents, clientId, client, onAddDocument,
     }
 
     try {
-      const { data: deleted, error } = await supabase
-        .from('client_documents')
-        .delete()
-        .eq('id', docId)
-        .select('file_path');
-
-      if (error) throw error;
-      if (!deleted || deleted.length === 0) throw new Error('Documento não encontrado ou sem permissão');
-      const filePath = deleted[0]?.file_path;
-      if (filePath) {
-        const { error: storageError } = await supabase.storage.from('client-documents').remove([filePath]);
-        if (storageError) throw storageError;
-      }
+      await deleteClientAsset('client_documents', docId);
 
       toast.success('Documento excluído!');
-      onRefresh?.();
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Erro ao excluir documento');
+    } finally {
+      onRefresh?.();
     }
   };
 

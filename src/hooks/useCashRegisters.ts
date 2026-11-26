@@ -266,6 +266,10 @@ export function useCashRegisters() {
     onError: (error: any) => {
       toast.error('Erro ao excluir caixa: ' + error.message);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cash_registers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash_transactions'] });
+    },
   });
 
   return {

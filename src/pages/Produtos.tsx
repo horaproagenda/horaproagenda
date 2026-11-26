@@ -921,9 +921,6 @@ export default function Produtos() {
                   <TableRow className="h-7">
                     <TableHead className="h-7 py-1 text-[10px]">Produto</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Estoque</TableHead>
-                    <TableHead className="h-7 py-1 text-[10px]">Validade</TableHead>
-                    <TableHead className="h-7 py-1 text-[10px]">Tipo de Uso</TableHead>
-                    <TableHead className="h-7 py-1 text-[10px]">Atend.</TableHead>
                     <TableHead className="h-7 py-1 text-[10px]">Status</TableHead>
                     <TableHead className="h-7 py-1 text-[10px] text-right">Ações</TableHead>
                   </TableRow>
@@ -931,7 +928,7 @@ export default function Produtos() {
                 <TableBody>
                   {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-xs">
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
                         <Package className="h-7 w-7 mx-auto mb-2 opacity-20" />
                         <p>Nenhum produto cadastrado</p>
                       </TableCell>
@@ -940,7 +937,6 @@ export default function Produtos() {
                     filteredProducts.map(product => {
                       const isLowStock = product.current_stock <= (product.min_stock_alert || 0) && product.is_active;
                       const expired = isProductExpired(product);
-                      const totalAppointments = getProductAppointments(product.id);
 
                       return (
                         <TableRow
@@ -969,33 +965,10 @@ export default function Produtos() {
                             {isLowStock && <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal border-amber-500 text-amber-600">Baixo</Badge>}
                           </TableCell>
                           <TableCell className="py-1">
-                            {product.expiry_date ? (
-                              <span className={cn("font-medium text-[11px] tabular-nums", expired && "text-destructive")}>
-                                {format(parseISO(product.expiry_date), 'dd/MM/yyyy')}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground">—</span>
-                            )}
-                            {expired && <Badge variant="destructive" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal">Vencido</Badge>}
-                          </TableCell>
-                          <TableCell className="py-1">
-                            {product.is_for_sale ? (
-                              <div className="flex items-center gap-1 text-primary">
-                                <Store className="h-2.5 w-2.5" /><span className="text-[10px]">Venda</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 text-accent">
-                                <Building2 className="h-2.5 w-2.5" /><span className="text-[10px]">Clínica</span>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-1">
-                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 leading-none font-normal tabular-nums">{totalAppointments}</Badge>
-                          </TableCell>
-                          <TableCell className="py-1">
                             <Badge variant={product.is_active ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0 h-4 leading-none font-normal">
                               {product.is_active ? 'Ativo' : 'Inativo'}
                             </Badge>
+                            {expired && <Badge variant="destructive" className="ml-1 text-[8px] px-1 py-0 h-3.5 leading-none font-normal">Vencido</Badge>}
                           </TableCell>
                           <TableCell className="py-1 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex gap-0.5 justify-end">
